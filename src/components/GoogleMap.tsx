@@ -121,14 +121,24 @@ export default function GoogleMap() {
 
   // Function to initialize the map
   const initializeMap = useCallback(() => {
+    console.log('Initializing Google Map...');
+    
     if (!window.google || !window.google.maps || !mapRef.current) {
+      console.error('Cannot initialize map - missing dependencies:', {
+        hasWindow: typeof window !== 'undefined',
+        hasGoogle: !!(window as any).google,
+        hasMaps: !!((window as any).google?.maps),
+        hasMapRef: !!mapRef.current
+      });
       return;
     }
 
     try {
+      console.log('Creating map with options...');
+      
       // Create map with modern styling
       const mapOptions: google.maps.MapOptions = {
-        zoom: 0,
+        zoom: 4,
         center: { lat: 39.8283, lng: -98.5795 }, // Centered on US
         mapId: 'caraudio_map_2025', // Modern map ID for cloud-based styling
         styles: getMapStyles(),
@@ -144,15 +154,31 @@ export default function GoogleMap() {
         keyboardShortcuts: true
       };
 
+      console.log('Map options configured:', mapOptions);
+
       const mapInstance = new window.google.maps.Map(mapRef.current, mapOptions);
+      
+      console.log('Map instance created:', mapInstance);
+      
+      // Add event listeners to track map loading
+      mapInstance.addListener('idle', () => {
+        console.log('Map is idle (finished loading)');
+      });
+      
+      mapInstance.addListener('tilesloaded', () => {
+        console.log('Map tiles have finished loading');
+      });
+      
       setMap(mapInstance);
       setIsLoaded(true);
+      
+      console.log('Map state updated, loading events...');
 
       // Load events from database
       loadMapEvents(mapInstance);
     } catch (err) {
       console.error('Error initializing map:', err);
-      setError('Failed to initialize map');
+      setError('Failed to initialize map: ' + (err instanceof Error ? err.message : 'Unknown error'));
       setLoading(false);
       setEvents(getMockEvents());
     }
