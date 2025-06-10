@@ -140,7 +140,6 @@ export default function GoogleMap() {
       const mapOptions: google.maps.MapOptions = {
         zoom: 4,
         center: { lat: 39.8283, lng: -98.5795 }, // Centered on US
-        mapId: 'caraudio_map_2025', // Modern map ID for cloud-based styling
         styles: getMapStyles(),
         disableDefaultUI: false,
         zoomControl: true,
