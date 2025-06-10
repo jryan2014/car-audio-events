@@ -133,33 +133,6 @@ export default function Login() {
           </p>
         </div>
 
-        {/* Admin User Creation Section */}
-        <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-6">
-          <div className="text-center">
-            <h3 className="text-lg font-semibold text-blue-400 mb-2">Admin Login</h3>
-            <p className="text-sm text-blue-300 mb-4">
-              Need to create the first admin user? Click the button below to set up the default admin account.
-            </p>
-            <button
-              onClick={createAdminUser}
-              disabled={isCreatingAdmin}
-              className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-            >
-              {isCreatingAdmin ? (
-                <>
-                  <Loader className="h-4 w-4 animate-spin" />
-                  <span>Creating Admin User...</span>
-                </>
-              ) : (
-                <>
-                  <UserPlus className="h-4 w-4" />
-                  <span>Create Admin User</span>
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-
         <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-8">
           <form className="space-y-6" onSubmit={handleSubmit}>
             {error && (
