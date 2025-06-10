@@ -44,7 +44,7 @@ export default function Home() {
   return (
     <div className="animate-fade-in">
       {/* Hero Section */}
-      <section className="relative overflow-hidden h-[70vh] md:h-[80vh]">
+      <section className="relative overflow-hidden h-[60vh] md:h-[70vh]">
         <div className="h-full relative">
           {/* World Map Background - NO OVERLAY */}
           <div className="absolute inset-0 z-0">

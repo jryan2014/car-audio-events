@@ -138,7 +138,7 @@ export default function GoogleMap() {
       
       // Create map with modern styling
       const mapOptions: google.maps.MapOptions = {
-        zoom: 4,
+        zoom: 3,
         center: { lat: 39.8283, lng: -98.5795 }, // Centered on US
         styles: getMapStyles(),
         disableDefaultUI: false,
