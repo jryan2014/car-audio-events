@@ -1,6 +1,7 @@
 [build]
   publish = "dist"
   command = "npm run build"
+  environment = { SECRETS_SCAN_SMART_DETECTION_OMIT_VALUES = "AIza*" }
 
 [[redirects]]
   from = "/*"

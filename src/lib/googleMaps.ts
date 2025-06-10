@@ -2,7 +2,7 @@
  * Google Maps API utilities and configuration
  */
 
-// Get Google Maps API key from environment with the provided key
+// Get Google Maps API key from environment
 export const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
 
 // Add debugging for environment variables
