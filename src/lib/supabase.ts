@@ -4,6 +4,15 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+// Debug logging to see what's actually loaded
+console.log('🔍 Supabase Configuration Debug:', {
+  url: supabaseUrl ? `${supabaseUrl.substring(0, 30)}...` : 'NOT SET',
+  keyLength: supabaseAnonKey ? supabaseAnonKey.length : 0,
+  keyStart: supabaseAnonKey ? supabaseAnonKey.substring(0, 20) + '...' : 'NOT SET',
+  environment: import.meta.env.MODE,
+  allEnvKeys: Object.keys(import.meta.env).filter(key => key.startsWith('VITE_'))
+});
+
 // Validate required environment variables
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Missing Supabase configuration. Please check your .env file.');
