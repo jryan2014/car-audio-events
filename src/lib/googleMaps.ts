@@ -5,6 +5,15 @@
 // Get Google Maps API key from environment with the provided key
 export const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
 
+// Add debugging for environment variables
+console.log('Environment debug:', {
+  VITE_GOOGLE_MAPS_API_KEY: GOOGLE_MAPS_API_KEY ? `${GOOGLE_MAPS_API_KEY.substring(0, 8)}...` : 'NOT SET',
+  VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL ? 'SET' : 'NOT SET',
+  VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY ? 'SET' : 'NOT SET',
+  NODE_ENV: import.meta.env.NODE_ENV || 'not set',
+  MODE: import.meta.env.MODE || 'not set'
+});
+
 // Track loading state
 let isLoading = false;
 let loadPromise: Promise<void> | null = null;
@@ -18,9 +27,17 @@ export const isGoogleMapsLoaded = (): boolean => {
 
 // Check if we have a valid API key
 export const hasValidApiKey = (): boolean => {
-  return GOOGLE_MAPS_API_KEY && 
+  const isValid = GOOGLE_MAPS_API_KEY && 
          GOOGLE_MAPS_API_KEY !== 'YOUR_GOOGLE_MAPS_API_KEY_HERE' &&
          GOOGLE_MAPS_API_KEY.trim().length > 0;
+  
+  console.log('hasValidApiKey check:', {
+    hasKey: !!GOOGLE_MAPS_API_KEY,
+    keyLength: GOOGLE_MAPS_API_KEY?.length || 0,
+    isValid
+  });
+  
+  return isValid;
 };
 
 // Fetch Google Maps API key from Supabase Edge Function
