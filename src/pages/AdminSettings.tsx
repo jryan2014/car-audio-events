@@ -1,0 +1,508 @@
+import React, { useState, useEffect } from 'react';
+import { Key, Save, Eye, EyeOff, Shield, AlertCircle, CheckCircle, Settings, Database, CreditCard, Map, Bug } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { Navigate } from 'react-router-dom';
+
+interface IntegrationKeys {
+  stripe_publishable_key: string;
+  stripe_secret_key: string;
+  stripe_webhook_secret: string;
+  supabase_url: string;
+  supabase_anon_key: string;
+  supabase_service_role_key: string;
+  google_maps_api_key: string;
+}
+
+export default function AdminSettings() {
+  const { user, session } = useAuth();
+  const [keys, setKeys] = useState<IntegrationKeys>({
+    stripe_publishable_key: '',
+    stripe_secret_key: '',
+    stripe_webhook_secret: '',
+    supabase_url: '',
+    supabase_anon_key: '',
+    supabase_service_role_key: '',
+    google_maps_api_key: ''
+  });
+  const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+  const [activeTab, setActiveTab] = useState('stripe');
+  const [debugModeEnabled, setDebugModeEnabled] = useState(false);
+
+  // Check if user is admin
+  if (!user || user.membershipType !== 'admin') {
+    return <Navigate to="/\" replace />;
+  }
+
+  useEffect(() => {
+    // Load existing keys from environment or database
+    loadExistingKeys();
+    loadDebugSettings();
+  }, []);
+
+  const loadExistingKeys = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-get-keys`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to load keys');
+      }
+
+      const data = await response.json();
+      setKeys(data.keys);
+    } catch (error) {
+      console.error('Failed to load existing keys:', error);
+      // Fallback to environment variables
+      setKeys({
+        stripe_publishable_key: import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '',
+        stripe_secret_key: '',
+        stripe_webhook_secret: '',
+        supabase_url: import.meta.env.VITE_SUPABASE_URL || '',
+        supabase_anon_key: import.meta.env.VITE_SUPABASE_ANON_KEY || '',
+        supabase_service_role_key: '',
+        google_maps_api_key: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''
+      });
+    }
+  };
+
+  const loadDebugSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('admin_settings')
+        .select('key_value')
+        .eq('key_name', 'login_debug_mode')
+        .single();
+      
+      if (!error && data) {
+        setDebugModeEnabled(data.key_value === 'true');
+      }
+    } catch (error) {
+      console.log('Debug mode setting not found, defaulting to false');
+    }
+  };
+
+  const updateDebugMode = async (enabled: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('admin_settings')
+        .upsert({
+          key_name: 'login_debug_mode',
+          key_value: enabled.toString(),
+          is_sensitive: false,
+          updated_by: user!.id,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'key_name'
+        });
+
+      if (error) throw error;
+      
+      setDebugModeEnabled(enabled);
+      setSaveStatus('success');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    } catch (error) {
+      console.error('Failed to update debug mode:', error);
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    }
+  };
+
+  const handleInputChange = (key: keyof IntegrationKeys, value: string) => {
+    setKeys(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  const toggleSecretVisibility = (key: string) => {
+    setShowSecrets(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
+
+  const handleSave = async () => {
+    setIsLoading(true);
+    setSaveStatus('saving');
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-update-keys`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ keys })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save keys');
+      }
+
+      const result = await response.json();
+      console.log('Save result:', result);
+
+      setSaveStatus('success');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    } catch (error) {
+      console.error('Failed to save keys:', error);
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const validateKey = (key: string, value: string): boolean => {
+    if (!value) return false;
+    
+    switch (key) {
+      case 'stripe_publishable_key':
+        return value.startsWith('pk_');
+      case 'stripe_secret_key':
+        return value.startsWith('sk_');
+      case 'stripe_webhook_secret':
+        return value.startsWith('whsec_');
+      case 'supabase_url':
+        return value.includes('supabase.co');
+      case 'supabase_anon_key':
+      case 'supabase_service_role_key':
+        return value.length > 100; // Supabase keys are long
+      case 'google_maps_api_key':
+        return value.length > 20;
+      default:
+        return true;
+    }
+  };
+
+  const tabs = [
+    { id: 'stripe', label: 'Stripe', icon: CreditCard },
+    { id: 'supabase', label: 'Supabase', icon: Database },
+    { id: 'google', label: 'Google Maps', icon: Map },
+    { id: 'debug', label: 'Debug', icon: Bug }
+  ];
+
+  const renderKeyInput = (
+    key: keyof IntegrationKeys,
+    label: string,
+    description: string,
+    isSecret: boolean = false
+  ) => {
+    const value = keys[key];
+    const isValid = validateKey(key, value);
+    const showValue = !isSecret || showSecrets[key];
+
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <label className="block text-sm font-medium text-gray-300">
+            {label}
+          </label>
+          {isSecret && (
+            <button
+              type="button"
+              onClick={() => toggleSecretVisibility(key)}
+              className="text-gray-400 hover:text-gray-300 transition-colors"
+            >
+              {showValue ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          )}
+        </div>
+        <div className="relative">
+          <input
+            type={showValue ? 'text' : 'password'}
+            value={value}
+            onChange={(e) => handleInputChange(key, e.target.value)}
+            className={`w-full p-3 bg-gray-700/50 border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 transition-all duration-200 ${
+              value && isValid
+                ? 'border-green-500 focus:border-green-500 focus:ring-green-500/20'
+                : value && !isValid
+                ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+                : 'border-gray-600 focus:border-electric-500 focus:ring-electric-500/20'
+            }`}
+            placeholder={`Enter your ${label.toLowerCase()}`}
+          />
+          {value && (
+            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+              {isValid ? (
+                <CheckCircle className="h-5 w-5 text-green-500" />
+              ) : (
+                <AlertCircle className="h-5 w-5 text-red-500" />
+              )}
+            </div>
+          )}
+        </div>
+        <p className="text-xs text-gray-400">{description}</p>
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center space-x-3 mb-4">
+            <div className="w-12 h-12 bg-red-500 rounded-lg flex items-center justify-center">
+              <Shield className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-white">Admin Settings</h1>
+              <p className="text-gray-400">Manage integration keys and API configurations</p>
+            </div>
+          </div>
+          
+          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+            <div className="flex items-center space-x-2">
+              <AlertCircle className="h-5 w-5 text-red-400" />
+              <span className="text-red-400 font-medium">Security Notice</span>
+            </div>
+            <p className="text-red-300 text-sm mt-1">
+              This page contains sensitive API keys. Only authorized administrators should have access.
+              Secret keys are never stored in the frontend and are handled securely by the backend.
+            </p>
+          </div>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="flex space-x-1 mb-8 bg-gray-800/50 p-1 rounded-xl border border-gray-700/50">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
+                activeTab === tab.id
+                  ? 'bg-electric-500 text-white shadow-lg'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+              }`}
+            >
+              <tab.icon className="h-4 w-4" />
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Tab Content */}
+        <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-8">
+          {activeTab === 'stripe' && (
+            <div className="space-y-6">
+              <div className="flex items-center space-x-2 mb-6">
+                <CreditCard className="h-6 w-6 text-electric-500" />
+                <h2 className="text-2xl font-bold text-white">Stripe Configuration</h2>
+              </div>
+              
+              {renderKeyInput(
+                'stripe_publishable_key',
+                'Publishable Key',
+                'Your Stripe publishable key (starts with pk_). Safe to expose in frontend.',
+                false
+              )}
+              
+              {renderKeyInput(
+                'stripe_secret_key',
+                'Secret Key',
+                'Your Stripe secret key (starts with sk_). Keep this secure and never expose in frontend.',
+                true
+              )}
+              
+              {renderKeyInput(
+                'stripe_webhook_secret',
+                'Webhook Secret',
+                'Your Stripe webhook endpoint secret (starts with whsec_). Used to verify webhook signatures.',
+                true
+              )}
+
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+                <h3 className="text-blue-400 font-medium mb-2">Stripe Setup Instructions</h3>
+                <ol className="text-blue-300 text-sm space-y-1 list-decimal list-inside">
+                  <li>Go to your <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener noreferrer" className="underline">Stripe Dashboard</a></li>
+                  <li>Copy your publishable and secret keys</li>
+                  <li>Set up webhooks pointing to your Supabase edge function</li>
+                  <li>Copy the webhook signing secret</li>
+                </ol>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'supabase' && (
+            <div className="space-y-6">
+              <div className="flex items-center space-x-2 mb-6">
+                <Database className="h-6 w-6 text-electric-500" />
+                <h2 className="text-2xl font-bold text-white">Supabase Configuration</h2>
+              </div>
+              
+              {renderKeyInput(
+                'supabase_url',
+                'Project URL',
+                'Your Supabase project URL (e.g., https://your-project.supabase.co)',
+                false
+              )}
+              
+              {renderKeyInput(
+                'supabase_anon_key',
+                'Anonymous Key',
+                'Your Supabase anonymous/public key. Safe to expose in frontend.',
+                false
+              )}
+              
+              {renderKeyInput(
+                'supabase_service_role_key',
+                'Service Role Key',
+                'Your Supabase service role key. Keep this secure and only use in backend/edge functions.',
+                true
+              )}
+
+              <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4">
+                <h3 className="text-green-400 font-medium mb-2">Supabase Setup Instructions</h3>
+                <ol className="text-green-300 text-sm space-y-1 list-decimal list-inside">
+                  <li>Go to your <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" className="underline">Supabase Dashboard</a></li>
+                  <li>Navigate to Settings → API</li>
+                  <li>Copy your Project URL and API keys</li>
+                  <li>Set up your database schema and RLS policies</li>
+                </ol>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'google' && (
+            <div className="space-y-6">
+              <div className="flex items-center space-x-2 mb-6">
+                <Map className="h-6 w-6 text-electric-500" />
+                <h2 className="text-2xl font-bold text-white">Google Maps Configuration</h2>
+              </div>
+              
+              {renderKeyInput(
+                'google_maps_api_key',
+                'API Key',
+                'Your Google Maps JavaScript API key. Restrict by HTTP referrer for security.',
+                true
+              )}
+
+              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
+                <h3 className="text-yellow-400 font-medium mb-2">Google Maps Setup Instructions</h3>
+                <ol className="text-yellow-300 text-sm space-y-1 list-decimal list-inside">
+                  <li>Go to <a href="https://console.cloud.google.com" target="_blank" rel="noopener noreferrer" className="underline">Google Cloud Console</a></li>
+                  <li>Enable Maps JavaScript API and Places API</li>
+                  <li>Create an API key and restrict it to your domain</li>
+                  <li>Set up billing (required for Maps API)</li>
+                </ol>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'debug' && (
+            <div className="space-y-6">
+              <div className="flex items-center space-x-2 mb-6">
+                <Bug className="h-6 w-6 text-electric-500" />
+                <h2 className="text-2xl font-bold text-white">Debug Settings</h2>
+              </div>
+              
+              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
+                <div className="flex items-start space-x-3">
+                  <AlertCircle className="h-5 w-5 text-yellow-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h4 className="text-sm font-medium text-yellow-400">Security Notice</h4>
+                    <p className="text-sm text-yellow-300 mt-1">
+                      Debug mode should only be enabled when troubleshooting login issues. 
+                      It exposes sensitive system information and should be disabled in production.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-gray-700/30 rounded-lg">
+                  <div>
+                    <h3 className="text-white font-medium">Login Debug Mode</h3>
+                    <p className="text-gray-400 text-sm">
+                      Shows detailed debug information on the login page for troubleshooting authentication issues.
+                    </p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={debugModeEnabled}
+                      onChange={(e) => updateDebugMode(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-electric-500/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-electric-500"></div>
+                  </label>
+                </div>
+              </div>
+
+              <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+                <h3 className="text-red-400 font-medium mb-2">Important Security Guidelines</h3>
+                <ul className="text-red-300 text-sm space-y-1 list-disc list-inside">
+                  <li>Only enable debug mode when actively troubleshooting issues</li>
+                  <li>Debug mode exposes system state information that could be sensitive</li>
+                  <li>Always disable debug mode after troubleshooting is complete</li>
+                  <li>Never leave debug mode enabled in production environments</li>
+                </ul>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Save Button */}
+        <div className="mt-8 flex justify-end">
+          <button
+            onClick={handleSave}
+            disabled={isLoading}
+            className={`flex items-center space-x-2 px-6 py-3 rounded-lg font-bold transition-all duration-200 ${
+              saveStatus === 'success'
+                ? 'bg-green-600 text-white'
+                : saveStatus === 'error'
+                ? 'bg-red-600 text-white'
+                : 'bg-electric-500 text-white hover:bg-electric-600'
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
+          >
+            {isLoading ? (
+              <>
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                <span>Saving...</span>
+              </>
+            ) : saveStatus === 'success' ? (
+              <>
+                <CheckCircle className="h-5 w-5" />
+                <span>Saved Successfully</span>
+              </>
+            ) : saveStatus === 'error' ? (
+              <>
+                <AlertCircle className="h-5 w-5" />
+                <span>Save Failed</span>
+              </>
+            ) : (
+              <>
+                <Save className="h-5 w-5" />
+                <span>Save Configuration</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Additional Security Info */}
+        <div className="mt-8 bg-gray-700/30 rounded-lg p-6">
+          <h3 className="text-white font-semibold mb-3 flex items-center space-x-2">
+            <Key className="h-5 w-5 text-electric-500" />
+            <span>Security Best Practices</span>
+          </h3>
+          <ul className="text-gray-300 text-sm space-y-2">
+            <li>• Secret keys should never be stored in frontend code or version control</li>
+            <li>• Use environment variables or secure key management services</li>
+            <li>• Regularly rotate your API keys and monitor usage</li>
+            <li>• Restrict API keys to specific domains and IP addresses when possible</li>
+            <li>• Monitor your API usage and set up billing alerts</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
