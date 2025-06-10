@@ -9,7 +9,7 @@
 
 [build.environment]
   NODE_VERSION = "18"
-  SECRETS_SCAN_SMART_DETECTION_OMIT_VALUES = "AIza*"
+  SECRETS_SCAN_SMART_DETECTION_ENABLED = "false"
   # Environment variables should be set in Netlify dashboard for security
   # VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_GOOGLE_MAPS_API_KEY
 
