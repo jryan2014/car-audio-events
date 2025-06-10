@@ -1,7 +1,6 @@
 [build]
   publish = "dist"
   command = "npm run build"
-  environment = { SECRETS_SCAN_SMART_DETECTION_OMIT_VALUES = "AIza*" }
 
 [[redirects]]
   from = "/*"
@@ -10,6 +9,7 @@
 
 [build.environment]
   NODE_VERSION = "18"
+  SECRETS_SCAN_SMART_DETECTION_OMIT_VALUES = "AIza*"
   # Environment variables should be set in Netlify dashboard for security
   # VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_GOOGLE_MAPS_API_KEY
 
