@@ -46,6 +46,7 @@ export const fetchGoogleMapsApiKey = async (): Promise<string> => {
     return GOOGLE_MAPS_API_KEY;
   }
 };
+
 // Load Google Maps API
 export const loadGoogleMapsApi = (): Promise<void> => {
   // If already loaded, return resolved promise
@@ -61,7 +62,7 @@ export const loadGoogleMapsApi = (): Promise<void> => {
   // Start loading
   isLoading = true;
   loadPromise = new Promise((resolve, reject) => {
-    // Check if script is already in DOM (from index.html)
+    // Check if script is already in DOM
     const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
     
     if (existingScript) {
@@ -76,29 +77,30 @@ export const loadGoogleMapsApi = (): Promise<void> => {
       };
       checkLoaded();
     } else {
-      // Dynamically load the script
-      // First try to get the API key from the edge function
-      fetchGoogleMapsApiKey().then(apiKey => {
-        const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
-        script.async = true;
-        script.defer = true;
-        
-        script.onload = () => {
-          isLoading = false;
-          resolve();
-        };
-        
-        script.onerror = () => {
-          isLoading = false;
-          reject(new Error('Failed to load Google Maps API'));
-        };
-        
-        document.head.appendChild(script);
-      }).catch(error => {
+      // Check if we have a valid API key
+      if (!hasValidApiKey()) {
         isLoading = false;
-        reject(error);
-      });
+        reject(new Error('Google Maps API key not configured'));
+        return;
+      }
+      
+      // Dynamically load the script
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places,geometry`;
+      script.async = true;
+      script.defer = true;
+      
+      script.onload = () => {
+        isLoading = false;
+        resolve();
+      };
+      
+      script.onerror = () => {
+        isLoading = false;
+        reject(new Error('Failed to load Google Maps API - check your API key and internet connection'));
+      };
+      
+      document.head.appendChild(script);
     }
   });
 
