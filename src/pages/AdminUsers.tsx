@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Search, Filter, Plus, Edit, Trash2, Shield, AlertTriangle, CheckCircle, X, Eye, Ban, UserCheck, UserPlus, Mail, Phone, Globe, MapPin, Building, Check } from 'lucide-react';
+import { Users, Search, Filter, Plus, Edit, Trash2, Shield, AlertTriangle, CheckCircle, X, Eye, Ban, UserCheck, UserPlus, Mail, Phone, Globe, MapPin, Building, Check, User, Save } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -85,44 +85,53 @@ export default function AdminUsers() {
       setIsLoading(true);
       setError(null);
       
-      // Check if we have a valid session with access token
+      // Check if we have a valid session
       if (!session?.access_token) {
         throw new Error('No valid session token available. Please log out and log back in.');
       }
 
-      // Get Supabase URL from environment
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      
-      if (!supabaseUrl) {
-        throw new Error('Missing Supabase URL configuration. Please check your .env file.');
-      }
-      
-      const response = await fetch(`${supabaseUrl}/functions/v1/admin-get-users`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      // First, verify current user is admin
+      const { data: currentUser, error: currentUserError } = await supabase
+        .from('users')
+        .select('membership_type, status')
+        .eq('id', user?.id)
+        .single();
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        let errorMessage = `Failed to load users: ${response.status} ${response.statusText}`;
-        
-        if (response.status === 403) {
-          errorMessage = `Access denied. Your admin account may not be properly configured. Please use the "Create Admin User" button on the login page to fix your permissions.`;
-        } else if (response.status === 401) {
-          errorMessage = `Authentication failed. Please check your Supabase configuration in the .env file.`;
-        }
-        
-        console.error('API Error Response:', errorText);
-        throw new Error(errorMessage);
+      if (currentUserError || !currentUser) {
+        throw new Error('Unable to verify admin permissions. Please ensure your account is properly configured.');
       }
 
-      const data = await response.json();
-      setUsers(data.users || []);
-      
-      // If we successfully loaded users, clear any previous errors
+      if (currentUser.membership_type !== 'admin' || currentUser.status !== 'active') {
+        throw new Error('Access denied. Your admin account may not be properly configured.');
+      }
+
+      // Fetch all users directly from the database
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select(`
+          id,
+          email,
+          name,
+          membership_type,
+          status,
+          location,
+          phone,
+          company_name,
+          verification_status,
+          subscription_plan,
+          last_login_at,
+          created_at,
+          login_count,
+          failed_login_attempts
+        `)
+        .order('created_at', { ascending: false });
+
+      if (usersError) {
+        console.error('Database error:', usersError);
+        throw new Error(`Failed to load users from database: ${usersError.message}`);
+      }
+
+      setUsers(usersData || []);
       setError(null);
       
     } catch (error) {
@@ -221,28 +230,45 @@ export default function AdminUsers() {
 
   const handleUserAction = async (userId: string, action: string) => {
     try {
-      // Check if we have a valid session with access token
+      // Check if we have a valid session
       if (!session?.access_token) {
         throw new Error('No valid session token available');
       }
 
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      
-      if (!supabaseUrl) {
-        throw new Error('Missing Supabase URL configuration');
+      // Prepare update data based on action
+      let updateData: any = { updated_at: new Date().toISOString() };
+
+      switch (action) {
+        case 'activate':
+          updateData.status = 'active';
+          break;
+        case 'approve':
+          updateData.status = 'active';
+          updateData.verification_status = 'verified';
+          break;
+        case 'suspend':
+          updateData.status = 'suspended';
+          break;
+        case 'ban':
+          updateData.status = 'banned';
+          break;
+        case 'delete':
+          // For delete, we'll actually just ban the user to preserve data integrity
+          updateData.status = 'banned';
+          break;
+        default:
+          throw new Error('Invalid action');
       }
 
-      const response = await fetch(`${supabaseUrl}/functions/v1/admin-user-action`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ userId, action })
-      });
+      // Update the user directly in the database
+      const { error: updateError } = await supabase
+        .from('users')
+        .update(updateData)
+        .eq('id', userId);
 
-      if (!response.ok) {
-        throw new Error('Failed to perform user action');
+      if (updateError) {
+        console.error('Database update error:', updateError);
+        throw new Error(`Failed to ${action} user: ${updateError.message}`);
       }
 
       // Reload users after action
@@ -266,25 +292,49 @@ export default function AdminUsers() {
         throw new Error('Email, name, and password are required');
       }
       
-      // Create user via admin-create-user edge function
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      
-      if (!supabaseUrl) {
-        throw new Error('Missing Supabase URL configuration');
-      }
-      
-      const response = await fetch(`${supabaseUrl}/functions/v1/admin-create-user`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session?.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(newUserData)
+      // Create user in Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: newUserData.email,
+        password: newUserData.password,
+        options: {
+          data: {
+            name: newUserData.name,
+            membership_type: newUserData.membership_type
+          }
+        }
       });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create user');
+
+      if (authError) {
+        throw new Error(`Failed to create user account: ${authError.message}`);
+      }
+
+      if (!authData.user) {
+        throw new Error('Failed to create user account');
+      }
+
+      // Create user profile in the users table
+      const { error: profileError } = await supabase
+        .from('users')
+        .insert({
+          id: authData.user.id,
+          email: newUserData.email,
+          name: newUserData.name,
+          membership_type: newUserData.membership_type,
+          status: newUserData.status,
+          location: newUserData.location || null,
+          phone: newUserData.phone || null,
+          company_name: newUserData.company_name || null,
+          verification_status: newUserData.verification_status,
+          subscription_plan: newUserData.subscription_plan,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          login_count: 0,
+          failed_login_attempts: 0
+        });
+
+      if (profileError) {
+        console.error('Profile creation error:', profileError);
+        throw new Error(`Failed to create user profile: ${profileError.message}`);
       }
       
       // Reset form and close modal
@@ -324,28 +374,20 @@ export default function AdminUsers() {
         throw new Error('No user selected for editing');
       }
       
-      // Update user via admin-update-user edge function
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      // Update user directly in the database
+      const updateData = {
+        ...editUserData,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error: updateError } = await supabase
+        .from('users')
+        .update(updateData)
+        .eq('id', selectedUser.id);
       
-      if (!supabaseUrl) {
-        throw new Error('Missing Supabase URL configuration');
-      }
-      
-      const response = await fetch(`${supabaseUrl}/functions/v1/admin-update-user`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${session?.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: selectedUser.id,
-          userData: editUserData
-        })
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update user');
+      if (updateError) {
+        console.error('Database update error:', updateError);
+        throw new Error(`Failed to update user: ${updateError.message}`);
       }
       
       // Reset form and close modal
