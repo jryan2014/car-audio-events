@@ -1,18 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Search, Filter, Plus, Edit, Trash2, Shield, AlertTriangle, CheckCircle, X, Eye, Ban, UserCheck, UserPlus, Mail, Phone, Globe, MapPin, Building, Check, User, Save } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 interface User {
   id: string;
   email: string;
   name: string;
+  first_name?: string;
+  last_name?: string;
   membership_type: 'competitor' | 'retailer' | 'manufacturer' | 'organization' | 'admin';
   status: 'active' | 'suspended' | 'pending' | 'banned';
   location?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
   phone?: string;
   company_name?: string;
+  competition_type?: 'SPL' | 'SQL' | 'both' | 'none';
+  team_id?: string;
+  team_name?: string;
   verification_status: 'unverified' | 'pending' | 'verified' | 'rejected';
   subscription_plan: 'free' | 'pro' | 'business' | 'enterprise';
   last_login_at?: string;
@@ -24,17 +33,26 @@ interface User {
 interface NewUserFormData {
   email: string;
   name: string;
+  first_name: string;
+  last_name: string;
   password: string;
   membership_type: 'competitor' | 'retailer' | 'manufacturer' | 'organization' | 'admin';
   location?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
   phone?: string;
   company_name?: string;
+  competition_type?: 'SPL' | 'SQL' | 'both' | 'none';
+  team_id?: string;
   status: 'active' | 'pending';
   verification_status: 'unverified' | 'pending' | 'verified';
   subscription_plan: 'free' | 'pro' | 'business' | 'enterprise';
 }
 export default function AdminUsers() {
   const { user, session } = useAuth();
+  const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -43,29 +61,33 @@ export default function AdminUsers() {
   const [selectedVerification, setSelectedVerification] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [showUserModal, setShowUserModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
-  const [showEditUserModal, setShowEditUserModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
   const [newUserData, setNewUserData] = useState<NewUserFormData>({
     email: '',
     name: '',
+    first_name: '',
+    last_name: '',
     password: '',
     membership_type: 'competitor',
     location: '',
+    address: '',
+    city: '',
+    state: '',
+    zip: '',
     phone: '',
     company_name: '',
+    competition_type: 'none',
+    team_id: '',
     status: 'pending',
     verification_status: 'pending',
     subscription_plan: 'free'
   });
-  
-  const [editUserData, setEditUserData] = useState<Partial<User>>({});
 
   // Check if user is admin
   if (!user || user.membershipType !== 'admin') {
@@ -106,29 +128,65 @@ export default function AdminUsers() {
       }
 
       // Fetch all users directly from the database
-      const { data: usersData, error: usersError } = await supabase
-        .from('users')
-        .select(`
-          id,
-          email,
-          name,
-          membership_type,
-          status,
-          location,
-          phone,
-          company_name,
-          verification_status,
-          subscription_plan,
-          last_login_at,
-          created_at,
-          login_count,
-          failed_login_attempts
-        `)
-        .order('created_at', { ascending: false });
+      let usersData;
+      try {
+        // Try to fetch with new fields first
+        const { data, error: usersError } = await supabase
+          .from('users')
+          .select(`
+            id,
+            email,
+            name,
+            first_name,
+            last_name,
+            membership_type,
+            status,
+            location,
+            address,
+            city,
+            state,
+            zip,
+            phone,
+            company_name,
+            competition_type,
+            team_id,
+            verification_status,
+            subscription_plan,
+            last_login_at,
+            created_at,
+            login_count,
+            failed_login_attempts,
+            teams(name)
+          `)
+          .order('created_at', { ascending: false });
 
-      if (usersError) {
-        console.error('Database error:', usersError);
-        throw new Error(`Failed to load users from database: ${usersError.message}`);
+        if (usersError) throw usersError;
+        usersData = data;
+      } catch (error) {
+        console.log('New fields not available, falling back to basic fields:', error);
+        // Fallback to basic fields if new fields don't exist
+        const { data, error: basicError } = await supabase
+          .from('users')
+          .select(`
+            id,
+            email,
+            name,
+            membership_type,
+            status,
+            location,
+            phone,
+            company_name,
+            verification_status,
+            subscription_plan,
+            last_login_at,
+            created_at,
+            login_count,
+            failed_login_attempts
+          `)
+          .order('created_at', { ascending: false });
+
+        if (basicError) throw basicError;
+        usersData = data;
       }
 
       setUsers(usersData || []);
@@ -155,9 +213,19 @@ export default function AdminUsers() {
         id: '1',
         email: 'john@example.com',
         name: 'John Doe',
+        first_name: 'John',
+        last_name: 'Doe',
         membership_type: 'competitor',
         status: 'active',
         location: 'Orlando, FL',
+        address: '123 Main St',
+        city: 'Orlando',
+        state: 'FL',
+        zip: '32801',
+        phone: '+1 (555) 123-4567',
+        competition_type: 'SPL',
+        team_id: 'team1',
+        team_name: 'Bass Heads',
         verification_status: 'verified',
         subscription_plan: 'pro',
         last_login_at: '2025-01-07T10:30:00Z',
@@ -169,9 +237,16 @@ export default function AdminUsers() {
         id: '2',
         email: 'retailer@example.com',
         name: 'Audio Store Pro',
+        first_name: 'Mike',
+        last_name: 'Johnson',
         membership_type: 'retailer',
         status: 'active',
         location: 'Phoenix, AZ',
+        address: '456 Commerce Blvd',
+        city: 'Phoenix',
+        state: 'AZ',
+        zip: '85001',
+        phone: '+1 (555) 987-6543',
         company_name: 'Pro Audio Solutions',
         verification_status: 'pending',
         subscription_plan: 'business',
@@ -184,9 +259,16 @@ export default function AdminUsers() {
         id: '3',
         email: 'manufacturer@example.com',
         name: 'Bass Systems Inc',
+        first_name: 'Sarah',
+        last_name: 'Williams',
         membership_type: 'manufacturer',
         status: 'active',
         location: 'Atlanta, GA',
+        address: '789 Industrial Way',
+        city: 'Atlanta',
+        state: 'GA',
+        zip: '30301',
+        phone: '+1 (555) 456-7890',
         company_name: 'Bass Systems Manufacturing',
         verification_status: 'verified',
         subscription_plan: 'enterprise',
@@ -199,9 +281,17 @@ export default function AdminUsers() {
         id: '4',
         email: 'suspended@example.com',
         name: 'Suspended User',
+        first_name: 'Alex',
+        last_name: 'Thompson',
         membership_type: 'competitor',
         status: 'suspended',
         location: 'Dallas, TX',
+        address: '321 Elm St',
+        city: 'Dallas',
+        state: 'TX',
+        zip: '75201',
+        phone: '+1 (555) 321-0987',
+        competition_type: 'SQL',
         verification_status: 'rejected',
         subscription_plan: 'free',
         last_login_at: '2024-12-20T14:30:00Z',
@@ -282,6 +372,18 @@ export default function AdminUsers() {
     }
   };
 
+  const handleApproveUser = async (userId: string) => {
+    try {
+      await handleUserAction(userId, 'approve');
+      setSuccessMessage('User approved successfully');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (error) {
+      console.error('Failed to approve user:', error);
+      setError(error instanceof Error ? error.message : 'Failed to approve user');
+      setTimeout(() => setError(null), 5000);
+    }
+  };
+
   const handleAddUser = async () => {
     try {
       setIsSubmitting(true);
@@ -290,6 +392,26 @@ export default function AdminUsers() {
       // Validate form
       if (!newUserData.email || !newUserData.name || !newUserData.password) {
         throw new Error('Email, name, and password are required');
+      }
+
+      // Check if new fields are available in the database
+      let hasNewFields = false;
+      try {
+        // Test if new fields exist by trying to select them
+        await supabase
+          .from('users')
+          .select('first_name, last_name, address, city, state, zip, competition_type, team_id')
+          .limit(1);
+        
+        hasNewFields = true;
+      } catch (testError) {
+        console.log('New fields not available for user creation, using basic fields only');
+        hasNewFields = false;
+      }
+
+      // Validate required fields based on what's available
+      if (hasNewFields && (!newUserData.first_name || !newUserData.last_name)) {
+        throw new Error('First name and last name are required');
       }
       
       // Create user in Supabase Auth
@@ -312,25 +434,43 @@ export default function AdminUsers() {
         throw new Error('Failed to create user account');
       }
 
+      // Prepare profile data based on available fields
+      let profileData: any = {
+        id: authData.user.id,
+        email: newUserData.email,
+        name: newUserData.name,
+        membership_type: newUserData.membership_type,
+        status: newUserData.status,
+        location: newUserData.location || null,
+        phone: newUserData.phone || null,
+        company_name: newUserData.company_name || null,
+        verification_status: newUserData.verification_status,
+        subscription_plan: newUserData.subscription_plan,
+        created_at: new Date().toISOString(),
+        login_count: 0,
+        failed_login_attempts: 0
+      };
+
+      // Add new fields only if they exist in the database
+      if (hasNewFields) {
+        profileData = {
+          ...profileData,
+          first_name: newUserData.first_name || null,
+          last_name: newUserData.last_name || null,
+          address: newUserData.address || null,
+          city: newUserData.city || null,
+          state: newUserData.state || null,
+          zip: newUserData.zip || null,
+          competition_type: newUserData.competition_type || null,
+          team_id: newUserData.team_id || null,
+          updated_at: new Date().toISOString()
+        };
+      }
+
       // Create user profile in the users table
       const { error: profileError } = await supabase
         .from('users')
-        .insert({
-          id: authData.user.id,
-          email: newUserData.email,
-          name: newUserData.name,
-          membership_type: newUserData.membership_type,
-          status: newUserData.status,
-          location: newUserData.location || null,
-          phone: newUserData.phone || null,
-          company_name: newUserData.company_name || null,
-          verification_status: newUserData.verification_status,
-          subscription_plan: newUserData.subscription_plan,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          login_count: 0,
-          failed_login_attempts: 0
-        });
+        .insert(profileData);
 
       if (profileError) {
         console.error('Profile creation error:', profileError);
@@ -341,18 +481,31 @@ export default function AdminUsers() {
       setNewUserData({
         email: '',
         name: '',
+        first_name: '',
+        last_name: '',
         password: '',
         membership_type: 'competitor',
         location: '',
+        address: '',
+        city: '',
+        state: '',
+        zip: '',
         phone: '',
         company_name: '',
+        competition_type: 'none',
+        team_id: '',
         status: 'pending',
         verification_status: 'pending',
         subscription_plan: 'free'
       });
       
       setShowAddUserModal(false);
-      setSuccessMessage('User created successfully');
+      
+      if (hasNewFields) {
+        setSuccessMessage('User created successfully with all fields');
+      } else {
+        setSuccessMessage('User created successfully (basic fields only - run database migration for full functionality)');
+      }
       setTimeout(() => setSuccessMessage(null), 3000);
       
       // Reload users
@@ -364,59 +517,7 @@ export default function AdminUsers() {
       setIsSubmitting(false);
     }
   };
-  
-  const handleEditUser = async () => {
-    try {
-      setIsSubmitting(true);
-      setError(null);
-      
-      if (!selectedUser || !editUserData) {
-        throw new Error('No user selected for editing');
-      }
-      
-      // Update user directly in the database
-      const updateData = {
-        ...editUserData,
-        updated_at: new Date().toISOString()
-      };
 
-      const { error: updateError } = await supabase
-        .from('users')
-        .update(updateData)
-        .eq('id', selectedUser.id);
-      
-      if (updateError) {
-        console.error('Database update error:', updateError);
-        throw new Error(`Failed to update user: ${updateError.message}`);
-      }
-      
-      // Reset form and close modal
-      setEditUserData({});
-      setShowEditUserModal(false);
-      setSuccessMessage('User updated successfully');
-      setTimeout(() => setSuccessMessage(null), 3000);
-      
-      // Reload users
-      await loadUsers();
-    } catch (error) {
-      console.error('Failed to update user:', error);
-      setError(error instanceof Error ? error.message : 'Failed to update user');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-  
-  const handleApproveUser = async (userId: string) => {
-    try {
-      await handleUserAction(userId, 'approve');
-      setSuccessMessage('User approved successfully');
-      setTimeout(() => setSuccessMessage(null), 3000);
-    } catch (error) {
-      console.error('Failed to approve user:', error);
-      setError(error instanceof Error ? error.message : 'Failed to approve user');
-      setTimeout(() => setError(null), 5000);
-    }
-  };
   const getStatusBadge = (status: string) => {
     const styles = {
       active: 'bg-green-500/20 text-green-400 border-green-500/30',
@@ -720,20 +821,14 @@ export default function AdminUsers() {
                       <td className="px-6 py-4">
                         <div className="flex items-center space-x-2">
                           <button
-                            onClick={() => {
-                              setSelectedUser(user);
-                              setShowUserModal(true);
-                            }}
+                            onClick={() => navigate(`/admin/users/${user.id}`)}
                             className="text-electric-400 hover:text-electric-300 transition-colors"
                             title="View Details"
                           >
                             <Eye className="h-4 w-4" />
                           </button>
                           <button
-                            onClick={() => {
-                              setSelectedUser(user);
-                              setShowUserModal(true);
-                            }}
+                            onClick={() => navigate(`/admin/users/${user.id}/edit`)}
                             className="text-blue-400 hover:text-blue-300 transition-colors"
                             title="Edit User"
                           >
@@ -792,93 +887,6 @@ export default function AdminUsers() {
         </div>
       </div>
 
-      {/* User Details Modal */}
-      {showUserModal && selectedUser && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-700">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-bold text-white">User Details</h3>
-                <button
-                  onClick={() => setShowUserModal(false)}
-                  className="text-gray-400 hover:text-white transition-colors"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-            </div>
-            <div className="p-6 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-gray-400 text-sm mb-2">Name</label>
-                  <div className="text-white">{selectedUser.name}</div>
-                </div>
-                <div>
-                  <label className="block text-gray-400 text-sm mb-2">Email</label>
-                  <div className="text-white">{selectedUser.email}</div>
-                </div>
-                <div>
-                  <label className="block text-gray-400 text-sm mb-2">Membership Type</label>
-                  <div>{getMembershipTypeBadge(selectedUser.membership_type)}</div>
-                </div>
-                <div>
-                  <label className="block text-gray-400 text-sm mb-2">Status</label>
-                  <div>{getStatusBadge(selectedUser.status)}</div>
-                </div>
-                <div>
-                  <label className="block text-gray-400 text-sm mb-2">Verification</label>
-                  <div>{getVerificationBadge(selectedUser.verification_status)}</div>
-                </div>
-                <div>
-                  <label className="block text-gray-400 text-sm mb-2">Subscription Plan</label>
-                  <div className="text-white capitalize">{selectedUser.subscription_plan}</div>
-                </div>
-                {selectedUser.location && (
-                  <div>
-                    <label className="block text-gray-400 text-sm mb-2">Location</label>
-                    <div className="text-white">{selectedUser.location}</div>
-                  </div>
-                )}
-                {selectedUser.company_name && (
-                  <div>
-                    <label className="block text-gray-400 text-sm mb-2">Company</label>
-                    <div className="text-white">{selectedUser.company_name}</div>
-                  </div>
-                )}
-                <div>
-                  <label className="block text-gray-400 text-sm mb-2">Created</label>
-                  <div className="text-white">{formatDate(selectedUser.created_at)}</div>
-                </div>
-                <div>
-                  <label className="block text-gray-400 text-sm mb-2">Last Login</label>
-                  <div className="text-white">
-                    {selectedUser.last_login_at ? formatDate(selectedUser.last_login_at) : 'Never'}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-gray-400 text-sm mb-2">Login Count</label>
-                  <div className="text-white">{selectedUser.login_count}</div>
-                </div>
-                <div>
-                  <label className="block text-gray-400 text-sm mb-2">Failed Attempts</label>
-                  <div className="text-white">{selectedUser.failed_login_attempts}</div>
-                </div>
-              </div>
-            </div>
-            <div className="p-6 border-t border-gray-700 flex justify-end space-x-4">
-              <button
-                onClick={() => setShowUserModal(false)}
-                className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
-              >
-                Close
-              </button>
-              <button className="bg-electric-500 text-white px-4 py-2 rounded-lg hover:bg-electric-600 transition-colors">
-                Edit User
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       {/* Add User Modal */}
       {showAddUserModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -1113,222 +1121,6 @@ export default function AdminUsers() {
           </div>
         </div>
       )}
-      
-      {/* Edit User Modal */}
-      {showEditUserModal && selectedUser && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-700">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
-                    <Edit className="h-5 w-5 text-white" />
-                  </div>
-                  <h3 className="text-xl font-bold text-white">Edit User</h3>
-                </div>
-                <button
-                  onClick={() => setShowEditUserModal(false)}
-                  className="text-gray-400 hover:text-white transition-colors"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-            </div>
-            <div className="p-6">
-              <form onSubmit={(e) => { e.preventDefault(); handleEditUser(); }} className="space-y-6">
-                {error && (
-                  <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
-                    <div className="flex items-center space-x-2">
-                      <AlertTriangle className="h-5 w-5 text-red-400" />
-                      <span className="text-red-400 font-medium">{error}</span>
-                    </div>
-                  </div>
-                )}
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-gray-400 text-sm mb-2">
-                      Email Address
-                    </label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                      <input
-                        type="email"
-                        value={editUserData.email || selectedUser.email}
-                        onChange={(e) => setEditUserData({...editUserData, email: e.target.value})}
-                        className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500"
-                        placeholder="user@example.com"
-                        disabled
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-gray-400 text-sm mb-2">
-                      Full Name
-                    </label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                      <input
-                        type="text"
-                        value={editUserData.name || selectedUser.name}
-                        onChange={(e) => setEditUserData({...editUserData, name: e.target.value})}
-                        className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500"
-                        placeholder="John Doe"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-gray-400 text-sm mb-2">
-                      Membership Type
-                    </label>
-                    <select
-                      value={editUserData.membership_type || selectedUser.membership_type}
-                      onChange={(e) => setEditUserData({...editUserData, membership_type: e.target.value as any})}
-                      className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                    >
-                      <option value="competitor">Competitor</option>
-                      <option value="retailer">Retailer</option>
-                      <option value="manufacturer">Manufacturer</option>
-                      <option value="organization">Organization</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-gray-400 text-sm mb-2">
-                      Location
-                    </label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                      <input
-                        type="text"
-                        value={editUserData.location !== undefined ? editUserData.location : (selectedUser.location || '')}
-                        onChange={(e) => setEditUserData({...editUserData, location: e.target.value})}
-                        className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500"
-                        placeholder="City, State"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-gray-400 text-sm mb-2">
-                      Phone
-                    </label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                      <input
-                        type="tel"
-                        value={editUserData.phone !== undefined ? editUserData.phone : (selectedUser.phone || '')}
-                        onChange={(e) => setEditUserData({...editUserData, phone: e.target.value})}
-                        className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500"
-                        placeholder="+1 (555) 123-4567"
-                      />
-                    </div>
-                  </div>
-                  
-                  {((editUserData.membership_type || selectedUser.membership_type) === 'retailer' || 
-                    (editUserData.membership_type || selectedUser.membership_type) === 'manufacturer' || 
-                    (editUserData.membership_type || selectedUser.membership_type) === 'organization') && (
-                    <div>
-                      <label className="block text-gray-400 text-sm mb-2">
-                        Company Name
-                      </label>
-                      <div className="relative">
-                        <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                        <input
-                          type="text"
-                          value={editUserData.company_name !== undefined ? editUserData.company_name : (selectedUser.company_name || '')}
-                          onChange={(e) => setEditUserData({...editUserData, company_name: e.target.value})}
-                          className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500"
-                          placeholder="Company Name"
-                        />
-                      </div>
-                    </div>
-                  )}
-                  
-                  <div>
-                    <label className="block text-gray-400 text-sm mb-2">
-                      Status
-                    </label>
-                    <select
-                      value={editUserData.status || selectedUser.status}
-                      onChange={(e) => setEditUserData({...editUserData, status: e.target.value as any})}
-                      className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                    >
-                      <option value="active">Active</option>
-                      <option value="pending">Pending</option>
-                      <option value="suspended">Suspended</option>
-                      <option value="banned">Banned</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-gray-400 text-sm mb-2">
-                      Verification Status
-                    </label>
-                    <select
-                      value={editUserData.verification_status || selectedUser.verification_status}
-                      onChange={(e) => setEditUserData({...editUserData, verification_status: e.target.value as any})}
-                      className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                    >
-                      <option value="unverified">Unverified</option>
-                      <option value="pending">Pending</option>
-                      <option value="verified">Verified</option>
-                      <option value="rejected">Rejected</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-gray-400 text-sm mb-2">
-                      Subscription Plan
-                    </label>
-                    <select
-                      value={editUserData.subscription_plan || selectedUser.subscription_plan}
-                      onChange={(e) => setEditUserData({...editUserData, subscription_plan: e.target.value as any})}
-                      className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                    >
-                      <option value="free">Free</option>
-                      <option value="pro">Pro</option>
-                      <option value="business">Business</option>
-                      <option value="enterprise">Enterprise</option>
-                    </select>
-                  </div>
-                </div>
-                
-                <div className="flex justify-end space-x-4 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowEditUserModal(false)}
-                    className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="bg-electric-500 text-white px-6 py-2 rounded-lg font-bold hover:bg-electric-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        <span>Saving...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Save className="h-4 w-4" />
-                        <span>Save Changes</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && userToDelete && (
@@ -1346,7 +1138,7 @@ export default function AdminUsers() {
               </div>
               <p className="text-gray-300 mb-6">
                 Are you sure you want to delete <strong>{userToDelete.name}</strong>? 
-                This will permanently remove their account and all associated data.
+                This will permanently ban their account to preserve data integrity.
               </p>
               <div className="flex justify-end space-x-4">
                 <button
@@ -1373,6 +1165,22 @@ export default function AdminUsers() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Success Message */}
+      {successMessage && (
+        <div className="fixed top-4 right-4 bg-green-500/20 border border-green-500/30 text-green-400 px-6 py-3 rounded-lg z-50 flex items-center space-x-2">
+          <CheckCircle className="h-5 w-5" />
+          <span>{successMessage}</span>
+        </div>
+      )}
+
+      {/* Error Message */}
+      {error && (
+        <div className="fixed top-4 right-4 bg-red-500/20 border border-red-500/30 text-red-400 px-6 py-3 rounded-lg z-50 flex items-center space-x-2">
+          <AlertTriangle className="h-5 w-5" />
+          <span>{error}</span>
         </div>
       )}
     </div>

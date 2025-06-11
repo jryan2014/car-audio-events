@@ -19,6 +19,8 @@ import AdminDashboard from './pages/AdminDashboard';
 import AdminEvents from './pages/AdminEvents';
 import CreateEvent from './pages/CreateEvent';
 import EditEvent from './pages/EditEvent';
+import UserDetails from './pages/UserDetails';
+import EditUser from './pages/EditUser';
 import { AuthProvider } from './contexts/AuthContext';
 
 function App() {
@@ -42,6 +44,8 @@ function App() {
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
             <Route path="/admin/settings" element={<AdminSettings />} />
             <Route path="/admin/users" element={<AdminUsers />} />
+            <Route path="/admin/users/:userId" element={<UserDetails />} />
+            <Route path="/admin/users/:userId/edit" element={<EditUser />} />
             <Route path="/admin/membership" element={<AdminMembership />} />
             <Route path="/admin/events" element={<AdminEvents />} />
             <Route path="/create-event" element={<CreateEvent />} />

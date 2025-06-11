@@ -19,27 +19,12 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Required variables: VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY');
 }
 
-// Create the Supabase client with the latest configuration options
+// Create the Supabase client with minimal configuration for testing
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true,
-    flowType: 'pkce'
-  },
-  db: {
-    schema: 'public'
-  },
-  global: {
-    headers: {
-      'x-application-name': 'car-audio-events',
-      'x-client-info': `@supabase/supabase-js@${import.meta.env.VITE_SUPABASE_JS_VERSION || '2.39.0'}`
-    }
-  },
-  realtime: {
-    params: {
-      eventsPerSecond: 10
-    }
+    detectSessionInUrl: true
   }
 });
 
