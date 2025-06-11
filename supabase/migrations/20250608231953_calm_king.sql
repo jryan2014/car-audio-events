@@ -254,12 +254,17 @@ CREATE TRIGGER update_participant_count
 
 -- Insert default event categories if they don't exist
 INSERT INTO event_categories (name, description, color, icon, is_active) VALUES
-  ('Championship', 'Major championship events and finals', '#ef4444', 'trophy', true),
-  ('SPL Competition', 'Sound Pressure Level competitions', '#f97316', 'volume-2', true),
-  ('Sound Quality', 'Sound quality focused competitions', '#8b5cf6', 'music', true),
   ('Bass Competition', 'Bass and low-frequency competitions', '#06b6d4', 'speaker', true),
-  ('Local Event', 'Regional and local competitions', '#10b981', 'map-pin', true),
+  ('Championship', 'Major championship events and finals', '#ef4444', 'trophy', true),
+  ('Competition', 'General car audio competitions', '#f97316', 'trophy', true),
   ('Exhibition', 'Shows and exhibitions', '#6366f1', 'eye', true),
-  ('Workshop', 'Educational workshops and seminars', '#f59e0b', 'book-open', true),
-  ('Meet & Greet', 'Community gatherings and social events', '#ec4899', 'users', true)
+  ('Installation', 'Installation showcases and demos', '#f59e0b', 'wrench', true),
+  ('Install Competition', 'Installation competitions and contests', '#8b5cf6', 'wrench', true),
+  ('Local Event', 'Regional and local events', '#10b981', 'map-pin', true),
+  ('Meet & Greet', 'Community gatherings and social events', '#ec4899', 'users', true),
+  ('Sound Quality', 'Sound quality focused competitions', '#8b5cf6', 'music', true),
+  ('SPL Competition', 'Sound Pressure Level competitions', '#f97316', 'volume-2', true),
+  ('Trade Show', 'Industry trade shows and exhibitions', '#ef4444', 'shopping-bag', true),
+  ('Training', 'Educational workshops and training', '#84cc16', 'book-open', true),
+  ('Workshop', 'Educational workshops and seminars', '#f59e0b', 'book-open', true)
 ON CONFLICT (name) DO NOTHING;
