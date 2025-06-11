@@ -3,6 +3,8 @@ import { Plus, Edit, Trash2, Eye, FileText, Globe, Search } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 
 interface CMSPage {
   id: string;
@@ -50,6 +52,27 @@ export default function CMSPages() {
     is_featured: false
   });
 
+  // Quill editor configuration
+  const quillModules = {
+    toolbar: [
+      [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ 'color': [] }, { 'background': [] }],
+      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+      [{ 'indent': '-1'}, { 'indent': '+1' }],
+      [{ 'align': [] }],
+      ['link', 'image', 'video'],
+      ['blockquote', 'code-block'],
+      ['clean']
+    ],
+  };
+
+  const quillFormats = [
+    'header', 'bold', 'italic', 'underline', 'strike',
+    'color', 'background', 'list', 'bullet', 'indent',
+    'align', 'link', 'image', 'video', 'blockquote', 'code-block'
+  ];
+
   // Check if user is admin
   if (!user || user.membershipType !== 'admin') {
     return <Navigate to="/" replace />;
@@ -57,6 +80,111 @@ export default function CMSPages() {
 
   useEffect(() => {
     loadPages();
+  }, []);
+
+  useEffect(() => {
+    // Inject custom CSS for Quill editor dark theme
+    const style = document.createElement('style');
+    style.textContent = `
+      .ql-toolbar {
+        background: rgba(55, 65, 81, 0.5) !important;
+        border: 1px solid rgb(75, 85, 99) !important;
+        border-bottom: none !important;
+        border-radius: 0.5rem 0.5rem 0 0 !important;
+      }
+      
+      .ql-container {
+        background: rgba(55, 65, 81, 0.5) !important;
+        border: 1px solid rgb(75, 85, 99) !important;
+        border-top: none !important;
+        border-radius: 0 0 0.5rem 0.5rem !important;
+        color: white !important;
+        min-height: 300px;
+      }
+      
+      .ql-editor {
+        color: white !important;
+        font-size: 14px;
+        line-height: 1.6;
+      }
+      
+      .ql-editor.ql-blank::before {
+        color: rgb(156, 163, 175) !important;
+        font-style: italic;
+      }
+      
+      .ql-toolbar .ql-stroke {
+        stroke: rgb(156, 163, 175) !important;
+      }
+      
+      .ql-toolbar .ql-fill {
+        fill: rgb(156, 163, 175) !important;
+      }
+      
+      .ql-toolbar .ql-picker-label {
+        color: rgb(156, 163, 175) !important;
+      }
+      
+      .ql-toolbar .ql-picker-options {
+        background: rgb(55, 65, 81) !important;
+        border: 1px solid rgb(75, 85, 99) !important;
+      }
+      
+      .ql-toolbar .ql-picker-item {
+        color: rgb(156, 163, 175) !important;
+      }
+      
+      .ql-toolbar .ql-picker-item:hover {
+        background: rgba(59, 130, 246, 0.1) !important;
+        color: rgb(59, 130, 246) !important;
+      }
+      
+      .ql-toolbar button:hover {
+        color: rgb(59, 130, 246) !important;
+      }
+      
+      .ql-toolbar button:hover .ql-stroke {
+        stroke: rgb(59, 130, 246) !important;
+      }
+      
+      .ql-toolbar button:hover .ql-fill {
+        fill: rgb(59, 130, 246) !important;
+      }
+      
+      .ql-toolbar button.ql-active {
+        color: rgb(59, 130, 246) !important;
+      }
+      
+      .ql-toolbar button.ql-active .ql-stroke {
+        stroke: rgb(59, 130, 246) !important;
+      }
+      
+      .ql-toolbar button.ql-active .ql-fill {
+        fill: rgb(59, 130, 246) !important;
+      }
+      
+      .ql-snow .ql-tooltip {
+        background: rgb(55, 65, 81) !important;
+        border: 1px solid rgb(75, 85, 99) !important;
+        color: white !important;
+      }
+      
+      .ql-snow .ql-tooltip input {
+        background: rgb(75, 85, 99) !important;
+        border: 1px solid rgb(107, 114, 128) !important;
+        color: white !important;
+      }
+      
+      .ql-snow .ql-tooltip a {
+        color: rgb(59, 130, 246) !important;
+      }
+    `;
+    
+    document.head.appendChild(style);
+    
+    return () => {
+      document.head.removeChild(style);
+    };
   }, []);
 
   const loadPages = async () => {
@@ -329,15 +457,24 @@ export default function CMSPages() {
 
               <div>
                 <label className="block text-gray-400 text-sm mb-2">Page Content *</label>
-                <textarea
-                  required
-                  value={formData.content}
-                  onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
-                  rows={12}
-                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500 font-mono text-sm"
-                  placeholder="Enter HTML content..."
-                />
-                <p className="text-xs text-gray-500 mt-1">You can use HTML tags for formatting</p>
+                <div className="quill-wrapper">
+                  <ReactQuill
+                    value={formData.content}
+                    onChange={(value) => setFormData(prev => ({ ...prev, content: value }))}
+                    modules={quillModules}
+                    formats={quillFormats}
+                    placeholder="Start writing your page content here... You can use the toolbar above to format text, add links, images, and more."
+                    theme="snow"
+                    style={{
+                      backgroundColor: 'rgba(55, 65, 81, 0.5)',
+                      borderRadius: '0.5rem',
+                      border: '1px solid rgb(75, 85, 99)'
+                    }}
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  💡 Use the toolbar to format text, add links, images, lists, and more. The content will be saved as HTML.
+                </p>
               </div>
 
               {/* SEO Section */}
