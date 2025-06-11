@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, X, User, Calendar, MapPin, Users, LogOut, Settings, Shield, Package } from 'lucide-react';
+import { Menu, X, User, Calendar, MapPin, Users, LogOut, Settings, Shield, Package, BarChart3, Target, FileText } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Header() {
@@ -66,6 +66,15 @@ export default function Header() {
             >
               Pricing
             </Link>
+            {isAuthenticated && user?.membershipType && ['retailer', 'manufacturer', 'organization', 'admin'].includes(user.membershipType) && (
+              <Link 
+                to="/admin/ad-management" 
+                className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium flex items-center space-x-1"
+              >
+                <Target className="h-4 w-4" />
+                <span>Advertise</span>
+              </Link>
+            )}
           </nav>
 
           {/* User Menu */}
@@ -141,6 +150,22 @@ export default function Header() {
                           >
                             <Calendar className="h-4 w-4" />
                             <span>Event Management</span>
+                          </Link>
+                          <Link
+                            to="/admin/analytics"
+                            className="block px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors flex items-center space-x-2"
+                            onClick={() => setShowAdminMenu(false)}
+                          >
+                            <BarChart3 className="h-4 w-4" />
+                            <span>Analytics</span>
+                          </Link>
+                          <Link
+                            to="/admin/cms-pages"
+                            className="block px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors flex items-center space-x-2"
+                            onClick={() => setShowAdminMenu(false)}
+                          >
+                            <FileText className="h-4 w-4" />
+                            <span>CMS Pages</span>
                           </Link>
                         </div>
                       </div>
@@ -220,6 +245,25 @@ export default function Header() {
                 <span>Directory</span>
               </Link>
               
+              <Link 
+                to="/pricing" 
+                className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Pricing
+              </Link>
+              
+              {isAuthenticated && user?.membershipType && ['retailer', 'manufacturer', 'organization', 'admin'].includes(user.membershipType) && (
+                <Link 
+                  to="/admin/ad-management" 
+                  className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium flex items-center space-x-2"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <Target className="h-4 w-4" />
+                  <span>Advertise</span>
+                </Link>
+              )}
+              
               {user?.membershipType === 'admin' && (
                 <>
                   <div className="border-t border-gray-700 pt-4">
@@ -263,6 +307,22 @@ export default function Header() {
                     >
                       <Calendar className="h-4 w-4" />
                       <span>Event Management</span>
+                    </Link>
+                    <Link
+                      to="/admin/analytics"
+                      className="block px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors flex items-center space-x-2"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <BarChart3 className="h-4 w-4" />
+                      <span>Analytics</span>
+                    </Link>
+                    <Link
+                      to="/admin/cms-pages"
+                      className="block px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors flex items-center space-x-2"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <FileText className="h-4 w-4" />
+                      <span>CMS Pages</span>
                     </Link>
                   </div>
                 </>

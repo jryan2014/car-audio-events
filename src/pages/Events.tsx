@@ -1,144 +1,94 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, MapPin, Users, Search, Filter, Star, ArrowRight, Plus } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { Calendar, MapPin, Users, Clock, Heart, Star, Filter, Search, Trophy } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
+
+interface Event {
+  id: string;
+  title: string;
+  description: string;
+  start_date: string;
+  end_date: string;
+  venue_name: string;
+  city: string;
+  state: string;
+  registration_fee: number;
+  max_participants: number | null;
+  category: {
+    name: string;
+    color: string;
+  };
+  organizer: {
+    name: string;
+    company_name?: string;
+  };
+  metadata?: {
+    season_year?: number;
+    favorites_count?: number;
+    attendance_count?: number;
+    display_start_date?: string;
+    display_end_date?: string;
+  };
+  _count?: {
+    registrations: number;
+  };
+}
 
 export default function Events() {
   const { user } = useAuth();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [selectedLocation, setSelectedLocation] = useState('all');
-  const [selectedCountry, setSelectedCountry] = useState('all');
-  const [locationSearch, setLocationSearch] = useState('');
-  const [radiusSearch, setRadiusSearch] = useState('50');
-  const [events, setEvents] = useState<any[]>([]);
-  const [categories, setCategories] = useState<string[]>(['all']);
-  const [locations, setLocations] = useState<string[]>(['all']);
-  const [countries, setCountries] = useState<string[]>(['all', 'United States', 'Canada']);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedSeason, setSelectedSeason] = useState('');
+  const [eventFilter, setEventFilter] = useState<'upcoming' | 'past' | 'all'>('upcoming');
+  const [categories, setCategories] = useState<Array<{id: string, name: string, color: string}>>([]);
 
   useEffect(() => {
     loadEvents();
     loadCategories();
-  }, []);
+    if (user) {
+      loadUserFavorites();
+    }
+  }, [user, eventFilter]);
 
   const loadEvents = async () => {
-    setIsLoading(true);
-    setError(null);
-    
     try {
-      // Fetch events with their primary images and categories
-      const { data: eventsData, error: eventsError } = await supabase
+      setIsLoading(true);
+      
+      const now = new Date().toISOString();
+      let query = supabase
         .from('events')
         .select(`
-          id,
-          title,
-          description,
-          start_date,
-          end_date,
-          city,
-          state,
-          country,
-          current_participants,
-          max_participants,
-          is_featured,
-          event_categories(name, color)
+          *,
+          category:categories(name, color),
+          organizer:users(name, company_name),
+          _count:event_registrations(count)
         `)
-        .eq('status', 'published') // Only show published events
-        .eq('is_public', true)
-        .gte('end_date', new Date().toISOString())
-        .order('start_date', { ascending: true });
+        .eq('status', 'published')
+        .eq('approval_status', 'approved');
 
-      if (eventsError) throw eventsError;
+      // Filter by time period
+      if (eventFilter === 'upcoming') {
+        query = query.gte('end_date', now);
+      } else if (eventFilter === 'past') {
+        query = query.lt('end_date', now);
+      }
 
-      // Fetch event images separately
-      const { data: imagesData, error: imagesError } = await supabase
-        .from('event_images')
-        .select('event_id, image_url, is_primary')
-        .in('event_id', eventsData.map(event => event.id))
-        .order('is_primary', { ascending: false });
+      // Apply display date filtering for automated categorization
+      if (eventFilter === 'upcoming') {
+        query = query.or(`metadata->display_start_date.lte.${now},metadata->display_start_date.is.null`);
+        query = query.or(`metadata->display_end_date.gte.${now},metadata->display_end_date.is.null`);
+      }
 
-      if (imagesError) throw imagesError;
+      const { data, error } = await query.order('start_date', { ascending: eventFilter === 'upcoming' });
 
-      // Combine events with their images
-      const formattedEvents = eventsData.map(event => {
-        const eventImages = imagesData.filter(img => img.event_id === event.id);
-        const primaryImage = eventImages.find(img => img.is_primary)?.image_url || 
-                            eventImages[0]?.image_url || 
-                            "https://images.pexels.com/photos/1127000/pexels-photo-1127000.jpeg?auto=compress&cs=tinysrgb&w=600&h=300&dpr=2";
-        
-        // Build a list of unique locations
-        const locationString = `${event.city}, ${event.state}`;
-        if (!locations.includes(locationString)) {
-          setLocations(prev => [...prev, locationString]);
-        }
-        
-        // Build a list of unique countries
-        if (event.country && !countries.includes(event.country)) {
-          setCountries(prev => [...prev, event.country]);
-        }
-        
-        return {
-          id: event.id,
-          title: event.title,
-          description: event.description,
-          date: `${new Date(event.start_date).toLocaleDateString('en-US', { 
-            month: 'long', 
-            day: 'numeric' 
-          })} - ${new Date(event.end_date).toLocaleDateString('en-US', { 
-            month: 'long', 
-            day: 'numeric',
-            year: 'numeric'
-          })}`,
-          location: `${event.city}, ${event.state}`,
-          category: event.event_categories?.name || 'Event',
-          category_color: event.event_categories?.color || '#0ea5e9',
-          participants: event.current_participants || 0,
-          max_participants: event.max_participants,
-          image: primaryImage,
-          featured: event.is_featured,
-          start_date: event.start_date,
-          end_date: event.end_date,
-          city: event.city,
-          state: event.state,
-          country: event.country
-        };
-      });
-
-      setEvents(formattedEvents);
+      if (error) throw error;
+      setEvents(data || []);
     } catch (error) {
       console.error('Error loading events:', error);
-      setError('Failed to load events. Please try again later.');
-      
-      // Use mock data as fallback in development
-      if (import.meta.env.DEV) {
-        setEvents([
-          {
-            id: '1',
-            title: "IASCA World Finals 2025",
-            date: "March 15-17, 2025",
-            location: "Orlando, FL",
-            category: "Championship",
-            participants: 150,
-            image: "https://images.pexels.com/photos/1127000/pexels-photo-1127000.jpeg?auto=compress&cs=tinysrgb&w=600&h=300&dpr=2",
-            featured: true,
-            description: "The ultimate car audio championship featuring the world's best competitors."
-          },
-          {
-            id: '2',
-            title: "dB Drag National Event",
-            date: "April 22-24, 2025",
-            location: "Phoenix, AZ",
-            category: "SPL Competition",
-            participants: 89,
-            image: "https://images.pexels.com/photos/1644888/pexels-photo-1644888.jpeg?auto=compress&cs=tinysrgb&w=600&h=300&dpr=2",
-            featured: false,
-            description: "Pure loudness competition - see who can hit the highest decibel levels."
-          }
-        ]);
-      }
     } finally {
       setIsLoading(false);
     }
@@ -147,246 +97,328 @@ export default function Events() {
   const loadCategories = async () => {
     try {
       const { data, error } = await supabase
-        .from('event_categories')
-        .select('name')
-        .eq('is_active', true)
+        .from('categories')
+        .select('id, name, color')
         .order('name');
 
       if (error) throw error;
-
-      const categoryNames = ['all', ...data.map((cat: any) => cat.name)];
-      setCategories(categoryNames);
+      setCategories(data || []);
     } catch (error) {
       console.error('Error loading categories:', error);
-      // Keep the default categories
     }
   };
 
-  const radiusOptions = ['25', '50', '100', '250', '500'];
+  const loadUserFavorites = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('event_favorites')
+        .select('event_id')
+        .eq('user_id', user.id);
 
-  // Check if user can create events
-  const canCreateEvents = user && (
-    user.membershipType === 'admin' ||
-    user.membershipType === 'organization' ||
-    (user.membershipType === 'retailer' && user.subscriptionPlan !== 'free') ||
-    (user.membershipType === 'manufacturer' && user.subscriptionPlan !== 'free')
-  );
+      if (error) throw error;
+      setFavorites(new Set(data?.map(f => f.event_id) || []));
+    } catch (error) {
+      console.error('Error loading favorites:', error);
+    }
+  };
+
+  const toggleFavorite = async (eventId: string) => {
+    if (!user) return;
+
+    try {
+      if (favorites.has(eventId)) {
+        // Remove favorite
+        const { error } = await supabase
+          .from('event_favorites')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('event_id', eventId);
+
+        if (error) throw error;
+        setFavorites(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(eventId);
+          return newSet;
+        });
+      } else {
+        // Add favorite
+        const { error } = await supabase
+          .from('event_favorites')
+          .insert([{ user_id: user.id, event_id: eventId }]);
+
+        if (error) throw error;
+        setFavorites(prev => new Set([...prev, eventId]));
+      }
+
+      // Track analytics
+      await supabase
+        .from('event_analytics')
+        .insert([{
+          event_id: eventId,
+          metric_type: 'favorite',
+          user_id: user.id
+        }]);
+
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+    }
+  };
+
+  const trackEventView = async (eventId: string) => {
+    try {
+      await supabase
+        .from('event_analytics')
+        .insert([{
+          event_id: eventId,
+          metric_type: 'view',
+          user_id: user?.id || null
+        }]);
+    } catch (error) {
+      console.error('Error tracking view:', error);
+    }
+  };
+
+  const getSeasonYears = () => {
+    const years = new Set<number>();
+    events.forEach(event => {
+      const seasonYear = event.metadata?.season_year || new Date(event.start_date).getFullYear();
+      years.add(seasonYear);
+    });
+    return Array.from(years).sort((a, b) => b - a);
+  };
 
   const filteredEvents = events.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         event.location.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || event.category.toLowerCase() === selectedCategory.toLowerCase();
-    const matchesLocation = selectedLocation === 'all' || event.location === selectedLocation;
-    const matchesCountry = selectedCountry === 'all' || event.country === selectedCountry;
+                         event.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         event.state.toLowerCase().includes(searchTerm.toLowerCase());
     
-    return matchesSearch && matchesCategory && matchesLocation && matchesCountry;
+    const matchesCategory = !selectedCategory || event.category?.name === selectedCategory;
+    
+    const eventSeasonYear = event.metadata?.season_year || new Date(event.start_date).getFullYear();
+    const matchesSeason = !selectedSeason || eventSeasonYear.toString() === selectedSeason;
+    
+    return matchesSearch && matchesCategory && matchesSeason;
   });
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const isEventPast = (endDate: string) => {
+    return new Date(endDate) < new Date();
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-electric-500 mx-auto mb-4"></div>
+            <p className="text-gray-400">Loading events...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-12">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex-1">
-          <h1 className="text-4xl lg:text-5xl font-black text-white mb-6">
-            Car Audio <span className="text-electric-400">Events</span>
-          </h1>
+          <h1 className="text-4xl font-bold text-white mb-4">Car Audio Events</h1>
           <p className="text-xl text-gray-400 max-w-3xl mx-auto">
-            Discover competitions, exhibitions, and gatherings in the car audio community
+            Discover and participate in car audio competitions, meets, and exhibitions across the country
           </p>
-            </div>
-            {canCreateEvents && (
-              <Link
-                to="/create-event"
-                className="bg-electric-500 text-white px-6 py-3 rounded-lg font-bold hover:bg-electric-600 transition-all duration-200 shadow-lg flex items-center space-x-2"
-              >
-                <Plus className="h-5 w-5" />
-                <span>Create Event</span>
-              </Link>
-            )}
-          </div>
         </div>
 
-        {/* Search and Filters */}
+        {/* Filters */}
         <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             {/* Search */}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
               <input
                 type="text"
                 placeholder="Search events..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500 transition-colors"
+                className="w-full pl-10 pr-4 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:outline-none focus:border-electric-500"
               />
             </div>
 
+            {/* Time Filter */}
+            <select
+              value={eventFilter}
+              onChange={(e) => setEventFilter(e.target.value as any)}
+              className="bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-600 focus:outline-none focus:border-electric-500"
+            >
+              <option value="upcoming">Upcoming Events</option>
+              <option value="past">Past Events</option>
+              <option value="all">All Events</option>
+            </select>
+
             {/* Category Filter */}
-            <div className="relative">
-              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500 transition-colors appearance-none"
-              >
-                {categories.map(category => (
-                  <option key={category} value={category} className="bg-gray-800">
-                    {category === 'all' ? 'All Categories' : category}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-600 focus:outline-none focus:border-electric-500"
+            >
+              <option value="">All Categories</option>
+              {categories.map(category => (
+                <option key={category.id} value={category.name}>{category.name}</option>
+              ))}
+            </select>
 
-            {/* State/Location Filter */}
-            <div className="relative">
-              <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-              <select
-                value={selectedLocation}
-                onChange={(e) => setSelectedLocation(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500 transition-colors appearance-none"
-              >
-                {locations.map(location => (
-                  <option key={location} value={location} className="bg-gray-800">
-                    {location === 'all' ? 'All Locations' : location}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* Season Filter */}
+            <select
+              value={selectedSeason}
+              onChange={(e) => setSelectedSeason(e.target.value)}
+              className="bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-600 focus:outline-none focus:border-electric-500"
+            >
+              <option value="">All Seasons</option>
+              {getSeasonYears().map(year => (
+                <option key={year} value={year.toString()}>{year} Season</option>
+              ))}
+            </select>
 
-            {/* Country Filter */}
-            <div className="relative">
-              <select
-                value={selectedCountry}
-                onChange={(e) => setSelectedCountry(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500 transition-colors appearance-none"
-              >
-                {countries.map(country => (
-                  <option key={country} value={country} className="bg-gray-800">
-                    {country === 'all' ? 'All Countries' : country}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Radius Search */}
-            <div className="relative">
-              <select
-                value={radiusSearch}
-                onChange={(e) => setRadiusSearch(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500 transition-colors appearance-none"
-              >
-                {radiusOptions.map(radius => (
-                  <option key={radius} value={radius} className="bg-gray-800">
-                    {radius} miles
-                  </option>
-                ))}
-              </select>
+            {/* Results Count */}
+            <div className="flex items-center justify-center bg-gray-700/50 rounded-lg px-4 py-2">
+              <span className="text-gray-400 text-sm">
+                {filteredEvents.length} event{filteredEvents.length !== 1 ? 's' : ''}
+              </span>
             </div>
           </div>
-
-          {/* Location Search */}
-          <div className="relative">
-            <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder={user?.location ? `Search within ${radiusSearch} miles of ${user.location}` : "Enter address to search by distance"}
-              value={locationSearch}
-              onChange={(e) => setLocationSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500 transition-colors"
-            />
-          </div>
-        </div>
-
-        {/* Results Count */}
-        <div className="mb-6 flex justify-between items-center">
-          <p className="text-gray-400">
-            Showing <span className="text-white font-semibold">{filteredEvents.length}</span> events
-          </p>
-          {error && (
-            <p className="text-red-400 text-sm">
-              {error}
-            </p>
-          )}
         </div>
 
         {/* Events Grid */}
-        {isLoading ? (
-          <div className="flex justify-center items-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-electric-500"></div>
+        {filteredEvents.length === 0 ? (
+          <div className="text-center py-12">
+            <Calendar className="h-16 w-16 text-gray-600 mx-auto mb-4" />
+            <p className="text-gray-400 text-lg mb-2">No events found</p>
+            <p className="text-gray-500">Try adjusting your filters or check back later for new events</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredEvents.map((event, index) => (
-              <div 
-                key={event.id}
-                className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl overflow-hidden shadow-2xl hover:shadow-electric-500/10 transition-all duration-300 hover:scale-105 border border-gray-700/50 animate-slide-up"
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
-                <div className="relative">
-                  <img 
-                    src={event.image} 
-                    alt={event.title}
-                    className="w-full h-48 object-cover"
-                  />
-                  {event.featured && (
-                    <div className="absolute top-4 left-4 bg-gradient-to-r from-electric-500 to-accent-500 text-white px-3 py-1 rounded-full text-sm font-bold flex items-center space-x-1">
-                      <Star className="h-3 w-3" />
-                      <span>Featured</span>
+            {filteredEvents.map((event) => (
+              <div key={event.id} className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl overflow-hidden hover:border-electric-500/50 transition-all duration-300 group">
+                {/* Event Header */}
+                <div className="p-6 pb-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <span 
+                          className="px-2 py-1 rounded-full text-xs font-medium"
+                          style={{ 
+                            backgroundColor: `${event.category?.color}20`,
+                            color: event.category?.color 
+                          }}
+                        >
+                          {event.category?.name}
+                        </span>
+                        {event.metadata?.season_year && (
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-electric-500/20 text-electric-400">
+                            {event.metadata.season_year} Season
+                          </span>
+                        )}
+                        {isEventPast(event.end_date) && (
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-500/20 text-gray-400">
+                            Past Event
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="text-xl font-bold text-white group-hover:text-electric-400 transition-colors">
+                        {event.title}
+                      </h3>
                     </div>
-                  )}
-                  <div className="absolute top-4 right-4 bg-black/70 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-medium">
-                    {event.category}
+                    
+                    {user && (
+                      <button
+                        onClick={() => toggleFavorite(event.id)}
+                        className={`p-2 rounded-lg transition-colors ${
+                          favorites.has(event.id)
+                            ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+                            : 'bg-gray-700/50 text-gray-400 hover:bg-red-500/20 hover:text-red-400'
+                        }`}
+                        title={favorites.has(event.id) ? 'Remove from favorites' : 'Add to favorites'}
+                      >
+                        <Heart className={`h-4 w-4 ${favorites.has(event.id) ? 'fill-current' : ''}`} />
+                      </button>
+                    )}
                   </div>
-                  <div className="absolute bottom-4 right-4 bg-black/70 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-medium flex items-center space-x-1">
-                    <Users className="h-3 w-3" />
-                    <span>{event.participants}{event.max_participants ? `/${event.max_participants}` : ''}</span>
+
+                  <p className="text-gray-400 text-sm mb-4 line-clamp-2">{event.description}</p>
+
+                  {/* Event Details */}
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center text-gray-300">
+                      <Calendar className="h-4 w-4 mr-2 text-electric-500" />
+                      <span>{formatDate(event.start_date)}</span>
+                      {event.start_date !== event.end_date && (
+                        <span> - {formatDate(event.end_date)}</span>
+                      )}
+                    </div>
+                    
+                    <div className="flex items-center text-gray-300">
+                      <MapPin className="h-4 w-4 mr-2 text-electric-500" />
+                      <span>{event.venue_name}, {event.city}, {event.state}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center text-gray-300">
+                        <Users className="h-4 w-4 mr-2 text-electric-500" />
+                        <span>
+                          {event._count?.registrations || 0} registered
+                          {event.max_participants && ` / ${event.max_participants}`}
+                        </span>
+                      </div>
+                      
+                      {event.metadata?.favorites_count && event.metadata.favorites_count > 0 && (
+                        <div className="flex items-center text-red-400">
+                          <Heart className="h-4 w-4 mr-1 fill-current" />
+                          <span className="text-sm">{event.metadata.favorites_count}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {event.registration_fee > 0 && (
+                      <div className="flex items-center text-green-400">
+                        <span className="font-medium">${event.registration_fee}</span>
+                        <span className="text-gray-400 ml-1">registration fee</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Organizer */}
+                  <div className="mt-4 pt-4 border-t border-gray-700">
+                    <p className="text-xs text-gray-500">
+                      Organized by <span className="text-gray-400 font-medium">
+                        {event.organizer?.company_name || event.organizer?.name}
+                      </span>
+                    </p>
                   </div>
                 </div>
-                <div className="p-6">
-                  <h3 className="text-xl font-bold text-white mb-3 leading-tight">
-                    {event.title}
-                  </h3>
-                  <p className="text-gray-400 text-sm mb-4 leading-relaxed line-clamp-2">
-                    {event.description}
-                  </p>
-                  <div className="space-y-2 mb-6">
-                    <div className="flex items-center text-gray-400 text-sm">
-                      <Calendar className="h-4 w-4 mr-2 text-electric-500" />
-                      {event.date}
-                    </div>
-                    <div className="flex items-center text-gray-400 text-sm">
-                      <MapPin className="h-4 w-4 mr-2 text-electric-500" />
-                      {event.location}
-                    </div>
-                  </div>
-                  <Link 
+
+                {/* Action Button */}
+                <div className="px-6 pb-6">
+                  <Link
                     to={`/events/${event.id}`}
-                    className="inline-flex items-center space-x-2 bg-electric-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-electric-600 transition-all duration-200 text-sm"
+                    onClick={() => trackEventView(event.id)}
+                    className="w-full bg-electric-500 text-white py-3 px-4 rounded-lg font-medium hover:bg-electric-600 transition-colors duration-200 flex items-center justify-center space-x-2"
                   >
                     <span>View Details</span>
-                    <ArrowRight className="h-4 w-4" />
+                    <Trophy className="h-4 w-4" />
                   </Link>
                 </div>
               </div>
             ))}
-          </div>
-        )}
-
-        {filteredEvents.length === 0 && (
-          <div className="text-center py-12">
-            <Calendar className="h-16 w-16 text-gray-600 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-400 mb-2">No events found</h3>
-            <p className="text-gray-500">Try adjusting your search or filter criteria</p>
-            {canCreateEvents && (
-              <Link
-                to="/create-event"
-                className="inline-block mt-4 bg-electric-500 text-white px-6 py-3 rounded-lg font-bold hover:bg-electric-600 transition-all duration-200"
-              >
-                Create the First Event
-              </Link>
-            )}
           </div>
         )}
       </div>

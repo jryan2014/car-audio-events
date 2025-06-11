@@ -21,6 +21,9 @@ import CreateEvent from './pages/CreateEvent';
 import EditEvent from './pages/EditEvent';
 import UserDetails from './pages/UserDetails';
 import EditUser from './pages/EditUser';
+import AdminAnalytics from './pages/AdminAnalytics';
+import AdManagement from './pages/AdManagement';
+import CMSPages from './pages/CMSPages';
 import { AuthProvider } from './contexts/AuthContext';
 
 function App() {
@@ -50,6 +53,9 @@ function App() {
             <Route path="/admin/events" element={<AdminEvents />} />
             <Route path="/create-event" element={<CreateEvent />} />
             <Route path="/events/:id/edit" element={<EditEvent />} />
+            <Route path="/admin/analytics" element={<AdminAnalytics />} />
+            <Route path="/admin/ad-management" element={<AdManagement />} />
+            <Route path="/admin/cms-pages" element={<CMSPages />} />
           </Routes>
         </Layout>
       </Router>

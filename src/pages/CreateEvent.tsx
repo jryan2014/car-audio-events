@@ -9,6 +9,7 @@ interface EventFormData {
   description: string;
   category_id: string;
   sanction_body_id: string; // Organization that will sanction the event
+  season_year: number; // Competition season year
   start_date: string;
   end_date: string;
   registration_deadline: string;
@@ -36,6 +37,13 @@ interface EventFormData {
   event_director_phone: string;
   use_organizer_contact: boolean; // If true, pre-populate from user info
   
+  // Event Status & Visibility
+  status: 'draft' | 'pending_approval' | 'approved' | 'published' | 'cancelled' | 'completed';
+  approval_status: 'pending' | 'approved' | 'rejected';
+  is_active: boolean; // Active/Inactive toggle
+  display_start_date: string; // When to start showing on frontend (up to 90 days before)
+  display_end_date: string; // When to stop showing on frontend (auto-calculated)
+  
   rules: string;
   prizes: string[];
   schedule: { time: string; activity: string }[];
@@ -55,6 +63,11 @@ interface EventFormData {
   // Free Giveaways
   member_giveaways: string[];
   non_member_giveaways: string[];
+  
+  // SEO & Marketing
+  seo_title: string;
+  seo_description: string;
+  seo_keywords: string[];
   
   is_public: boolean;
 }
@@ -119,6 +132,7 @@ export default function CreateEvent() {
     description: '',
     category_id: '',
     sanction_body_id: '',
+    season_year: new Date().getFullYear(),
     start_date: '',
     end_date: '',
     registration_deadline: '',
@@ -145,6 +159,12 @@ export default function CreateEvent() {
     event_director_phone: user?.phone || '',
     use_organizer_contact: true,
     
+    status: 'draft',
+    approval_status: 'pending',
+    is_active: true,
+    display_start_date: '',
+    display_end_date: '',
+    
     rules: '',
     prizes: [''],
     schedule: [{ time: '', activity: '' }],
@@ -160,6 +180,10 @@ export default function CreateEvent() {
     shop_sponsors: [''],
     member_giveaways: [''],
     non_member_giveaways: [''],
+    
+    seo_title: '',
+    seo_description: '',
+    seo_keywords: [],
     
     is_public: true
   });
@@ -202,6 +226,32 @@ export default function CreateEvent() {
       }));
     }
   }, [formData.use_organizer_contact, user]);
+
+  // Auto-calculate display dates when event dates change
+  useEffect(() => {
+    if (formData.start_date) {
+      const eventStartDate = new Date(formData.start_date);
+      
+      // Display start date: 90 days before event (or now if less than 90 days)
+      const displayStartDate = new Date(eventStartDate);
+      displayStartDate.setDate(displayStartDate.getDate() - 90);
+      const now = new Date();
+      const actualDisplayStart = displayStartDate < now ? now : displayStartDate;
+      
+      // Display end date: 1 day after event ends (moves to past events)
+      const eventEndDate = formData.end_date ? new Date(formData.end_date) : eventStartDate;
+      const displayEndDate = new Date(eventEndDate);
+      displayEndDate.setDate(displayEndDate.getDate() + 1);
+      
+      setFormData(prev => ({
+        ...prev,
+        display_start_date: actualDisplayStart.toISOString().slice(0, 16),
+        display_end_date: displayEndDate.toISOString().slice(0, 16),
+        seo_title: prev.seo_title || prev.title,
+        seo_description: prev.seo_description || prev.description
+      }));
+    }
+  }, [formData.start_date, formData.end_date, formData.title, formData.description]);
 
   const loadCategories = async () => {
     try {
@@ -332,6 +382,27 @@ export default function CreateEvent() {
     }));
   };
 
+  const handleKeywordChange = (index: number, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      seo_keywords: prev.seo_keywords.map((keyword, i) => i === index ? value : keyword)
+    }));
+  };
+
+  const addKeyword = () => {
+    setFormData(prev => ({
+      ...prev,
+      seo_keywords: [...prev.seo_keywords, '']
+    }));
+  };
+
+  const removeKeyword = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      seo_keywords: prev.seo_keywords.filter((_, i) => i !== index)
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -374,13 +445,17 @@ export default function CreateEvent() {
         is_public: formData.is_public,
         organizer_id: user!.id,
         organization_id: formData.sanction_body_id || null,
-        status,
-        approval_status: approvalStatus,
+        status: user?.membershipType === 'admin' ? formData.status : status,
+        approval_status: user?.membershipType === 'admin' ? formData.approval_status : approvalStatus,
         approved_by: user?.membershipType === 'admin' ? user.id : null,
         approved_at: user?.membershipType === 'admin' ? new Date().toISOString() : null,
         
         // Store additional details in metadata
         metadata: {
+          season_year: formData.season_year,
+          is_active: formData.is_active,
+          display_start_date: formData.display_start_date,
+          display_end_date: formData.display_end_date,
           early_bird_name: formData.early_bird_name,
           event_director: {
             first_name: formData.event_director_first_name,
@@ -400,7 +475,16 @@ export default function CreateEvent() {
           giveaways: {
             members: formData.member_giveaways.filter(g => g.trim()),
             non_members: formData.non_member_giveaways.filter(g => g.trim())
-          }
+          },
+          seo: {
+            title: formData.seo_title,
+            description: formData.seo_description,
+            keywords: formData.seo_keywords.filter(k => k.trim())
+          },
+          // Analytics tracking fields
+          favorites_count: 0,
+          attendance_count: 0,
+          view_count: 0
         }
       };
 
@@ -514,6 +598,23 @@ export default function CreateEvent() {
               </div>
 
               <div>
+                <label className="block text-gray-400 text-sm mb-2">Competition Season Year *</label>
+                <select
+                  required
+                  value={formData.season_year}
+                  onChange={(e) => handleInputChange('season_year', parseInt(e.target.value))}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                >
+                  {Array.from({ length: 5 }, (_, i) => {
+                    const year = new Date().getFullYear() + i;
+                    return (
+                      <option key={year} value={year}>{year} Season</option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              <div>
                 <label className="block text-gray-400 text-sm mb-2">Max Participants</label>
                 <input
                   type="number"
@@ -524,6 +625,52 @@ export default function CreateEvent() {
                   placeholder="Leave empty for unlimited"
                 />
               </div>
+
+              {/* Admin-only status controls */}
+              {user?.membershipType === 'admin' && (
+                <>
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Event Status</label>
+                    <select
+                      value={formData.status}
+                      onChange={(e) => handleInputChange('status', e.target.value)}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                    >
+                      <option value="draft">Draft</option>
+                      <option value="pending_approval">Pending Approval</option>
+                      <option value="approved">Approved</option>
+                      <option value="published">Published</option>
+                      <option value="cancelled">Cancelled</option>
+                      <option value="completed">Completed</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Approval Status</label>
+                    <select
+                      value={formData.approval_status}
+                      onChange={(e) => handleInputChange('approval_status', e.target.value)}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="approved">Approved</option>
+                      <option value="rejected">Rejected</option>
+                    </select>
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={formData.is_active}
+                        onChange={(e) => handleInputChange('is_active', e.target.checked)}
+                        className="rounded border-gray-600 text-electric-500 focus:ring-electric-500"
+                      />
+                      <span className="text-gray-400">Event is Active</span>
+                    </label>
+                  </div>
+                </>
+              )}
 
               <div className="md:col-span-2">
                 <label className="block text-gray-400 text-sm mb-2">Description</label>
@@ -576,6 +723,38 @@ export default function CreateEvent() {
                   onChange={(e) => handleInputChange('registration_deadline', e.target.value)}
                   className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
                 />
+              </div>
+
+              {/* Display Date Controls */}
+              <div className="md:col-span-2 bg-gray-700/30 rounded-lg p-4">
+                <h3 className="text-white font-medium mb-3">🤖 Automated Display Schedule</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Show on Frontend From</label>
+                    <input
+                      type="datetime-local"
+                      value={formData.display_start_date}
+                      onChange={(e) => handleInputChange('display_start_date', e.target.value)}
+                      className="w-full p-2 bg-gray-600/50 border border-gray-500 rounded text-white text-sm focus:outline-none focus:border-electric-500"
+                      title="Auto-calculated: 90 days before event or now"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Auto: 90 days before event</p>
+                  </div>
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Hide from Frontend After</label>
+                    <input
+                      type="datetime-local"
+                      value={formData.display_end_date}
+                      onChange={(e) => handleInputChange('display_end_date', e.target.value)}
+                      className="w-full p-2 bg-gray-600/50 border border-gray-500 rounded text-white text-sm focus:outline-none focus:border-electric-500"
+                      title="Auto-calculated: 1 day after event ends"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Auto: 1 day after event ends</p>
+                  </div>
+                </div>
+                <p className="text-xs text-yellow-400 mt-2">
+                  ℹ️ Events automatically move to "Past Events" after the display end date
+                </p>
               </div>
             </div>
           </div>
@@ -1178,6 +1357,63 @@ export default function CreateEvent() {
               />
               <span className="text-gray-400">Make this event publicly visible</span>
             </label>
+          </div>
+
+          {/* SEO */}
+          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+            <h2 className="text-xl font-bold text-white mb-6">SEO</h2>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">SEO Title</label>
+                <input
+                  type="text"
+                  value={formData.seo_title}
+                  onChange={(e) => handleInputChange('seo_title', e.target.value)}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  placeholder="SEO Title"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">SEO Description</label>
+                <textarea
+                  value={formData.seo_description}
+                  onChange={(e) => handleInputChange('seo_description', e.target.value)}
+                  rows={3}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  placeholder="SEO Description"
+                />
+              </div>
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">SEO Keywords</label>
+                <div className="space-y-3">
+                  {formData.seo_keywords.map((keyword, index) => (
+                    <div key={index} className="flex items-center space-x-3">
+                      <input
+                        type="text"
+                        value={keyword}
+                        onChange={(e) => handleKeywordChange(index, e.target.value)}
+                        className="flex-1 p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                        placeholder={`Keyword ${index + 1}`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeKeyword(index)}
+                        className="text-red-400 hover:text-red-300"
+                      >
+                        <X className="h-5 w-5" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => addKeyword()}
+                    className="text-electric-400 hover:text-electric-300 text-sm"
+                  >
+                    + Add Keyword
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Submit Button */}
