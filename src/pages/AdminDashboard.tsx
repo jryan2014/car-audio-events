@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Calendar, DollarSign, TrendingUp, Activity, Shield, AlertTriangle, CheckCircle, UserCheck } from 'lucide-react';
+import { Users, Calendar, DollarSign, TrendingUp, Activity, Shield, AlertTriangle, CheckCircle, UserCheck, FileText, Target } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -12,6 +12,8 @@ interface DashboardStats {
   pendingVerifications: number;
   systemAlerts: number;
   pendingApprovals: number;
+  totalPages: number;
+  publishedPages: number;
 }
 
 interface RecentActivity {
@@ -31,7 +33,10 @@ export default function AdminDashboard() {
     totalRevenue: 0,
     newRegistrations: 0,
     pendingVerifications: 0,
-    systemAlerts: 0
+    systemAlerts: 0,
+    pendingApprovals: 0,
+    totalPages: 0,
+    publishedPages: 0
   });
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -97,6 +102,16 @@ export default function AdminDashboard() {
           .select('*', { count: 'exact', head: true })
           .eq('action', 'system_alert');
           
+        // Get CMS pages data
+        const { count: totalPages } = await supabase
+          .from('cms_pages')
+          .select('*', { count: 'exact', head: true });
+          
+        const { count: publishedPages } = await supabase
+          .from('cms_pages')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'published');
+          
         const stats: DashboardStats = {
           totalUsers: totalUsers || 0,
           activeEvents: activeEvents || 0,
@@ -104,7 +119,9 @@ export default function AdminDashboard() {
           newRegistrations: newRegistrations || 0,
           pendingVerifications: pendingVerifications || 0,
           pendingApprovals: pendingApprovals || 0,
-          systemAlerts: systemAlerts || 0
+          systemAlerts: systemAlerts || 0,
+          totalPages: totalPages || 0,
+          publishedPages: publishedPages || 0
         };
         
         setStats(stats);
@@ -166,7 +183,9 @@ export default function AdminDashboard() {
         newRegistrations: 34,
         pendingVerifications: 8,
         pendingApprovals: 12,
-        systemAlerts: 2
+        systemAlerts: 2,
+        totalPages: 15,
+        publishedPages: 12
       };
 
       const mockActivity: RecentActivity[] = [
@@ -291,7 +310,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7 gap-6 mb-8">
           <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -351,10 +370,21 @@ export default function AdminDashboard() {
               <AlertTriangle className="h-8 w-8 text-red-500" />
             </div>
           </div>
+
+          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-400 text-sm">CMS Pages</p>
+                <p className="text-2xl font-bold text-white">{stats.totalPages}</p>
+                <p className="text-xs text-gray-500">{stats.publishedPages} published</p>
+              </div>
+              <FileText className="h-8 w-8 text-orange-500" />
+            </div>
+          </div>
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <Link
             to="/admin/users"
             className="bg-gradient-to-br from-blue-500/20 to-blue-600/20 border border-blue-500/30 rounded-xl p-6 hover:from-blue-500/30 hover:to-blue-600/30 transition-all duration-200 group"
@@ -416,6 +446,32 @@ export default function AdminDashboard() {
               <div>
                 <h3 className="text-white font-semibold">Manage Events</h3>
                 <p className="text-gray-400 text-sm">Review and manage events</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            to="/admin/cms-pages"
+            className="bg-gradient-to-br from-orange-500/20 to-orange-600/20 border border-orange-500/30 rounded-xl p-6 hover:from-orange-500/30 hover:to-orange-600/30 transition-all duration-200 group"
+          >
+            <div className="flex items-center space-x-3">
+              <FileText className="h-8 w-8 text-orange-400 group-hover:scale-110 transition-transform" />
+              <div>
+                <h3 className="text-white font-semibold">CMS Pages</h3>
+                <p className="text-gray-400 text-sm">{stats.publishedPages} published, {stats.totalPages - stats.publishedPages} drafts</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            to="/admin/ad-management"
+            className="bg-gradient-to-br from-pink-500/20 to-pink-600/20 border border-pink-500/30 rounded-xl p-6 hover:from-pink-500/30 hover:to-pink-600/30 transition-all duration-200 group"
+          >
+            <div className="flex items-center space-x-3">
+              <Target className="h-8 w-8 text-pink-400 group-hover:scale-110 transition-transform" />
+              <div>
+                <h3 className="text-white font-semibold">Advertisement Management</h3>
+                <p className="text-gray-400 text-sm">Create and manage ad campaigns</p>
               </div>
             </div>
           </Link>

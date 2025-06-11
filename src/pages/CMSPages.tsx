@@ -5,6 +5,7 @@ import { Navigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
+import AIWritingAssistant from '../components/AIWritingAssistant';
 
 interface CMSPage {
   id: string;
@@ -20,6 +21,13 @@ interface CMSPage {
   published_at: string | null;
   created_at: string;
   updated_at: string;
+  // Navigation placement fields
+  navigation_placement: 'none' | 'top_nav' | 'sub_nav' | 'footer';
+  parent_nav_item?: string;
+  footer_section?: 'company' | 'quick_links' | 'legal' | 'support' | 'social';
+  nav_order?: number;
+  nav_title?: string;
+  show_in_sitemap: boolean;
 }
 
 interface PageFormData {
@@ -31,6 +39,13 @@ interface PageFormData {
   meta_keywords: string[];
   status: 'draft' | 'published' | 'archived';
   is_featured: boolean;
+  // Navigation placement fields
+  navigation_placement: 'none' | 'top_nav' | 'sub_nav' | 'footer';
+  parent_nav_item?: string;
+  footer_section?: 'company' | 'quick_links' | 'legal' | 'support' | 'social';
+  nav_order?: number;
+  nav_title?: string;
+  show_in_sitemap: boolean;
 }
 
 export default function CMSPages() {
@@ -49,7 +64,9 @@ export default function CMSPages() {
     meta_description: '',
     meta_keywords: [],
     status: 'draft',
-    is_featured: false
+    is_featured: false,
+    navigation_placement: 'none',
+    show_in_sitemap: true
   });
 
   // Quill editor configuration
@@ -191,12 +208,37 @@ export default function CMSPages() {
     try {
       setIsLoading(true);
       
-      const { data, error } = await supabase
+      // Try to load with all fields first
+      let { data, error } = await supabase
         .from('cms_pages')
         .select('*')
         .order('updated_at', { ascending: false });
 
-      if (error) throw error;
+      // If that fails (likely due to missing navigation fields), try with basic fields only
+      if (error && error.message?.includes('column') && error.message?.includes('does not exist')) {
+        console.warn('Navigation fields not available, loading basic page data only');
+        
+        const { data: basicData, error: basicError } = await supabase
+          .from('cms_pages')
+          .select('id, title, slug, content, meta_title, meta_description, meta_keywords, status, is_featured, author_id, published_at, created_at, updated_at')
+          .order('updated_at', { ascending: false });
+
+        if (basicError) throw basicError;
+        
+        // Add default navigation values for pages loaded without navigation fields
+        data = basicData?.map(page => ({
+          ...page,
+          navigation_placement: 'none' as const,
+          parent_nav_item: undefined,
+          footer_section: undefined,
+          nav_order: undefined,
+          nav_title: undefined,
+          show_in_sitemap: true
+        })) || [];
+      } else if (error) {
+        throw error;
+      }
+
       setPages(data || []);
     } catch (error) {
       console.error('Error loading pages:', error);
@@ -227,25 +269,80 @@ export default function CMSPages() {
     e.preventDefault();
     
     try {
-      const pageData = {
-        ...formData,
+      // First, try to detect which fields are available in the database
+      let pageData: any = {
+        title: formData.title,
+        slug: formData.slug,
+        content: formData.content,
+        meta_title: formData.meta_title,
+        meta_description: formData.meta_description,
+        meta_keywords: formData.meta_keywords,
+        status: formData.status,
+        is_featured: formData.is_featured,
         author_id: user.id,
         published_at: formData.status === 'published' ? new Date().toISOString() : null
       };
 
-      if (editingPage) {
-        const { error } = await supabase
-          .from('cms_pages')
-          .update(pageData)
-          .eq('id', editingPage.id);
+      // Try to add navigation fields - if they fail, we'll catch and retry without them
+      try {
+        pageData = {
+          ...pageData,
+          navigation_placement: formData.navigation_placement,
+          parent_nav_item: formData.parent_nav_item,
+          footer_section: formData.footer_section,
+          nav_order: formData.nav_order,
+          nav_title: formData.nav_title,
+          show_in_sitemap: formData.show_in_sitemap
+        };
+
+        if (editingPage) {
+          const { error } = await supabase
+            .from('cms_pages')
+            .update(pageData)
+            .eq('id', editingPage.id);
+          
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from('cms_pages')
+            .insert([pageData]);
+          
+          if (error) throw error;
+        }
+      } catch (navError: any) {
+        // If navigation fields failed, try again with just basic fields
+        console.warn('Navigation fields not available, saving basic page data only:', navError);
         
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('cms_pages')
-          .insert([pageData]);
-        
-        if (error) throw error;
+        const basicPageData = {
+          title: formData.title,
+          slug: formData.slug,
+          content: formData.content,
+          meta_title: formData.meta_title,
+          meta_description: formData.meta_description,
+          meta_keywords: formData.meta_keywords,
+          status: formData.status,
+          is_featured: formData.is_featured,
+          author_id: user.id,
+          published_at: formData.status === 'published' ? new Date().toISOString() : null
+        };
+
+        if (editingPage) {
+          const { error } = await supabase
+            .from('cms_pages')
+            .update(basicPageData)
+            .eq('id', editingPage.id);
+          
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from('cms_pages')
+            .insert([basicPageData]);
+          
+          if (error) throw error;
+        }
+
+        // Show a warning about limited functionality
+        alert('Page saved successfully! Note: Navigation features require database migration. See CMS_NAVIGATION_SETUP.md for instructions.');
       }
 
       // Reset form and reload data
@@ -257,7 +354,9 @@ export default function CMSPages() {
         meta_description: '',
         meta_keywords: [],
         status: 'draft',
-        is_featured: false
+        is_featured: false,
+        navigation_placement: 'none',
+        show_in_sitemap: true
       });
       setShowCreateForm(false);
       setEditingPage(null);
@@ -278,7 +377,13 @@ export default function CMSPages() {
       meta_description: page.meta_description,
       meta_keywords: page.meta_keywords || [],
       status: page.status,
-      is_featured: page.is_featured
+      is_featured: page.is_featured,
+      navigation_placement: page.navigation_placement || 'none',
+      parent_nav_item: page.parent_nav_item,
+      footer_section: page.footer_section,
+      nav_order: page.nav_order,
+      nav_title: page.nav_title,
+      show_in_sitemap: page.show_in_sitemap !== undefined ? page.show_in_sitemap : true
     });
     setEditingPage(page);
     setShowCreateForm(true);
@@ -322,12 +427,48 @@ export default function CMSPages() {
     }));
   };
 
+  const handleAIContentInsert = (content: string) => {
+    // Insert AI-generated content into the Quill editor
+    setFormData(prev => ({
+      ...prev,
+      content: prev.content ? prev.content + '\n\n' + content : content
+    }));
+  };
+
+  const getPageTypeFromSlug = (slug: string): string => {
+    if (slug.includes('privacy')) return 'privacy-policy';
+    if (slug.includes('terms')) return 'terms-of-service';
+    if (slug.includes('about')) return 'about';
+    return 'general';
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'published': return 'text-green-400 bg-green-400/10';
       case 'draft': return 'text-yellow-400 bg-yellow-400/10';
       case 'archived': return 'text-gray-400 bg-gray-400/10';
       default: return 'text-gray-400 bg-gray-400/10';
+    }
+  };
+
+  const getNavigationPlacementDisplay = (page: CMSPage) => {
+    const placement = page.navigation_placement || 'none';
+    switch (placement) {
+      case 'top_nav':
+        return { text: 'Top Navigation', color: 'text-blue-400 bg-blue-400/10' };
+      case 'sub_nav':
+        return { 
+          text: `Sub Nav (${page.parent_nav_item || 'No Parent'})`, 
+          color: 'text-purple-400 bg-purple-400/10' 
+        };
+      case 'footer':
+        return { 
+          text: `Footer (${page.footer_section || 'No Section'})`, 
+          color: 'text-orange-400 bg-orange-400/10' 
+        };
+      case 'none':
+      default:
+        return { text: 'Standalone', color: 'text-gray-400 bg-gray-400/10' };
     }
   };
 
@@ -402,6 +543,19 @@ export default function CMSPages() {
               {editingPage ? 'Edit Page' : 'Create New Page'}
             </h2>
             
+            {/* Navigation Features Status */}
+            {pages.length > 0 && pages[0].navigation_placement === undefined && (
+              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 mb-6">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                  <p className="text-yellow-400 text-sm">
+                    <strong>Limited Functionality:</strong> Navigation features require database migration. 
+                    Pages will be saved with basic fields only. See <code>CMS_NAVIGATION_SETUP.md</code> for setup instructions.
+                  </p>
+                </div>
+              </div>
+            )}
+            
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
@@ -452,6 +606,120 @@ export default function CMSPages() {
                     />
                     <span className="text-gray-400">Featured Page</span>
                   </label>
+                </div>
+
+              </div>
+
+              {/* Navigation Settings Section */}
+              <div className="border-t border-gray-700 pt-6">
+                <h3 className="text-lg font-medium text-white mb-4">Navigation Settings</h3>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Navigation Placement</label>
+                    <select
+                      value={formData.navigation_placement}
+                      onChange={(e) => setFormData(prev => ({ ...prev, navigation_placement: e.target.value as any }))}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                    >
+                      <option value="none">None - Standalone Page</option>
+                      <option value="top_nav">Top Navigation</option>
+                      <option value="sub_nav">Sub Navigation</option>
+                      <option value="footer">Footer</option>
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Choose where this page will appear in your site navigation
+                    </p>
+                  </div>
+
+                  {/* Conditional fields based on navigation placement */}
+                  {formData.navigation_placement === 'sub_nav' && (
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2">Parent Navigation Item</label>
+                      <select
+                        value={formData.parent_nav_item}
+                        onChange={(e) => setFormData(prev => ({ ...prev, parent_nav_item: e.target.value }))}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                      >
+                        <option value="">Select Parent Menu</option>
+                        <option value="events">Events</option>
+                        <option value="directory">Directory</option>
+                        <option value="about">About</option>
+                        <option value="resources">Resources</option>
+                      </select>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Select which main navigation item this page will appear under
+                      </p>
+                    </div>
+                  )}
+
+                  {formData.navigation_placement === 'footer' && (
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2">Footer Section</label>
+                      <select
+                        value={formData.footer_section}
+                        onChange={(e) => setFormData(prev => ({ ...prev, footer_section: e.target.value as any }))}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                      >
+                        <option value="company">Company</option>
+                        <option value="quick_links">Quick Links</option>
+                        <option value="legal">Legal</option>
+                        <option value="support">Support</option>
+                        <option value="social">Social</option>
+                      </select>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Choose which footer section this page will appear in
+                      </p>
+                    </div>
+                  )}
+
+                  {formData.navigation_placement !== 'none' && (
+                    <>
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-2">Navigation Title</label>
+                        <input
+                          type="text"
+                          value={formData.nav_title || formData.title}
+                          onChange={(e) => setFormData(prev => ({ ...prev, nav_title: e.target.value }))}
+                          className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                          placeholder="Title to show in navigation (defaults to page title)"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Leave blank to use the page title
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-2">Navigation Order</label>
+                        <input
+                          type="number"
+                          value={formData.nav_order || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, nav_order: e.target.value ? Number(e.target.value) : undefined }))}
+                          className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                          placeholder="1, 2, 3... (lower numbers appear first)"
+                          min="1"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Order in which this page appears in the navigation (1 = first)
+                        </p>
+                      </div>
+                    </>
+                  )}
+
+                  <div className="flex items-center">
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={formData.show_in_sitemap}
+                        onChange={(e) => setFormData(prev => ({ ...prev, show_in_sitemap: e.target.checked }))}
+                        className="rounded border-gray-600 text-electric-500 focus:ring-electric-500"
+                      />
+                      <span className="text-gray-400">Show in Sitemap</span>
+                    </label>
+                    <p className="text-xs text-gray-500 ml-6">
+                      Include this page in XML sitemap for search engines
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -557,7 +825,9 @@ export default function CMSPages() {
                       meta_description: '',
                       meta_keywords: [],
                       status: 'draft',
-                      is_featured: false
+                      is_featured: false,
+                      navigation_placement: 'none',
+                      show_in_sitemap: true
                     });
                   }}
                   className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors"
@@ -595,6 +865,9 @@ export default function CMSPages() {
                             Featured
                           </span>
                         )}
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getNavigationPlacementDisplay(page).color}`}>
+                          {getNavigationPlacementDisplay(page).text}
+                        </span>
                       </div>
                       
                       <p className="text-gray-400 text-sm mb-3">/{page.slug}</p>
@@ -604,6 +877,12 @@ export default function CMSPages() {
                         <span>Updated: {new Date(page.updated_at).toLocaleDateString()}</span>
                         {page.published_at && (
                           <span>Published: {new Date(page.published_at).toLocaleDateString()}</span>
+                        )}
+                        {page.nav_order && (
+                          <span>Order: {page.nav_order}</span>
+                        )}
+                        {page.show_in_sitemap && (
+                          <span className="text-green-400">✓ Sitemap</span>
                         )}
                       </div>
                     </div>
@@ -644,6 +923,15 @@ export default function CMSPages() {
           )}
         </div>
       </div>
+
+      {/* AI Writing Assistant - Only show when creating/editing */}
+      {showCreateForm && (
+        <AIWritingAssistant
+          onInsertContent={handleAIContentInsert}
+          pageType={getPageTypeFromSlug(formData.slug)}
+          currentContent={formData.content}
+        />
+      )}
     </div>
   );
 } 
