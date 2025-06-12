@@ -83,13 +83,16 @@ class WebScraperService {
   /**
    * Scrape events from a specific source
    */
-  async scrapeSource(sourceName: string): Promise<ScrapingResult> {
+  async scrapeSource(sourceName: string, customUrl?: string): Promise<ScrapingResult> {
     const source = this.sources.find(s => s.name === sourceName);
     if (!source) {
       throw new Error(`Unknown source: ${sourceName}`);
     }
     
-    return source.scraper(source.url);
+    const urlToUse = customUrl || source.url;
+    console.log(`🔗 Using URL: ${urlToUse}`);
+    
+    return source.scraper(urlToUse);
   }
 
   /**

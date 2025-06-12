@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Download, Globe, CheckCircle, AlertCircle, Loader } from 'lucide-react';
+import { X, Download, Globe, CheckCircle, AlertCircle, Loader, Edit3, RotateCcw } from 'lucide-react';
 import { webScraperService, ScrapingResult, ScrapedEvent } from '../services/webScraper';
 import { geocodingService } from '../services/geocoding';
 import { supabase } from '../lib/supabase';
@@ -15,6 +15,8 @@ export default function WebScraperModal({ isOpen, onClose, onEventsImported }: W
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
+  const [customUrls, setCustomUrls] = useState<Record<string, string>>({});
+  const [useCustomUrl, setUseCustomUrl] = useState<Record<string, boolean>>({});
   const [scrapingResults, setScrapingResults] = useState<ScrapingResult[]>([]);
   const [importResults, setImportResults] = useState<{ success: number; failed: number; errors: string[] }>({
     success: 0,
@@ -35,6 +37,29 @@ export default function WebScraperModal({ isOpen, onClose, onEventsImported }: W
     );
   };
 
+  const handleCustomUrlToggle = (sourceName: string) => {
+    setUseCustomUrl(prev => ({
+      ...prev,
+      [sourceName]: !prev[sourceName]
+    }));
+  };
+
+  const handleCustomUrlChange = (sourceName: string, url: string) => {
+    setCustomUrls(prev => ({
+      ...prev,
+      [sourceName]: url
+    }));
+  };
+
+  const getUrlForSource = (sourceName: string) => {
+    const source = sources.find(s => s.name === sourceName);
+    if (!source) return '';
+    
+    return useCustomUrl[sourceName] && customUrls[sourceName] 
+      ? customUrls[sourceName] 
+      : source.url;
+  };
+
   const handleScrapeEvents = async () => {
     if (selectedSources.length === 0) {
       alert('Please select at least one source to scrape');
@@ -49,8 +74,21 @@ export default function WebScraperModal({ isOpen, onClose, onEventsImported }: W
       const results: ScrapingResult[] = [];
       
       for (const sourceName of selectedSources) {
-        console.log(`🕷️ Scraping ${sourceName}...`);
-        const result = await webScraperService.scrapeSource(sourceName);
+        const urlToUse = getUrlForSource(sourceName);
+        console.log(`🕷️ Scraping ${sourceName} from ${urlToUse}...`);
+        
+        // Pass custom URL to the scraper if one is provided
+        const customUrl = useCustomUrl[sourceName] && customUrls[sourceName] 
+          ? customUrls[sourceName] 
+          : undefined;
+          
+        const result = await webScraperService.scrapeSource(sourceName, customUrl);
+        
+        // Add a note about custom URL usage in the result
+        if (useCustomUrl[sourceName] && customUrls[sourceName]) {
+          result.source = `${result.source} (Custom URL)`;
+        }
+        
         results.push(result);
         setScrapingResults(prev => [...prev, result]);
         
@@ -203,21 +241,28 @@ export default function WebScraperModal({ isOpen, onClose, onEventsImported }: W
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg font-semibold text-white mb-4">Select Sources to Scrape</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-4">
                   {sources.map((source) => (
                     <div
                       key={source.name}
-                      className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                      className={`p-4 rounded-lg border transition-all ${
                         selectedSources.includes(source.name)
                           ? 'border-blue-500 bg-blue-500/10'
-                          : 'border-gray-600 hover:border-gray-500'
+                          : 'border-gray-600'
                       }`}
-                      onClick={() => handleSourceToggle(source.name)}
                     >
-                      <div className="flex items-center justify-between">
-                        <div>
+                      {/* Source Header */}
+                      <div 
+                        className="flex items-center justify-between cursor-pointer"
+                        onClick={() => handleSourceToggle(source.name)}
+                      >
+                        <div className="flex-1">
                           <h4 className="font-medium text-white">{source.name}</h4>
-                          <p className="text-sm text-gray-400">{source.url}</p>
+                          <p className="text-sm text-gray-400">
+                            {useCustomUrl[source.name] && customUrls[source.name] 
+                              ? customUrls[source.name] 
+                              : source.url}
+                          </p>
                         </div>
                         <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
                           selectedSources.includes(source.name)
@@ -229,6 +274,65 @@ export default function WebScraperModal({ isOpen, onClose, onEventsImported }: W
                           )}
                         </div>
                       </div>
+
+                      {/* URL Configuration */}
+                      {selectedSources.includes(source.name) && (
+                        <div className="mt-4 pt-4 border-t border-gray-600">
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="text-sm font-medium text-gray-300">URL Configuration</span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCustomUrlToggle(source.name);
+                              }}
+                              className={`flex items-center space-x-2 px-3 py-1 rounded text-xs font-medium transition-colors ${
+                                useCustomUrl[source.name]
+                                  ? 'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30'
+                                  : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+                              }`}
+                            >
+                              {useCustomUrl[source.name] ? (
+                                <>
+                                  <RotateCcw className="h-3 w-3" />
+                                  <span>Use Default</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Edit3 className="h-3 w-3" />
+                                  <span>Custom URL</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+
+                          {useCustomUrl[source.name] ? (
+                            <div className="space-y-2">
+                              <label className="block text-xs text-gray-400">Custom URL:</label>
+                              <input
+                                type="url"
+                                value={customUrls[source.name] || ''}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  handleCustomUrlChange(source.name, e.target.value);
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                placeholder={`Enter custom URL for ${source.name}`}
+                                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white text-sm placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                              />
+                              <p className="text-xs text-gray-500">
+                                Default: {source.url}
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <label className="block text-xs text-gray-400">Default URL:</label>
+                              <div className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded text-gray-300 text-sm">
+                                {source.url}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
