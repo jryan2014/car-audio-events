@@ -292,9 +292,12 @@ class WebScraperService {
    * Convert scraped event to our database format
    */
   convertToEventFormat(scrapedEvent: ScrapedEvent, organizerId: string): any {
+    // Add import source info to description
+    const importNote = `\n\n[Imported from ${scrapedEvent.sourceSite} on ${new Date().toLocaleDateString()}]`;
+    
     return {
       title: scrapedEvent.title,
-      description: scrapedEvent.description,
+      description: scrapedEvent.description + importNote,
       start_date: scrapedEvent.date,
       end_date: scrapedEvent.endDate || scrapedEvent.date,
       venue_name: scrapedEvent.location,
@@ -307,10 +310,7 @@ class WebScraperService {
       ticket_price: scrapedEvent.registrationFee || 0,
       organizer_id: organizerId,
       status: 'draft',
-      approval_status: 'pending',
-      // Note: Removed metadata field as it doesn't exist in database schema
-      // Source tracking can be added via notes or description if needed
-      notes: `Imported from ${scrapedEvent.sourceSite} on ${new Date().toLocaleDateString()}`
+      approval_status: 'pending'
     };
   }
 
