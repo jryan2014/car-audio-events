@@ -40,5 +40,13 @@ export default defineConfig({
       'Pragma': 'no-cache',
       'Expires': '0'
     }
-  }
+  },
+  preview: {
+    // Handle SPA routing for preview mode
+    open: true
+  },
+  // Handle client-side routing - this fixes the refresh issue
+  appType: 'spa',
+  // Ensure proper base configuration
+  base: '/'
 });

@@ -42,7 +42,7 @@ interface QuickAction {
 }
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
     totalCompetitions: 0,
     totalPoints: 0,
@@ -54,6 +54,15 @@ export default function Dashboard() {
   const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([]);
   const [recentResults, setRecentResults] = useState<RecentResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Debug logging (can be removed in production)
+  // console.log('=== DASHBOARD RENDER ===');
+  // console.log('authLoading:', authLoading);
+  // console.log('isLoading:', isLoading);
+  // console.log('user:', user);
+  // console.log('error:', error);
+  // console.log('========================');
 
   const quickActions: QuickAction[] = [
     {
@@ -87,11 +96,43 @@ export default function Dashboard() {
   ];
 
   useEffect(() => {
-    if (user) {
-      loadUpcomingEvents();
-      loadUserStats();
+    const loadDashboardData = async () => {
+      // console.log('=== DASHBOARD USEEFFECT ===');
+      // console.log('user:', user?.email);
+      // console.log('authLoading:', authLoading);
+      // console.log('==========================');
+      
+      if (user) {
+        // console.log('Loading dashboard data for user:', user.email);
+        try {
+          await Promise.all([
+            loadUpcomingEvents(),
+            loadUserStats()
+          ]);
+          // console.log('Dashboard data loaded successfully');
+          setError(null);
+        } catch (error) {
+          console.error('Error loading dashboard data:', error);
+          setError(error instanceof Error ? error.message : 'Unknown error occurred');
+        } finally {
+          // console.log('Setting isLoading to false');
+          setIsLoading(false);
+        }
+      } else if (!authLoading) {
+        // console.log('No user and not auth loading, setting isLoading to false');
+        setIsLoading(false);
+      }
+    };
+
+    loadDashboardData();
+  }, [user, authLoading]);
+
+  // Scroll to top when component mounts or after data loads
+  useEffect(() => {
+    if (!isLoading && !authLoading) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  }, [user]);
+  }, [isLoading, authLoading]);
 
   const loadUserStats = async () => {
     try {
@@ -224,14 +265,56 @@ export default function Dashboard() {
     return colors[color as keyof typeof colors] || colors.blue;
   };
 
-  if (isLoading) {
+  if (authLoading || isLoading) {
+    // console.log('Showing loading spinner - authLoading:', authLoading, 'isLoading:', isLoading);
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-electric-500"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-electric-500 mx-auto mb-4"></div>
+          <p className="text-white">Loading dashboard...</p>
+          <p className="text-gray-400 text-sm">Auth: {authLoading ? 'loading' : 'ready'}, Data: {isLoading ? 'loading' : 'ready'}</p>
+        </div>
       </div>
     );
   }
 
+  if (!user) {
+    // console.log('No user found, showing login prompt');
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-white mb-4">Please log in to access your dashboard</h2>
+          <Link
+            to="/login"
+            className="bg-electric-500 text-white px-6 py-3 rounded-lg hover:bg-electric-600 transition-colors"
+          >
+            Go to Login
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    // console.log('Error state, showing error message:', error);
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-red-400 mb-4">Dashboard Error</h2>
+          <p className="text-gray-400 mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-electric-500 text-white px-6 py-3 rounded-lg hover:bg-electric-600 transition-colors"
+          >
+            Reload Page
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // console.log('Rendering dashboard content for user:', user.email);
+  
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

@@ -27,7 +27,7 @@ interface RecentActivity {
 }
 
 export default function AdminDashboard() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
     totalUsers: 0,
     activeEvents: 0,
@@ -41,24 +41,38 @@ export default function AdminDashboard() {
   });
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Check if user is admin
-  if (!user || user.membershipType !== 'admin') {
-    console.log('AdminDashboard: Redirecting non-admin user:', user?.membershipType);
-    return <Navigate to="/\" replace />;
+  // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL LOGIC
+  useEffect(() => {
+    if (user && user.membershipType === 'admin') {
+      loadDashboardData();
+      // Log dashboard access
+      ActivityLogger.adminDashboardAccess();
+    }
+  }, [user]);
+
+  // Show loading spinner while authentication is loading
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-electric-500 mx-auto mb-4"></div>
+          <p className="text-white">Loading admin dashboard...</p>
+        </div>
+      </div>
+    );
   }
 
-  console.log('AdminDashboard: Admin user detected:', user.email, user.membershipType);
-
-  useEffect(() => {
-    loadDashboardData();
-    // Log dashboard access
-    ActivityLogger.adminDashboardAccess();
-  }, []);
+  // Check if user is admin after auth has loaded
+  if (!user || user.membershipType !== 'admin') {
+    return <Navigate to="/" replace />;
+  }
 
   const loadDashboardData = async () => {
     try {
       setIsLoading(true);
+      setError(null);
       
       // Try to load real dashboard data
       const [usersResult, eventsResult, revenueResult] = await Promise.allSettled([
@@ -108,28 +122,55 @@ export default function AdminDashboard() {
 
       setStats(finalStats);
 
-      // Load recent activity from audit logs
+      // Load recent activity from available data sources
       try {
-        const { data: activityData, error: activityError } = await supabase
-          .rpc('get_recent_activity', { limit_count: 10 });
+        // For now, create activity from recent user registrations and events
+        const recentActivityItems: RecentActivity[] = [];
         
-        if (activityError) {
-          console.error('Failed to load activity data:', activityError);
-          setRecentActivity([]);
-        } else if (activityData) {
-          // Transform the data to match our interface
-          const transformedActivity: RecentActivity[] = activityData.map((activity: any) => ({
-            id: activity.id,
-            type: activity.activity_type,
-            description: activity.description,
-            timestamp: activity.created_at,
-            user: activity.user_name || activity.user_email || 'Unknown User',
-            severity: getSeverityFromType(activity.activity_type)
-          }));
-          setRecentActivity(transformedActivity);
-        } else {
-          setRecentActivity([]);
+        // Get recent user registrations
+        const { data: recentUsers } = await supabase
+          .from('users')
+          .select('id, name, email, created_at')
+          .order('created_at', { ascending: false })
+          .limit(5);
+        
+        if (recentUsers) {
+          recentUsers.forEach(user => {
+            recentActivityItems.push({
+              id: `user_${user.id}`,
+              type: 'user_registration',
+              description: `New user registered: ${user.name || user.email}`,
+              timestamp: user.created_at,
+              user: user.name || user.email,
+              severity: 'info'
+            });
+          });
         }
+        
+        // Get recent events
+        const { data: recentEvents } = await supabase
+          .from('events')
+          .select('id, title, created_at')
+          .order('created_at', { ascending: false })
+          .limit(5);
+        
+        if (recentEvents) {
+          recentEvents.forEach(event => {
+            recentActivityItems.push({
+              id: `event_${event.id}`,
+              type: 'event_created',
+              description: `New event created: ${event.title}`,
+              timestamp: event.created_at,
+              user: 'System',
+              severity: 'info'
+            });
+          });
+        }
+        
+        // Sort by timestamp and take the most recent 10
+        recentActivityItems.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        setRecentActivity(recentActivityItems.slice(0, 10));
+        
       } catch (activityLoadError) {
         console.error('Failed to load recent activity:', activityLoadError);
         setRecentActivity([]);
@@ -137,6 +178,7 @@ export default function AdminDashboard() {
 
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load dashboard data');
       // Set empty/default stats instead of mock data
       setStats({
         totalUsers: 0,
@@ -232,6 +274,43 @@ export default function AdminDashboard() {
     }
   };
 
+  // Show loading spinner while dashboard data is loading
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-electric-500 mx-auto mb-4"></div>
+          <p className="text-white">Loading dashboard data...</p>
+          <p className="text-gray-400 text-sm">Welcome, {user.name}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state if there's an error
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 bg-red-500 rounded-lg flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle className="h-6 w-6 text-white" />
+          </div>
+          <h2 className="text-2xl font-bold text-red-400 mb-4">Dashboard Error</h2>
+          <p className="text-gray-400 mb-4">{error}</p>
+          <button
+            onClick={() => {
+              setError(null);
+              loadDashboardData();
+            }}
+            className="bg-electric-500 text-white px-6 py-3 rounded-lg hover:bg-electric-600 transition-colors"
+          >
+            Retry Loading
+          </button>
+        </div>
+      </div>
+    );
+  }
+  
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -483,6 +562,19 @@ export default function AdminDashboard() {
               <div>
                 <h3 className="text-white font-semibold">Navigation Manager</h3>
                 <p className="text-gray-400 text-sm">Manage website navigation and menus</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            to="/admin/directory-manager"
+            className="bg-gradient-to-br from-orange-500/20 to-orange-600/20 border border-orange-500/30 rounded-xl p-6 hover:from-orange-500/30 hover:to-orange-600/30 transition-all duration-200 group"
+          >
+            <div className="flex items-center space-x-3">
+              <Building2 className="h-8 w-8 text-orange-400 group-hover:scale-110 transition-transform" />
+              <div>
+                <h3 className="text-white font-semibold">Directory Manager</h3>
+                <p className="text-gray-400 text-sm">Manage business listings and directory</p>
               </div>
             </div>
           </Link>
