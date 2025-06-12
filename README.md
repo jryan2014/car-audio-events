@@ -1,168 +1,166 @@
-# Car Audio Events - Competition Platform
+# 🚗 Car Audio Events Platform
 
-A modern React application for car audio competition enthusiasts to discover events, track scores, and connect with the community.
+A comprehensive event management platform for the car audio competition community, featuring automatic geocoding, web scraping, and modern responsive design.
 
-## 🚀 Tech Stack
+![Platform Preview](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)
+![React](https://img.shields.io/badge/React-18.x-blue)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)
+![Supabase](https://img.shields.io/badge/Supabase-Backend-green)
 
-- **Frontend**: React 18 + TypeScript + Vite
-- **Styling**: Tailwind CSS
-- **Database**: Supabase (PostgreSQL)
-- **Authentication**: Supabase Auth
-- **Hosting**: Netlify
-- **Maps**: Google Maps API
-- **Icons**: Lucide React
+## ✨ Features
 
-## 🏗️ Architecture
+### 🎯 **Core Features**
+- **Event Management** - Complete CRUD operations for car audio events
+- **Auto-Geocoding** - Automatic coordinate generation from city/state
+- **Interactive Map** - Real-time event locations with clustering
+- **User Authentication** - Secure login/registration system
+- **Admin Panel** - Comprehensive event and user management
+- **Responsive Design** - Mobile-first, modern UI
 
-### Frontend (Netlify)
-- Static React SPA with client-side routing
-- Responsive design with Tailwind CSS
-- Real-time updates via Supabase subscriptions
-- Google Maps integration for event locations
+### 🗺️ **Geocoding Service**
+- **Multiple Providers** - OpenStreetMap (free), Google Maps, Mapbox
+- **Automatic Fallbacks** - Ensures coordinates are always found
+- **Real-time Processing** - Geocodes as you type
+- **Bulk Operations** - Update coordinates for existing events
 
-### Backend (Supabase)
-- PostgreSQL database with Row Level Security (RLS)
-- Real-time subscriptions for live updates
-- Built-in authentication (email/password)
-- File storage for user profiles and event images
-- Edge functions for custom API endpoints
+### 🕷️ **Web Scraper**
+- **Multi-site Support** - MECA, IASCA, USACi, dB Drag Racing
+- **Event Import** - Automatically import competitor events
+- **Duplicate Detection** - Smart filtering of duplicate events
+- **Data Validation** - Ensures imported data quality
 
-## 📦 Setup Instructions
+### 🛡️ **Security & Performance**
+- **Row Level Security** - Database-level access control
+- **Real-time Updates** - Live data synchronization
+- **Optimized Queries** - Fast loading times
+- **Error Handling** - Comprehensive error management
 
-### 1. Clone and Install
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 18+ 
+- npm or yarn
+- Supabase account
+
+### Installation
+
+1. **Clone the repository**
 ```bash
-git clone <repository-url>
-cd car-audio-events
+git clone https://github.com/yourusername/car-audio-events-platform.git
+cd car-audio-events-platform
+```
+
+2. **Install dependencies**
+```bash
 npm install
 ```
 
-### 2. Supabase Setup
-1. Create a new project at [supabase.com](https://supabase.com)
-2. Copy your project URL and anon key
-3. Create a `.env` file based on `.env.example`
-4. Set up the database schema (see Database Schema section)
-5. Create the initial admin user (see Admin Setup section)
-
-### 3. Google Maps Setup
-1. Get a Google Maps API key from [Google Cloud Console](https://console.cloud.google.com)
-2. Enable Maps JavaScript API and Places API
-3. Add the API key to your `.env` file
-
-### 4. Environment Variables
-Create a `.env` file:
+3. **Environment Setup**
+Create a `.env` file in the root directory:
 ```env
-VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-VITE_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
-VITE_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
-
-# Note: Stripe secret key and webhook secret are configured in Supabase Edge Functions
+VITE_GOOGLE_MAPS_API_KEY=your_google_maps_key (optional)
+VITE_MAPBOX_API_KEY=your_mapbox_key (optional)
 ```
 
-### 5. Development
+4. **Database Setup**
+- Import the database schema from `supabase/migrations/`
+- Run the complete database fix script if needed
+- Set up Row Level Security policies
+
+5. **Start Development Server**
 ```bash
 npm run dev
 ```
 
-### 5. Admin Setup
-After setting up your Supabase project and running the database migrations, you need to create the initial admin user:
+Visit `http://localhost:5173` to see the application.
 
-1. **Deploy Edge Functions**: The admin user creation is handled by a Supabase Edge Function. Make sure all edge functions are deployed to your Supabase project.
+## 📁 Project Structure
 
-2. **Create Admin User**: Use the following curl command to create the initial admin user:
-```bash
-curl -X POST "https://YOUR_SUPABASE_PROJECT_URL/functions/v1/create-admin-user" \
-  -H "Authorization: Bearer YOUR_SUPABASE_ANON_KEY" \
-  -H "Content-Type: application/json"
 ```
-Replace `YOUR_SUPABASE_PROJECT_URL` and `YOUR_SUPABASE_ANON_KEY` with your actual Supabase project values.
+src/
+├── components/          # Reusable UI components
+│   ├── AddCoordinatesModal.tsx
+│   ├── GoogleMap.tsx
+│   ├── Header.tsx
+│   └── Footer.tsx
+├── pages/              # Main application pages
+│   ├── CreateEvent.tsx
+│   ├── AdminEvents.tsx
+│   ├── Events.tsx
+│   └── Dashboard.tsx
+├── services/           # Business logic services
+│   ├── geocoding.ts    # Auto-geocoding service
+│   └── webScraper.ts   # Web scraping service
+├── contexts/           # React contexts
+│   └── AuthContext.tsx
+├── hooks/              # Custom React hooks
+└── lib/                # Utilities and configurations
+    └── supabase.ts
+```
 
-3. **Default Admin Credentials**: The function creates an admin user with these credentials:
-   - **Email**: `admin@caraudioevents.com`
-   - **Password**: `TempAdmin123!`
+## 🗺️ Geocoding Service
 
-4. **Important**: Change the admin password immediately after first login for security.
+The platform includes a robust geocoding service that automatically converts addresses to coordinates:
 
-### 6. Deployment to Netlify
-1. Connect your GitHub repository to Netlify
-2. Set build command: `npm run build`
-3. Set publish directory: `dist`
-4. Add environment variables in Netlify dashboard
-5. Deploy!
+```typescript
+import { geocodingService } from './services/geocoding';
 
-## 🗄️ Database Schema
+// Geocode a single address
+const result = await geocodingService.geocodeAddress('Cleveland', 'Ohio', 'United States');
 
-### Core Tables
-- `users` - User profiles and authentication
-- `events` - Car audio competitions and shows
-- `registrations` - Event registrations
-- `scores` - Competition scores and rankings
-- `teams` - Team memberships
-- `businesses` - Directory listings (retailers/manufacturers)
+// Batch geocode multiple addresses
+const results = await geocodingService.batchGeocode([
+  { id: '1', city: 'Cleveland', state: 'Ohio' },
+  { id: '2', city: 'Detroit', state: 'Michigan' }
+]);
+```
 
-### Features
-- Row Level Security (RLS) for data protection
-- Real-time subscriptions for live updates
-- Full-text search capabilities
-- Geospatial queries for location-based features
+### Supported Providers
+1. **OpenStreetMap Nominatim** (Free, no API key required)
+2. **Google Maps Geocoding API** (Requires API key)
+3. **Mapbox Geocoding API** (Requires API key)
 
-## 🔐 Authentication
+## 🕷️ Web Scraper
 
-- Email/password authentication via Supabase Auth
-- Protected routes for authenticated users
-- Role-based access (competitor, retailer, manufacturer, admin)
-- Profile management with image uploads
+Import events from major car audio competition websites:
 
-## 💳 Payment Processing
+```typescript
+import { webScraperService } from './services/webScraper';
 
-### Stripe Integration
-- Secure payment processing via Stripe
-- Event registration payments
-- Subscription management (Competitor, Pro, Business plans)
-- Webhook handling for payment confirmations
-- PCI compliant payment forms
+// Scrape all sources
+const results = await webScraperService.scrapeAllSources();
 
-### Payment Features
-- One-time event registration payments
-- Annual subscription billing
-- Automatic payment confirmation
-- Payment history tracking
-- Refund management (via Stripe dashboard)
+// Scrape specific source
+const mecaEvents = await webScraperService.scrapeSource('MECA Events');
+```
 
-### Subscription Plans
-- **Competitor (Free)**: Basic features for getting started
-- **Pro Competitor ($29/year)**: Advanced analytics and features
-- **Business ($99/year)**: Full business features and directory listing
+### Supported Sites
+- **MECA** - Mobile Electronics Competition Association
+- **IASCA** - International Auto Sound Challenge Association  
+- **USACi** - United States Autosound Competition International
+- **dB Drag Racing** - Sound pressure level competitions
 
-## 🌟 Key Features
+## 🎯 Admin Features
 
-### For Competitors
-- Browse and register for events
-- Track competition scores and rankings
-- Build and showcase audio system profiles
-- Join teams and connect with community
+### Event Management
+- Approve/reject event submissions
+- Bulk coordinate updates
+- Event editing and deletion
+- Status management
 
-### For Businesses
-- Directory listings with contact information
-- Event sponsorship opportunities
-- Customer analytics and insights
-- Advertising and promotion tools
+### User Management
+- User role assignment
+- Membership management
+- Activity monitoring
 
-### For Event Organizers
-- Create and manage events
-- Registration management
-- Score tracking and leaderboards
-- Real-time event updates
+### Analytics
+- Event statistics
+- User engagement metrics
+- Geographic distribution
 
-## 🚀 Performance
-
-- Static site generation for fast loading
-- Image optimization with Supabase Storage
-- CDN delivery via Netlify
-- Real-time updates without page refreshes
-- Mobile-optimized responsive design
-
-## 🔧 Development
+## 🛠️ Development
 
 ### Available Scripts
 - `npm run dev` - Start development server
@@ -170,36 +168,84 @@ Replace `YOUR_SUPABASE_PROJECT_URL` and `YOUR_SUPABASE_ANON_KEY` with your actua
 - `npm run preview` - Preview production build
 - `npm run lint` - Run ESLint
 
-### Code Organization
-- `/src/components` - Reusable UI components
-- `/src/pages` - Route components
-- `/src/contexts` - React contexts (Auth, etc.)
-- `/src/lib` - Utilities and configurations
-- `/src/types` - TypeScript type definitions
+### Database Migrations
+Database migrations are located in `supabase/migrations/`. Key migrations:
+- Initial schema setup
+- Event categories and organizations
+- Complete database schema with all columns
+- RLS policies
 
-## 📱 Mobile Support
+## 🚀 Deployment
 
-Fully responsive design optimized for:
-- Mobile phones (320px+)
-- Tablets (768px+)
-- Desktop (1024px+)
-- Large screens (1440px+)
+### Vercel (Recommended)
+1. Connect your GitHub repository to Vercel
+2. Set environment variables in Vercel dashboard
+3. Deploy automatically on push to main branch
 
-## 🔒 Security
+### Netlify
+1. Connect repository to Netlify
+2. Set build command: `npm run build`
+3. Set publish directory: `dist`
+4. Configure environment variables
 
-- Row Level Security (RLS) on all database tables
-- Environment variables for sensitive data
-- HTTPS enforcement
-- Input validation and sanitization
-- Protected API endpoints
+### Custom Server
+1. Build the project: `npm run build`
+2. Serve the `dist` folder with any static file server
+3. Configure environment variables on your server
 
-## 🌐 Browser Support
+## 🔧 Configuration
 
-- Chrome (latest)
-- Firefox (latest)
-- Safari (latest)
-- Edge (latest)
+### Environment Variables
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `VITE_SUPABASE_URL` | Supabase project URL | Yes |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anonymous key | Yes |
+| `VITE_GOOGLE_MAPS_API_KEY` | Google Maps API key | No |
+| `VITE_MAPBOX_API_KEY` | Mapbox API key | No |
+
+### Database Configuration
+The platform requires a Supabase database with:
+- Events table with 50+ columns
+- User authentication
+- Row Level Security policies
+- Event categories and organizations
+
+## 📋 TODO Roadmap
+
+See [TODO.md](TODO.md) for the complete development roadmap including:
+- 🔥 Immediate priorities (1-2 weeks)
+- 🎯 Core features (2-4 weeks)  
+- 🚀 Advanced features (1-3 months)
+- 🔧 Technical improvements (ongoing)
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Commit your changes: `git commit -m 'Add amazing feature'`
+4. Push to the branch: `git push origin feature/amazing-feature`
+5. Open a Pull Request
 
 ## 📄 License
 
-MIT License - see LICENSE file for details
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🆘 Support
+
+- **Documentation**: Check the [TODO.md](TODO.md) for detailed feature information
+- **Issues**: Report bugs and request features via GitHub Issues
+- **Community**: Join the car audio competition community discussions
+
+## 🏆 Acknowledgments
+
+- Car audio competition community for requirements and feedback
+- Supabase for the excellent backend-as-a-service platform
+- OpenStreetMap for free geocoding services
+- React and TypeScript communities for amazing tools
+
+---
+
+**Built with ❤️ for the car audio competition community**
+
+![Car Audio Events](https://img.shields.io/badge/Car%20Audio-Events%20Platform-orange)
+![Community Driven](https://img.shields.io/badge/Community-Driven-purple)

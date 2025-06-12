@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Search, Filter, Eye, Check, X, Edit, Trash2, MapPin, Users, Clock, DollarSign, Plus, AlertCircle } from 'lucide-react';
+import { Calendar, Search, Filter, Eye, Check, X, Edit, Trash2, MapPin, Users, Clock, DollarSign, Plus, AlertCircle, Globe } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import AddCoordinatesModal from '../components/AddCoordinatesModal';
+import WebScraperModal from '../components/WebScraperModal';
 
 interface Event {
   id: string;
@@ -40,6 +41,7 @@ export default function AdminEvents() {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [showCoordinatesModal, setShowCoordinatesModal] = useState(false);
+  const [showWebScraperModal, setShowWebScraperModal] = useState(false);
 
   // Check if user is admin
   if (!user || user.membershipType !== 'admin') {
@@ -261,20 +263,29 @@ export default function AdminEvents() {
               <p className="text-gray-400">Review and manage all events on the platform</p>
             </div>
           </div>
-          <Link
-            to="/create-event"
-            className="bg-electric-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-electric-600 transition-all duration-200 flex items-center space-x-2"
-          >
-            <Calendar className="h-4 w-4" />
-            <span>Create Event</span>
-          </Link>
-          <button
-            onClick={() => setShowCoordinatesModal(true)}
-            className="bg-blue-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-600 transition-all duration-200 flex items-center space-x-2"
-          >
-            <MapPin className="h-4 w-4" />
-            <span>Bulk Coordinates</span>
-          </button>
+          <div className="flex items-center space-x-3">
+            <Link
+              to="/create-event"
+              className="bg-electric-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-electric-600 transition-all duration-200 flex items-center space-x-2"
+            >
+              <Calendar className="h-4 w-4" />
+              <span>Create Event</span>
+            </Link>
+            <button
+              onClick={() => setShowCoordinatesModal(true)}
+              className="bg-blue-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-600 transition-all duration-200 flex items-center space-x-2"
+            >
+              <MapPin className="h-4 w-4" />
+              <span>Bulk Coordinates</span>
+            </button>
+            <button
+              onClick={() => setShowWebScraperModal(true)}
+              className="bg-purple-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-purple-600 transition-all duration-200 flex items-center space-x-2"
+            >
+              <Globe className="h-4 w-4" />
+              <span>Web Scraper</span>
+            </button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -615,6 +626,20 @@ export default function AdminEvents() {
           </div>
         </div>
       )}
+
+      {/* Add Coordinates Modal */}
+      <AddCoordinatesModal
+        isOpen={showCoordinatesModal}
+        onClose={() => setShowCoordinatesModal(false)}
+        onCoordinatesUpdated={loadEvents}
+      />
+
+      {/* Web Scraper Modal */}
+      <WebScraperModal
+        isOpen={showWebScraperModal}
+        onClose={() => setShowWebScraperModal(false)}
+        onEventsImported={loadEvents}
+      />
     </div>
   );
 }
