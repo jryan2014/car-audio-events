@@ -295,6 +295,23 @@ class WebScraperService {
     // Add import source info to description
     const importNote = `\n\n[Imported from ${scrapedEvent.sourceSite} on ${new Date().toLocaleDateString()}]`;
     
+    // Map scraped category to database category or use default
+    let categoryId = 'b58b621d-65ff-4d1f-ad37-58eaec6df23e'; // Default: Bass Competition
+    
+    if (scrapedEvent.category) {
+      const categoryLower = scrapedEvent.category.toLowerCase();
+      if (categoryLower.includes('sound quality') || categoryLower.includes('sq')) {
+        categoryId = '59ee66d6-df36-4e60-ab48-1302a5e12ae5'; // Sound Quality
+      } else if (categoryLower.includes('championship') || categoryLower.includes('finals')) {
+        categoryId = 'b3acf23a-678b-4c1d-8b59-8a4a48453a5f'; // Championship
+      } else if (categoryLower.includes('local') || categoryLower.includes('show')) {
+        categoryId = '6b7f6dcf-278b-47f5-b1c7-70eaf46f2424'; // Local Show
+      } else if (categoryLower.includes('install')) {
+        categoryId = '2547ed87-00d5-4274-8390-49236376eecb'; // Installation
+      }
+      // Default to Bass Competition for SPL, dB, etc.
+    }
+    
     return {
       title: scrapedEvent.title,
       description: scrapedEvent.description + importNote,
@@ -310,7 +327,9 @@ class WebScraperService {
       ticket_price: scrapedEvent.registrationFee || 0,
       organizer_id: organizerId,
       status: 'draft',
-      approval_status: 'pending'
+      approval_status: 'pending',
+      category: 'Competition', // Legacy category field
+      category_id: categoryId // New category_id field
     };
   }
 
