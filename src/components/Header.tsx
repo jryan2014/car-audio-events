@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, X, User, Calendar, MapPin, Users, LogOut, Settings, Shield, Package, BarChart3, Target, FileText } from 'lucide-react';
+import { Menu, X, User, Calendar, MapPin, Users, LogOut, Settings, Shield, Package, BarChart3, Target, FileText, Building2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Header() {
@@ -125,7 +125,7 @@ export default function Header() {
                             onClick={() => setShowAdminMenu(false)}
                           >
                             <Users className="h-4 w-4" />
-                            <span>User Management</span>
+                            <span>Users</span>
                           </Link>
                           <Link
                             to="/admin/settings"
@@ -133,7 +133,7 @@ export default function Header() {
                             onClick={() => setShowAdminMenu(false)}
                           >
                             <Settings className="h-4 w-4" />
-                            <span>System Settings</span>
+                            <span>Settings</span>
                           </Link>
                           <Link
                             to="/admin/membership"
@@ -141,7 +141,7 @@ export default function Header() {
                             onClick={() => setShowAdminMenu(false)}
                           >
                             <Package className="h-4 w-4" />
-                            <span>Membership Plans</span>
+                            <span>Membership</span>
                           </Link>
                           <Link
                             to="/admin/events"
@@ -149,7 +149,23 @@ export default function Header() {
                             onClick={() => setShowAdminMenu(false)}
                           >
                             <Calendar className="h-4 w-4" />
-                            <span>Event Management</span>
+                            <span>Events</span>
+                          </Link>
+                          <Link
+                            to="/admin/organizations"
+                            className="block px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors flex items-center space-x-2"
+                            onClick={() => setShowAdminMenu(false)}
+                          >
+                            <Building2 className="h-4 w-4" />
+                            <span>Organizations</span>
+                          </Link>
+                          <Link
+                            to="/admin/system-configuration"
+                            className="block px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors flex items-center space-x-2"
+                            onClick={() => setShowAdminMenu(false)}
+                          >
+                            <Settings className="h-4 w-4" />
+                            <span>System Config</span>
                           </Link>
                           <Link
                             to="/admin/analytics"
@@ -166,6 +182,14 @@ export default function Header() {
                           >
                             <FileText className="h-4 w-4" />
                             <span>CMS Pages</span>
+                          </Link>
+                          <Link
+                            to="/admin/ad-management"
+                            className="block px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors flex items-center space-x-2"
+                            onClick={() => setShowAdminMenu(false)}
+                          >
+                            <Target className="h-4 w-4" />
+                            <span>Ads</span>
                           </Link>
                         </div>
                       </div>
@@ -282,7 +306,7 @@ export default function Header() {
                       onClick={() => setIsMenuOpen(false)}
                     >
                       <Users className="h-4 w-4" />
-                      <span>User Management</span>
+                      <span>Users</span>
                     </Link>
                     <Link 
                       to="/admin/settings" 
@@ -290,7 +314,7 @@ export default function Header() {
                       onClick={() => setIsMenuOpen(false)}
                     >
                       <Settings className="h-4 w-4" />
-                      <span>System Settings</span>
+                      <span>Settings</span>
                     </Link>
                     <Link 
                       to="/admin/membership" 
@@ -298,7 +322,7 @@ export default function Header() {
                       onClick={() => setIsMenuOpen(false)}
                     >
                       <Package className="h-4 w-4" />
-                      <span>Membership Plans</span>
+                      <span>Membership</span>
                     </Link>
                     <Link 
                       to="/admin/events" 
@@ -306,11 +330,27 @@ export default function Header() {
                       onClick={() => setIsMenuOpen(false)}
                     >
                       <Calendar className="h-4 w-4" />
-                      <span>Event Management</span>
+                      <span>Events</span>
+                    </Link>
+                    <Link
+                      to="/admin/organizations"
+                      className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium flex items-center space-x-2 ml-4"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <Building2 className="h-4 w-4" />
+                      <span>Organizations</span>
+                    </Link>
+                    <Link
+                      to="/admin/system-configuration"
+                      className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium flex items-center space-x-2 ml-4"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <Settings className="h-4 w-4" />
+                      <span>System Config</span>
                     </Link>
                     <Link
                       to="/admin/analytics"
-                      className="block px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors flex items-center space-x-2"
+                      className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium flex items-center space-x-2 ml-4"
                       onClick={() => setIsMenuOpen(false)}
                     >
                       <BarChart3 className="h-4 w-4" />
@@ -318,11 +358,19 @@ export default function Header() {
                     </Link>
                     <Link
                       to="/admin/cms-pages"
-                      className="block px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors flex items-center space-x-2"
+                      className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium flex items-center space-x-2 ml-4"
                       onClick={() => setIsMenuOpen(false)}
                     >
                       <FileText className="h-4 w-4" />
                       <span>CMS Pages</span>
+                    </Link>
+                    <Link
+                      to="/admin/ad-management"
+                      className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium flex items-center space-x-2 ml-4"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <Target className="h-4 w-4" />
+                      <span>Ads</span>
                     </Link>
                   </div>
                 </>

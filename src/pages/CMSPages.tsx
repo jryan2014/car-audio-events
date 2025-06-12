@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Edit, Trash2, Eye, FileText, Globe, Search } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+import RichTextEditor from '../components/RichTextEditor';
 import AIWritingAssistant from '../components/AIWritingAssistant';
 
 interface CMSPage {
@@ -22,7 +21,7 @@ interface CMSPage {
   created_at: string;
   updated_at: string;
   // Navigation placement fields
-  navigation_placement: 'none' | 'top_nav' | 'sub_nav' | 'footer';
+  navigation_placement: 'none' | 'top_nav' | 'sub_nav' | 'footer' | 'main';
   parent_nav_item?: string;
   footer_section?: 'company' | 'quick_links' | 'legal' | 'support' | 'social';
   nav_order?: number;
@@ -40,7 +39,7 @@ interface PageFormData {
   status: 'draft' | 'published' | 'archived';
   is_featured: boolean;
   // Navigation placement fields
-  navigation_placement: 'none' | 'top_nav' | 'sub_nav' | 'footer';
+  navigation_placement: 'none' | 'top_nav' | 'sub_nav' | 'footer' | 'main';
   parent_nav_item?: string;
   footer_section?: 'company' | 'quick_links' | 'legal' | 'support' | 'social';
   nav_order?: number;
@@ -56,6 +55,7 @@ export default function CMSPages() {
   const [editingPage, setEditingPage] = useState<CMSPage | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const formRef = useRef<HTMLDivElement>(null);
   const [formData, setFormData] = useState<PageFormData>({
     title: '',
     slug: '',
@@ -69,27 +69,6 @@ export default function CMSPages() {
     show_in_sitemap: true
   });
 
-  // Quill editor configuration
-  const quillModules = {
-    toolbar: [
-      [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
-      ['bold', 'italic', 'underline', 'strike'],
-      [{ 'color': [] }, { 'background': [] }],
-      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-      [{ 'indent': '-1'}, { 'indent': '+1' }],
-      [{ 'align': [] }],
-      ['link', 'image', 'video'],
-      ['blockquote', 'code-block'],
-      ['clean']
-    ],
-  };
-
-  const quillFormats = [
-    'header', 'bold', 'italic', 'underline', 'strike',
-    'color', 'background', 'list', 'bullet', 'indent',
-    'align', 'link', 'image', 'video', 'blockquote', 'code-block'
-  ];
-
   // Check if user is admin
   if (!user || user.membershipType !== 'admin') {
     return <Navigate to="/" replace />;
@@ -97,111 +76,6 @@ export default function CMSPages() {
 
   useEffect(() => {
     loadPages();
-  }, []);
-
-  useEffect(() => {
-    // Inject custom CSS for Quill editor dark theme
-    const style = document.createElement('style');
-    style.textContent = `
-      .ql-toolbar {
-        background: rgba(55, 65, 81, 0.5) !important;
-        border: 1px solid rgb(75, 85, 99) !important;
-        border-bottom: none !important;
-        border-radius: 0.5rem 0.5rem 0 0 !important;
-      }
-      
-      .ql-container {
-        background: rgba(55, 65, 81, 0.5) !important;
-        border: 1px solid rgb(75, 85, 99) !important;
-        border-top: none !important;
-        border-radius: 0 0 0.5rem 0.5rem !important;
-        color: white !important;
-        min-height: 300px;
-      }
-      
-      .ql-editor {
-        color: white !important;
-        font-size: 14px;
-        line-height: 1.6;
-      }
-      
-      .ql-editor.ql-blank::before {
-        color: rgb(156, 163, 175) !important;
-        font-style: italic;
-      }
-      
-      .ql-toolbar .ql-stroke {
-        stroke: rgb(156, 163, 175) !important;
-      }
-      
-      .ql-toolbar .ql-fill {
-        fill: rgb(156, 163, 175) !important;
-      }
-      
-      .ql-toolbar .ql-picker-label {
-        color: rgb(156, 163, 175) !important;
-      }
-      
-      .ql-toolbar .ql-picker-options {
-        background: rgb(55, 65, 81) !important;
-        border: 1px solid rgb(75, 85, 99) !important;
-      }
-      
-      .ql-toolbar .ql-picker-item {
-        color: rgb(156, 163, 175) !important;
-      }
-      
-      .ql-toolbar .ql-picker-item:hover {
-        background: rgba(59, 130, 246, 0.1) !important;
-        color: rgb(59, 130, 246) !important;
-      }
-      
-      .ql-toolbar button:hover {
-        color: rgb(59, 130, 246) !important;
-      }
-      
-      .ql-toolbar button:hover .ql-stroke {
-        stroke: rgb(59, 130, 246) !important;
-      }
-      
-      .ql-toolbar button:hover .ql-fill {
-        fill: rgb(59, 130, 246) !important;
-      }
-      
-      .ql-toolbar button.ql-active {
-        color: rgb(59, 130, 246) !important;
-      }
-      
-      .ql-toolbar button.ql-active .ql-stroke {
-        stroke: rgb(59, 130, 246) !important;
-      }
-      
-      .ql-toolbar button.ql-active .ql-fill {
-        fill: rgb(59, 130, 246) !important;
-      }
-      
-      .ql-snow .ql-tooltip {
-        background: rgb(55, 65, 81) !important;
-        border: 1px solid rgb(75, 85, 99) !important;
-        color: white !important;
-      }
-      
-      .ql-snow .ql-tooltip input {
-        background: rgb(75, 85, 99) !important;
-        border: 1px solid rgb(107, 114, 128) !important;
-        color: white !important;
-      }
-      
-      .ql-snow .ql-tooltip a {
-        color: rgb(59, 130, 246) !important;
-      }
-    `;
-    
-    document.head.appendChild(style);
-    
-    return () => {
-      document.head.removeChild(style);
-    };
   }, []);
 
   const loadPages = async () => {
@@ -268,7 +142,26 @@ export default function CMSPages() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('🔄 Starting page save...', { editingPage: !!editingPage, user: user?.email, userType: user?.membershipType });
+    
+    // Check if user is authenticated and admin
+    if (!user || user.membershipType !== 'admin') {
+      alert('Access denied. Only administrators can save pages.');
+      return;
+    }
+    
     try {
+      // Get current session to ensure we're authenticated
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        console.error('❌ Session error:', sessionError);
+        alert('Authentication expired. Please log in again.');
+        return;
+      }
+      
+      console.log('✅ Authenticated session found:', session.user.email);
+      
       // First, try to detect which fields are available in the database
       let pageData: any = {
         title: formData.title,
@@ -279,9 +172,11 @@ export default function CMSPages() {
         meta_keywords: formData.meta_keywords,
         status: formData.status,
         is_featured: formData.is_featured,
-        author_id: user.id,
+        author_id: session.user.id, // Use the authenticated user's ID
         published_at: formData.status === 'published' ? new Date().toISOString() : null
       };
+
+      console.log('📝 Basic page data prepared:', pageData);
 
       // Try to add navigation fields - if they fail, we'll catch and retry without them
       try {
@@ -295,23 +190,41 @@ export default function CMSPages() {
           show_in_sitemap: formData.show_in_sitemap
         };
 
+        console.log('📝 Enhanced page data with navigation:', pageData);
+
         if (editingPage) {
-          const { error } = await supabase
+          console.log('✏️ Updating existing page:', editingPage.id);
+          const { data, error } = await supabase
             .from('cms_pages')
             .update(pageData)
-            .eq('id', editingPage.id);
+            .eq('id', editingPage.id)
+            .select();
           
-          if (error) throw error;
+          if (error) {
+            console.error('❌ Update error:', error);
+            throw error;
+          }
+          console.log('✅ Page updated successfully:', data);
         } else {
-          const { error } = await supabase
+          console.log('➕ Creating new page');
+          const { data, error } = await supabase
             .from('cms_pages')
-            .insert([pageData]);
+            .insert([pageData])
+            .select();
           
-          if (error) throw error;
+          if (error) {
+            console.error('❌ Insert error:', error);
+            throw error;
+          }
+          console.log('✅ Page created successfully:', data);
         }
+        
+        // Show success message
+        alert(`Page ${editingPage ? 'updated' : 'created'} successfully!`);
+        
       } catch (navError: any) {
         // If navigation fields failed, try again with just basic fields
-        console.warn('Navigation fields not available, saving basic page data only:', navError);
+        console.warn('⚠️ Navigation fields not available, saving basic page data only:', navError);
         
         const basicPageData = {
           title: formData.title,
@@ -322,29 +235,45 @@ export default function CMSPages() {
           meta_keywords: formData.meta_keywords,
           status: formData.status,
           is_featured: formData.is_featured,
-          author_id: user.id,
+          author_id: session.user.id, // Use the authenticated user's ID
           published_at: formData.status === 'published' ? new Date().toISOString() : null
         };
 
+        console.log('📝 Fallback to basic page data:', basicPageData);
+
         if (editingPage) {
-          const { error } = await supabase
+          console.log('✏️ Updating with basic data:', editingPage.id);
+          const { data, error } = await supabase
             .from('cms_pages')
             .update(basicPageData)
-            .eq('id', editingPage.id);
+            .eq('id', editingPage.id)
+            .select();
           
-          if (error) throw error;
+          if (error) {
+            console.error('❌ Basic update error:', error);
+            throw error;
+          }
+          console.log('✅ Page updated with basic data:', data);
         } else {
-          const { error } = await supabase
+          console.log('➕ Creating with basic data');
+          const { data, error } = await supabase
             .from('cms_pages')
-            .insert([basicPageData]);
+            .insert([basicPageData])
+            .select();
           
-          if (error) throw error;
+          if (error) {
+            console.error('❌ Basic insert error:', error);
+            throw error;
+          }
+          console.log('✅ Page created with basic data:', data);
         }
 
         // Show a warning about limited functionality
-        alert('Page saved successfully! Note: Navigation features require database migration. See CMS_NAVIGATION_SETUP.md for instructions.');
+        alert(`Page ${editingPage ? 'updated' : 'created'} successfully! Note: Navigation features require database migration. See CMS_NAVIGATION_SETUP.md for instructions.`);
       }
 
+      console.log('🧹 Cleaning up form...');
+      
       // Reset form and reload data
       setFormData({
         title: '',
@@ -360,11 +289,14 @@ export default function CMSPages() {
       });
       setShowCreateForm(false);
       setEditingPage(null);
-      loadPages();
       
-    } catch (error) {
-      console.error('Error saving page:', error);
-      alert('Failed to save page. Please try again.');
+      console.log('🔄 Reloading pages...');
+      await loadPages();
+      console.log('✅ Save process completed successfully!');
+      
+    } catch (error: any) {
+      console.error('❌ Error saving page:', error);
+      alert(`Failed to save page: ${error.message || 'Unknown error'}. Please try again.`);
     }
   };
 
@@ -387,6 +319,17 @@ export default function CMSPages() {
     });
     setEditingPage(page);
     setShowCreateForm(true);
+    
+    // Scroll to the form after a short delay to allow it to render
+    setTimeout(() => {
+      if (formRef.current) {
+        formRef.current.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start',
+          inline: 'nearest'
+        });
+      }
+    }, 100);
   };
 
   const handleDelete = async (pageId: string) => {
@@ -454,16 +397,20 @@ export default function CMSPages() {
   const getNavigationPlacementDisplay = (page: CMSPage) => {
     const placement = page.navigation_placement || 'none';
     switch (placement) {
+      case 'main':
       case 'top_nav':
-        return { text: 'Top Navigation', color: 'text-blue-400 bg-blue-400/10' };
+        return { text: 'Main Navigation', color: 'text-blue-400 bg-blue-400/10' };
       case 'sub_nav':
         return { 
           text: `Sub Nav (${page.parent_nav_item || 'No Parent'})`, 
           color: 'text-purple-400 bg-purple-400/10' 
         };
       case 'footer':
+        const sectionLabel = page.footer_section ? 
+          page.footer_section.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 
+          'General';
         return { 
-          text: `Footer (${page.footer_section || 'No Section'})`, 
+          text: `Footer (${sectionLabel})`, 
           color: 'text-orange-400 bg-orange-400/10' 
         };
       case 'none':
@@ -536,9 +483,93 @@ export default function CMSPages() {
           </select>
         </div>
 
-        {/* Create/Edit Form */}
+        {/* Pages List */}
+        <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 mb-8">
+          <h2 className="text-xl font-bold text-white mb-6">Website Pages</h2>
+          
+          {filteredPages.length === 0 ? (
+            <div className="text-center py-12">
+              <FileText className="h-16 w-16 text-gray-600 mx-auto mb-4" />
+              <p className="text-gray-400 text-lg mb-2">No pages found</p>
+              <p className="text-gray-500">Create your first page to get started</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredPages.map((page) => (
+                <div key={page.id} className="bg-gray-700/30 rounded-lg p-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <h3 className="text-white font-medium">{page.title}</h3>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(page.status)}`}>
+                          {page.status.charAt(0).toUpperCase() + page.status.slice(1)}
+                        </span>
+                        {page.is_featured && (
+                          <span className="px-2 py-1 rounded-full text-xs font-medium text-electric-400 bg-electric-400/10">
+                            Featured
+                          </span>
+                        )}
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getNavigationPlacementDisplay(page).color}`}>
+                          {getNavigationPlacementDisplay(page).text}
+                        </span>
+                      </div>
+                      
+                      <p className="text-gray-400 text-sm mb-3">/{page.slug}</p>
+                      
+                      <div className="flex items-center space-x-4 text-xs text-gray-500">
+                        <span>Created: {new Date(page.created_at).toLocaleDateString()}</span>
+                        <span>Updated: {new Date(page.updated_at).toLocaleDateString()}</span>
+                        {page.published_at && (
+                          <span>Published: {new Date(page.published_at).toLocaleDateString()}</span>
+                        )}
+                        {page.nav_order && (
+                          <span>Order: {page.nav_order}</span>
+                        )}
+                        {page.show_in_sitemap && (
+                          <span className="text-green-400">✓ Sitemap</span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2 ml-4">
+                      {page.status === 'published' && (
+                        <a
+                          href={`/pages/${page.slug}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors"
+                          title="View Page"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </a>
+                      )}
+                      
+                      <button
+                        onClick={() => handleEdit(page)}
+                        className="p-2 bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition-colors"
+                        title="Edit Page"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                      
+                      <button
+                        onClick={() => handleDelete(page.id)}
+                        className="p-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors"
+                        title="Delete Page"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Create/Edit Form - Now positioned after the pages list */}
         {showCreateForm && (
-          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 mb-8">
+          <div ref={formRef} className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 mb-8">
             <h2 className="text-xl font-bold text-white mb-6">
               {editingPage ? 'Edit Page' : 'Create New Page'}
             </h2>
@@ -623,6 +654,7 @@ export default function CMSPages() {
                       className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
                     >
                       <option value="none">None - Standalone Page</option>
+                      <option value="main">Main Navigation</option>
                       <option value="top_nav">Top Navigation</option>
                       <option value="sub_nav">Sub Navigation</option>
                       <option value="footer">Footer</option>
@@ -637,7 +669,7 @@ export default function CMSPages() {
                     <div>
                       <label className="block text-gray-400 text-sm mb-2">Parent Navigation Item</label>
                       <select
-                        value={formData.parent_nav_item}
+                        value={formData.parent_nav_item || ''}
                         onChange={(e) => setFormData(prev => ({ ...prev, parent_nav_item: e.target.value }))}
                         className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
                       >
@@ -657,15 +689,16 @@ export default function CMSPages() {
                     <div>
                       <label className="block text-gray-400 text-sm mb-2">Footer Section</label>
                       <select
-                        value={formData.footer_section}
+                        value={formData.footer_section || ''}
                         onChange={(e) => setFormData(prev => ({ ...prev, footer_section: e.target.value as any }))}
                         className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
                       >
-                        <option value="company">Company</option>
+                        <option value="">Select Footer Section</option>
+                        <option value="company">Company Info</option>
                         <option value="quick_links">Quick Links</option>
                         <option value="legal">Legal</option>
                         <option value="support">Support</option>
-                        <option value="social">Social</option>
+                        <option value="social">Social Media</option>
                       </select>
                       <p className="text-xs text-gray-500 mt-1">
                         Choose which footer section this page will appear in
@@ -673,19 +706,20 @@ export default function CMSPages() {
                     </div>
                   )}
 
+                  {/* Navigation title and order for all placements except 'none' */}
                   {formData.navigation_placement !== 'none' && (
                     <>
                       <div>
-                        <label className="block text-gray-400 text-sm mb-2">Navigation Title</label>
+                        <label className="block text-gray-400 text-sm mb-2">Navigation Title (optional)</label>
                         <input
                           type="text"
-                          value={formData.nav_title || formData.title}
+                          value={formData.nav_title || ''}
                           onChange={(e) => setFormData(prev => ({ ...prev, nav_title: e.target.value }))}
                           className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                          placeholder="Title to show in navigation (defaults to page title)"
+                          placeholder="Leave blank to use page title"
                         />
                         <p className="text-xs text-gray-500 mt-1">
-                          Leave blank to use the page title
+                          Custom title for navigation menus (defaults to page title)
                         </p>
                       </div>
 
@@ -694,18 +728,19 @@ export default function CMSPages() {
                         <input
                           type="number"
                           value={formData.nav_order || ''}
-                          onChange={(e) => setFormData(prev => ({ ...prev, nav_order: e.target.value ? Number(e.target.value) : undefined }))}
+                          onChange={(e) => setFormData(prev => ({ ...prev, nav_order: e.target.value ? parseInt(e.target.value) : undefined }))}
                           className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                          placeholder="1, 2, 3... (lower numbers appear first)"
+                          placeholder="1, 2, 3..."
                           min="1"
                         />
                         <p className="text-xs text-gray-500 mt-1">
-                          Order in which this page appears in the navigation (1 = first)
+                          Order in which this item appears in navigation (lower numbers first)
                         </p>
                       </div>
                     </>
                   )}
 
+                  {/* Sitemap inclusion */}
                   <div className="flex items-center">
                     <label className="flex items-center space-x-2">
                       <input
@@ -714,10 +749,10 @@ export default function CMSPages() {
                         onChange={(e) => setFormData(prev => ({ ...prev, show_in_sitemap: e.target.checked }))}
                         className="rounded border-gray-600 text-electric-500 focus:ring-electric-500"
                       />
-                      <span className="text-gray-400">Show in Sitemap</span>
+                      <span className="text-gray-400">Include in Sitemap</span>
                     </label>
                     <p className="text-xs text-gray-500 ml-6">
-                      Include this page in XML sitemap for search engines
+                      Whether this page should be included in your website's sitemap for search engines
                     </p>
                   </div>
                 </div>
@@ -726,18 +761,10 @@ export default function CMSPages() {
               <div>
                 <label className="block text-gray-400 text-sm mb-2">Page Content *</label>
                 <div className="quill-wrapper">
-                  <ReactQuill
+                  <RichTextEditor
                     value={formData.content}
-                    onChange={(value) => setFormData(prev => ({ ...prev, content: value }))}
-                    modules={quillModules}
-                    formats={quillFormats}
+                    onChange={(value: string) => setFormData(prev => ({ ...prev, content: value }))}
                     placeholder="Start writing your page content here... You can use the toolbar above to format text, add links, images, and more."
-                    theme="snow"
-                    style={{
-                      backgroundColor: 'rgba(55, 65, 81, 0.5)',
-                      borderRadius: '0.5rem',
-                      border: '1px solid rgb(75, 85, 99)'
-                    }}
                   />
                 </div>
                 <p className="text-xs text-gray-500 mt-2">
@@ -838,90 +865,6 @@ export default function CMSPages() {
             </form>
           </div>
         )}
-
-        {/* Pages List */}
-        <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-          <h2 className="text-xl font-bold text-white mb-6">Website Pages</h2>
-          
-          {filteredPages.length === 0 ? (
-            <div className="text-center py-12">
-              <FileText className="h-16 w-16 text-gray-600 mx-auto mb-4" />
-              <p className="text-gray-400 text-lg mb-2">No pages found</p>
-              <p className="text-gray-500">Create your first page to get started</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredPages.map((page) => (
-                <div key={page.id} className="bg-gray-700/30 rounded-lg p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="text-white font-medium">{page.title}</h3>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(page.status)}`}>
-                          {page.status.charAt(0).toUpperCase() + page.status.slice(1)}
-                        </span>
-                        {page.is_featured && (
-                          <span className="px-2 py-1 rounded-full text-xs font-medium text-electric-400 bg-electric-400/10">
-                            Featured
-                          </span>
-                        )}
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getNavigationPlacementDisplay(page).color}`}>
-                          {getNavigationPlacementDisplay(page).text}
-                        </span>
-                      </div>
-                      
-                      <p className="text-gray-400 text-sm mb-3">/{page.slug}</p>
-                      
-                      <div className="flex items-center space-x-4 text-xs text-gray-500">
-                        <span>Created: {new Date(page.created_at).toLocaleDateString()}</span>
-                        <span>Updated: {new Date(page.updated_at).toLocaleDateString()}</span>
-                        {page.published_at && (
-                          <span>Published: {new Date(page.published_at).toLocaleDateString()}</span>
-                        )}
-                        {page.nav_order && (
-                          <span>Order: {page.nav_order}</span>
-                        )}
-                        {page.show_in_sitemap && (
-                          <span className="text-green-400">✓ Sitemap</span>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center space-x-2 ml-4">
-                      {page.status === 'published' && (
-                        <a
-                          href={`/pages/${page.slug}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-2 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors"
-                          title="View Page"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </a>
-                      )}
-                      
-                      <button
-                        onClick={() => handleEdit(page)}
-                        className="p-2 bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition-colors"
-                        title="Edit Page"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      
-                      <button
-                        onClick={() => handleDelete(page.id)}
-                        className="p-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors"
-                        title="Delete Page"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
 
       {/* AI Writing Assistant - Only show when creating/editing */}

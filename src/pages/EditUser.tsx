@@ -85,10 +85,7 @@ export default function EditUser() {
         // Try to fetch with new fields first
         const { data, error: fetchError } = await supabase
           .from('users')
-          .select(`
-            *,
-            teams(name)
-          `)
+          .select('*')
           .eq('id', userId)
           .single();
 

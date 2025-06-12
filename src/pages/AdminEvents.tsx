@@ -3,6 +3,7 @@ import { Calendar, Search, Filter, Eye, Check, X, Edit, Trash2, MapPin, Users, C
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import AddCoordinatesModal from '../components/AddCoordinatesModal';
 
 interface Event {
   id: string;
@@ -38,6 +39,7 @@ export default function AdminEvents() {
   const [showEventModal, setShowEventModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [showCoordinatesModal, setShowCoordinatesModal] = useState(false);
 
   // Check if user is admin
   if (!user || user.membershipType !== 'admin') {
@@ -77,11 +79,11 @@ export default function AdminEvents() {
         city: event.city,
         state: event.state,
         country: event.country,
-        registration_fee: event.registration_fee,
+        registration_fee: event.ticket_price || event.registration_fee || 0,
         max_participants: event.max_participants,
         current_participants: event.current_participants || 0,
         status: event.status,
-        approval_status: event.approval_status,
+        approval_status: event.approval_status || 'pending',
         organizer_name: event.users?.name || 'Unknown',
         organizer_email: event.users?.email || '',
         category_name: event.event_categories?.name || 'Uncategorized',
@@ -114,15 +116,29 @@ export default function AdminEvents() {
 
   const handleApproveEvent = async (eventId: string) => {
     try {
-      const { error } = await supabase.functions.invoke('approve-event', {
-        body: { eventId }
-      });
+      console.log('🚀 Attempting to approve event:', eventId);
+      
+      const { data, error } = await supabase
+        .from('events')
+        .update({ 
+          approval_status: 'approved',
+          status: 'published'
+        })
+        .eq('id', eventId)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error approving event:', error);
+        alert(`Error approving event: ${error.message}`);
+        return;
+      }
 
+      console.log('✅ Event approved successfully:', data);
+      alert('Event approved and published successfully!');
       await loadEvents();
     } catch (error) {
-      console.error('Error approving event:', error);
+      console.error('💥 Exception approving event:', error);
+      alert(`Failed to approve event: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -130,21 +146,32 @@ export default function AdminEvents() {
     if (!selectedEvent || !rejectionReason.trim()) return;
 
     try {
-      const { error } = await supabase.functions.invoke('reject-event', {
-        body: { 
-          eventId: selectedEvent.id,
-          reason: rejectionReason
-        }
-      });
+      console.log('🚀 Attempting to reject event:', selectedEvent.id);
+      
+      const { data, error } = await supabase
+        .from('events')
+        .update({ 
+          approval_status: 'rejected',
+          rejection_reason: rejectionReason
+        })
+        .eq('id', selectedEvent.id)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error rejecting event:', error);
+        alert(`Error rejecting event: ${error.message}`);
+        return;
+      }
 
+      console.log('✅ Event rejected successfully:', data);
+      alert('Event rejected successfully!');
       await loadEvents();
       setShowRejectModal(false);
       setRejectionReason('');
       setSelectedEvent(null);
     } catch (error) {
-      console.error('Error rejecting event:', error);
+      console.error('💥 Exception rejecting event:', error);
+      alert(`Failed to reject event: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -185,6 +212,9 @@ export default function AdminEvents() {
   };
 
   const getApprovalBadge = (approval: string) => {
+    // Handle null/undefined approval status
+    const safeApproval = approval || 'pending';
+    
     const styles = {
       pending: 'bg-yellow-500/20 text-yellow-400',
       approved: 'bg-green-500/20 text-green-400',
@@ -197,12 +227,12 @@ export default function AdminEvents() {
       rejected: X
     };
 
-    const Icon = icons[approval as keyof typeof icons];
+    const Icon = icons[safeApproval as keyof typeof icons] || Clock;
 
     return (
-      <span className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${styles[approval as keyof typeof styles]}`}>
+      <span className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${styles[safeApproval as keyof typeof styles] || styles.pending}`}>
         <Icon className="h-3 w-3" />
-        <span>{approval.toUpperCase()}</span>
+        <span>{safeApproval.toUpperCase()}</span>
       </span>
     );
   };
@@ -238,6 +268,13 @@ export default function AdminEvents() {
             <Calendar className="h-4 w-4" />
             <span>Create Event</span>
           </Link>
+          <button
+            onClick={() => setShowCoordinatesModal(true)}
+            className="bg-blue-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-600 transition-all duration-200 flex items-center space-x-2"
+          >
+            <MapPin className="h-4 w-4" />
+            <span>Bulk Coordinates</span>
+          </button>
         </div>
 
         {/* Filters */}

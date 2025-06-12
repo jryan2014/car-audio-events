@@ -49,11 +49,6 @@ export default function GoogleMap() {
   const infoWindowsRef = useRef<google.maps.InfoWindow[]>([]);
   const mapHeight = window.innerWidth <= 768 ? '400px' : '500px'; // Shorter on mobile
 
-  // Check if Supabase is properly configured
-  const SUPABASE_FALLBACK = !import.meta.env.VITE_SUPABASE_URL || 
-                           !import.meta.env.VITE_SUPABASE_ANON_KEY ||
-                           import.meta.env.VITE_SUPABASE_URL === 'your_supabase_project_url';
-
   // Check if Google Maps API key is configured
   const GOOGLE_MAPS_CONFIGURED = hasValidApiKey();
 
@@ -74,8 +69,8 @@ export default function GoogleMap() {
     // If Google Maps is not configured, show fallback immediately
     if (!GOOGLE_MAPS_CONFIGURED) {
       setLoading(false);
-      setEvents(getMockEvents());
-      setError('Google Maps API key not configured - using demo data');
+      setEvents([]);
+      setError('Google Maps API key not configured');
       return;
     }
 
@@ -88,7 +83,7 @@ export default function GoogleMap() {
         console.error('Failed to load Google Maps:', error);
         setError(`Google Maps failed to load: ${error instanceof Error ? error.message : 'Unknown error'}`);
         setLoading(false);
-        setEvents(getMockEvents());
+        setEvents([]);
       }
     };
 
@@ -179,127 +174,78 @@ export default function GoogleMap() {
       console.error('Error initializing map:', err);
       setError('Failed to initialize map: ' + (err instanceof Error ? err.message : 'Unknown error'));
       setLoading(false);
-      setEvents(getMockEvents());
+      setEvents([]);
     }
   }, []);
 
   const loadMapEvents = async (mapInstance: google.maps.Map) => {
     try {
       setLoading(true);
-      setError(null);
       
-      // Check if we have valid Supabase configuration
-      if (SUPABASE_FALLBACK) {
-        const mockEvents = getMockEvents();
-        setEvents(mockEvents);
-        addMarkersToMap(mapInstance, mockEvents);
-        setError('Using demo data - check Supabase configuration in .env file');
-        setLoading(false);
+      // Load events from remote database
+      const { data, error } = await supabase
+        .from('events')
+        .select(`
+          id,
+          title,
+          start_date,
+          venue_name,
+          city,
+          state,
+          latitude,
+          longitude,
+          current_participants,
+          max_participants,
+          event_categories!inner(name, color, icon)
+        `)
+        .eq('status', 'published')
+        .eq('approval_status', 'approved')
+        .not('latitude', 'is', null)
+        .not('longitude', 'is', null)
+        .gte('start_date', new Date().toISOString());
+
+      if (error) {
+        console.error('Error loading events:', error);
+        setError('Unable to load events at this time');
+        setEvents([]);
         return;
       }
 
-      // Try direct Supabase query first (more reliable than Edge Functions)
-      try {
-        console.log('Fetching events for map...');
-        
-        // Use a direct fetch with cache busting to ensure we get the latest data
-        const timestamp = new Date().getTime();
-        const { data: eventsData, error: dbError } = await supabase
-          .from('events')
-          .select(`
-            id,
-            title,
-            start_date,
-            venue_name,
-            city,
-            state,
-            latitude,
-            longitude,
-            pin_color,
-            current_participants,
-            max_participants,
-            event_categories!inner(name, color, icon),
-            organizations(name, logo_url)
-          `)
-          .eq('status', 'published')
-          .eq('is_public', true)
-          .order('start_date', { ascending: true });
+      if (!data || data.length === 0) {
+        console.log('No events found with location data');
+        setEvents([]);
+        return;
+      }
 
-        if (dbError) {
-          throw dbError;
-        }
-
-        console.log('Raw events data:', eventsData);
-
-        // Transform the data to match our interface
-        // Filter out events with missing or invalid coordinates
-        const validEvents = (eventsData || []).filter(event => 
-          event && 
-          typeof event.latitude === 'number' && 
-          typeof event.longitude === 'number' && 
-          !isNaN(event.latitude) && 
-          !isNaN(event.longitude) && 
-          event.latitude !== 0 && 
-          event.longitude !== 0
-        );
-        
-        console.log(`Found ${eventsData?.length || 0} total events, ${validEvents.length} with valid coordinates`);
-        console.log('Valid events with coordinates:', validEvents.map(e => ({
-          id: e.id,
-          title: e.title,
-          lat: e.latitude,
-          lng: e.longitude
-        })));
-        
-        const transformedEvents: MapEvent[] = validEvents.map(event => ({
+      // Format events for map display
+      const mapEvents: MapEvent[] = data.map(event => {
+        const category = event.event_categories as any;
+        return {
           id: event.id,
           title: event.title,
-          category_name: event.event_categories?.name || 'Event',
-          category_color: event.event_categories?.color || '#0ea5e9',
-          category_icon: event.event_categories?.icon || 'calendar',
+          category_name: category?.name || 'Event',
+          category_color: category?.color || '#3b82f6',
+          category_icon: category?.icon || 'calendar',
           start_date: event.start_date,
-          venue_name: event.venue_name,
+          venue_name: event.venue_name || '',
           city: event.city,
           state: event.state,
           latitude: event.latitude,
           longitude: event.longitude,
-          pin_color: event.pin_color || '#0ea5e9',
-          organization_name: event.organizations?.name,
-          organization_logo: event.organizations?.logo_url,
+          pin_color: category?.color || '#3b82f6',
           participant_count: event.current_participants || 0,
           max_participants: event.max_participants
-        }));
+        };
+      });
 
-        console.log('Map events loaded:', transformedEvents.length, transformedEvents);
+      setEvents(mapEvents);
+      addMarkersToMap(mapInstance, mapEvents);
 
-        if (transformedEvents.length === 0) {
-          console.warn('No events with valid coordinates found, using mock data');
-          const mockEvents = getMockEvents();
-          setEvents(mockEvents);
-          addMarkersToMap(mapInstance, mockEvents);
-          setError('No events with valid coordinates found. Using demo data.');
-        } else {
-          setEvents(transformedEvents);
-          addMarkersToMap(mapInstance, transformedEvents);
-        }
-        
-        setLoading(false);
-      } catch (dbError) {
-        console.error('Database query failed:', dbError);
-        // Use mock data as fallback
-        const mockEvents = getMockEvents();
-        setEvents(mockEvents);
-        addMarkersToMap(mapInstance, mockEvents);
-        setError('Using demo data - database query failed');
-        setLoading(false);
-      }
     } catch (error) {
-      console.error('Failed to load event data:', error);
-      // Always fallback to mock data
-      const mockEvents = getMockEvents();
-      setEvents(mockEvents);
-      addMarkersToMap(mapInstance, mockEvents);
-      setError('Failed to load event data. Showing demo events.');
+      console.error('Error in loadMapEvents:', error);
+      setError('Failed to load event data');
+      setEvents([]);
+    } finally {
       setLoading(false);
     }
   };
@@ -573,96 +519,10 @@ export default function GoogleMap() {
     `;
   };
 
-  const getMockEvents = (): MapEvent[] => {
-    return [
-      {
-        id: '1',
-        title: "IASCA World Finals 2025",
-        category_name: "Championship",
-        category_color: "#ef4444",
-        category_icon: "trophy",
-        start_date: "2025-03-15T10:00:00Z",
-        venue_name: "Orange County Convention Center",
-        city: "Orlando",
-        state: "FL",
-        latitude: 28.5383,
-        longitude: -81.3792,
-        pin_color: "#ef4444",
-        organization_name: "IASCA International",
-        participant_count: 150,
-        max_participants: 200
-      },
-      {
-        id: '2',
-        title: "dB Drag National Event",
-        category_name: "SPL Competition",
-        category_color: "#f97316",
-        category_icon: "volume-2",
-        start_date: "2025-04-22T09:00:00Z",
-        venue_name: "Phoenix Raceway",
-        city: "Phoenix",
-        state: "AZ",
-        latitude: 33.4484,
-        longitude: -112.0740,
-        pin_color: "#f97316",
-        participant_count: 89,
-        max_participants: 150
-      },
-      {
-        id: '3',
-        title: "MECA Spring Championship",
-        category_name: "Sound Quality",
-        category_color: "#8b5cf6",
-        category_icon: "music",
-        start_date: "2025-05-10T08:00:00Z",
-        venue_name: "Georgia World Congress Center",
-        city: "Atlanta",
-        state: "GA",
-        latitude: 33.7490,
-        longitude: -84.3880,
-        pin_color: "#8b5cf6",
-        participant_count: 67,
-        max_participants: 100
-      },
-      {
-        id: '4',
-        title: "West Coast Bass Battle",
-        category_name: "SPL Competition",
-        category_color: "#f97316",
-        category_icon: "volume-2",
-        start_date: "2025-06-05T10:00:00Z",
-        venue_name: "Los Angeles Convention Center",
-        city: "Los Angeles",
-        state: "CA",
-        latitude: 34.0522,
-        longitude: -118.2437,
-        pin_color: "#f97316",
-        participant_count: 45,
-        max_participants: 80
-      },
-      {
-        id: '5',
-        title: "Chicago Sound Quality Showdown",
-        category_name: "Sound Quality",
-        category_color: "#8b5cf6",
-        category_icon: "music",
-        start_date: "2025-07-12T09:00:00Z",
-        venue_name: "McCormick Place",
-        city: "Chicago",
-        state: "IL",
-        latitude: 41.8781,
-        longitude: -87.6298,
-        pin_color: "#8b5cf6",
-        participant_count: 78,
-        max_participants: 120
-      }
-    ];
-  };
-
   // If Google Maps is not configured, show configuration message
   if (!GOOGLE_MAPS_CONFIGURED) {
     return (
-      <div className="w-full h-full relative bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center\" style={{ minHeight: '500px' }}>
+      <div className="w-full h-full relative bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center" style={{ minHeight: '500px' }}>
         <div className="text-center p-8 max-w-md">
           <Key className="h-16 w-16 text-yellow-500 mx-auto mb-6" />
           <h3 className="text-2xl font-bold text-white mb-4">Google Maps Setup Required</h3>
@@ -680,7 +540,7 @@ export default function GoogleMap() {
             </ol>
           </div>
           <p className="text-yellow-400 text-sm">
-            Showing demo data until Google Maps is configured
+            Map will display real events once configured
           </p>
         </div>
       </div>
@@ -740,11 +600,6 @@ export default function GoogleMap() {
               Loading...
             </div>
           )}
-          {SUPABASE_FALLBACK && (
-            <div className="text-yellow-600 text-xs mt-1">
-              Demo mode
-            </div>
-          )}
         </div>
       )}
 
@@ -752,10 +607,10 @@ export default function GoogleMap() {
       {isLoaded && (
         <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm rounded-xl p-3 border border-gray-200 shadow-2xl z-10">
           <div className="text-gray-800 font-bold text-xs sm:text-sm mb-1">
-            {SUPABASE_FALLBACK ? 'Demo Events' : 'Active Events'}
+            Active Events
           </div>
           <div className="text-electric-500 text-2xl sm:text-3xl font-black">{events.length}</div>
-          <div className="text-gray-600 text-xs">{SUPABASE_FALLBACK ? 'Samples' : 'Worldwide'}</div>
+          <div className="text-gray-600 text-xs">Worldwide</div>
         </div>
       )}
       

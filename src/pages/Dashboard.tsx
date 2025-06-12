@@ -88,58 +88,36 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (user) {
-      loadDashboardData();
+      loadUpcomingEvents();
+      loadUserStats();
     }
   }, [user]);
 
-  const loadDashboardData = async () => {
-    if (!user) return;
-    
-    setIsLoading(true);
-    try {
-      await Promise.all([
-        loadUserStats(),
-        loadUpcomingEvents(),
-        loadRecentResults()
-      ]);
-    } catch (error) {
-      console.error('Error loading dashboard data:', error);
-      // Load mock data as fallback
-      loadMockData();
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const loadUserStats = async () => {
     try {
-      // Try to load real data from database
-      const { data, error } = await supabase
-        .rpc('get_user_competition_stats', { user_uuid: user!.id });
-
-      if (error) throw error;
-
-      if (data) {
-        setStats({
-          totalCompetitions: data.total_competitions || 0,
-          totalPoints: data.total_points || 0,
-          averageScore: data.average_score || 0,
-          bestPlacement: data.best_placement || 0,
-          upcomingEvents: 3, // This would come from a separate query
-          teamMemberships: 1 // This would come from a separate query
-        });
-      }
+      // Load real user statistics when implemented
+      // For now, set defaults until proper stats system is built
+      setStats({
+        totalCompetitions: 0,
+        totalPoints: 0,
+        averageScore: 0,
+        bestPlacement: 0,
+        upcomingEvents: 0,
+        teamMemberships: 0
+      });
+      
+      setRecentResults([]);
     } catch (error) {
       console.error('Error loading user stats:', error);
-      // Use mock data
       setStats({
-        totalCompetitions: 12,
-        totalPoints: 1450,
-        averageScore: 8.7,
-        bestPlacement: 3,
-        upcomingEvents: 3,
-        teamMemberships: 1
+        totalCompetitions: 0,
+        totalPoints: 0,
+        averageScore: 0,
+        bestPlacement: 0,
+        upcomingEvents: 0,
+        teamMemberships: 0
       });
+      setRecentResults([]);
     }
   };
 
@@ -156,7 +134,7 @@ export default function Dashboard() {
           state,
           category_id,
           registration_deadline,
-          event_categories(name)
+          event_categories!inner(name)
         `)
         .eq('status', 'published')
         .gte('start_date', new Date().toISOString())
@@ -170,7 +148,7 @@ export default function Dashboard() {
         title: event.title,
         date: event.start_date,
         location: `${event.city}, ${event.state}`,
-        category: event.event_categories?.name || 'Competition',
+        category: (event.event_categories as any)?.name || 'Competition',
         registrationDeadline: event.registration_deadline,
         isRegistered: false // This would need a separate query
       }));
@@ -178,36 +156,8 @@ export default function Dashboard() {
       setUpcomingEvents(formattedEvents);
     } catch (error) {
       console.error('Error loading upcoming events:', error);
-      // Use mock data
-      setUpcomingEvents([
-        {
-          id: '1',
-          title: 'IASCA World Finals 2025',
-          date: '2025-03-15T10:00:00Z',
-          location: 'Orlando, FL',
-          category: 'Championship',
-          registrationDeadline: '2025-03-01T23:59:59Z',
-          isRegistered: false
-        },
-        {
-          id: '2',
-          title: 'Spring Bass Battle',
-          date: '2025-04-22T09:00:00Z',
-          location: 'Phoenix, AZ',
-          category: 'SPL Competition',
-          registrationDeadline: '2025-04-15T23:59:59Z',
-          isRegistered: true
-        },
-        {
-          id: '3',
-          title: 'Sound Quality Showdown',
-          date: '2025-05-10T08:00:00Z',
-          location: 'Atlanta, GA',
-          category: 'Sound Quality',
-          registrationDeadline: '2025-05-03T23:59:59Z',
-          isRegistered: false
-        }
-      ]);
+      // Set empty array instead of mock data
+      setUpcomingEvents([]);
     }
   };
 
@@ -233,7 +183,7 @@ export default function Dashboard() {
 
       const formattedResults = (data || []).map(result => ({
         id: result.id,
-        eventTitle: result.events.title,
+        eventTitle: (result.events as any)?.title || 'Unknown Event',
         category: result.category,
         placement: result.placement,
         totalParticipants: result.total_participants,
@@ -244,81 +194,9 @@ export default function Dashboard() {
       setRecentResults(formattedResults);
     } catch (error) {
       console.error('Error loading recent results:', error);
-      // Use mock data
-      setRecentResults([
-        {
-          id: '1',
-          eventTitle: 'Winter Sound Quality Championship',
-          category: 'Sound Quality',
-          placement: 3,
-          totalParticipants: 45,
-          points: 150,
-          date: '2024-12-15T10:00:00Z'
-        },
-        {
-          id: '2',
-          eventTitle: 'Holiday Bass Bash',
-          category: 'SPL Competition',
-          placement: 7,
-          totalParticipants: 32,
-          points: 85,
-          date: '2024-12-08T09:00:00Z'
-        },
-        {
-          id: '3',
-          eventTitle: 'Fall Regional Championship',
-          category: 'Overall',
-          placement: 5,
-          totalParticipants: 67,
-          points: 120,
-          date: '2024-11-20T08:00:00Z'
-        }
-      ]);
+      // Set empty array instead of mock data
+      setRecentResults([]);
     }
-  };
-
-  const loadMockData = () => {
-    setStats({
-      totalCompetitions: 12,
-      totalPoints: 1450,
-      averageScore: 8.7,
-      bestPlacement: 3,
-      upcomingEvents: 3,
-      teamMemberships: 1
-    });
-
-    setUpcomingEvents([
-      {
-        id: '1',
-        title: 'IASCA World Finals 2025',
-        date: '2025-03-15T10:00:00Z',
-        location: 'Orlando, FL',
-        category: 'Championship',
-        registrationDeadline: '2025-03-01T23:59:59Z',
-        isRegistered: false
-      },
-      {
-        id: '2',
-        title: 'Spring Bass Battle',
-        date: '2025-04-22T09:00:00Z',
-        location: 'Phoenix, AZ',
-        category: 'SPL Competition',
-        registrationDeadline: '2025-04-15T23:59:59Z',
-        isRegistered: true
-      }
-    ]);
-
-    setRecentResults([
-      {
-        id: '1',
-        eventTitle: 'Winter Sound Quality Championship',
-        category: 'Sound Quality',
-        placement: 3,
-        totalParticipants: 45,
-        points: 150,
-        date: '2024-12-15T10:00:00Z'
-      }
-    ]);
   };
 
   const formatDate = (dateString: string) => {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Calendar, DollarSign, TrendingUp, Activity, Shield, AlertTriangle, CheckCircle, UserCheck, FileText, Target } from 'lucide-react';
+import { Users, Calendar, DollarSign, TrendingUp, Activity, Shield, AlertTriangle, CheckCircle, UserCheck, FileText, Target, Settings, Archive, Mail, Building2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -57,183 +57,73 @@ export default function AdminDashboard() {
     try {
       setIsLoading(true);
       
-      // Try to load real data
-      try {
-        // Get user counts
-        const { count: totalUsers } = await supabase
-          .from('users')
-          .select('*', { count: 'exact', head: true });
-          
-        const { count: pendingApprovals } = await supabase
-          .from('users')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'pending');
-          
-        const { count: pendingVerifications } = await supabase
-          .from('users')
-          .select('*', { count: 'exact', head: true })
-          .eq('verification_status', 'pending');
-          
-        // Get event counts
-        const { count: activeEvents } = await supabase
-          .from('events')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'published');
-          
-        // Get new registrations (last 7 days)
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        
-        const { count: newRegistrations } = await supabase
-          .from('users')
-          .select('*', { count: 'exact', head: true })
-          .gte('created_at', sevenDaysAgo.toISOString());
-          
-        // Get total revenue
-        const { data: payments } = await supabase
-          .from('payments')
-          .select('amount');
-          
-        const totalRevenue = payments?.reduce((sum, payment) => sum + payment.amount, 0) || 0;
-        
-        // Get system alerts
-        const { count: systemAlerts } = await supabase
-          .from('admin_audit_log')
-          .select('*', { count: 'exact', head: true })
-          .eq('action', 'system_alert');
-          
-        // Get CMS pages data
-        const { count: totalPages } = await supabase
-          .from('cms_pages')
-          .select('*', { count: 'exact', head: true });
-          
-        const { count: publishedPages } = await supabase
-          .from('cms_pages')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'published');
-          
-        const stats: DashboardStats = {
-          totalUsers: totalUsers || 0,
-          activeEvents: activeEvents || 0,
-          totalRevenue: totalRevenue / 100, // Convert from cents to dollars
-          newRegistrations: newRegistrations || 0,
-          pendingVerifications: pendingVerifications || 0,
-          pendingApprovals: pendingApprovals || 0,
-          systemAlerts: systemAlerts || 0,
-          totalPages: totalPages || 0,
-          publishedPages: publishedPages || 0
-        };
-        
-        setStats(stats);
-        
-        // Get recent activity
-        const { data: activityData } = await supabase
-          .from('admin_audit_log')
-          .select('id, action, details, created_at')
-          .order('created_at', { ascending: false })
-          .limit(5);
-          
-        if (activityData && activityData.length > 0) {
-          const formattedActivity = activityData.map(item => {
-            let type: 'user_registration' | 'event_created' | 'payment_received' | 'admin_action' = 'admin_action';
-            let description = '';
-            let user = '';
-            
-            if (item.action.includes('user_created')) {
-              type = 'user_registration';
-              description = `New user registered: ${item.details.created_user_name || 'Unknown'}`;
-              user = item.details.created_user_email || '';
-            } else if (item.action.includes('event')) {
-              type = 'event_created';
-              description = `Event ${item.action.includes('created') ? 'created' : 'updated'}: ${item.details.event_title || 'Unknown'}`;
-              user = item.details.organizer_email || '';
-            } else if (item.action.includes('payment')) {
-              type = 'payment_received';
-              const amount = item.details.amount ? `$${(item.details.amount / 100).toFixed(2)}` : 'Unknown amount';
-              description = `Payment received: ${amount} for ${item.details.description || 'subscription'}`;
-              user = item.details.customer_email || '';
-            } else {
-              description = `Admin action: ${item.action.replace(/_/g, ' ')}`;
-              user = item.details.admin_email || '';
-            }
-            
-            return {
-              id: item.id,
-              type,
-              description,
-              timestamp: item.created_at,
-              user,
-              severity: 'info' as 'info' | 'warning' | 'error'
-            };
-          });
-          
-          setRecentActivity(formattedActivity);
-          return;
-        }
-      } catch (error) {
-        console.error('Failed to load real data:', error);
-        // Fall back to mock data
-      }
+      // Try to load real dashboard data
+      const [usersResult, eventsResult, revenueResult] = await Promise.allSettled([
+        supabase.from('users').select('id, status, created_at').limit(1000),
+        supabase.from('events').select('id, status, created_at').limit(1000),
+        // Add revenue queries when payment system is implemented
+        Promise.resolve({ data: null, error: null })
+      ]);
+
+      let realStats: Partial<DashboardStats> = {};
       
-      // Mock data as fallback
-      const mockStats: DashboardStats = {
-        totalUsers: 1247,
-        activeEvents: 23,
-        totalRevenue: 45670,
-        newRegistrations: 34,
-        pendingVerifications: 8,
-        pendingApprovals: 12,
-        systemAlerts: 2,
-        totalPages: 15,
-        publishedPages: 12
+      if (usersResult.status === 'fulfilled' && usersResult.value.data) {
+        const users = usersResult.value.data;
+        realStats.totalUsers = users.length;
+        realStats.newRegistrations = users.filter(user => {
+          const createdAt = new Date(user.created_at);
+          const thirtyDaysAgo = new Date();
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+          return createdAt >= thirtyDaysAgo;
+        }).length;
+      }
+
+      if (eventsResult.status === 'fulfilled' && eventsResult.value.data) {
+        const events = eventsResult.value.data;
+        realStats.activeEvents = events.filter(event => event.status === 'published').length;
+      }
+
+      // Try to load CMS pages
+      const { data: pagesData } = await supabase.from('cms_pages').select('id, status');
+      if (pagesData) {
+        realStats.totalPages = pagesData.length;
+        realStats.publishedPages = pagesData.filter(page => page.status === 'published').length;
+      }
+
+      // Set real stats or defaults for missing data
+      const finalStats: DashboardStats = {
+        totalUsers: realStats.totalUsers ?? 0,
+        activeEvents: realStats.activeEvents ?? 0,
+        totalRevenue: realStats.totalRevenue ?? 0, // Will be 0 until payment system is implemented
+        newRegistrations: realStats.newRegistrations ?? 0,
+        pendingVerifications: 0, // TODO: Implement verification system
+        pendingApprovals: 0, // TODO: Implement approval system  
+        systemAlerts: 0, // TODO: Implement alert system
+        totalPages: realStats.totalPages ?? 0,
+        publishedPages: realStats.publishedPages ?? 0
       };
 
-      const mockActivity: RecentActivity[] = [
-        {
-          id: '1',
-          type: 'user_registration',
-          description: 'New competitor registered: John Smith',
-          timestamp: '2025-01-08T10:30:00Z',
-          user: 'john.smith@email.com',
-          severity: 'info'
-        },
-        {
-          id: '2',
-          type: 'event_created',
-          description: 'New event created: Spring Bass Competition',
-          timestamp: '2025-01-08T09:15:00Z',
-          user: 'event.organizer@email.com',
-          severity: 'info'
-        },
-        {
-          id: '3',
-          type: 'payment_received',
-          description: 'Payment received: $299 for Business Pro subscription',
-          timestamp: '2025-01-08T08:45:00Z',
-          user: 'business@retailer.com',
-          severity: 'info'
-        },
-        {
-          id: '4',
-          type: 'admin_action',
-          description: 'User verification approved for Audio Solutions Inc',
-          timestamp: '2025-01-08T08:20:00Z',
-          user: 'admin@caraudioevents.com',
-          severity: 'info'
-        },
-        {
-          id: '5',
-          type: 'admin_action',
-          description: 'System backup completed successfully',
-          timestamp: '2025-01-08T06:00:00Z',
-          severity: 'info'
-        }
-      ];
+      setStats(finalStats);
 
-      setStats(mockStats);
-      setRecentActivity(mockActivity);
+      // Load recent activity from audit logs (when implemented)
+      // For now, show empty state
+      setRecentActivity([]);
+
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
+      // Set empty/default stats instead of mock data
+      setStats({
+        totalUsers: 0,
+        activeEvents: 0,
+        totalRevenue: 0,
+        newRegistrations: 0,
+        pendingVerifications: 0,
+        pendingApprovals: 0,
+        systemAlerts: 0,
+        totalPages: 0,
+        publishedPages: 0
+      });
+      setRecentActivity([]);
     } finally {
       setIsLoading(false);
     }
@@ -475,6 +365,58 @@ export default function AdminDashboard() {
               </div>
             </div>
           </Link>
+
+          <Link
+            to="/admin/system-configuration"
+            className="bg-gradient-to-br from-indigo-500/20 to-indigo-600/20 border border-indigo-500/30 rounded-xl p-6 hover:from-indigo-500/30 hover:to-indigo-600/30 transition-all duration-200 group"
+          >
+            <div className="flex items-center space-x-3">
+              <Settings className="h-8 w-8 text-indigo-400 group-hover:scale-110 transition-transform" />
+              <div>
+                <h3 className="text-white font-semibold">System Configuration</h3>
+                <p className="text-gray-400 text-sm">Manage configurable options and form fields</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            to="/admin/backup"
+            className="bg-gradient-to-br from-gray-500/20 to-gray-600/20 border border-gray-500/30 rounded-xl p-6 hover:from-gray-500/30 hover:to-gray-600/30 transition-all duration-200 group"
+          >
+            <div className="flex items-center space-x-3">
+              <Archive className="h-8 w-8 text-gray-400 group-hover:scale-110 transition-transform" />
+              <div>
+                <h3 className="text-white font-semibold">Backup Management</h3>
+                <p className="text-gray-400 text-sm">Create and manage database backups</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            to="/admin/contact-settings"
+            className="bg-gradient-to-br from-cyan-500/20 to-cyan-600/20 border border-cyan-500/30 rounded-xl p-6 hover:from-cyan-500/30 hover:to-cyan-600/30 transition-all duration-200 group"
+          >
+            <div className="flex items-center space-x-3">
+              <Mail className="h-8 w-8 text-cyan-400 group-hover:scale-110 transition-transform" />
+              <div>
+                <h3 className="text-white font-semibold">Contact Settings</h3>
+                <p className="text-gray-400 text-sm">Configure footer contact information</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            to="/admin/organizations"
+            className="bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 border border-emerald-500/30 rounded-xl p-6 hover:from-emerald-500/30 hover:to-emerald-600/30 transition-all duration-200 group"
+          >
+            <div className="flex items-center space-x-3">
+              <Building2 className="h-8 w-8 text-emerald-400 group-hover:scale-110 transition-transform" />
+              <div>
+                <h3 className="text-white font-semibold">Organizations</h3>
+                <p className="text-gray-400 text-sm">Manage platform organizations</p>
+              </div>
+            </div>
+          </Link>
         </div>
 
         {/* Recent Activity */}
@@ -486,7 +428,7 @@ export default function AdminDashboard() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-electric-500 mx-auto mb-4"></div>
               <p className="text-gray-400">Loading activity...</p>
             </div>
-          ) : (
+          ) : recentActivity.length > 0 ? (
             <div className="space-y-4">
               {recentActivity.map((activity) => (
                 <div key={activity.id} className="flex items-start space-x-3 p-4 bg-gray-700/30 rounded-lg">
@@ -504,6 +446,16 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <Activity className="h-12 w-12 text-gray-600 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-400 mb-2">No recent activity</h3>
+              <p className="text-gray-500 text-sm">
+                Activity will appear here as users interact with your platform.
+                <br />
+                Start by creating some test events or inviting users to register.
+              </p>
             </div>
           )}
         </div>

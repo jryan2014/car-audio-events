@@ -347,11 +347,11 @@ export default function Register() {
               />
               <label htmlFor="terms" className="ml-2 text-sm text-gray-300">
                 I agree to the{' '}
-                <Link to="#" className="text-electric-400 hover:text-electric-300 transition-colors">
+                <Link to="/pages/terms-of-service" className="text-electric-400 hover:text-electric-300 transition-colors">
                   Terms of Service
                 </Link>{' '}
                 and{' '}
-                <Link to="#" className="text-electric-400 hover:text-electric-300 transition-colors">
+                <Link to="/pages/privacy-policy" className="text-electric-400 hover:text-electric-300 transition-colors">
                   Privacy Policy
                 </Link>
               </label>

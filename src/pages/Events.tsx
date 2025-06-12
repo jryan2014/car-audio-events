@@ -15,11 +15,11 @@ interface Event {
   state: string;
   registration_fee: number;
   max_participants: number | null;
-  category: {
+  event_categories: {
     name: string;
     color: string;
   };
-  organizer: {
+  users: {
     name: string;
     company_name?: string;
   };
@@ -63,9 +63,8 @@ export default function Events() {
         .from('events')
         .select(`
           *,
-          category:categories(name, color),
-          organizer:users(name, company_name),
-          _count:event_registrations(count)
+          event_categories(name, color),
+          users!organizer_id(name, company_name)
         `)
         .eq('status', 'published')
         .eq('approval_status', 'approved');
@@ -75,12 +74,6 @@ export default function Events() {
         query = query.gte('end_date', now);
       } else if (eventFilter === 'past') {
         query = query.lt('end_date', now);
-      }
-
-      // Apply display date filtering for automated categorization
-      if (eventFilter === 'upcoming') {
-        query = query.or(`metadata->display_start_date.lte.${now},metadata->display_start_date.is.null`);
-        query = query.or(`metadata->display_end_date.gte.${now},metadata->display_end_date.is.null`);
       }
 
       const { data, error } = await query.order('start_date', { ascending: eventFilter === 'upcoming' });
@@ -97,7 +90,7 @@ export default function Events() {
   const loadCategories = async () => {
     try {
       const { data, error } = await supabase
-        .from('categories')
+        .from('event_categories')
         .select('id, name, color')
         .order('name');
 
@@ -194,7 +187,7 @@ export default function Events() {
                          event.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          event.state.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesCategory = !selectedCategory || event.category?.name === selectedCategory;
+    const matchesCategory = !selectedCategory || event.event_categories?.name === selectedCategory;
     
     const eventSeasonYear = event.metadata?.season_year || new Date(event.start_date).getFullYear();
     const matchesSeason = !selectedSeason || eventSeasonYear.toString() === selectedSeason;
@@ -317,11 +310,11 @@ export default function Events() {
                         <span 
                           className="px-2 py-1 rounded-full text-xs font-medium"
                           style={{ 
-                            backgroundColor: `${event.category?.color}20`,
-                            color: event.category?.color 
+                            backgroundColor: `${event.event_categories?.color}20`,
+                            color: event.event_categories?.color 
                           }}
                         >
-                          {event.category?.name}
+                          {event.event_categories?.name}
                         </span>
                         {event.metadata?.season_year && (
                           <span className="px-2 py-1 rounded-full text-xs font-medium bg-electric-500/20 text-electric-400">
@@ -400,7 +393,7 @@ export default function Events() {
                   <div className="mt-4 pt-4 border-t border-gray-700">
                     <p className="text-xs text-gray-500">
                       Organized by <span className="text-gray-400 font-medium">
-                        {event.organizer?.company_name || event.organizer?.name}
+                        {event.users?.company_name || event.users?.name}
                       </span>
                     </p>
                   </div>

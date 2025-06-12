@@ -90,7 +90,6 @@ export default function AdManagement() {
   const loadAds = async () => {
     try {
       setIsLoading(true);
-      
       const { data, error } = await supabase
         .from('advertisements')
         .select('*')
@@ -100,35 +99,8 @@ export default function AdManagement() {
       setAds(data || []);
     } catch (error) {
       console.error('Error loading ads:', error);
-      // Mock data for development
-      const mockAds: Advertisement[] = [
-        {
-          id: '1',
-          title: 'Premium Car Audio Systems',
-          description: 'High-quality speakers and amplifiers for your car',
-          image_url: '/api/placeholder/300/200',
-          click_url: 'https://example-audio.com',
-          advertiser_name: 'Audio Pro Solutions',
-          advertiser_email: 'contact@audiopro.com',
-          placement_type: 'header',
-          size: 'banner',
-          target_pages: ['events', 'competitions'],
-          target_keywords: ['spl', 'competition', 'speakers'],
-          target_categories: ['SPL Competition', 'Sound Quality'],
-          budget: 500,
-          cost_per_click: 0.75,
-          cost_per_impression: 0.02,
-          start_date: '2025-01-01',
-          end_date: '2025-02-01',
-          status: 'active',
-          clicks: 245,
-          impressions: 12500,
-          spent: 183.75,
-          created_at: '2025-01-01T00:00:00Z',
-          updated_at: '2025-01-08T00:00:00Z'
-        }
-      ];
-      setAds(mockAds);
+      // Set empty array instead of mock data
+      setAds([]);
     } finally {
       setIsLoading(false);
     }

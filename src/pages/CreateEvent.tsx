@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { Calendar, MapPin, Users, DollarSign, Clock, Image, Save, ArrowLeft, AlertCircle, CheckCircle, Trophy, Gift, Building2, User, Phone, Mail, Globe, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import ConfigurableField from '../components/ConfigurableField';
+import { useSystemConfiguration } from '../hooks/useSystemConfiguration';
+import { geocodingService } from '../services/geocoding';
 
 interface EventFormData {
   title: string;
@@ -72,17 +75,17 @@ interface EventFormData {
   is_public: boolean;
 }
 
-interface EventCategory {
-  id: string;
-  name: string;
-  color: string;
-  icon: string;
-}
-
 interface Organization {
   id: string;
   name: string;
   type: string;
+  organization_type?: string;
+  logo_url?: string;
+  small_logo_url?: string;
+  status?: string;
+  default_rules_template_id?: string;
+  default_rules_template_name?: string;
+  default_rules_content?: string;
 }
 
 // Country and location data
@@ -123,9 +126,32 @@ export default function CreateEvent() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-  const [categories, setCategories] = useState<EventCategory[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [availableCities, setAvailableCities] = useState<string[]>([]);
+  const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(null);
+  
+  // Use our system configuration hook
+  const { 
+    getOptionsByCategory, 
+    getRulesTemplates, 
+    saveFormData,
+    isLoading: configLoading,
+    error: configError 
+  } = useSystemConfiguration();
+  
+  // Helper function to generate default datetime values
+  const getDefaultDateTime = (hoursOffset: number = 0, defaultHour: number = 8) => {
+    const now = new Date();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(defaultHour, 0, 0, 0); // Set to specified hour (8 AM by default)
+    
+    if (hoursOffset > 0) {
+      tomorrow.setHours(tomorrow.getHours() + hoursOffset);
+    }
+    
+    return tomorrow.toISOString().slice(0, 16); // Format for datetime-local input
+  };
   
   const [formData, setFormData] = useState<EventFormData>({
     title: '',
@@ -133,8 +159,8 @@ export default function CreateEvent() {
     category_id: '',
     sanction_body_id: '',
     season_year: new Date().getFullYear(),
-    start_date: '',
-    end_date: '',
+    start_date: getDefaultDateTime(0, 8), // 8:00 AM tomorrow
+    end_date: getDefaultDateTime(11, 8), // 7:00 PM tomorrow (8 AM + 11 hours = 7 PM)
     registration_deadline: '',
     max_participants: null,
     registration_fee: 0,
@@ -167,7 +193,7 @@ export default function CreateEvent() {
     
     rules: '',
     prizes: [''],
-    schedule: [{ time: '', activity: '' }],
+    schedule: [{ time: '08:00', activity: 'Registration Opens' }, { time: '19:00', activity: 'Event Ends' }],
     sponsors: [''],
     
     first_place_trophy: false,
@@ -198,115 +224,112 @@ export default function CreateEvent() {
 
   useEffect(() => {
     if (!canCreateEvents) {
-      navigate('/pricing');
+      navigate('/membership-plans?message=You need a paid subscription to create events');
       return;
     }
-    loadCategories();
+    
     loadOrganizations();
-  }, [canCreateEvents, navigate]);
+  }, [user, navigate, canCreateEvents]);
 
-  // Update available cities when state changes
+  // Auto-populate rules when organization changes
   useEffect(() => {
-    if (formData.country === 'US' && formData.state) {
-      setAvailableCities(US_CITIES[formData.state] || []);
-    } else {
-      setAvailableCities([]);
-    }
-  }, [formData.country, formData.state]);
-
-  // Update event director info when "use organizer contact" changes
-  useEffect(() => {
-    if (formData.use_organizer_contact) {
-      setFormData(prev => ({
-        ...prev,
-        event_director_first_name: user?.name?.split(' ')[0] || '',
-        event_director_last_name: user?.name?.split(' ').slice(1).join(' ') || '',
-        event_director_email: user?.email || '',
-        event_director_phone: user?.phone || ''
-      }));
-    }
-  }, [formData.use_organizer_contact, user]);
-
-  // Auto-calculate display dates when event dates change
-  useEffect(() => {
-    if (formData.start_date) {
-      const eventStartDate = new Date(formData.start_date);
+    if (formData.sanction_body_id && organizations.length > 0) {
+      const org = organizations.find(o => o.id === formData.sanction_body_id);
+      setSelectedOrganization(org || null);
       
-      // Display start date: 90 days before event (or now if less than 90 days)
-      const displayStartDate = new Date(eventStartDate);
-      displayStartDate.setDate(displayStartDate.getDate() - 90);
-      const now = new Date();
-      const actualDisplayStart = displayStartDate < now ? now : displayStartDate;
+      if (org?.default_rules_content && !formData.rules) {
+        setFormData(prev => ({
+          ...prev,
+          rules: org.default_rules_content || ''
+        }));
+      }
+    }
+  }, [formData.sanction_body_id, organizations]);
+
+  // Debug: Log when organizations state changes
+  useEffect(() => {
+    console.log('🔄 Organizations state updated:', organizations);
+    console.log('📊 Organizations count:', organizations.length);
+  }, [organizations]);
+
+  // Auto-update SEO fields and display dates
+  useEffect(() => {
+    if (formData.start_date && formData.end_date) {
+      const startDate = new Date(formData.start_date);
+      const endDate = new Date(formData.end_date);
       
-      // Display end date: 1 day after event ends (moves to past events)
-      const eventEndDate = formData.end_date ? new Date(formData.end_date) : eventStartDate;
-      const displayEndDate = new Date(eventEndDate);
-      displayEndDate.setDate(displayEndDate.getDate() + 1);
+      // Auto-calculate display dates (show 90 days before, hide 30 days after)
+      const displayStart = new Date(startDate);
+      displayStart.setDate(displayStart.getDate() - 90);
+      
+      const displayEnd = new Date(endDate);
+      displayEnd.setDate(displayEnd.getDate() + 30);
       
       setFormData(prev => ({
         ...prev,
-        display_start_date: actualDisplayStart.toISOString().slice(0, 16),
-        display_end_date: displayEndDate.toISOString().slice(0, 16),
+        display_start_date: displayStart.toISOString().split('T')[0],
+        display_end_date: displayEnd.toISOString().split('T')[0],
         seo_title: prev.seo_title || prev.title,
         seo_description: prev.seo_description || prev.description
       }));
     }
   }, [formData.start_date, formData.end_date, formData.title, formData.description]);
 
-  const loadCategories = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('event_categories')
-        .select('*')
-        .eq('is_active', true)
-        .order('name');
-
-      if (error) throw error;
-      setCategories(data || []);
-    } catch (error) {
-      console.error('Error loading categories:', error);
-    }
-  };
-
   const loadOrganizations = async () => {
     try {
+      console.log('🏢 Loading organizations...');
+      
       const { data, error } = await supabase
         .from('organizations')
-        .select('id, name, type')
+        .select('id, name, organization_type, logo_url, small_logo_url, status, default_rules_content')
         .eq('status', 'active')
         .order('name');
 
-      if (error) throw error;
-      setOrganizations(data || []);
+      if (error) {
+        console.error('❌ Error loading organizations:', error);
+        throw error;
+      }
+      
+      console.log('📊 Raw organizations data:', data);
+      
+      // Transform the data to match our interface
+      const transformedData: Organization[] = (data || []).map(org => ({
+        id: org.id,
+        name: org.name,
+        type: org.organization_type || 'organization',
+        organization_type: org.organization_type,
+        logo_url: org.logo_url,
+        small_logo_url: org.small_logo_url,
+        status: org.status,
+        default_rules_content: org.default_rules_content
+      }));
+      
+      console.log('✅ Transformed organizations:', transformedData);
+      setOrganizations(transformedData);
     } catch (error) {
-      console.error('Error loading organizations:', error);
+      console.error('💥 Error loading organizations:', error);
     }
   };
 
-  // Simple geocoding function - in production you'd use a real geocoding service
+  // Real geocoding function
   const geocodeAddress = async (address: string, city: string, state: string, country: string) => {
-    // For now, return mock coordinates or use a simple lookup
-    // In production, you'd integrate with Google Maps, OpenCage, or similar service
     try {
-      // Mock geocoding for demo purposes
-      // You can replace this with actual geocoding service later
-      const mockCoordinates: { [key: string]: { latitude: number; longitude: number } } = {
-        'california': { latitude: 36.7783, longitude: -119.4179 },
-        'texas': { latitude: 31.9686, longitude: -99.9018 },
-        'florida': { latitude: 27.6648, longitude: -81.5158 },
-        'new york': { latitude: 42.1657, longitude: -74.9481 },
-        'nevada': { latitude: 38.4199, longitude: -117.1219 },
-        // Add more as needed
-      };
+      console.log(`🗺️ Auto-geocoding: ${city}, ${state}, ${country}`);
       
-      const stateKey = state.toLowerCase();
-      if (mockCoordinates[stateKey]) {
-        return mockCoordinates[stateKey];
+      const result = await geocodingService.geocodeAddress(city, state, country);
+      
+      if ('error' in result) {
+        console.warn('⚠️ Geocoding failed:', result.error);
+        return { latitude: null, longitude: null };
       }
       
-      return { latitude: null, longitude: null };
+      console.log(`✅ Geocoded successfully:`, result);
+      return {
+        latitude: result.latitude,
+        longitude: result.longitude
+      };
     } catch (error) {
-      console.error('Geocoding error:', error);
+      console.error('🚨 Geocoding error:', error);
       return { latitude: null, longitude: null };
     }
   };
@@ -316,6 +339,11 @@ export default function CreateEvent() {
       ...prev,
       [field]: value
     }));
+
+    // Auto-save certain fields
+    if (['title', 'description', 'category_id'].includes(field)) {
+      saveFormData('create_event', field, value);
+    }
 
     // Auto-geocode when address fields change (debounced)
     if (['address', 'city', 'state', 'country'].includes(field)) {
@@ -403,6 +431,21 @@ export default function CreateEvent() {
     }));
   };
 
+  const loadRulesTemplate = async (templateId: string) => {
+    try {
+      const templates = await getRulesTemplates();
+      const template = templates.find(t => t.id === templateId);
+      if (template) {
+        setFormData(prev => ({
+          ...prev,
+          rules: template.content
+        }));
+      }
+    } catch (error) {
+      console.error('Error loading rules template:', error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -411,12 +454,15 @@ export default function CreateEvent() {
     setIsLoading(true);
     setError('');
 
+    // Define eventData outside try block so it's accessible in catch
+    let eventData: any = null;
+
     try {
       // Determine approval status based on user type
       const approvalStatus = user?.membershipType === 'admin' ? 'approved' : 'pending';
       const status = 'pending_approval';
 
-      const eventData = {
+      eventData = {
         title: formData.title,
         description: formData.description,
         category_id: formData.category_id,
@@ -424,10 +470,8 @@ export default function CreateEvent() {
         end_date: formData.end_date,
         registration_deadline: formData.registration_deadline || null,
         max_participants: formData.max_participants,
-        registration_fee: formData.registration_fee,
-        early_bird_fee: formData.early_bird_fee,
-        early_bird_deadline: formData.early_bird_deadline || null,
-        venue_name: formData.event_name, // Store in venue_name field but labeled as Event Name
+        ticket_price: formData.registration_fee,
+        venue_name: formData.event_name,
         address: formData.address,
         city: formData.city,
         state: formData.state,
@@ -437,71 +481,56 @@ export default function CreateEvent() {
         longitude: formData.longitude,
         contact_email: formData.contact_email,
         contact_phone: formData.contact_phone,
-        website: formData.website,
+        website_url: formData.website,
         rules: formData.rules,
-        prizes: formData.prizes.filter(p => p.trim()),
-        schedule: formData.schedule.filter(s => s.time && s.activity),
-        sponsors: formData.sponsors.filter(s => s.trim()),
-        is_public: formData.is_public,
-        organizer_id: user!.id,
         organization_id: formData.sanction_body_id || null,
-        status: user?.membershipType === 'admin' ? formData.status : status,
-        approval_status: user?.membershipType === 'admin' ? formData.approval_status : approvalStatus,
-        approved_by: user?.membershipType === 'admin' ? user.id : null,
-        approved_at: user?.membershipType === 'admin' ? new Date().toISOString() : null,
-        
-        // Store additional details in metadata
-        metadata: {
-          season_year: formData.season_year,
-          is_active: formData.is_active,
-          display_start_date: formData.display_start_date,
-          display_end_date: formData.display_end_date,
-          early_bird_name: formData.early_bird_name,
-          event_director: {
-            first_name: formData.event_director_first_name,
-            last_name: formData.event_director_last_name,
-            email: formData.event_director_email,
-            phone: formData.event_director_phone
-          },
-          trophies: {
-            first_place: formData.first_place_trophy,
-            second_place: formData.second_place_trophy,
-            third_place: formData.third_place_trophy,
-            fourth_place: formData.fourth_place_trophy,
-            fifth_place: formData.fifth_place_trophy
-          },
-          has_raffle: formData.has_raffle,
-          shop_sponsors: formData.shop_sponsors.filter(s => s.trim()),
-          giveaways: {
-            members: formData.member_giveaways.filter(g => g.trim()),
-            non_members: formData.non_member_giveaways.filter(g => g.trim())
-          },
-          seo: {
-            title: formData.seo_title,
-            description: formData.seo_description,
-            keywords: formData.seo_keywords.filter(k => k.trim())
-          },
-          // Analytics tracking fields
-          favorites_count: 0,
-          attendance_count: 0,
-          view_count: 0
-        }
+        organizer_id: user?.id || null,
+        status: 'draft'
       };
 
-      const { error: insertError } = await supabase
+      console.log('🚀 Attempting to create event with data:', eventData);
+
+      const { data, error } = await supabase
         .from('events')
-        .insert([eventData]);
+        .insert([eventData])
+        .select()
+        .single();
 
-      if (insertError) throw insertError;
+      if (error) throw error;
 
+      console.log('✅ Event created successfully:', data);
       setSuccess(true);
+      
+      // Save form data for future use
+      Object.entries(formData).forEach(([key, value]) => {
+        if (typeof value === 'string' && value.trim()) {
+          saveFormData('create_event', key, value);
+        }
+      });
+
       setTimeout(() => {
         navigate('/events');
       }, 2000);
 
-    } catch (err) {
-      console.error('Failed to create event:', err);
-      setError(err instanceof Error ? err.message : 'Failed to create event');
+    } catch (error) {
+      console.error('🚨 Error creating event:', error);
+      if (eventData) {
+        console.error('📋 Event data that failed:', eventData);
+      }
+      console.error('📝 Form data:', formData);
+      
+      // More detailed error message
+      let errorMessage = 'Failed to create event';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        console.error('💥 Error details:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        });
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -568,22 +597,29 @@ export default function CreateEvent() {
               </div>
 
               <div>
-                <label className="block text-gray-400 text-sm mb-2">Category *</label>
+                <label className="block text-gray-400 text-sm mb-2">Event Category *</label>
                 <select
                   required
                   value={formData.category_id}
                   onChange={(e) => handleInputChange('category_id', e.target.value)}
                   className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
                 >
-                  <option value="">Select a category</option>
-                  {categories.map(category => (
-                    <option key={category.id} value={category.id}>{category.name}</option>
+                  <option value="">Select event category</option>
+                  {getOptionsByCategory('event_categories').map(category => (
+                    <option key={category.id} value={category.id}>{category.label}</option>
                   ))}
                 </select>
               </div>
 
               <div>
                 <label className="block text-gray-400 text-sm mb-2">Sanctioning Body *</label>
+                
+                {/* TEMPORARY DEBUG INFO */}
+                <div className="mb-2 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded text-yellow-400 text-xs">
+                  🐛 DEBUG: Organizations count: {organizations.length} | 
+                  Names: {organizations.map(o => o.name).join(', ') || 'None loaded'}
+                </div>
+                
                 <select
                   required
                   value={formData.sanction_body_id}
@@ -592,9 +628,33 @@ export default function CreateEvent() {
                 >
                   <option value="">Select sanctioning organization</option>
                   {organizations.map(org => (
-                    <option key={org.id} value={org.id}>{org.name}</option>
+                    <option key={org.id} value={org.id}>
+                      {org.name}
+                      {org.organization_type === 'sanctioning_body' && ' (Sanctioning Body)'}
+                    </option>
                   ))}
                 </select>
+                {selectedOrganization && (
+                  <div className="mt-2 p-3 bg-gray-700/30 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      {selectedOrganization.logo_url && (
+                        <img
+                          src={selectedOrganization.logo_url}
+                          alt={selectedOrganization.name}
+                          className="w-8 h-8 object-contain"
+                        />
+                      )}
+                      <div className="flex-1">
+                        <p className="text-white text-sm">{selectedOrganization.name}</p>
+                        {selectedOrganization.default_rules_content && (
+                          <p className="text-gray-400 text-xs">
+                            Rules: {selectedOrganization.default_rules_content}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -605,12 +665,9 @@ export default function CreateEvent() {
                   onChange={(e) => handleInputChange('season_year', parseInt(e.target.value))}
                   className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
                 >
-                  {Array.from({ length: 5 }, (_, i) => {
-                    const year = new Date().getFullYear() + i;
-                    return (
-                      <option key={year} value={year}>{year} Season</option>
-                    );
-                  })}
+                  {getOptionsByCategory('competition_seasons').map(season => (
+                    <option key={season.value} value={season.value}>{season.label}</option>
+                  ))}
                 </select>
               </div>
 
@@ -1336,13 +1393,67 @@ export default function CreateEvent() {
           {/* Rules */}
           <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
             <h2 className="text-xl font-bold text-white mb-6">Rules & Regulations</h2>
-            <textarea
-              value={formData.rules}
-              onChange={(e) => handleInputChange('rules', e.target.value)}
-              rows={6}
-              className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-              placeholder="Enter event rules and regulations..."
-            />
+            
+            <div className="space-y-4">
+              {/* Template Selection */}
+              <div className="flex items-center space-x-4 mb-4">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={!!(selectedOrganization?.default_rules_content && formData.rules === selectedOrganization.default_rules_content)}
+                    onChange={(e) => {
+                      if (e.target.checked && selectedOrganization?.default_rules_content) {
+                        handleInputChange('rules', selectedOrganization.default_rules_content);
+                      } else {
+                        handleInputChange('rules', '');
+                      }
+                    }}
+                    className="rounded border-gray-600 text-electric-500 focus:ring-electric-500"
+                    disabled={!selectedOrganization?.default_rules_content}
+                  />
+                  <span className="text-gray-300">
+                    Use standard {selectedOrganization?.name || 'organization'} rules
+                    {!selectedOrganization?.default_rules_content && ' (No template available)'}
+                  </span>
+                </label>
+              </div>
+
+              {/* Manual Template Selection */}
+              <div className="mb-4">
+                <label className="block text-gray-400 text-sm mb-2">Or select from rules templates:</label>
+                <select
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      loadRulesTemplate(e.target.value);
+                    }
+                  }}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                >
+                  <option value="">Choose a rules template...</option>
+                  {getRulesTemplates().map(template => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Rules Text Area */}
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Rules & Regulations Content</label>
+                <textarea
+                  value={formData.rules}
+                  onChange={(e) => handleInputChange('rules', e.target.value)}
+                  rows={8}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  placeholder="Enter event rules and regulations..."
+                />
+                <p className="text-gray-500 text-xs mt-2">
+                  You can use the templates above or write custom rules for your event.
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Privacy */}

@@ -195,7 +195,7 @@ export default function EditEvent() {
         end_date: formatForInput(localEndDate),
         registration_deadline: formatForInput(localRegistrationDeadline),
         max_participants: event.max_participants,
-        registration_fee: event.registration_fee || 0,
+        registration_fee: event.ticket_price || event.registration_fee || 0,
         early_bird_fee: event.early_bird_fee,
         early_bird_deadline: formatForInput(localEarlyBirdDeadline),
         venue_name: event.venue_name || '',
@@ -370,7 +370,7 @@ export default function EditEvent() {
         end_date: utcEndDate,
         registration_deadline: utcRegistrationDeadline,
         max_participants: formData.max_participants,
-        registration_fee: formData.registration_fee,
+        ticket_price: formData.registration_fee,
         early_bird_fee: formData.early_bird_fee,
         early_bird_deadline: utcEarlyBirdDeadline,
         venue_name: formData.venue_name,
@@ -647,6 +647,267 @@ export default function EditEvent() {
                 />
               </div>
             </div>
+          </div>
+
+          {/* Date & Time Information */}
+          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+            <h2 className="text-xl font-bold text-white mb-6 flex items-center space-x-2">
+              <Clock className="h-5 w-5 text-electric-500" />
+              <span>Date & Time</span>
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Start Date & Time *</label>
+                <input
+                  type="datetime-local"
+                  required
+                  value={formData.start_date}
+                  onChange={(e) => handleInputChange('start_date', e.target.value)}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">End Date & Time *</label>
+                <input
+                  type="datetime-local"
+                  required
+                  value={formData.end_date}
+                  onChange={(e) => handleInputChange('end_date', e.target.value)}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Registration Deadline</label>
+                <input
+                  type="datetime-local"
+                  value={formData.registration_deadline}
+                  onChange={(e) => handleInputChange('registration_deadline', e.target.value)}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Early Bird Deadline</label>
+                <input
+                  type="datetime-local"
+                  value={formData.early_bird_deadline}
+                  onChange={(e) => handleInputChange('early_bird_deadline', e.target.value)}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Location Information */}
+          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+            <h2 className="text-xl font-bold text-white mb-6 flex items-center space-x-2">
+              <MapPin className="h-5 w-5 text-electric-500" />
+              <span>Location</span>
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="md:col-span-2">
+                <label className="block text-gray-400 text-sm mb-2">Venue Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.venue_name}
+                  onChange={(e) => handleInputChange('venue_name', e.target.value)}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  placeholder="Enter venue name"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-gray-400 text-sm mb-2">Address *</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.address}
+                  onChange={(e) => handleInputChange('address', e.target.value)}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  placeholder="Street address"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">City *</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.city}
+                  onChange={(e) => handleInputChange('city', e.target.value)}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  placeholder="City"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">State/Province *</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.state}
+                  onChange={(e) => handleInputChange('state', e.target.value)}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  placeholder="State or Province"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">ZIP/Postal Code</label>
+                <input
+                  type="text"
+                  value={formData.zip_code}
+                  onChange={(e) => handleInputChange('zip_code', e.target.value)}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  placeholder="ZIP or Postal Code"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Country *</label>
+                <select
+                  required
+                  value={formData.country}
+                  onChange={(e) => handleInputChange('country', e.target.value)}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                >
+                  <option value="US">United States</option>
+                  <option value="CA">Canada</option>
+                  <option value="MX">Mexico</option>
+                  <option value="GB">United Kingdom</option>
+                  <option value="AU">Australia</option>
+                  <option value="DE">Germany</option>
+                  <option value="FR">France</option>
+                  <option value="JP">Japan</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Pricing Information */}
+          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+            <h2 className="text-xl font-bold text-white mb-6 flex items-center space-x-2">
+              <DollarSign className="h-5 w-5 text-electric-500" />
+              <span>Pricing</span>
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Registration Fee *</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  required
+                  value={formData.registration_fee}
+                  onChange={(e) => handleInputChange('registration_fee', parseFloat(e.target.value) || 0)}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  placeholder="0.00"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Early Bird Fee</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.early_bird_fee || ''}
+                  onChange={(e) => handleInputChange('early_bird_fee', e.target.value ? parseFloat(e.target.value) : null)}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  placeholder="Optional early bird pricing"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Contact Information */}
+          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+            <h2 className="text-xl font-bold text-white mb-6 flex items-center space-x-2">
+              <Users className="h-5 w-5 text-electric-500" />
+              <span>Contact Information</span>
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Contact Email *</label>
+                <input
+                  type="email"
+                  required
+                  value={formData.contact_email}
+                  onChange={(e) => handleInputChange('contact_email', e.target.value)}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  placeholder="contact@example.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Contact Phone</label>
+                <input
+                  type="tel"
+                  value={formData.contact_phone}
+                  onChange={(e) => handleInputChange('contact_phone', e.target.value)}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  placeholder="Phone number"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-gray-400 text-sm mb-2">Website</label>
+                <input
+                  type="url"
+                  value={formData.website}
+                  onChange={(e) => handleInputChange('website', e.target.value)}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  placeholder="https://example.com"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Rules */}
+          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+            <h2 className="text-xl font-bold text-white mb-6">Rules & Regulations</h2>
+            <textarea
+              rows={6}
+              value={formData.rules}
+              onChange={(e) => handleInputChange('rules', e.target.value)}
+              className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500 resize-none"
+              placeholder="Enter event rules and regulations..."
+            />
+          </div>
+
+          {/* Save Button */}
+          <div className="flex justify-end space-x-4">
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="px-6 py-3 text-gray-400 hover:text-white transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSaving}
+              className="bg-electric-500 text-white px-8 py-3 rounded-lg font-medium hover:bg-electric-600 transition-all duration-200 flex items-center space-x-2 disabled:opacity-50"
+            >
+              {isSaving ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4" />
+                  <span>Save Changes</span>
+                </>
+              )}
+            </button>
           </div>
         </form>
       </div>

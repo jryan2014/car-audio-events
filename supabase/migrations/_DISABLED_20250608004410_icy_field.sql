@@ -222,9 +222,10 @@ END;
 $$;
 
 -- Execute the functions to create admin user and setup permissions
-SELECT create_admin_user();
-SELECT setup_admin_permissions();
+-- Temporarily commented out - will be executed after users table is created
+-- SELECT create_admin_user();
+-- SELECT setup_admin_permissions();
 
 -- Drop the functions after use (optional, for security)
-DROP FUNCTION IF EXISTS create_admin_user();
-DROP FUNCTION IF EXISTS setup_admin_permissions();
+-- DROP FUNCTION IF EXISTS create_admin_user();
+-- DROP FUNCTION IF EXISTS setup_admin_permissions();

@@ -4,6 +4,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
+const USERS_PER_PAGE = 25;
+
 interface User {
   id: string;
   email: string;
@@ -67,6 +69,14 @@ export default function AdminUsers() {
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [sortField, setSortField] = useState('created_at');
+  const [sortDirection, setSortDirection] = useState('desc');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [membershipFilter, setMembershipFilter] = useState('all');
+  const [verificationFilter, setVerificationFilter] = useState('all');
   
   const [newUserData, setNewUserData] = useState<NewUserFormData>({
     email: '',
@@ -106,200 +116,73 @@ export default function AdminUsers() {
     try {
       setIsLoading(true);
       setError(null);
-      
-      // Check if we have a valid session
-      if (!session?.access_token) {
-        throw new Error('No valid session token available. Please log out and log back in.');
+
+      // Build the query - only select columns that exist
+      let query = supabase.from('users').select(`
+        id,
+        email,
+        name,
+        membership_type,
+        status,
+        location,
+        phone,
+        company_name,
+        verification_status,
+        subscription_plan,
+        last_login_at,
+        created_at,
+        login_count,
+        failed_login_attempts
+      `);
+
+      // Apply filters
+      if (statusFilter !== 'all') {
+        query = query.eq('status', statusFilter);
+      }
+      if (membershipFilter !== 'all') {
+        query = query.eq('membership_type', membershipFilter);
+      }
+      if (verificationFilter !== 'all') {
+        query = query.eq('verification_status', verificationFilter);
       }
 
-      // First, verify current user is admin
-      const { data: currentUser, error: currentUserError } = await supabase
+      // Apply search
+      if (searchTerm) {
+        query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%`);
+      }
+
+      // Apply sorting and pagination
+      const startIndex = (currentPage - 1) * USERS_PER_PAGE;
+      query = query
+        .order(sortField, { ascending: sortDirection === 'asc' })
+        .range(startIndex, startIndex + USERS_PER_PAGE - 1);
+
+      const { data, error, count } = await supabase
         .from('users')
-        .select('membership_type, status')
-        .eq('id', user?.id)
-        .single();
+        .select('*', { count: 'exact' })
+        .order(sortField, { ascending: sortDirection === 'asc' })
+        .range(startIndex, startIndex + USERS_PER_PAGE - 1);
 
-      if (currentUserError || !currentUser) {
-        throw new Error('Unable to verify admin permissions. Please ensure your account is properly configured.');
+      if (error) {
+        throw error;
       }
 
-      if (currentUser.membership_type !== 'admin' || currentUser.status !== 'active') {
-        throw new Error('Access denied. Your admin account may not be properly configured.');
-      }
+      setUsers(data || []);
+      setTotalUsers(count || 0);
+      setTotalPages(Math.ceil((count || 0) / USERS_PER_PAGE));
 
-      // Fetch all users directly from the database
-      let usersData;
-      try {
-        // Try to fetch with new fields first
-        const { data, error: usersError } = await supabase
-          .from('users')
-          .select(`
-            id,
-            email,
-            name,
-            first_name,
-            last_name,
-            membership_type,
-            status,
-            location,
-            address,
-            city,
-            state,
-            zip,
-            phone,
-            company_name,
-            competition_type,
-            team_id,
-            verification_status,
-            subscription_plan,
-            last_login_at,
-            created_at,
-            login_count,
-            failed_login_attempts,
-            teams(name)
-          `)
-          .order('created_at', { ascending: false });
-
-        if (usersError) throw usersError;
-        usersData = data;
-      } catch (error) {
-        console.log('New fields not available, falling back to basic fields:', error);
-        // Fallback to basic fields if new fields don't exist
-        const { data, error: basicError } = await supabase
-          .from('users')
-          .select(`
-            id,
-            email,
-            name,
-            membership_type,
-            status,
-            location,
-            phone,
-            company_name,
-            verification_status,
-            subscription_plan,
-            last_login_at,
-            created_at,
-            login_count,
-            failed_login_attempts
-          `)
-          .order('created_at', { ascending: false });
-
-        if (basicError) throw basicError;
-        usersData = data;
-      }
-
-      setUsers(usersData || []);
-      setError(null);
-      
     } catch (error) {
       console.error('Failed to load users:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       setError(errorMessage);
       
-      // Only show mock data in development if it's not a permission error
-      if (!errorMessage.includes('Access denied') && import.meta.env.DEV) {
-        console.log('Using mock data for development...');
-        setMockUsers();
-      }
+      // Set empty state instead of mock data
+      setUsers([]);
+      setTotalUsers(0);
+      setTotalPages(0);
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const setMockUsers = () => {
-    setUsers([
-      {
-        id: '1',
-        email: 'john@example.com',
-        name: 'John Doe',
-        first_name: 'John',
-        last_name: 'Doe',
-        membership_type: 'competitor',
-        status: 'active',
-        location: 'Orlando, FL',
-        address: '123 Main St',
-        city: 'Orlando',
-        state: 'FL',
-        zip: '32801',
-        phone: '+1 (555) 123-4567',
-        competition_type: 'SPL',
-        team_id: 'team1',
-        team_name: 'Bass Heads',
-        verification_status: 'verified',
-        subscription_plan: 'pro',
-        last_login_at: '2025-01-07T10:30:00Z',
-        created_at: '2024-12-01T00:00:00Z',
-        login_count: 45,
-        failed_login_attempts: 0
-      },
-      {
-        id: '2',
-        email: 'retailer@example.com',
-        name: 'Audio Store Pro',
-        first_name: 'Mike',
-        last_name: 'Johnson',
-        membership_type: 'retailer',
-        status: 'active',
-        location: 'Phoenix, AZ',
-        address: '456 Commerce Blvd',
-        city: 'Phoenix',
-        state: 'AZ',
-        zip: '85001',
-        phone: '+1 (555) 987-6543',
-        company_name: 'Pro Audio Solutions',
-        verification_status: 'pending',
-        subscription_plan: 'business',
-        last_login_at: '2025-01-06T15:20:00Z',
-        created_at: '2024-11-15T00:00:00Z',
-        login_count: 23,
-        failed_login_attempts: 1
-      },
-      {
-        id: '3',
-        email: 'manufacturer@example.com',
-        name: 'Bass Systems Inc',
-        first_name: 'Sarah',
-        last_name: 'Williams',
-        membership_type: 'manufacturer',
-        status: 'active',
-        location: 'Atlanta, GA',
-        address: '789 Industrial Way',
-        city: 'Atlanta',
-        state: 'GA',
-        zip: '30301',
-        phone: '+1 (555) 456-7890',
-        company_name: 'Bass Systems Manufacturing',
-        verification_status: 'verified',
-        subscription_plan: 'enterprise',
-        last_login_at: '2025-01-05T09:15:00Z',
-        created_at: '2024-10-20T00:00:00Z',
-        login_count: 67,
-        failed_login_attempts: 0
-      },
-      {
-        id: '4',
-        email: 'suspended@example.com',
-        name: 'Suspended User',
-        first_name: 'Alex',
-        last_name: 'Thompson',
-        membership_type: 'competitor',
-        status: 'suspended',
-        location: 'Dallas, TX',
-        address: '321 Elm St',
-        city: 'Dallas',
-        state: 'TX',
-        zip: '75201',
-        phone: '+1 (555) 321-0987',
-        competition_type: 'SQL',
-        verification_status: 'rejected',
-        subscription_plan: 'free',
-        last_login_at: '2024-12-20T14:30:00Z',
-        created_at: '2024-09-10T00:00:00Z',
-        login_count: 12,
-        failed_login_attempts: 5
-      }
-    ]);
   };
 
   const filterUsers = () => {
@@ -721,7 +604,7 @@ export default function AdminUsers() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm">Total Users</p>
-                <p className="text-2xl font-bold text-white">{users.length}</p>
+                <p className="text-2xl font-bold text-white">{totalUsers}</p>
               </div>
               <Users className="h-8 w-8 text-electric-500" />
             </div>
@@ -883,7 +766,7 @@ export default function AdminUsers() {
 
         {/* Results count */}
         <div className="mt-4 text-center text-gray-400 text-sm">
-          Showing {filteredUsers.length} of {users.length} users
+          Showing {filteredUsers.length} of {totalUsers} users
         </div>
       </div>
 

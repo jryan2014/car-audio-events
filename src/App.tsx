@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import Home from './pages/Home';
@@ -22,11 +22,31 @@ import EditEvent from './pages/EditEvent';
 import UserDetails from './pages/UserDetails';
 import EditUser from './pages/EditUser';
 import AdminAnalytics from './pages/AdminAnalytics';
+import AdminBackup from './pages/AdminBackup';
 import AdManagement from './pages/AdManagement';
 import CMSPages from './pages/CMSPages';
+import DynamicPage from './pages/DynamicPage';
+import SystemConfiguration from './pages/SystemConfiguration';
+import SystemConfigurationDemo from './pages/SystemConfigurationDemo';
+import OrganizationManager from './pages/OrganizationManager';
+import AdminContactSettingsPage from './pages/AdminContactSettings';
 import { AuthProvider } from './contexts/AuthContext';
 
 function App() {
+  useEffect(() => {
+    // Initialize backup system when app starts
+    const initializeBackupSystem = async () => {
+      try {
+        const { initializeBackupSystem } = await import('./utils/backup');
+        initializeBackupSystem();
+      } catch (error) {
+        console.error('Failed to initialize backup system:', error);
+      }
+    };
+
+    initializeBackupSystem();
+  }, []);
+
   return (
     <AuthProvider>
       <Router>
@@ -51,11 +71,17 @@ function App() {
             <Route path="/admin/users/:userId/edit" element={<EditUser />} />
             <Route path="/admin/membership" element={<AdminMembership />} />
             <Route path="/admin/events" element={<AdminEvents />} />
+            <Route path="/admin/backup" element={<AdminBackup />} />
             <Route path="/create-event" element={<CreateEvent />} />
             <Route path="/events/:id/edit" element={<EditEvent />} />
             <Route path="/admin/analytics" element={<AdminAnalytics />} />
             <Route path="/admin/ad-management" element={<AdManagement />} />
             <Route path="/admin/cms-pages" element={<CMSPages />} />
+            <Route path="/pages/:slug" element={<DynamicPage />} />
+            <Route path="/admin/system-configuration" element={<SystemConfiguration />} />
+            <Route path="/admin/system-configuration-demo" element={<SystemConfigurationDemo />} />
+            <Route path="/admin/organizations" element={<OrganizationManager />} />
+            <Route path="/admin/contact-settings" element={<AdminContactSettingsPage />} />
           </Routes>
         </Layout>
       </Router>
