@@ -31,41 +31,41 @@ export default function Pricing() {
         {/* Header */}
         <div className="text-center mb-16">
           <h1 className="text-4xl lg:text-5xl font-black text-white mb-6">
-            Choose Your <span className="text-electric-400">Plan</span>
+            Choose Your <span className="text-electric-400">Membership</span>
           </h1>
           <p className="text-xl text-gray-400 max-w-3xl mx-auto">
-            Select the perfect plan for your car audio competition journey. 
-            Upgrade or downgrade at any time.
+            Join the car audio community with a membership plan designed for your needs. 
+            Access exclusive features and connect with fellow enthusiasts.
           </p>
         </div>
 
-        {/* Pricing Plans */}
+        {/* Membership Plans */}
         <PricingPlans onPlanSelected={handlePlanSelected} />
 
         {/* FAQ Section */}
         <div className="mt-20">
           <h2 className="text-3xl font-bold text-white text-center mb-12">
-            Frequently Asked Questions
+            Membership Questions
           </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
             <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
               <h3 className="text-lg font-bold text-white mb-3">
-                Can I change my plan later?
+                Can I upgrade my membership later?
               </h3>
               <p className="text-gray-400">
-                Yes! You can upgrade or downgrade your plan at any time. Changes take effect immediately, 
-                and we'll prorate any billing differences.
+                Absolutely! You can upgrade or change your membership plan at any time. Your new benefits 
+                take effect immediately, and we'll handle any billing adjustments.
               </p>
             </div>
 
             <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
               <h3 className="text-lg font-bold text-white mb-3">
-                Is there a free trial?
+                Is there a free membership option?
               </h3>
               <p className="text-gray-400">
-                Our Competitor plan is free forever! You can also try Pro features with a 14-day 
-                free trial when you upgrade.
+                Yes! Our Competitor membership is completely free and gives you access to core features. 
+                You can also try Pro benefits with a 14-day free trial.
               </p>
             </div>
 
@@ -81,11 +81,11 @@ export default function Pricing() {
 
             <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
               <h3 className="text-lg font-bold text-white mb-3">
-                Can I cancel anytime?
+                Can I cancel my membership anytime?
               </h3>
               <p className="text-gray-400">
-                Absolutely! You can cancel your subscription at any time. You'll continue to have 
-                access to paid features until the end of your billing period.
+                Of course! You can cancel your membership at any time. You'll continue to have 
+                access to member benefits until the end of your current billing period.
               </p>
             </div>
           </div>
@@ -95,10 +95,10 @@ export default function Pricing() {
         <div className="mt-16 text-center">
           <div className="bg-gradient-to-r from-electric-500/10 to-accent-500/10 border border-electric-500/20 rounded-xl p-8">
             <h3 className="text-2xl font-bold text-white mb-4">
-              Need Help Choosing?
+              Need Help Choosing a Membership?
             </h3>
             <p className="text-gray-400 mb-6">
-              Our team is here to help you find the perfect plan for your needs.
+              Our team is here to help you find the perfect membership plan for your car audio journey.
             </p>
             <Link
               to="/contact"

@@ -64,7 +64,7 @@ export default function Header() {
               to="/pricing" 
               className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium"
             >
-              Pricing
+              Membership
             </Link>
             {isAuthenticated && user?.membershipType && ['retailer', 'manufacturer', 'organization', 'admin'].includes(user.membershipType) && (
               <Link 
@@ -274,7 +274,7 @@ export default function Header() {
                 className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium"
                 onClick={() => setIsMenuOpen(false)}
               >
-                Pricing
+                Membership
               </Link>
               
               {isAuthenticated && user?.membershipType && ['retailer', 'manufacturer', 'organization', 'admin'].includes(user.membershipType) && (
