@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Calendar, DollarSign, TrendingUp, Activity, Shield, AlertTriangle, CheckCircle, UserCheck, FileText, Target, Settings, Archive, Mail, Building2 } from 'lucide-react';
+import { Users, Calendar, DollarSign, TrendingUp, Activity, Shield, AlertTriangle, CheckCircle, UserCheck, FileText, Target, Settings, Archive, Mail, Building2, Menu } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { ActivityLogger } from '../utils/activityLogger';
 
 interface DashboardStats {
   totalUsers: number;
@@ -51,6 +52,8 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     loadDashboardData();
+    // Log dashboard access
+    ActivityLogger.adminDashboardAccess();
   }, []);
 
   const loadDashboardData = async () => {
@@ -105,9 +108,32 @@ export default function AdminDashboard() {
 
       setStats(finalStats);
 
-      // Load recent activity from audit logs (when implemented)
-      // For now, show empty state
-      setRecentActivity([]);
+      // Load recent activity from audit logs
+      try {
+        const { data: activityData, error: activityError } = await supabase
+          .rpc('get_recent_activity', { limit_count: 10 });
+        
+        if (activityError) {
+          console.error('Failed to load activity data:', activityError);
+          setRecentActivity([]);
+        } else if (activityData) {
+          // Transform the data to match our interface
+          const transformedActivity: RecentActivity[] = activityData.map((activity: any) => ({
+            id: activity.id,
+            type: activity.activity_type,
+            description: activity.description,
+            timestamp: activity.created_at,
+            user: activity.user_name || activity.user_email || 'Unknown User',
+            severity: getSeverityFromType(activity.activity_type)
+          }));
+          setRecentActivity(transformedActivity);
+        } else {
+          setRecentActivity([]);
+        }
+      } catch (activityLoadError) {
+        console.error('Failed to load recent activity:', activityLoadError);
+        setRecentActivity([]);
+      }
 
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
@@ -156,6 +182,12 @@ export default function AdminDashboard() {
         return <DollarSign className="h-4 w-4" />;
       case 'admin_action':
         return <Shield className="h-4 w-4" />;
+      case 'cms_page_created':
+      case 'cms_page_updated':
+        return <FileText className="h-4 w-4" />;
+      case 'system_startup':
+      case 'system_maintenance':
+        return <Settings className="h-4 w-4" />;
       default:
         return <Activity className="h-4 w-4" />;
     }
@@ -171,8 +203,32 @@ export default function AdminDashboard() {
         return 'text-electric-400';
       case 'admin_action':
         return 'text-purple-400';
+      case 'cms_page_created':
+      case 'cms_page_updated':
+        return 'text-orange-400';
+      case 'system_startup':
+      case 'system_maintenance':
+        return 'text-cyan-400';
       default:
         return 'text-gray-400';
+    }
+  };
+
+  const getSeverityFromType = (type: string): 'info' | 'warning' | 'error' => {
+    switch (type) {
+      case 'system_startup':
+      case 'system_maintenance':
+      case 'user_registration':
+      case 'event_created':
+      case 'cms_page_created':
+      case 'cms_page_updated':
+        return 'info';
+      case 'admin_action':
+        return 'warning';
+      case 'payment_received':
+        return 'info';
+      default:
+        return 'info';
     }
   };
 
@@ -414,6 +470,19 @@ export default function AdminDashboard() {
               <div>
                 <h3 className="text-white font-semibold">Organizations</h3>
                 <p className="text-gray-400 text-sm">Manage platform organizations</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            to="/admin/navigation-manager"
+            className="bg-gradient-to-br from-indigo-500/20 to-indigo-600/20 border border-indigo-500/30 rounded-xl p-6 hover:from-indigo-500/30 hover:to-indigo-600/30 transition-all duration-200 group"
+          >
+            <div className="flex items-center space-x-3">
+              <Menu className="h-8 w-8 text-indigo-400 group-hover:scale-110 transition-transform" />
+              <div>
+                <h3 className="text-white font-semibold">Navigation Manager</h3>
+                <p className="text-gray-400 text-sm">Manage website navigation and menus</p>
               </div>
             </div>
           </Link>

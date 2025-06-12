@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, X, User, Calendar, MapPin, Users, LogOut, Settings, Shield, Package, BarChart3, Target, FileText, Building2 } from 'lucide-react';
+import { Menu, X, User, Calendar, MapPin, Users, LogOut, Settings, Shield, Package, BarChart3, Target, FileText, Building2, ChevronDown } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import MegaMenu from './MegaMenu';
+import MobileMegaMenu from './MobileMegaMenu';
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [showAdminMenu, setShowAdminMenu] = useState(false);
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const { user, logout, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
@@ -13,6 +15,7 @@ export default function Header() {
     logout();
     navigate('/');
     setIsMenuOpen(false);
+    setIsUserDropdownOpen(false);
   };
 
   return (
@@ -20,190 +23,207 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-electric-500 rounded-lg flex items-center justify-center">
+          <Link to="/" className="flex items-center space-x-3 flex-shrink-0">
+            <div className="w-10 h-10 bg-electric-500 rounded-lg flex items-center justify-center flex-shrink-0">
               <Users className="h-6 w-6 text-white" />
             </div>
             <div className="hidden sm:block">
-              <h1 className="text-xl font-bold text-white">Car Audio Events</h1>
+              <h1 className="text-xl font-bold text-white whitespace-nowrap">Car Audio Events</h1>
               <p className="text-xs text-electric-300">Competition Platform</p>
             </div>
           </Link>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
-            <Link 
-              to="/" 
-              className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium"
-            >
-              Home
-            </Link>
-            {isAuthenticated && (
-              <Link 
-                to={user?.membershipType === 'admin' ? '/admin/dashboard' : '/dashboard'}
-                className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium"
-              >
-                Dashboard
-              </Link>
-            )}
-            <Link 
-              to="/events" 
-              className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium flex items-center space-x-1"
-            >
-              <Calendar className="h-4 w-4" />
-              <span>Events</span>
-            </Link>
-            <Link 
-              to="/directory" 
-              className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium flex items-center space-x-1"
-            >
-              <MapPin className="h-4 w-4" />
-              <span>Directory</span>
-            </Link>
-            <Link 
-              to="/pricing" 
-              className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium"
-            >
-              Membership
-            </Link>
-            {isAuthenticated && user?.membershipType && ['retailer', 'manufacturer', 'organization', 'admin'].includes(user.membershipType) && (
-              <Link 
-                to="/admin/ad-management" 
-                className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium flex items-center space-x-1"
-              >
-                <Target className="h-4 w-4" />
-                <span>Advertise</span>
-              </Link>
-            )}
-          </nav>
+          {/* Desktop Navigation - Mega Menu */}
+          <div className="hidden md:flex flex-1 justify-center">
+            <MegaMenu 
+              isAuthenticated={isAuthenticated} 
+              user={user || undefined} 
+              onLinkClick={() => {}} 
+            />
+          </div>
 
           {/* User Menu */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-4 flex-shrink-0">
             {isAuthenticated ? (
               <div className="flex items-center space-x-4">
-                <Link 
-                  to="/profile"
-                  className="flex items-center space-x-2 text-gray-300 hover:text-electric-400 transition-colors duration-200"
-                >
-                  {user?.profileImage ? (
-                    <img 
-                      src={user.profileImage} 
-                      alt={user.name}
-                      className="w-8 h-8 rounded-full border-2 border-electric-500"
-                    />
-                  ) : (
-                    <User className="h-8 w-8 p-1 bg-electric-500 rounded-full text-white" />
-                  )}
-                  <span className="hidden sm:block font-medium">{user?.name}</span>
-                </Link>
-                
-                {user?.membershipType === 'admin' && (
-                  <div className="relative">
-                    <button
-                      onClick={() => setShowAdminMenu(!showAdminMenu)}
-                      className="text-gray-300 hover:text-electric-400 transition-colors duration-200 p-2 flex items-center space-x-1"
-                      title="Admin Menu"
-                    >
-                      <Shield className="h-5 w-5" />
-                      <span className="hidden sm:block text-sm">Admin</span>
-                    </button>
-                    
-                    {showAdminMenu && (
-                      <div className="absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50">
-                        <div className="py-2">
-                          <Link
-                            to="/admin/dashboard"
-                            className="block px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors flex items-center space-x-2"
-                            onClick={() => setShowAdminMenu(false)}
-                          >
-                            <Shield className="h-4 w-4" />
-                            <span>Dashboard</span>
-                          </Link>
-                          <Link
-                            to="/admin/users"
-                            className="block px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors flex items-center space-x-2"
-                            onClick={() => setShowAdminMenu(false)}
-                          >
-                            <Users className="h-4 w-4" />
-                            <span>Users</span>
-                          </Link>
-                          <Link
-                            to="/admin/settings"
-                            className="block px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors flex items-center space-x-2"
-                            onClick={() => setShowAdminMenu(false)}
-                          >
-                            <Settings className="h-4 w-4" />
-                            <span>Settings</span>
-                          </Link>
-                          <Link
-                            to="/admin/membership"
-                            className="block px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors flex items-center space-x-2"
-                            onClick={() => setShowAdminMenu(false)}
-                          >
-                            <Package className="h-4 w-4" />
-                            <span>Membership</span>
-                          </Link>
-                          <Link
-                            to="/admin/events"
-                            className="block px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors flex items-center space-x-2"
-                            onClick={() => setShowAdminMenu(false)}
-                          >
-                            <Calendar className="h-4 w-4" />
-                            <span>Events</span>
-                          </Link>
-                          <Link
-                            to="/admin/organizations"
-                            className="block px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors flex items-center space-x-2"
-                            onClick={() => setShowAdminMenu(false)}
-                          >
-                            <Building2 className="h-4 w-4" />
-                            <span>Organizations</span>
-                          </Link>
-                          <Link
-                            to="/admin/system-configuration"
-                            className="block px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors flex items-center space-x-2"
-                            onClick={() => setShowAdminMenu(false)}
-                          >
-                            <Settings className="h-4 w-4" />
-                            <span>System Config</span>
-                          </Link>
-                          <Link
-                            to="/admin/analytics"
-                            className="block px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors flex items-center space-x-2"
-                            onClick={() => setShowAdminMenu(false)}
-                          >
-                            <BarChart3 className="h-4 w-4" />
-                            <span>Analytics</span>
-                          </Link>
-                          <Link
-                            to="/admin/cms-pages"
-                            className="block px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors flex items-center space-x-2"
-                            onClick={() => setShowAdminMenu(false)}
-                          >
-                            <FileText className="h-4 w-4" />
-                            <span>CMS Pages</span>
-                          </Link>
-                          <Link
-                            to="/admin/ad-management"
-                            className="block px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors flex items-center space-x-2"
-                            onClick={() => setShowAdminMenu(false)}
-                          >
-                            <Target className="h-4 w-4" />
-                            <span>Ads</span>
-                          </Link>
-                        </div>
-                      </div>
+                {/* User Dropdown */}
+                <div className="relative">
+                  <button
+                    onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
+                    onMouseEnter={() => setIsUserDropdownOpen(true)}
+                    className="flex items-center space-x-2 text-gray-300 hover:text-electric-400 transition-colors duration-200"
+                  >
+                    {user?.profileImage ? (
+                      <img 
+                        src={user.profileImage} 
+                        alt={user.name}
+                        className="w-8 h-8 rounded-full border-2 border-electric-500"
+                      />
+                    ) : (
+                      <User className="h-8 w-8 p-1 bg-electric-500 rounded-full text-white" />
                     )}
-                  </div>
-                )}
-                
-                <button
-                  onClick={handleLogout}
-                  className="text-gray-300 hover:text-red-400 transition-colors duration-200 p-2"
-                  title="Logout"
-                >
-                  <LogOut className="h-5 w-5" />
-                </button>
+                    <span className="hidden sm:block font-medium">{user?.name}</span>
+                    <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${
+                      isUserDropdownOpen ? 'rotate-180' : ''
+                    }`} />
+                  </button>
+
+                  {/* User Dropdown Menu */}
+                  {isUserDropdownOpen && (
+                    <div 
+                      className="absolute right-0 top-full mt-2 w-72 bg-gray-800/95 backdrop-blur-sm border border-gray-700/50 rounded-xl shadow-2xl z-50"
+                      onMouseLeave={() => setIsUserDropdownOpen(false)}
+                    >
+                      <div className="p-2">
+                        <Link
+                          to={user?.membershipType === 'admin' ? '/admin/dashboard' : '/dashboard'}
+                          onClick={() => setIsUserDropdownOpen(false)}
+                          className="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700/50 rounded-lg transition-colors duration-200"
+                        >
+                          <BarChart3 className="h-4 w-4" />
+                          <span>Dashboard</span>
+                        </Link>
+                        <Link
+                          to="/profile"
+                          onClick={() => setIsUserDropdownOpen(false)}
+                          className="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700/50 rounded-lg transition-colors duration-200"
+                        >
+                          <User className="h-4 w-4" />
+                          <span>Profile</span>
+                        </Link>
+                        <Link
+                          to="/profile?tab=settings"
+                          onClick={() => setIsUserDropdownOpen(false)}
+                          className="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700/50 rounded-lg transition-colors duration-200"
+                        >
+                          <Settings className="h-4 w-4" />
+                          <span>Settings</span>
+                        </Link>
+
+                        {/* Admin Navigation Section */}
+                        {user?.membershipType === 'admin' && (
+                          <>
+                            <div className="border-t border-gray-700 my-2"></div>
+                            <div className="px-4 py-2">
+                              <div className="text-xs text-gray-500 font-medium mb-2">Admin Tools</div>
+                              
+                              <Link
+                                to="/admin/users"
+                                onClick={() => setIsUserDropdownOpen(false)}
+                                className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
+                              >
+                                <Users className="h-3 w-3" />
+                                <span>User Management</span>
+                              </Link>
+                              
+                              <Link
+                                to="/admin/events"
+                                onClick={() => setIsUserDropdownOpen(false)}
+                                className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
+                              >
+                                <Calendar className="h-3 w-3" />
+                                <span>Event Management</span>
+                              </Link>
+                              
+                              <Link
+                                to="/admin/cms-pages"
+                                onClick={() => setIsUserDropdownOpen(false)}
+                                className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
+                              >
+                                <FileText className="h-3 w-3" />
+                                <span>CMS Pages</span>
+                              </Link>
+                              
+                              <Link
+                                to="/admin/ad-management"
+                                onClick={() => setIsUserDropdownOpen(false)}
+                                className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
+                              >
+                                <Target className="h-3 w-3" />
+                                <span>Advertisement Management</span>
+                              </Link>
+                              
+                              <Link
+                                to="/admin/organizations"
+                                onClick={() => setIsUserDropdownOpen(false)}
+                                className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
+                              >
+                                <Building2 className="h-3 w-3" />
+                                <span>Organizations</span>
+                              </Link>
+                              
+                              <Link
+                                to="/admin/navigation-manager"
+                                onClick={() => setIsUserDropdownOpen(false)}
+                                className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
+                              >
+                                <Menu className="h-3 w-3" />
+                                <span>Navigation Manager</span>
+                              </Link>
+                              
+                              <Link
+                                to="/admin/system-configuration"
+                                onClick={() => setIsUserDropdownOpen(false)}
+                                className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
+                              >
+                                <Settings className="h-3 w-3" />
+                                <span>System Config</span>
+                              </Link>
+                              
+                              <Link
+                                to="/admin/analytics"
+                                onClick={() => setIsUserDropdownOpen(false)}
+                                className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
+                              >
+                                <BarChart3 className="h-3 w-3" />
+                                <span>Analytics</span>
+                              </Link>
+                            </div>
+                          </>
+                        )}
+
+                        {/* Business Tools Section for eligible users */}
+                        {user?.membershipType && ['retailer', 'manufacturer', 'organization'].includes(user.membershipType) && (
+                          <>
+                            <div className="border-t border-gray-700 my-2"></div>
+                            <div className="px-4 py-2">
+                              <div className="text-xs text-gray-500 font-medium mb-2">Business Tools</div>
+                              
+                              <Link
+                                to="/admin/ad-management"
+                                onClick={() => setIsUserDropdownOpen(false)}
+                                className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
+                              >
+                                <Target className="h-3 w-3" />
+                                <span>Advertisement Management</span>
+                              </Link>
+                              
+                              {user.membershipType === 'organization' && (
+                                <Link
+                                  to="/admin/organizations"
+                                  onClick={() => setIsUserDropdownOpen(false)}
+                                  className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
+                                >
+                                  <Building2 className="h-3 w-3" />
+                                  <span>Organization Management</span>
+                                </Link>
+                              )}
+                            </div>
+                          </>
+                        )}
+
+                        <div className="border-t border-gray-700 my-2"></div>
+                        <button
+                          onClick={handleLogout}
+                          className="flex items-center space-x-2 w-full px-4 py-2 text-gray-300 hover:text-red-400 hover:bg-gray-700/50 rounded-lg transition-colors duration-200"
+                        >
+                          <LogOut className="h-4 w-4" />
+                          <span>Logout</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="hidden md:flex items-center space-x-4">
@@ -232,171 +252,13 @@ export default function Header() {
           </div>
         </div>
 
-        {/* Mobile Navigation */}
-        {isMenuOpen && (
-          <nav className="md:hidden py-4 border-t border-electric-500/20">
-            <div className="flex flex-col space-y-4">
-              <Link 
-                to="/" 
-                className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Home
-              </Link>
-              {isAuthenticated && (
-                <Link 
-                  to={user?.membershipType === 'admin' ? '/admin/dashboard' : '/dashboard'}
-                  className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Dashboard
-                </Link>
-              )}
-              <Link 
-                to="/events" 
-                className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium flex items-center space-x-2"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                <Calendar className="h-4 w-4" />
-                <span>Events</span>
-              </Link>
-              <Link 
-                to="/directory" 
-                className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium flex items-center space-x-2"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                <MapPin className="h-4 w-4" />
-                <span>Directory</span>
-              </Link>
-              
-              <Link 
-                to="/pricing" 
-                className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Membership
-              </Link>
-              
-              {isAuthenticated && user?.membershipType && ['retailer', 'manufacturer', 'organization', 'admin'].includes(user.membershipType) && (
-                <Link 
-                  to="/admin/ad-management" 
-                  className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium flex items-center space-x-2"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <Target className="h-4 w-4" />
-                  <span>Advertise</span>
-                </Link>
-              )}
-              
-              {user?.membershipType === 'admin' && (
-                <>
-                  <div className="border-t border-gray-700 pt-4">
-                    <div className="text-gray-500 text-sm font-medium mb-2">Admin</div>
-                    <Link 
-                      to="/admin/dashboard" 
-                      className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium flex items-center space-x-2 ml-4"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      <Shield className="h-4 w-4" />
-                      <span>Dashboard</span>
-                    </Link>
-                    <Link 
-                      to="/admin/users" 
-                      className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium flex items-center space-x-2 ml-4"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      <Users className="h-4 w-4" />
-                      <span>Users</span>
-                    </Link>
-                    <Link 
-                      to="/admin/settings" 
-                      className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium flex items-center space-x-2 ml-4"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      <Settings className="h-4 w-4" />
-                      <span>Settings</span>
-                    </Link>
-                    <Link 
-                      to="/admin/membership" 
-                      className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium flex items-center space-x-2 ml-4"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      <Package className="h-4 w-4" />
-                      <span>Membership</span>
-                    </Link>
-                    <Link 
-                      to="/admin/events" 
-                      className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium flex items-center space-x-2 ml-4"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      <Calendar className="h-4 w-4" />
-                      <span>Events</span>
-                    </Link>
-                    <Link
-                      to="/admin/organizations"
-                      className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium flex items-center space-x-2 ml-4"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      <Building2 className="h-4 w-4" />
-                      <span>Organizations</span>
-                    </Link>
-                    <Link
-                      to="/admin/system-configuration"
-                      className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium flex items-center space-x-2 ml-4"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      <Settings className="h-4 w-4" />
-                      <span>System Config</span>
-                    </Link>
-                    <Link
-                      to="/admin/analytics"
-                      className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium flex items-center space-x-2 ml-4"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      <BarChart3 className="h-4 w-4" />
-                      <span>Analytics</span>
-                    </Link>
-                    <Link
-                      to="/admin/cms-pages"
-                      className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium flex items-center space-x-2 ml-4"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      <FileText className="h-4 w-4" />
-                      <span>CMS Pages</span>
-                    </Link>
-                    <Link
-                      to="/admin/ad-management"
-                      className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium flex items-center space-x-2 ml-4"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      <Target className="h-4 w-4" />
-                      <span>Ads</span>
-                    </Link>
-                  </div>
-                </>
-              )}
-              
-              {!isAuthenticated && (
-                <>
-                  <Link 
-                    to="/login"
-                    className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    Login
-                  </Link>
-                  <Link 
-                    to="/register"
-                    className="bg-electric-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-electric-600 transition-all duration-200 shadow-lg text-center"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    Register
-                  </Link>
-                </>
-              )}
-            </div>
-          </nav>
-        )}
+        {/* Mobile Navigation - Mega Menu */}
+        <MobileMegaMenu 
+          isAuthenticated={isAuthenticated} 
+          user={user || undefined} 
+          onLinkClick={() => setIsMenuOpen(false)}
+          isOpen={isMenuOpen}
+        />
       </div>
     </header>
   );
