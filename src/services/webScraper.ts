@@ -308,13 +308,9 @@ class WebScraperService {
       organizer_id: organizerId,
       status: 'draft',
       approval_status: 'pending',
-      // Add metadata about the source
-      metadata: {
-        scraped: true,
-        source_site: scrapedEvent.sourceSite,
-        source_url: scrapedEvent.sourceUrl,
-        scraped_at: new Date().toISOString()
-      }
+      // Note: Removed metadata field as it doesn't exist in database schema
+      // Source tracking can be added via notes or description if needed
+      notes: `Imported from ${scrapedEvent.sourceSite} on ${new Date().toLocaleDateString()}`
     };
   }
 
