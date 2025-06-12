@@ -1,38 +1,165 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, MapPin, Trophy, Users, Star, ArrowRight, Volume2, Zap } from 'lucide-react';
 import GoogleMap from '../components/GoogleMap';
+import { supabase } from '../lib/supabase';
+
+interface FeaturedEvent {
+  id: string | number;
+  title: string;
+  start_date: string;
+  end_date?: string;
+  city: string;
+  state: string;
+  image_url?: string;
+  category?: string;
+  current_participants?: number;
+  max_participants?: number;
+}
 
 export default function Home() {
-  const featuredEvents = [
+  const [featuredEvents, setFeaturedEvents] = useState<FeaturedEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Realistic car audio placeholder events with proper car audio images
+  const placeholderEvents: FeaturedEvent[] = [
     {
-      id: 1,
+      id: 'placeholder-1',
       title: "IASCA World Finals 2025",
-      date: "March 15-17, 2025",
-      location: "Orlando, FL",
-      image: "https://images.pexels.com/photos/1127000/pexels-photo-1127000.jpeg?auto=compress&cs=tinysrgb&w=800&h=400&dpr=2",
+      start_date: "2025-03-15",
+      end_date: "2025-03-17",
+      city: "Orlando",
+      state: "FL",
+      image_url: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=800&h=400&q=80",
       category: "Championship",
-      participants: 150
+      current_participants: 150,
+      max_participants: 200
     },
     {
-      id: 2,
-      title: "dB Drag National Event",
-      date: "April 22-24, 2025",
-      location: "Phoenix, AZ",
-      image: "https://images.pexels.com/photos/1644888/pexels-photo-1644888.jpeg?auto=compress&cs=tinysrgb&w=800&h=400&dpr=2",
+      id: 'placeholder-2',
+      title: "dB Drag Racing National Event",
+      start_date: "2025-04-22",
+      end_date: "2025-04-24",
+      city: "Phoenix",
+      state: "AZ",
+      image_url: "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=800&h=400&q=80",
       category: "SPL Competition",
-      participants: 89
+      current_participants: 89,
+      max_participants: 120
     },
     {
-      id: 3,
-      title: "MECA Spring Championship",
-      date: "May 10-12, 2025",
-      location: "Atlanta, GA",
-      image: "https://images.pexels.com/photos/2449600/pexels-photo-2449600.jpeg?auto=compress&cs=tinysrgb&w=800&h=400&dpr=2",
+      id: 'placeholder-3',
+      title: "MECA Spring Sound Quality Championship",
+      start_date: "2025-05-10",
+      end_date: "2025-05-12",
+      city: "Atlanta",
+      state: "GA",
+      image_url: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&w=800&h=400&q=80",
       category: "Sound Quality",
-      participants: 67
+      current_participants: 67,
+      max_participants: 100
     }
   ];
+
+  useEffect(() => {
+    fetchFeaturedEvents();
+  }, []);
+
+  const fetchFeaturedEvents = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch featured events from database
+      const { data: dbEvents, error } = await supabase
+        .from('events')
+        .select(`
+          id,
+          title,
+          start_date,
+          end_date,
+          city,
+          state,
+          image_url,
+          current_participants,
+          max_participants,
+          category_id,
+          event_categories(name)
+        `)
+        .eq('is_featured', true)
+        .eq('status', 'published')
+        .gte('start_date', new Date().toISOString().split('T')[0]) // Only future events
+        .order('start_date', { ascending: true })
+        .limit(3);
+
+      if (error) {
+        console.error('Error fetching featured events:', error);
+        setFeaturedEvents(placeholderEvents);
+        return;
+      }
+
+      // Transform database events to match our interface
+      const transformedEvents: FeaturedEvent[] = dbEvents?.map(event => ({
+        id: event.id,
+        title: event.title,
+        start_date: event.start_date,
+        end_date: event.end_date,
+        city: event.city,
+        state: event.state,
+        image_url: event.image_url || getDefaultEventImage(event.event_categories?.[0]?.name),
+        category: event.event_categories?.[0]?.name || 'Competition',
+        current_participants: event.current_participants || 0,
+        max_participants: event.max_participants || 100
+      })) || [];
+
+      // If we have database events, use them; otherwise use placeholders
+      if (transformedEvents.length > 0) {
+        setFeaturedEvents(transformedEvents);
+      } else {
+        setFeaturedEvents(placeholderEvents);
+      }
+    } catch (error) {
+      console.error('Error in fetchFeaturedEvents:', error);
+      setFeaturedEvents(placeholderEvents);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Get default image based on event category
+  const getDefaultEventImage = (category?: string): string => {
+    const categoryImages: Record<string, string> = {
+      'Bass Competition': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=800&h=400&q=80',
+      'SPL Competition': 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=800&h=400&q=80',
+      'Sound Quality': 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&w=800&h=400&q=80',
+      'Championship': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=800&h=400&q=80',
+      'Local Show': 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=800&h=400&q=80',
+      'Installation': 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&w=800&h=400&q=80'
+    };
+    
+    return categoryImages[category || ''] || 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=800&h=400&q=80';
+  };
+
+  // Format date for display
+  const formatEventDate = (startDate: string, endDate?: string): string => {
+    const start = new Date(startDate);
+    const startFormatted = start.toLocaleDateString('en-US', { 
+      month: 'long', 
+      day: 'numeric',
+      year: 'numeric'
+    });
+
+    if (endDate && endDate !== startDate) {
+      const end = new Date(endDate);
+      const endFormatted = end.toLocaleDateString('en-US', { 
+        month: 'long', 
+        day: 'numeric',
+        year: 'numeric'
+      });
+      return `${startFormatted} - ${endFormatted}`;
+    }
+
+    return startFormatted;
+  };
 
   const stats = [
     { label: "Active Events", value: "250+", icon: Calendar },
@@ -114,52 +241,77 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {featuredEvents.map((event, index) => (
-              <div 
-                key={event.id} 
-                className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl overflow-hidden shadow-2xl hover:shadow-electric-500/10 transition-all duration-300 hover:scale-105 animate-slide-up border border-gray-700/50"
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
-                <div className="relative">
-                  <img 
-                    src={event.image} 
-                    alt={event.title}
-                    className="w-full h-48 object-cover"
-                  />
-                  <div className="absolute top-4 left-4 bg-electric-500 text-white px-3 py-1 rounded-full text-sm font-bold">
-                    {event.category}
-                  </div>
-                  <div className="absolute top-4 right-4 bg-black/70 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-medium flex items-center space-x-1">
-                    <Users className="h-3 w-3" />
-                    <span>{event.participants}</span>
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl overflow-hidden shadow-2xl border border-gray-700/50 animate-pulse">
+                  <div className="w-full h-48 bg-gray-700"></div>
+                  <div className="p-6">
+                    <div className="h-6 bg-gray-700 rounded mb-3"></div>
+                    <div className="h-4 bg-gray-700 rounded mb-2"></div>
+                    <div className="h-4 bg-gray-700 rounded mb-4"></div>
+                    <div className="h-4 bg-gray-700 rounded w-24"></div>
                   </div>
                 </div>
-                <div className="p-6">
-                  <h3 className="text-xl font-bold text-white mb-3 leading-tight">
-                    {event.title}
-                  </h3>
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center text-gray-400 text-sm">
-                      <Calendar className="h-4 w-4 mr-2 text-electric-500" />
-                      {event.date}
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {featuredEvents.map((event, index) => (
+                <div 
+                  key={event.id} 
+                  className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl overflow-hidden shadow-2xl hover:shadow-electric-500/10 transition-all duration-300 hover:scale-105 animate-slide-up border border-gray-700/50"
+                  style={{ animationDelay: `${index * 0.1}s` }}
+                >
+                  <div className="relative">
+                    <img 
+                      src={event.image_url || getDefaultEventImage(event.category)} 
+                      alt={event.title}
+                      className="w-full h-48 object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = getDefaultEventImage(event.category);
+                      }}
+                    />
+                    <div className="absolute top-4 left-4 bg-electric-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+                      {event.category || 'Competition'}
                     </div>
-                    <div className="flex items-center text-gray-400 text-sm">
-                      <MapPin className="h-4 w-4 mr-2 text-electric-500" />
-                      {event.location}
-                    </div>
+                    {event.current_participants && (
+                      <div className="absolute top-4 right-4 bg-black/70 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-medium flex items-center space-x-1">
+                        <Users className="h-3 w-3" />
+                        <span>{event.current_participants}</span>
+                        {event.max_participants && (
+                          <span>/{event.max_participants}</span>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <Link 
-                    to={`/events/${event.id}`}
-                    className="inline-flex items-center space-x-2 text-electric-400 hover:text-electric-300 font-semibold transition-colors duration-200"
-                  >
-                    <span>View Details</span>
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
+                  <div className="p-6">
+                    <h3 className="text-xl font-bold text-white mb-3 leading-tight">
+                      {event.title}
+                    </h3>
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-center text-gray-400 text-sm">
+                        <Calendar className="h-4 w-4 mr-2 text-electric-500" />
+                        {formatEventDate(event.start_date, event.end_date)}
+                      </div>
+                      <div className="flex items-center text-gray-400 text-sm">
+                        <MapPin className="h-4 w-4 mr-2 text-electric-500" />
+                        {event.city}, {event.state}
+                      </div>
+                    </div>
+                    <Link 
+                      to={`/events/${event.id}`}
+                      className="inline-flex items-center space-x-2 text-electric-400 hover:text-electric-300 font-semibold transition-colors duration-200"
+                    >
+                      <span>View Details</span>
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
           <div className="text-center mt-12">
             <Link 

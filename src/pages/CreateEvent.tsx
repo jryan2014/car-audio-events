@@ -73,6 +73,7 @@ interface EventFormData {
   seo_keywords: string[];
   
   is_public: boolean;
+  is_featured: boolean;
 }
 
 interface Organization {
@@ -211,7 +212,8 @@ export default function CreateEvent() {
     seo_description: '',
     seo_keywords: [],
     
-    is_public: true
+    is_public: true,
+    is_featured: false
   });
 
   // Check if user can create events
@@ -485,7 +487,9 @@ export default function CreateEvent() {
         rules: formData.rules,
         organization_id: formData.sanction_body_id || null,
         organizer_id: user?.id || null,
-        status: 'draft'
+        status: 'draft',
+        is_featured: formData.is_featured,
+        is_public: formData.is_public
       };
 
       console.log('🚀 Attempting to create event with data:', eventData);
@@ -1459,15 +1463,30 @@ export default function CreateEvent() {
           {/* Privacy */}
           <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
             <h2 className="text-xl font-bold text-white mb-6">Visibility</h2>
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={formData.is_public}
-                onChange={(e) => handleInputChange('is_public', e.target.checked)}
-                className="rounded border-gray-600 text-electric-500 focus:ring-electric-500"
-              />
-              <span className="text-gray-400">Make this event publicly visible</span>
-            </label>
+            <div className="space-y-4">
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={formData.is_public}
+                  onChange={(e) => handleInputChange('is_public', e.target.checked)}
+                  className="rounded border-gray-600 text-electric-500 focus:ring-electric-500"
+                />
+                <span className="text-gray-400">Make this event publicly visible</span>
+              </label>
+              
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={formData.is_featured}
+                  onChange={(e) => handleInputChange('is_featured', e.target.checked)}
+                  className="rounded border-gray-600 text-electric-500 focus:ring-electric-500"
+                />
+                <div className="flex flex-col">
+                  <span className="text-gray-400">Feature on home page</span>
+                  <span className="text-gray-500 text-xs">This event will be displayed prominently on the home page</span>
+                </div>
+              </label>
+            </div>
           </div>
 
           {/* SEO */}
