@@ -117,33 +117,12 @@ export default function WebScraperModal({ isOpen, onClose, onEventsImported }: W
             longitude = geocodeResult.longitude;
           }
 
-          // Convert to our database format
-          const eventData = {
-            title: scrapedEvent.title,
-            description: scrapedEvent.description,
-            start_date: scrapedEvent.date,
-            end_date: scrapedEvent.endDate || scrapedEvent.date,
-            venue_name: scrapedEvent.location,
-            address: scrapedEvent.location,
-            city: scrapedEvent.city,
-            state: scrapedEvent.state,
-            country: scrapedEvent.country,
-            latitude,
-            longitude,
-            website_url: scrapedEvent.website,
-            contact_email: scrapedEvent.contactInfo || '',
-            ticket_price: scrapedEvent.registrationFee || 0,
-            organizer_id: user.id,
-            status: 'draft',
-            approval_status: 'pending',
-            // Add metadata about the source
-            metadata: {
-              scraped: true,
-              source_site: scrapedEvent.sourceSite,
-              source_url: scrapedEvent.sourceUrl,
-              scraped_at: new Date().toISOString()
-            }
-          };
+          // Convert to our database format using the web scraper service
+          const eventData = webScraperService.convertToEventFormat(scrapedEvent, user.id);
+          
+          // Add geocoded coordinates
+          eventData.latitude = latitude;
+          eventData.longitude = longitude;
 
           // Insert into database
           const { error } = await supabase
