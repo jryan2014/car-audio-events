@@ -29,7 +29,7 @@ class WebScraperService {
   private readonly sources = [
     {
       name: 'MECA Events',
-      url: 'https://www.mecacaraudio.com/events',
+      url: 'https://mecacaraudio.com/events/calendar/',
       scraper: this.scrapeMECAEvents.bind(this)
     },
     {
@@ -99,23 +99,56 @@ class WebScraperService {
     try {
       // Note: This is a mock implementation since we can't actually scrape from browser
       // In a real implementation, you'd use a backend service with Puppeteer or similar
+      // Based on MECA website structure at https://mecacaraudio.com/events/calendar/
       
       const mockEvents: ScrapedEvent[] = [
         {
-          title: 'MECA Spring Championship',
-          description: 'Annual spring car audio competition featuring multiple categories',
-          date: '2024-04-15T09:00:00Z',
-          endDate: '2024-04-15T18:00:00Z',
-          location: 'Fairgrounds Expo Center',
-          city: 'Columbus',
-          state: 'Ohio',
+          title: 'MECA Spring Championship 2025',
+          description: 'Annual spring car audio competition featuring SPL, SQL, and Show N Shine categories. Fun, Fair, Loud & Clear!',
+          date: '2025-04-15T09:00:00Z',
+          endDate: '2025-04-15T18:00:00Z',
+          location: 'Kentucky Expo Center',
+          city: 'Louisville',
+          state: 'Kentucky',
           country: 'United States',
-          website: 'https://www.mecacaraudio.com',
+          website: 'https://mecacaraudio.com',
           sourceUrl: url,
           sourceSite: 'MECA',
           registrationFee: 50,
-          contactInfo: 'events@mecacaraudio.com',
+          contactInfo: 'info@mecacaraudio.com',
           category: 'Sound Quality'
+        },
+        {
+          title: 'MECA Regional SPL Championship',
+          description: 'Regional Sound Pressure Level competition with multiple classes and categories',
+          date: '2025-06-20T10:00:00Z',
+          endDate: '2025-06-20T19:00:00Z',
+          location: 'State Fairgrounds',
+          city: 'Nashville',
+          state: 'Tennessee',
+          country: 'United States',
+          website: 'https://mecacaraudio.com',
+          sourceUrl: url,
+          sourceSite: 'MECA',
+          registrationFee: 40,
+          contactInfo: 'info@mecacaraudio.com',
+          category: 'SPL'
+        },
+        {
+          title: 'MECA World Finals 2025',
+          description: 'The ultimate MECA competition bringing together champions from across the nation',
+          date: '2025-09-15T08:00:00Z',
+          endDate: '2025-09-17T20:00:00Z',
+          location: 'Kentucky Expo Center',
+          city: 'Louisville',
+          state: 'Kentucky',
+          country: 'United States',
+          website: 'https://mecacaraudio.com',
+          sourceUrl: url,
+          sourceSite: 'MECA',
+          registrationFee: 100,
+          contactInfo: 'info@mecacaraudio.com',
+          category: 'Championship'
         }
       ];
 
