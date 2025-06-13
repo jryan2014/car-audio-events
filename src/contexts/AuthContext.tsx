@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
+import { emailService } from '../services/emailService';
 
 interface User {
   id: string;
@@ -307,6 +308,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       console.log('✅ User profile created successfully');
+
+      // Step 3: Send welcome email
+      console.log('📧 Sending welcome email...');
+      try {
+        const emailResult = await emailService.sendTemplatedEmail(
+          userData.email,
+          'welcome',
+          {
+            firstName: userData.name.split(' ')[0] || userData.name,
+            dashboardUrl: `${window.location.origin}/dashboard`
+          }
+        );
+
+        if (emailResult.success) {
+          console.log('✅ Welcome email sent successfully');
+        } else {
+          console.warn('⚠️ Welcome email failed to send:', emailResult.error);
+          // Don't fail registration if email fails
+        }
+      } catch (emailError) {
+        console.warn('⚠️ Welcome email error:', emailError);
+        // Don't fail registration if email fails
+      }
+      
       console.log('🎉 Registration completed successfully!');
       
     } catch (error) {

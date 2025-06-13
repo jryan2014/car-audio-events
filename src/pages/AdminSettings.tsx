@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Key, Save, Eye, EyeOff, Shield, AlertCircle, CheckCircle, Settings, Database, CreditCard, Map, Bug, TestTube, ExternalLink } from 'lucide-react';
+import { Key, Save, Eye, EyeOff, Shield, AlertCircle, CheckCircle, Settings, Database, CreditCard, Map, Mail, Bug, TestTube, ExternalLink } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import AdminEmailSettings from '../components/AdminEmailSettings';
 
 interface IntegrationKeys {
   stripe_publishable_key: string;
@@ -259,6 +260,7 @@ export default function AdminSettings() {
     { id: 'stripe', label: 'Stripe', icon: CreditCard },
     { id: 'supabase', label: 'Supabase', icon: Database },
     { id: 'google', label: 'Google Maps', icon: Map },
+    { id: 'email', label: 'Email', icon: Mail },
     { id: 'debug', label: 'Debug', icon: Bug }
   ];
 
@@ -522,6 +524,57 @@ export default function AdminSettings() {
                   <li>Create an API key and restrict it to your domain</li>
                   <li>Set up billing (required for Maps API)</li>
                 </ol>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'email' && (
+            <div className="space-y-6">
+              <div className="flex items-center space-x-2 mb-6">
+                <Mail className="h-6 w-6 text-electric-500" />
+                <h2 className="text-2xl font-bold text-white">Email Configuration</h2>
+              </div>
+              
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-6">
+                <div className="flex items-start space-x-3">
+                  <Mail className="h-5 w-5 text-blue-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h4 className="text-sm font-medium text-blue-400">Postmark Integration</h4>
+                    <p className="text-sm text-blue-300 mt-1">
+                      Configure Postmark for reliable email delivery. This will handle welcome emails, 
+                      event notifications, password resets, and other transactional emails.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <AdminEmailSettings />
+
+              <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4">
+                <h3 className="text-green-400 font-medium mb-2">Postmark Setup Instructions</h3>
+                <ol className="text-green-300 text-sm space-y-1 list-decimal list-inside">
+                  <li>Sign up for a <a href="https://postmarkapp.com" target="_blank" rel="noopener noreferrer" className="underline">Postmark account</a></li>
+                  <li>Verify your sending domain in Postmark settings</li>
+                  <li>Get your Server API Token from the Postmark dashboard</li>
+                  <li>Configure your sender details in the Email Settings above</li>
+                  <li>Test the integration using the test buttons</li>
+                </ol>
+              </div>
+
+              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
+                <h3 className="text-yellow-400 font-medium mb-2">Available Email Templates</h3>
+                <div className="grid grid-cols-2 gap-2 text-yellow-300 text-sm">
+                  <div>• Welcome emails</div>
+                  <div>• Event registration confirmations</div>
+                  <div>• Event reminders</div>
+                  <div>• Event cancellations</div>
+                  <div>• Password reset emails</div>
+                  <div>• Organization claim verification</div>
+                  <div>• Event approval notifications</div>
+                  <div>• Competition results</div>
+                  <div>• Newsletter emails</div>
+                  <div>• System notifications</div>
+                </div>
               </div>
             </div>
           )}

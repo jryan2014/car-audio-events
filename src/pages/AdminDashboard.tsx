@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Calendar, DollarSign, TrendingUp, Activity, Shield, AlertTriangle, CheckCircle, UserCheck, FileText, Target, Settings, Archive, Mail, Building2, Menu } from 'lucide-react';
+import { Users, Calendar, DollarSign, TrendingUp, Activity, Shield, AlertTriangle, CheckCircle, UserCheck, FileText, Target, Settings, Archive, Mail, Send, Building2, Menu } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -536,6 +536,19 @@ export default function AdminDashboard() {
               <div>
                 <h3 className="text-white font-semibold">Contact Settings</h3>
                 <p className="text-gray-400 text-sm">Configure footer contact information</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            to="/admin/email-settings"
+            className="bg-gradient-to-br from-blue-500/20 to-blue-600/20 border border-blue-500/30 rounded-xl p-6 hover:from-blue-500/30 hover:to-blue-600/30 transition-all duration-200 group"
+          >
+            <div className="flex items-center space-x-3">
+              <Send className="h-8 w-8 text-blue-400 group-hover:scale-110 transition-transform" />
+              <div>
+                <h3 className="text-white font-semibold">Email Settings</h3>
+                <p className="text-gray-400 text-sm">Configure Postmark email integration</p>
               </div>
             </div>
           </Link>

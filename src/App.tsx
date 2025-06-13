@@ -30,6 +30,7 @@ import SystemConfiguration from './pages/SystemConfiguration';
 import SystemConfigurationDemo from './pages/SystemConfigurationDemo';
 import OrganizationManager from './pages/OrganizationManager';
 import AdminContactSettingsPage from './pages/AdminContactSettings';
+import AdminEmailSettingsPage from './pages/AdminEmailSettings';
 import NavigationManager from './pages/NavigationManager';
 import DirectoryManager from './pages/DirectoryManager';
 import CreateDirectoryListing from './pages/CreateDirectoryListing';
@@ -90,6 +91,7 @@ function App() {
             <Route path="/admin/system-configuration-demo" element={<SystemConfigurationDemo />} />
             <Route path="/admin/organizations" element={<OrganizationManager />} />
             <Route path="/admin/contact-settings" element={<AdminContactSettingsPage />} />
+            <Route path="/admin/email-settings" element={<AdminEmailSettingsPage />} />
             <Route path="/admin/navigation-manager" element={<NavigationManager />} />
             <Route path="/admin/directory-manager" element={<DirectoryManager />} />
           </Routes>
