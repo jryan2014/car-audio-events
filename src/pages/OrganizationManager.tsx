@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Upload, Save, Plus, Edit2, Trash2, Image, FileText } from 'lucide-react';
+import { Building2, Upload, Save, Plus, Edit2, Trash2, Image, FileText, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 
@@ -69,6 +69,20 @@ export default function OrganizationManager() {
     }
     loadData();
   }, [isAdmin]);
+
+  // Handle Escape key to close modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showForm) {
+        closeModal();
+      }
+    };
+
+    if (showForm) {
+      document.addEventListener('keydown', handleEscape);
+      return () => document.removeEventListener('keydown', handleEscape);
+    }
+  }, [showForm]);
 
   const loadData = async () => {
     try {
@@ -249,9 +263,7 @@ export default function OrganizationManager() {
         setSuccess('Organization created successfully');
       }
 
-      setShowForm(false);
-      setEditingOrg(null);
-      resetForm();
+      closeModal();
       loadData();
     } catch (error) {
       console.error('💥 Save error:', error);
@@ -310,6 +322,12 @@ export default function OrganizationManager() {
     });
   };
 
+  const closeModal = () => {
+    setShowForm(false);
+    setEditingOrg(null);
+    resetForm();
+  };
+
   if (!isAdmin) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 p-6">
@@ -347,8 +365,8 @@ export default function OrganizationManager() {
           <button
             onClick={() => {
               setShowForm(!showForm);
-              setEditingOrg(null);
-              resetForm();
+              if (showForm) closeModal();
+              else resetForm();
             }}
             className="flex items-center space-x-2 px-4 py-2 bg-electric-500 text-white rounded-lg hover:bg-electric-600 transition-colors"
           >
@@ -357,195 +375,212 @@ export default function OrganizationManager() {
           </button>
         </div>
 
+        {/* Organization Modal */}
         {showForm && (
-          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 mb-8">
-            <h2 className="text-xl font-bold text-white mb-6">
-              {editingOrg ? 'Edit Organization' : 'Add New Organization'}
-            </h2>
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-gray-400 text-sm mb-2">Organization Name *</label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => handleInputChange('name', e.target.value)}
-                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-gray-400 text-sm mb-2">Organization Type</label>
-                  <select
-                    value={formData.organization_type}
-                    onChange={(e) => handleInputChange('organization_type', e.target.value)}
-                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                  >
-                    <option value="sanctioning_body">Sanctioning Body</option>
-                    <option value="club">Club</option>
-                    <option value="retailer">Retailer</option>
-                    <option value="manufacturer">Manufacturer</option>
-                    <option value="general">General</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-gray-400 text-sm mb-2">Website</label>
-                  <input
-                    type="url"
-                    value={formData.website}
-                    onChange={(e) => handleInputChange('website', e.target.value)}
-                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                    placeholder="https://example.com"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-gray-400 text-sm mb-2">Status</label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => handleInputChange('status', e.target.value)}
-                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                  >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="pending">Pending</option>
-                    <option value="suspended">Suspended</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-gray-400 text-sm mb-2">Description</label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => handleInputChange('description', e.target.value)}
-                  rows={3}
-                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                  placeholder="Organization description..."
-                />
-              </div>
-
-              {/* Logo Upload */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-gray-400 text-sm mb-2">Main Logo</label>
-                  <div className="space-y-3">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleLogoUpload(file, 'logo');
-                      }}
-                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                    />
-                    {formData.logo_url && (
-                      <img
-                        src={formData.logo_url}
-                        alt="Logo preview"
-                        className="w-24 h-24 object-contain bg-gray-600 rounded"
-                      />
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-gray-400 text-sm mb-2">Small Logo (for map pins)</label>
-                  <div className="space-y-3">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleLogoUpload(file, 'small_logo');
-                      }}
-                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                    />
-                    {formData.small_logo_url && (
-                      <img
-                        src={formData.small_logo_url}
-                        alt="Small logo preview"
-                        className="w-12 h-12 object-contain bg-gray-600 rounded"
-                      />
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Rules Template */}
-              <div>
-                <label className="block text-gray-400 text-sm mb-2">Default Rules Template</label>
-                <select
-                  value={formData.default_rules_template_id}
-                  onChange={(e) => handleInputChange('default_rules_template_id', e.target.value)}
-                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+          <div 
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+                         onClick={(e) => {
+               if (e.target === e.currentTarget) {
+                 closeModal();
+               }
+             }}
+          >
+            <div className="bg-gray-800 border border-gray-700 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-700">
+                <h2 className="text-xl font-bold text-white">
+                  {editingOrg ? 'Edit Organization' : 'Add New Organization'}
+                </h2>
+                <button
+                  onClick={closeModal}
+                  className="text-gray-400 hover:text-white transition-colors"
                 >
-                  <option value="">No default template</option>
-                  {rulesTemplates.map(template => (
-                    <option key={template.id} value={template.id}>
-                      {template.name}
-                    </option>
-                  ))}
-                </select>
+                  <X className="h-6 w-6" />
+                </button>
               </div>
 
-              {/* Competition Classes */}
-              <div>
-                <label className="block text-gray-400 text-sm mb-2">Competition Classes</label>
-                <div className="space-y-3">
-                  {formData.competition_classes.map((cls, index) => (
-                    <div key={index} className="flex items-center space-x-3">
+              {/* Modal Content */}
+              <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Organization Name *</label>
+                    <input
+                      type="text"
+                      value={formData.name}
+                      onChange={(e) => handleInputChange('name', e.target.value)}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Organization Type</label>
+                    <select
+                      value={formData.organization_type}
+                      onChange={(e) => handleInputChange('organization_type', e.target.value)}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                    >
+                      <option value="sanctioning_body">Sanctioning Body</option>
+                      <option value="club">Club</option>
+                      <option value="retailer">Retailer</option>
+                      <option value="manufacturer">Manufacturer</option>
+                      <option value="general">General</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Website</label>
+                    <input
+                      type="url"
+                      value={formData.website}
+                      onChange={(e) => handleInputChange('website', e.target.value)}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                      placeholder="https://example.com"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Status</label>
+                    <select
+                      value={formData.status}
+                      onChange={(e) => handleInputChange('status', e.target.value)}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                      <option value="pending">Pending</option>
+                      <option value="suspended">Suspended</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">Description</label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => handleInputChange('description', e.target.value)}
+                    rows={3}
+                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                    placeholder="Organization description..."
+                  />
+                </div>
+
+                {/* Logo Upload */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Main Logo</label>
+                    <div className="space-y-3">
                       <input
-                        type="text"
-                        value={cls}
-                        onChange={(e) => handleCompetitionClassChange(index, e.target.value)}
-                        className="flex-1 p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                        placeholder={`Competition class ${index + 1}`}
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleLogoUpload(file, 'logo');
+                        }}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
                       />
-                      <button
-                        type="button"
-                        onClick={() => removeCompetitionClass(index)}
-                        className="text-red-400 hover:text-red-300"
-                      >
-                        <Trash2 className="h-5 w-5" />
-                      </button>
+                      {formData.logo_url && (
+                        <img
+                          src={formData.logo_url}
+                          alt="Logo preview"
+                          className="w-24 h-24 object-contain bg-gray-600 rounded"
+                        />
+                      )}
                     </div>
-                  ))}
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Small Logo (for map pins)</label>
+                    <div className="space-y-3">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleLogoUpload(file, 'small_logo');
+                        }}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                      />
+                      {formData.small_logo_url && (
+                        <img
+                          src={formData.small_logo_url}
+                          alt="Small logo preview"
+                          className="w-12 h-12 object-contain bg-gray-600 rounded"
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Rules Template */}
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">Default Rules Template</label>
+                  <select
+                    value={formData.default_rules_template_id}
+                    onChange={(e) => handleInputChange('default_rules_template_id', e.target.value)}
+                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  >
+                    <option value="">No default template</option>
+                    {rulesTemplates.map(template => (
+                      <option key={template.id} value={template.id}>
+                        {template.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Competition Classes */}
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">Competition Classes</label>
+                  <div className="space-y-3">
+                    {formData.competition_classes.map((cls, index) => (
+                      <div key={index} className="flex items-center space-x-3">
+                        <input
+                          type="text"
+                          value={cls}
+                          onChange={(e) => handleCompetitionClassChange(index, e.target.value)}
+                          className="flex-1 p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                          placeholder={`Competition class ${index + 1}`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeCompetitionClass(index)}
+                          className="text-red-400 hover:text-red-300"
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={addCompetitionClass}
+                      className="text-electric-400 hover:text-electric-300 text-sm"
+                    >
+                      + Add Competition Class
+                    </button>
+                  </div>
+                </div>
+
+                {/* Modal Footer */}
+                <div className="flex justify-end space-x-4 pt-4 border-t border-gray-700">
                   <button
                     type="button"
-                    onClick={addCompetitionClass}
-                    className="text-electric-400 hover:text-electric-300 text-sm"
+                    onClick={closeModal}
+                    className="px-6 py-3 border border-gray-600 text-gray-400 rounded-lg hover:bg-gray-700 transition-colors"
                   >
-                    + Add Competition Class
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="px-6 py-3 bg-electric-500 text-white rounded-lg hover:bg-electric-600 transition-colors disabled:opacity-50 flex items-center space-x-2"
+                  >
+                    <Save className="h-5 w-5" />
+                    <span>{isLoading ? 'Saving...' : editingOrg ? 'Update' : 'Create'}</span>
                   </button>
                 </div>
-              </div>
-
-              <div className="flex justify-end space-x-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowForm(false);
-                    setEditingOrg(null);
-                    resetForm();
-                  }}
-                  className="px-6 py-3 border border-gray-600 text-gray-400 rounded-lg hover:bg-gray-700 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="px-6 py-3 bg-electric-500 text-white rounded-lg hover:bg-electric-600 transition-colors disabled:opacity-50 flex items-center space-x-2"
-                >
-                  <Save className="h-5 w-5" />
-                  <span>{isLoading ? 'Saving...' : editingOrg ? 'Update' : 'Create'}</span>
-                </button>
-              </div>
-            </form>
+              </form>
+            </div>
           </div>
         )}
 

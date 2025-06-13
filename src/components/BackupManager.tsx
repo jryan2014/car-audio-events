@@ -37,6 +37,7 @@ export default function BackupManager() {
   const [cronStatus, setCronStatus] = useState<CronStatus | null>(null);
   const [showSettings, setShowSettings] = useState(false);
 
+
   useEffect(() => {
     loadBackups();
     loadCronStatus();
@@ -127,7 +128,9 @@ export default function BackupManager() {
   const closeSettings = async () => {
     setShowSettings(false);
     // Reload cron status in case settings changed
+    console.log('🔄 Refreshing cron status after settings change...');
     await loadCronStatus();
+    console.log('✅ Cron status refreshed');
   };
 
   const downloadBackup = async (backup: BackupFile) => {
@@ -215,6 +218,81 @@ export default function BackupManager() {
     });
   };
 
+  const formatBackupTime = (time: string, timezone: string) => {
+    // Parse HH:MM format and create a date for formatting
+    const [hours, minutes] = time.split(':').map(Number);
+    const date = new Date();
+    date.setHours(hours, minutes, 0, 0);
+    
+    // Format in the specified timezone with AM/PM
+    const timeString = date.toLocaleTimeString('en-US', {
+      timeZone: timezone,
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+    
+    // Get timezone abbreviation
+    const timezoneAbbr = date.toLocaleTimeString('en-US', {
+      timeZone: timezone,
+      timeZoneName: 'short'
+    }).split(' ').pop();
+    
+    return `${timeString} ${timezoneAbbr}`;
+  };
+
+  const formatNextRunTime = (dateString: string, timezone: string) => {
+    const date = new Date(dateString);
+    
+    // Format date and time with timezone
+    const formatted = date.toLocaleString('en-US', {
+      timeZone: timezone,
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZoneName: 'short'
+    });
+    
+    return formatted;
+  };
+
+  const formatTimezoneDisplay = (timezone: string) => {
+    const names: Record<string, string> = {
+      'America/New_York': 'Eastern Time (ET)',
+      'America/Chicago': 'Central Time (CT)', 
+      'America/Denver': 'Mountain Time (MT)',
+      'America/Los_Angeles': 'Pacific Time (PT)',
+      'America/Phoenix': 'Arizona Time (MST)',
+      'America/Anchorage': 'Alaska Time (AKST)',
+      'Pacific/Honolulu': 'Hawaii Time (HST)',
+      'UTC': 'Coordinated Universal Time (UTC)',
+      'Europe/London': 'Greenwich Mean Time (GMT)',
+      'Europe/Paris': 'Central European Time (CET)',
+      'Asia/Tokyo': 'Japan Standard Time (JST)',
+      'Australia/Sydney': 'Australian Eastern Time (AEST)',
+    };
+    
+    return names[timezone] || timezone;
+  };
+
+  const formatBackupCreatedTime = (dateString: string, timezone: string) => {
+    const date = new Date(dateString);
+    
+    return date.toLocaleString('en-US', {
+      timeZone: timezone,
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZoneName: 'short'
+    });
+  };
+
   const getStatusBadge = (status: string) => {
     const styles = {
       completed: 'bg-green-500/20 text-green-400 border-green-500/30',
@@ -259,6 +337,8 @@ export default function BackupManager() {
     );
   };
 
+
+
   if (isLoading) {
     return (
       <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
@@ -294,6 +374,7 @@ export default function BackupManager() {
               <span>Settings</span>
             </button>
             
+
             <button
               onClick={runAutomaticBackup}
               className="bg-purple-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-purple-600 transition-all duration-200 flex items-center space-x-2"
@@ -364,14 +445,14 @@ export default function BackupManager() {
                   <div>
                     <p className="text-xs text-gray-400">Next Run</p>
                     <p className="text-sm font-medium text-white">
-                      {cronStatus.nextRun ? formatDateWithTimezone(cronStatus.nextRun, cronStatus.settings.timezone) : 'N/A'}
+                      {cronStatus.nextRun ? formatNextRunTime(cronStatus.nextRun, cronStatus.settings.timezone) : 'N/A'}
                     </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-400">Schedule</p>
                     <p className="text-sm font-medium text-white">
                       {cronStatus.settings.enableAutoBackup 
-                        ? `Daily at ${cronStatus.settings.backupTime}`
+                        ? `Daily at ${formatBackupTime(cronStatus.settings.backupTime, cronStatus.settings.timezone)}`
                         : 'Disabled'
                       }
                     </p>
@@ -380,7 +461,7 @@ export default function BackupManager() {
                 {cronStatus.settings.timezone && (
                   <div className="mt-2">
                     <p className="text-xs text-gray-400">Timezone</p>
-                    <p className="text-sm text-blue-300">{cronStatus.settings.timezone}</p>
+                    <p className="text-sm text-blue-300">{formatTimezoneDisplay(cronStatus.settings.timezone)}</p>
                   </div>
                 )}
               </div>
@@ -476,7 +557,7 @@ export default function BackupManager() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-gray-300 text-sm">
-                        {formatDate(backup.created_at)}
+                        {formatBackupCreatedTime(backup.created_at, cronStatus?.settings.timezone || 'America/New_York')}
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -512,7 +593,7 @@ export default function BackupManager() {
               <h3 className="text-blue-400 font-semibold">Automatic Backups</h3>
               <p className="text-blue-300 text-sm">
                 {cronStatus?.settings.enableAutoBackup 
-                  ? `Daily backups are scheduled to run at ${cronStatus.settings.backupTime} in ${cronStatus.settings.timezone}. Automatic backups are retained for ${cronStatus.settings.retentionDays} days.`
+                  ? `Daily backups are scheduled to run at ${formatBackupTime(cronStatus.settings.backupTime, cronStatus.settings.timezone)} in ${formatTimezoneDisplay(cronStatus.settings.timezone)}. Automatic backups are retained for ${cronStatus.settings.retentionDays} days.`
                   : 'Automatic backups are currently disabled. Use the Settings button to enable them.'
                 }
                 <br />

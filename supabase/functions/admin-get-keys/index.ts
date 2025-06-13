@@ -67,80 +67,57 @@ serve(async (req) => {
       }
     }
 
-    // Parse request body
-    const { keys } = await req.json()
-    if (!keys || typeof keys !== 'object') {
-      return new Response(
-        JSON.stringify({ error: 'Invalid keys data' }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      )
+    // Try to get settings from admin_settings table
+    let keys = {
+      stripe_publishable_key: '',
+      stripe_secret_key: '',
+      stripe_webhook_secret: '',
+      stripe_webhook_endpoint: '',
+      stripe_test_mode: true,
+      supabase_url: '',
+      supabase_anon_key: '',
+      supabase_service_role_key: '',
+      google_maps_api_key: ''
     }
 
-    // Try to update admin_settings table, create if it doesn't exist
-    const updates = []
-    
-    // First, try to create the table if it doesn't exist
-    await supabaseClient.rpc('exec_sql', {
-      sql: `
-        CREATE TABLE IF NOT EXISTS admin_settings (
-          id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-          key_name VARCHAR(255) UNIQUE NOT NULL,
-          key_value TEXT,
-          is_sensitive BOOLEAN DEFAULT false,
-          description TEXT,
-          updated_by UUID REFERENCES users(id),
-          updated_at TIMESTAMPTZ DEFAULT NOW(),
-          created_at TIMESTAMPTZ DEFAULT NOW()
-        );
-      `
-    })
-    
-    for (const [key, value] of Object.entries(keys)) {
-      if (value !== undefined && value !== null && value !== '') {
-        const { error } = await supabaseClient
-          .from('admin_settings')
-          .upsert(
-            { 
-              key_name: key, 
-              key_value: typeof value === 'boolean' ? value.toString() : value,
-              updated_at: new Date().toISOString(),
-              updated_by: user.id
-            },
-            { onConflict: 'key_name' }
-          )
-        
-        if (error) {
-          console.error(`Error updating key ${key}:`, error)
-          return new Response(
-            JSON.stringify({ error: `Failed to update ${key}: ${error.message}` }),
-            { 
-              status: 500, 
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    try {
+      // Try to get all admin settings - handle both column naming schemes
+      const { data: settings, error: settingsError } = await supabaseClient
+        .from('admin_settings')
+        .select('*')
+
+      if (!settingsError && settings) {
+        // Convert array of key-value pairs to object
+        settings.forEach(setting => {
+          // Handle both naming schemes: key/value and key_name/key_value
+          const keyName = setting.key || setting.key_name
+          const keyValue = setting.value || setting.key_value
+          
+          if (keyName && keys.hasOwnProperty(keyName)) {
+            if (keyName === 'stripe_test_mode') {
+              keys[keyName] = keyValue === 'true' || keyValue === true
+            } else {
+              keys[keyName] = keyValue || ''
             }
-          )
-        }
-        updates.push(key)
+          }
+        })
       }
+    } catch (error) {
+      console.log('Admin settings table not found or empty, using defaults')
     }
 
-    // Log the admin activity
-    await supabaseClient
-      .from('admin_activity_log')
-      .insert({
-        admin_id: user.id,
-        action: 'update_settings',
-        details: { updated_keys: updates },
-        created_at: new Date().toISOString()
-      })
+    // Fill in defaults from environment variables where not set
+    if (!keys.supabase_url) {
+      keys.supabase_url = Deno.env.get('SUPABASE_URL') || ''
+    }
+    if (!keys.supabase_anon_key) {
+      keys.supabase_anon_key = Deno.env.get('SUPABASE_ANON_KEY') || ''
+    }
 
     return new Response(
       JSON.stringify({ 
-        success: true, 
-        message: `Updated ${updates.length} settings`,
-        updated_keys: updates 
+        success: true,
+        keys: keys
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -148,7 +125,7 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Admin update keys error:', error)
+    console.error('Admin get keys error:', error)
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
       { 

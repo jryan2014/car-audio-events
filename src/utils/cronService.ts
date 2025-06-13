@@ -100,10 +100,11 @@ class CronService {
 
     if (this.settings.enableAutoBackup) {
       // Daily backup at configured time
+      const [hours, minutes] = this.settings.backupTime.split(':').map(Number);
       this.addJob({
         id: 'daily-backup',
         name: 'Daily Database Backup',
-        schedule: `0 ${this.settings.backupTime.replace(':', ' ')} * * *`,
+        schedule: `${minutes} ${hours} * * *`,
         timezone: this.settings.timezone,
         enabled: true,
         handler: async () => {
@@ -127,10 +128,12 @@ class CronService {
 
     if (this.settings.enableAutoCleanup) {
       // Weekly cleanup job
+      const [hours, minutes] = this.settings.backupTime.split(':').map(Number);
+      const cleanupHour = (hours + 1) % 24; // 1 hour after backup
       this.addJob({
         id: 'weekly-cleanup',
         name: 'Weekly Backup Cleanup', 
-        schedule: `0 ${parseInt(this.settings.backupTime.split(':')[0]) + 1} * * 0`, // 1 hour after backup on Sunday
+        schedule: `${minutes} ${cleanupHour} * * 0`, // 1 hour after backup on Sunday
         timezone: this.settings.timezone,
         enabled: true,
         handler: async () => {
@@ -244,27 +247,36 @@ class CronService {
    */
   private calculateNextRun(job: CronJob): Date | null {
     try {
-      const [, minute, hour] = job.schedule.split(' ').map(Number);
+      const [minute, hour] = job.schedule.split(' ').map(Number);
+      console.log(`🕐 Calculating next run for ${job.name}: ${hour}:${minute.toString().padStart(2, '0')} in ${job.timezone}`);
       
-      // Get current time in the job's timezone
+      // Simple approach: create target time for today and tomorrow, then pick the right one
       const now = new Date();
-      const targetDate = new Date(now.toLocaleString('en-US', { timeZone: job.timezone }));
+      console.log(`📅 Current time: ${now.toLocaleString()}`);
       
-      // Set target time
-      targetDate.setHours(hour, minute, 0, 0);
+      // Create target time for today at the specified hour/minute
+      const today = new Date();
+      today.setHours(hour, minute, 0, 0);
       
-      // If target time has passed today, schedule for tomorrow
-      const nowInTimezone = new Date(now.toLocaleString('en-US', { timeZone: job.timezone }));
-      if (targetDate <= nowInTimezone) {
-        targetDate.setDate(targetDate.getDate() + 1);
+      // Create target time for tomorrow
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      
+      // Choose today or tomorrow based on current time
+      const targetTime = today > now ? today : tomorrow;
+      
+      console.log(`⏰ Target time: ${targetTime.toLocaleString()}`);
+      console.log(`⏰ Target in ${job.timezone}: ${targetTime.toLocaleString('en-US', { timeZone: job.timezone })}`);
+      
+      // Validate the date is valid
+      if (isNaN(targetTime.getTime())) {
+        console.error('❌ Invalid target time calculated');
+        return null;
       }
       
-      // Convert back to local time for scheduling
-      const localTime = new Date(targetDate.toLocaleString());
-      
-      return localTime;
+      return targetTime;
     } catch (error) {
-      console.error('Error calculating next run:', error);
+      console.error('❌ Error calculating next run:', error);
       return null;
     }
   }
@@ -278,14 +290,23 @@ class CronService {
     this.isRunning = true;
     console.log('🚀 Starting cron service...');
     
+    // Ensure jobs are set up with current settings
+    this.setupDefaultJobs();
+    
     // Schedule all enabled jobs
     for (const job of this.jobs.values()) {
       if (job.enabled) {
+        console.log(`📋 Scheduling job: ${job.name} (${job.schedule})`);
         this.scheduleJob(job);
       }
     }
     
     console.log(`✅ Cron service started with ${this.jobs.size} jobs`);
+    
+    // Log job details for debugging
+    for (const job of this.jobs.values()) {
+      console.log(`🔍 Job: ${job.name}, Enabled: ${job.enabled}, Next Run: ${job.nextRun || 'Not scheduled'}`);
+    }
   }
 
   /**

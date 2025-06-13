@@ -318,10 +318,19 @@ export function initializeBackupSystem() {
   // Initialize cron service for automatic backups
   const initializeCronService = async () => {
     try {
-      const { initializeCronService } = await import('./cronService');
+      console.log('🔄 Loading cron service...');
+      const { initializeCronService, cronService } = await import('./cronService');
+      console.log('📦 Cron service loaded, initializing...');
       initializeCronService();
+      console.log('🚀 Cron service initialization complete');
+      
+      // Log current status
+      setTimeout(() => {
+        const status = cronService.getStatus();
+        console.log('📊 Cron service status:', status);
+      }, 1000);
     } catch (error) {
-      console.error('Failed to initialize cron service:', error);
+      console.error('❌ Failed to initialize cron service:', error);
     }
   };
   

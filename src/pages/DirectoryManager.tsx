@@ -34,6 +34,11 @@ interface DirectoryListing {
     email: string;
     membership_type: string;
   };
+  reviewer?: {
+    name: string;
+    email: string;
+    membership_type: string;
+  };
 }
 
 interface DirectoryStats {
@@ -94,7 +99,8 @@ export default function DirectoryManager() {
         .from('directory_listings')
         .select(`
           *,
-          user:users(name, email, membership_type)
+          user:users!user_id(name, email, membership_type),
+          reviewer:users!reviewed_by(name, email, membership_type)
         `)
         .order('created_at', { ascending: false });
 

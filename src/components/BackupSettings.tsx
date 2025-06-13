@@ -78,6 +78,11 @@ export default function BackupSettings({ onClose }: BackupSettingsProps) {
       setSuccessMessage('Backup settings saved successfully!');
       setTimeout(() => setSuccessMessage(null), 3000);
 
+      // Close the modal after a short delay to show success message
+      setTimeout(() => {
+        onClose();
+      }, 1500);
+
     } catch (err) {
       console.error('Failed to save backup settings:', err);
       setError(err instanceof Error ? err.message : 'Failed to save settings');

@@ -49,23 +49,54 @@ export default function AdminSettings() {
 
   const loadExistingKeys = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-get-keys`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${session?.access_token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      // Load keys from admin_settings table
+      const { data, error } = await supabase
+        .from('admin_settings')
+        .select('key_name, key_value')
+        .in('key_name', [
+          'stripe_publishable_key',
+          'stripe_secret_key', 
+          'stripe_webhook_secret',
+          'stripe_webhook_endpoint',
+          'stripe_test_mode',
+          'supabase_url',
+          'supabase_anon_key',
+          'supabase_service_role_key',
+          'google_maps_api_key'
+        ]);
 
-      if (!response.ok) {
-        throw new Error('Failed to load keys');
+      if (error) {
+        console.error('Database error:', error);
+        throw error;
       }
 
-      const data = await response.json();
-      setKeys(data.keys);
+      // Convert array to object format
+      const dbKeys: Partial<IntegrationKeys> = {};
+      data?.forEach(item => {
+        const key = item.key_name as keyof IntegrationKeys;
+        if (key === 'stripe_test_mode') {
+          dbKeys[key] = item.key_value === 'true';
+        } else {
+          dbKeys[key] = item.key_value;
+        }
+      });
+
+      // Merge with environment variables as fallbacks
+      setKeys({
+        stripe_publishable_key: dbKeys.stripe_publishable_key || import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '',
+        stripe_secret_key: dbKeys.stripe_secret_key || '',
+        stripe_webhook_secret: dbKeys.stripe_webhook_secret || '',
+        stripe_webhook_endpoint: dbKeys.stripe_webhook_endpoint || '',
+        stripe_test_mode: dbKeys.stripe_test_mode ?? true,
+        supabase_url: dbKeys.supabase_url || import.meta.env.VITE_SUPABASE_URL || '',
+        supabase_anon_key: dbKeys.supabase_anon_key || import.meta.env.VITE_SUPABASE_ANON_KEY || '',
+        supabase_service_role_key: dbKeys.supabase_service_role_key || '',
+        google_maps_api_key: dbKeys.google_maps_api_key || import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''
+      });
+
     } catch (error) {
       console.error('Failed to load existing keys:', error);
-      // Fallback to environment variables
+      // Fallback to environment variables only
       setKeys({
         stripe_publishable_key: import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '',
         stripe_secret_key: '',
@@ -138,27 +169,46 @@ export default function AdminSettings() {
 
   const testStripeConnection = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/test-stripe-connection`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session?.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          publishable_key: keys.stripe_publishable_key,
-          secret_key: keys.stripe_secret_key,
-          test_mode: keys.stripe_test_mode
-        })
-      });
-
-      const result = await response.json();
-      if (result.success) {
-        alert('✅ Stripe connection successful!');
-      } else {
-        alert(`❌ Stripe connection failed: ${result.error}`);
+      // Simple validation since we can't test actual Stripe connection without Edge Function
+      const { stripe_publishable_key, stripe_secret_key } = keys;
+      
+      if (!stripe_publishable_key) {
+        alert('❌ Stripe publishable key is required');
+        return;
       }
+      
+      if (!stripe_secret_key) {
+        alert('❌ Stripe secret key is required');
+        return;
+      }
+      
+      if (!stripe_publishable_key.startsWith('pk_')) {
+        alert('❌ Invalid Stripe publishable key format');
+        return;
+      }
+      
+      if (!stripe_secret_key.startsWith('sk_')) {
+        alert('❌ Invalid Stripe secret key format');
+        return;
+      }
+      
+      // Check if test/live mode keys match
+      const isTestPubKey = stripe_publishable_key.includes('test');
+      const isTestSecKey = stripe_secret_key.includes('test');
+      
+      if (keys.stripe_test_mode && (!isTestPubKey || !isTestSecKey)) {
+        alert('⚠️ Warning: Test mode is enabled but keys appear to be live keys');
+        return;
+      }
+      
+      if (!keys.stripe_test_mode && (isTestPubKey || isTestSecKey)) {
+        alert('⚠️ Warning: Live mode is enabled but keys appear to be test keys');
+        return;
+      }
+      
+      alert('✅ Stripe key format validation passed! Note: Full connection testing requires deployed Edge Functions.');
     } catch (error) {
-      alert('❌ Failed to test Stripe connection. Check your configuration.');
+      alert('❌ Failed to validate Stripe configuration.');
     }
   };
 
@@ -200,22 +250,27 @@ export default function AdminSettings() {
     setSaveStatus('saving');
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-update-keys`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session?.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ keys })
-      });
+      // Prepare data for upsert
+      const settingsToUpdate = Object.entries(keys).map(([key, value]) => ({
+        key_name: key,
+        key_value: typeof value === 'boolean' ? value.toString() : value as string,
+        is_sensitive: ['stripe_secret_key', 'stripe_webhook_secret', 'supabase_service_role_key'].includes(key),
+        description: getKeyDescription(key),
+        updated_by: user!.id,
+        updated_at: new Date().toISOString()
+      }));
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to save keys');
+      // Use upsert to insert or update settings
+      const { error } = await supabase
+        .from('admin_settings')
+        .upsert(settingsToUpdate, {
+          onConflict: 'key_name'
+        });
+
+      if (error) {
+        console.error('Database error:', error);
+        throw error;
       }
-
-      const result = await response.json();
-      console.log('Save result:', result);
 
       setSaveStatus('success');
       setTimeout(() => setSaveStatus('idle'), 3000);
@@ -226,6 +281,21 @@ export default function AdminSettings() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const getKeyDescription = (key: string): string => {
+    const descriptions: Record<string, string> = {
+      stripe_publishable_key: 'Stripe publishable key for client-side operations',
+      stripe_secret_key: 'Stripe secret key for server-side operations',
+      stripe_webhook_secret: 'Secret for validating Stripe webhook requests',
+      stripe_webhook_endpoint: 'URL endpoint for Stripe webhook notifications',
+      stripe_test_mode: 'Enable test mode for development',
+      supabase_url: 'Your Supabase project URL',
+      supabase_anon_key: 'Public anonymous key for client-side access',
+      supabase_service_role_key: 'Service role key for admin operations',
+      google_maps_api_key: 'Google Maps API key for location services'
+    };
+    return descriptions[key] || '';
   };
 
   const validateKey = (key: string, value: string | boolean): boolean => {

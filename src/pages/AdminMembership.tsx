@@ -18,6 +18,7 @@ interface MembershipPlan {
   max_events_per_month?: number;
   max_team_members?: number;
   max_listings?: number;
+  display_order?: number;
   created_at: string;
   updated_at: string;
 }
@@ -40,6 +41,10 @@ export default function AdminMembership() {
   const [planToDelete, setPlanToDelete] = useState<MembershipPlan | null>(null);
   const [activeTab, setActiveTab] = useState('plans');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+  const [newFeature, setNewFeature] = useState('');
+  const [showFeatureInput, setShowFeatureInput] = useState(false);
+  const [selectedPlans, setSelectedPlans] = useState<string[]>([]);
+  const [showBulkActions, setShowBulkActions] = useState(false);
 
   // Check if user is admin
   if (!user || user.membershipType !== 'admin') {
@@ -174,6 +179,7 @@ export default function AdminMembership() {
         max_events_per_month: plan.limits?.max_events_per_month,
         max_team_members: plan.limits?.max_team_members,
         max_listings: plan.limits?.max_listings,
+        display_order: plan.display_order,
         created_at: plan.created_at,
         updated_at: plan.updated_at
       }));
@@ -313,13 +319,19 @@ export default function AdminMembership() {
   };
 
   const addFeature = () => {
-    const feature = prompt('Enter new feature:');
-    if (feature) {
+    if (newFeature.trim()) {
       setFormData({
         ...formData,
-        features: [...(formData.features || []), feature]
+        features: [...(formData.features || []), newFeature.trim()]
       });
+      setNewFeature('');
+      setShowFeatureInput(false);
     }
+  };
+
+  const startAddingFeature = () => {
+    setShowFeatureInput(true);
+    setNewFeature('');
   };
 
   const removeFeature = (index: number) => {
@@ -358,6 +370,61 @@ export default function AdminMembership() {
     acc[permission.category].push(permission);
     return acc;
   }, {} as Record<string, Permission[]>);
+
+  const togglePlanSelection = (planId: string) => {
+    setSelectedPlans(prev => 
+      prev.includes(planId) 
+        ? prev.filter(id => id !== planId)
+        : [...prev, planId]
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedPlans.length === 0) return;
+    
+    try {
+      const { error } = await supabase
+        .from('membership_plans')
+        .delete()
+        .in('id', selectedPlans);
+
+      if (error) throw error;
+      
+      await loadPlans();
+      setSelectedPlans([]);
+      setShowBulkActions(false);
+    } catch (error) {
+      console.error('Failed to delete plans:', error);
+    }
+  };
+
+  const handleBulkToggleStatus = async (active: boolean) => {
+    if (selectedPlans.length === 0) return;
+    
+    try {
+      const { error } = await supabase
+        .from('membership_plans')
+        .update({ is_active: active })
+        .in('id', selectedPlans);
+
+      if (error) throw error;
+      
+      await loadPlans();
+      setSelectedPlans([]);
+    } catch (error) {
+      console.error('Failed to update plans:', error);
+    }
+  };
+
+  const handleDuplicatePlan = (plan: MembershipPlan) => {
+    setEditingPlan(null);
+    setFormData({
+      ...plan,
+      name: `${plan.name} (Copy)`,
+      is_featured: false
+    });
+    setShowPlanModal(true);
+  };
 
   return (
     <div className="min-h-screen py-8">
@@ -652,14 +719,44 @@ export default function AdminMembership() {
                 <div>
                   <div className="flex items-center justify-between mb-4">
                     <label className="block text-gray-400 text-sm">Features</label>
-                    <button
-                      onClick={addFeature}
-                      className="text-electric-400 hover:text-electric-300 text-sm flex items-center space-x-1"
-                    >
-                      <Plus className="h-4 w-4" />
-                      <span>Add Feature</span>
-                    </button>
+                    {!showFeatureInput && (
+                      <button
+                        onClick={startAddingFeature}
+                        className="text-electric-400 hover:text-electric-300 text-sm flex items-center space-x-1"
+                      >
+                        <Plus className="h-4 w-4" />
+                        <span>Add Feature</span>
+                      </button>
+                    )}
                   </div>
+                  
+                  {showFeatureInput && (
+                    <div className="mb-4 flex items-center space-x-2">
+                      <input
+                        type="text"
+                        value={newFeature}
+                        onChange={(e) => setNewFeature(e.target.value)}
+                        placeholder="Enter feature description..."
+                        className="flex-1 p-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500 text-sm"
+                        onKeyPress={(e) => e.key === 'Enter' && addFeature()}
+                        autoFocus
+                      />
+                      <button
+                        onClick={addFeature}
+                        disabled={!newFeature.trim()}
+                        className="bg-electric-500 text-white px-3 py-2 rounded-lg hover:bg-electric-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Check className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => setShowFeatureInput(false)}
+                        className="text-gray-400 hover:text-white transition-colors"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
+                  
                   <div className="space-y-2">
                     {(formData.features || []).map((feature, index) => (
                       <div key={index} className="flex items-center space-x-2 bg-gray-700/30 p-2 rounded">
