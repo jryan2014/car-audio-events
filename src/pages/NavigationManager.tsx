@@ -29,7 +29,13 @@ import {
   Info,
   HelpCircle,
   Move,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Crown,
+  Factory,
+  Globe,
+  Tag,
+  Star,
+  MessageSquare
 } from 'lucide-react';
 
 interface NavigationItem {
@@ -44,6 +50,11 @@ interface NavigationItem {
     public?: boolean;
     membershipTypes?: string[];
   };
+  membership_context?: string;
+  badge_text?: string;
+  badge_color?: string;
+  description?: string;
+  priority?: number;
   is_active: boolean;
   cms_page_id?: string;
   children?: NavigationItem[];
@@ -62,6 +73,47 @@ interface CMSPage {
   status: 'draft' | 'published' | 'archived';
 }
 
+interface FormData {
+  title: string;
+  href: string;
+  icon: string;
+  parent_id: string;
+  target_blank: boolean;
+  visibility_rules: { public?: boolean; membershipTypes?: string[] };
+  membership_context: string;
+  badge_text: string;
+  badge_color: string;
+  description: string;
+  priority: number;
+  is_active: boolean;
+  cms_page_id: string;
+}
+
+// Tooltip component
+const Tooltip = ({ children, content }: { children: React.ReactNode; content: string }) => {
+  const [isVisible, setIsVisible] = useState(false);
+
+  return (
+    <div className="relative inline-block">
+      <div
+        onMouseEnter={() => setIsVisible(true)}
+        onMouseLeave={() => setIsVisible(false)}
+        className="cursor-help"
+      >
+        {children}
+      </div>
+      {isVisible && (
+        <div className="absolute z-50 px-3 py-2 text-sm text-white bg-gray-900 rounded-lg shadow-lg -top-2 left-6 transform -translate-y-full w-64">
+          <div className="relative">
+            {content}
+            <div className="absolute top-full left-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const iconOptions = [
   { value: 'Home', label: 'Home', icon: Home },
   { value: 'Calendar', label: 'Calendar', icon: Calendar },
@@ -74,7 +126,12 @@ const iconOptions = [
   { value: 'Settings', label: 'Settings', icon: Settings },
   { value: 'BarChart3', label: 'Analytics', icon: BarChart3 },
   { value: 'Menu', label: 'Menu', icon: Menu },
-  { value: 'LinkIcon', label: 'Link', icon: LinkIcon }
+  { value: 'LinkIcon', label: 'Link', icon: LinkIcon },
+  { value: 'Crown', label: 'Crown', icon: Crown },
+  { value: 'Factory', label: 'Factory', icon: Factory },
+  { value: 'Globe', label: 'Globe', icon: Globe },
+  { value: 'Tag', label: 'Tag', icon: Tag },
+  { value: 'Star', label: 'Star', icon: Star }
 ];
 
 export default function NavigationManager() {
@@ -89,13 +146,18 @@ export default function NavigationManager() {
   const [success, setSuccess] = useState<string>('');
 
   // Form state
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     title: '',
     href: '',
     icon: '',
     parent_id: '',
     target_blank: false,
     visibility_rules: { public: true } as { public?: boolean; membershipTypes?: string[] },
+    membership_context: 'base',
+    badge_text: '',
+    badge_color: '',
+    description: '',
+    priority: 1,
     is_active: true,
     cms_page_id: ''
   });
@@ -202,6 +264,11 @@ export default function NavigationManager() {
       parent_id: '',
       target_blank: false,
       visibility_rules: { public: true },
+      membership_context: 'base',
+      badge_text: '',
+      badge_color: '',
+      description: '',
+      priority: 1,
       is_active: true,
       cms_page_id: ''
     });
@@ -217,6 +284,11 @@ export default function NavigationManager() {
       parent_id: item.parent_id || '',
       target_blank: item.target_blank,
       visibility_rules: item.visibility_rules,
+      membership_context: item.membership_context || 'base',
+      badge_text: item.badge_text || '',
+      badge_color: item.badge_color || '',
+      description: item.description || '',
+      priority: item.priority || 1,
       is_active: item.is_active,
       cms_page_id: item.cms_page_id || ''
     });
@@ -239,6 +311,11 @@ export default function NavigationManager() {
         parent_id: formData.parent_id || null,
         target_blank: formData.target_blank,
         visibility_rules: formData.visibility_rules,
+        membership_context: formData.membership_context,
+        badge_text: formData.badge_text || null,
+        badge_color: formData.badge_color || null,
+        description: formData.description || null,
+        priority: formData.priority,
         is_active: formData.is_active,
         cms_page_id: formData.cms_page_id || null,
         nav_order: editingItem ? editingItem.nav_order : getNextOrder(formData.parent_id)
@@ -443,17 +520,51 @@ export default function NavigationManager() {
           </div>
         </div>
 
-        <div className="text-sm text-gray-400 grid grid-cols-2 gap-4">
-          <div>
-            <span className="font-medium">URL:</span> {item.href || '(No URL)'}
+        <div className="text-sm text-gray-400 space-y-2">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <span className="font-medium">URL:</span> {item.href || '(No URL)'}
+            </div>
+            <div>
+              <span className="font-medium">Context:</span> {
+                membershipContextOptions.find(opt => opt.value === (item.membership_context || 'base'))?.label || 'Base (Everyone)'
+              }
+            </div>
           </div>
-          <div>
-            <span className="font-medium">Visibility:</span> {
-              item.visibility_rules?.public ? 'Public' : 
-              item.visibility_rules?.membershipTypes ? `Members: ${item.visibility_rules.membershipTypes.join(', ')}` :
-              'Custom'
-            }
-          </div>
+          
+          {(item.badge_text || item.description) && (
+            <div className="flex items-center space-x-4">
+              {item.badge_text && (
+                <div className="flex items-center space-x-2">
+                  <span className="font-medium">Badge:</span>
+                  <span className={`px-2 py-1 rounded text-xs font-bold ${
+                    item.badge_color === 'green' ? 'bg-green-500/20 text-green-400' :
+                    item.badge_color === 'purple' ? 'bg-purple-500/20 text-purple-400' :
+                    item.badge_color === 'orange' ? 'bg-orange-500/20 text-orange-400' :
+                    item.badge_color === 'red' ? 'bg-red-500/20 text-red-400' :
+                    item.badge_color === 'indigo' ? 'bg-indigo-500/20 text-indigo-400' :
+                    item.badge_color === 'yellow' ? 'bg-yellow-500/20 text-yellow-400' :
+                    item.badge_color === 'blue' ? 'bg-blue-500/20 text-blue-400' :
+                    'bg-gray-500/20 text-gray-400'
+                  }`}>
+                    {item.badge_text}
+                  </span>
+                </div>
+              )}
+              
+              {item.description && (
+                <div className="flex-1">
+                  <span className="font-medium">Description:</span> {item.description}
+                </div>
+              )}
+            </div>
+          )}
+          
+          {item.priority && item.priority > 1 && (
+            <div>
+              <span className="font-medium">Priority:</span> {item.priority}/10
+            </div>
+          )}
         </div>
 
         {item.children && item.children.length > 0 && (
@@ -465,6 +576,27 @@ export default function NavigationManager() {
       </div>
     ));
   };
+
+  const membershipContextOptions = [
+    { value: 'base', label: 'Base (Everyone)', description: 'Visible to all users including non-members' },
+    { value: 'free_competitor', label: 'Free Competitor', description: 'Visible to free competitor members' },
+    { value: 'pro_competitor', label: 'Pro Competitor', description: 'Visible to pro competitor members' },
+    { value: 'retailer', label: 'Retailer', description: 'Visible to retailer members' },
+    { value: 'manufacturer', label: 'Manufacturer', description: 'Visible to manufacturer members' },
+    { value: 'organization', label: 'Organization', description: 'Visible to organization members' },
+    { value: 'admin', label: 'Admin Only', description: 'Visible only to administrators' }
+  ];
+
+  const badgeColorOptions = [
+    { value: '', label: 'No Badge' },
+    { value: 'green', label: 'Green (FREE)' },
+    { value: 'purple', label: 'Purple (PRO)' },
+    { value: 'orange', label: 'Orange (BUSINESS)' },
+    { value: 'red', label: 'Red (ENTERPRISE/ADMIN)' },
+    { value: 'indigo', label: 'Indigo (ORG)' },
+    { value: 'yellow', label: 'Yellow (LIMITED)' },
+    { value: 'blue', label: 'Blue (UPGRADE)' }
+  ];
 
   if (isLoading) {
     return (
@@ -628,93 +760,195 @@ export default function NavigationManager() {
 
               <div className="space-y-6 text-gray-300">
                 <div>
-                  <h4 className="text-lg font-semibold text-white mb-3">What is the Navigation Manager?</h4>
+                  <h4 className="text-lg font-semibold text-white mb-3 flex items-center space-x-2">
+                    <Crown className="h-5 w-5 text-electric-400" />
+                    <span>Enhanced Navigation System</span>
+                  </h4>
                   <p className="mb-4">
-                    The Navigation Manager allows you to control your website's menu structure. You can create menu items, 
-                    organize them hierarchically, control who can see them, and manage their order.
+                    This advanced navigation system creates membership-specific menus that encourage upgrades by showing users 
+                    what features are available at different membership levels. Each user sees navigation tailored to their membership tier.
                   </p>
                 </div>
 
                 <div>
-                  <h4 className="text-lg font-semibold text-white mb-3">Key Features</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <h4 className="text-lg font-semibold text-white mb-3 flex items-center space-x-2">
+                    <Users className="h-5 w-5 text-electric-400" />
+                    <span>Membership Contexts Explained</span>
+                  </h4>
+                  <div className="grid grid-cols-1 gap-3">
                     <div className="bg-gray-700/30 rounded-lg p-4">
-                      <h5 className="font-medium text-electric-400 mb-2">Menu Structure</h5>
-                      <p className="text-sm">Create parent and child menu items to build dropdown menus and organized navigation.</p>
+                      <div className="flex items-center space-x-2 mb-2">
+                        <Globe className="h-4 w-4 text-green-400" />
+                        <h5 className="font-medium text-green-400">Base (Everyone)</h5>
+                      </div>
+                      <p className="text-sm">Visible to all users including non-members. Use for: Home, About, Events, Contact, etc.</p>
                     </div>
                     <div className="bg-gray-700/30 rounded-lg p-4">
-                      <h5 className="font-medium text-electric-400 mb-2">Visibility Control</h5>
-                      <p className="text-sm">Set who can see each menu item: public users, specific membership types, or custom rules.</p>
+                      <div className="flex items-center space-x-2 mb-2">
+                        <Target className="h-4 w-4 text-blue-400" />
+                        <h5 className="font-medium text-blue-400">Free Competitor</h5>
+                      </div>
+                      <p className="text-sm">Basic member features. Use for: Basic Dashboard, Limited Events, Profile. Add "UPGRADE" badges to encourage Pro.</p>
                     </div>
                     <div className="bg-gray-700/30 rounded-lg p-4">
-                      <h5 className="font-medium text-electric-400 mb-2">Order Management</h5>
-                      <p className="text-sm">Use drag-and-drop or arrow buttons to reorder menu items exactly how you want them.</p>
+                      <div className="flex items-center space-x-2 mb-2">
+                        <Crown className="h-4 w-4 text-purple-400" />
+                        <h5 className="font-medium text-purple-400">Pro Competitor</h5>
+                      </div>
+                      <p className="text-sm">Premium features. Use for: Pro Dashboard, Analytics, Team Management, System Showcase.</p>
                     </div>
                     <div className="bg-gray-700/30 rounded-lg p-4">
-                      <h5 className="font-medium text-electric-400 mb-2">CMS Integration</h5>
-                      <p className="text-sm">Automatically add CMS pages to your navigation without manual menu creation.</p>
+                      <div className="flex items-center space-x-2 mb-2">
+                        <Building2 className="h-4 w-4 text-orange-400" />
+                        <h5 className="font-medium text-orange-400">Retailer</h5>
+                      </div>
+                      <p className="text-sm">Business features. Use for: Business Dashboard, Create Events, Customer Analytics, Inventory.</p>
+                    </div>
+                    <div className="bg-gray-700/30 rounded-lg p-4">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <Factory className="h-4 w-4 text-red-400" />
+                        <h5 className="font-medium text-red-400">Manufacturer</h5>
+                      </div>
+                      <p className="text-sm">Enterprise features. Use for: Product Catalog, Dealer Network, Brand Showcase, API Access.</p>
+                    </div>
+                    <div className="bg-gray-700/30 rounded-lg p-4">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <Users className="h-4 w-4 text-indigo-400" />
+                        <h5 className="font-medium text-indigo-400">Organization</h5>
+                      </div>
+                      <p className="text-sm">Group management. Use for: Organization Hub, Member Management, Event Hosting, Custom Branding.</p>
+                    </div>
+                    <div className="bg-gray-700/30 rounded-lg p-4">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <Shield className="h-4 w-4 text-red-500" />
+                        <h5 className="font-medium text-red-500">Admin Only</h5>
+                      </div>
+                      <p className="text-sm">Administrative features. Use for: User Management, System Settings, Navigation Manager, Analytics.</p>
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <h4 className="text-lg font-semibold text-white mb-3">How to Use</h4>
-                  <div className="space-y-3">
+                  <h4 className="text-lg font-semibold text-white mb-3 flex items-center space-x-2">
+                    <Tag className="h-5 w-5 text-electric-400" />
+                    <span>Badge System</span>
+                  </h4>
+                  <p className="mb-3">Badges help highlight features and encourage upgrades:</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex items-center space-x-2">
+                      <span className="px-2 py-1 rounded text-xs font-bold bg-green-500/20 text-green-400">FREE</span>
+                      <span className="text-sm">Green - Free features</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="px-2 py-1 rounded text-xs font-bold bg-purple-500/20 text-purple-400">PRO</span>
+                      <span className="text-sm">Purple - Pro features</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="px-2 py-1 rounded text-xs font-bold bg-orange-500/20 text-orange-400">BUSINESS</span>
+                      <span className="text-sm">Orange - Business features</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="px-2 py-1 rounded text-xs font-bold bg-red-500/20 text-red-400">ENTERPRISE</span>
+                      <span className="text-sm">Red - Enterprise features</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="px-2 py-1 rounded text-xs font-bold bg-yellow-500/20 text-yellow-400">LIMITED</span>
+                      <span className="text-sm">Yellow - Limited access</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="px-2 py-1 rounded text-xs font-bold bg-blue-500/20 text-blue-400">UPGRADE</span>
+                      <span className="text-sm">Blue - Upgrade prompts</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-lg font-semibold text-white mb-3 flex items-center space-x-2">
+                    <Settings className="h-5 w-5 text-electric-400" />
+                    <span>Setup Guide</span>
+                  </h4>
+                  <div className="space-y-4">
                     <div className="flex items-start space-x-3">
                       <div className="bg-electric-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold">1</div>
                       <div>
-                        <h5 className="font-medium">Create Menu Items</h5>
-                        <p className="text-sm text-gray-400">Click "Add Menu Item" to create new navigation links. Add a title, URL, and choose an icon.</p>
+                        <h5 className="font-medium text-white">Create Base Navigation</h5>
+                        <p className="text-sm text-gray-400">Start with "Base (Everyone)" items: Home, About, Events, Directory, Resources</p>
                       </div>
                     </div>
                     <div className="flex items-start space-x-3">
                       <div className="bg-electric-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold">2</div>
                       <div>
-                        <h5 className="font-medium">Organize Structure</h5>
-                        <p className="text-sm text-gray-400">Set parent items to create dropdown menus. Child items will appear under their parent.</p>
+                        <h5 className="font-medium text-white">Add Member-Specific Items</h5>
+                        <p className="text-sm text-gray-400">Create items for each membership level with appropriate badges and priorities</p>
                       </div>
                     </div>
                     <div className="flex items-start space-x-3">
                       <div className="bg-electric-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold">3</div>
                       <div>
-                        <h5 className="font-medium">Control Visibility</h5>
-                        <p className="text-sm text-gray-400">Choose who can see each menu item: everyone, logged-in users, or specific membership types.</p>
+                        <h5 className="font-medium text-white">Use Upgrade Prompts</h5>
+                        <p className="text-sm text-gray-400">Add "UPGRADE" badges to Free Competitor items that link to premium features</p>
                       </div>
                     </div>
                     <div className="flex items-start space-x-3">
                       <div className="bg-electric-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold">4</div>
                       <div>
-                        <h5 className="font-medium">Manage Order</h5>
-                        <p className="text-sm text-gray-400">Use the up/down arrows to reorder items. The order here determines the menu order on your site.</p>
+                        <h5 className="font-medium text-white">Set Priorities</h5>
+                        <p className="text-sm text-gray-400">Use priority (1-10) to control order within each membership context</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start space-x-3">
+                      <div className="bg-electric-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold">5</div>
+                      <div>
+                        <h5 className="font-medium text-white">Test Different Views</h5>
+                        <p className="text-sm text-gray-400">Log in as different membership types to see how navigation appears to each user</p>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <h4 className="text-lg font-semibold text-white mb-3">Best Practices</h4>
+                  <h4 className="text-lg font-semibold text-white mb-3 flex items-center space-x-2">
+                    <Star className="h-5 w-5 text-electric-400" />
+                    <span>Best Practices</span>
+                  </h4>
                   <ul className="space-y-2 text-sm">
                     <li className="flex items-start space-x-2">
                       <ChevronRight className="h-4 w-4 text-electric-400 mt-0.5" />
-                      <span>Keep menu titles short and descriptive</span>
+                      <span><strong>Progressive Disclosure:</strong> Show basic features to free users, advanced to paid users</span>
                     </li>
                     <li className="flex items-start space-x-2">
                       <ChevronRight className="h-4 w-4 text-electric-400 mt-0.5" />
-                      <span>Use icons consistently to improve visual navigation</span>
+                      <span><strong>Clear Upgrade Paths:</strong> Use badges and descriptions to show what's available at higher tiers</span>
                     </li>
                     <li className="flex items-start space-x-2">
                       <ChevronRight className="h-4 w-4 text-electric-400 mt-0.5" />
-                      <span>Limit dropdown menus to 2-3 levels deep for usability</span>
+                      <span><strong>Consistent Branding:</strong> Use color-coded badges consistently across membership levels</span>
                     </li>
                     <li className="flex items-start space-x-2">
                       <ChevronRight className="h-4 w-4 text-electric-400 mt-0.5" />
-                      <span>Test visibility rules to ensure the right users see the right content</span>
+                      <span><strong>Priority Ordering:</strong> Put most important/profitable features first in each context</span>
                     </li>
                     <li className="flex items-start space-x-2">
                       <ChevronRight className="h-4 w-4 text-electric-400 mt-0.5" />
-                      <span>Use "Open in new tab" for external links to keep users on your site</span>
+                      <span><strong>Test Regularly:</strong> Check navigation from different user perspectives</span>
                     </li>
                   </ul>
+                </div>
+
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+                  <div className="flex items-start space-x-3">
+                    <Info className="h-5 w-5 text-blue-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <h5 className="text-blue-400 font-medium mb-2">Important Notes</h5>
+                      <ul className="text-sm space-y-1">
+                        <li>• Navigation changes take effect immediately for all users</li>
+                        <li>• Users only see items for their membership level and below</li>
+                        <li>• Use the CMS integration to automatically add pages to navigation</li>
+                        <li>• Higher priority items (8-10) appear first, lower priority (1-3) appear last</li>
+                        <li>• Inactive items are hidden but not deleted - useful for temporary features</li>
+                      </ul>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -739,9 +973,14 @@ export default function NavigationManager() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Title <span className="text-red-400">*</span>
-                  </label>
+                  <div className="flex items-center space-x-2 mb-2">
+                    <label className="block text-sm font-medium text-gray-300">
+                      Title <span className="text-red-400">*</span>
+                    </label>
+                    <Tooltip content="The display name for this menu item. Keep it short and descriptive (e.g., 'About Us', 'Events', 'Dashboard')">
+                      <HelpCircle className="h-4 w-4 text-gray-400" />
+                    </Tooltip>
+                  </div>
                   <input
                     type="text"
                     value={formData.title}
@@ -752,7 +991,12 @@ export default function NavigationManager() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">URL/Link</label>
+                  <div className="flex items-center space-x-2 mb-2">
+                    <label className="block text-sm font-medium text-gray-300">URL/Link</label>
+                    <Tooltip content="The destination when users click this menu item. Use '/page-name' for internal pages, 'https://...' for external links, or leave empty to create a dropdown parent with sub-items.">
+                      <HelpCircle className="h-4 w-4 text-gray-400" />
+                    </Tooltip>
+                  </div>
                   <input
                     type="text"
                     value={formData.href}
@@ -767,7 +1011,12 @@ export default function NavigationManager() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Icon</label>
+                    <div className="flex items-center space-x-2 mb-2">
+                      <label className="block text-sm font-medium text-gray-300">Icon</label>
+                      <Tooltip content="Optional icon to display next to the menu item. Icons help users quickly identify different sections of your site.">
+                        <HelpCircle className="h-4 w-4 text-gray-400" />
+                      </Tooltip>
+                    </div>
                     <select
                       value={formData.icon}
                       onChange={(e) => setFormData({...formData, icon: e.target.value})}
@@ -783,7 +1032,12 @@ export default function NavigationManager() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Parent Item</label>
+                    <div className="flex items-center space-x-2 mb-2">
+                      <label className="block text-sm font-medium text-gray-300">Parent Item</label>
+                      <Tooltip content="Select a parent to create a dropdown menu. Child items will appear when users hover over the parent. Leave empty for top-level menu items.">
+                        <HelpCircle className="h-4 w-4 text-gray-400" />
+                      </Tooltip>
+                    </div>
                     <select
                       value={formData.parent_id}
                       onChange={(e) => setFormData({...formData, parent_id: e.target.value})}
@@ -802,39 +1056,101 @@ export default function NavigationManager() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Visibility</label>
-                  <div className="space-y-2">
-                    <label className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        name="visibility"
-                        checked={formData.visibility_rules.public === true}
-                        onChange={() => setFormData({...formData, visibility_rules: { public: true }})}
-                        className="text-electric-500"
-                      />
-                      <span className="text-gray-300">Public (everyone can see)</span>
-                    </label>
-                    <label className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        name="visibility"
-                        checked={formData.visibility_rules.membershipTypes !== undefined}
-                        onChange={() => setFormData({...formData, visibility_rules: { membershipTypes: ['competitor', 'pro_competitor', 'admin'] }})}
-                        className="text-electric-500"
-                      />
-                      <span className="text-gray-300">Members only (logged-in users)</span>
-                    </label>
-                    <label className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        name="visibility"
-                        checked={formData.visibility_rules.membershipTypes?.includes('admin') && formData.visibility_rules.membershipTypes.length === 1}
-                        onChange={() => setFormData({...formData, visibility_rules: { membershipTypes: ['admin'] }})}
-                        className="text-electric-500"
-                      />
-                      <span className="text-gray-300">Admin only</span>
-                    </label>
+                  <div className="flex items-center space-x-2 mb-2">
+                    <label className="block text-sm font-medium text-gray-300">Membership Context</label>
+                    <Tooltip content="Controls who can see this menu item based on their membership level. This is the key feature that shows different navigation to different user types, encouraging upgrades.">
+                      <HelpCircle className="h-4 w-4 text-gray-400" />
+                    </Tooltip>
                   </div>
+                  <select
+                    value={formData.membership_context}
+                    onChange={(e) => setFormData({...formData, membership_context: e.target.value})}
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-electric-500"
+                  >
+                    {membershipContextOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {membershipContextOptions.find(opt => opt.value === formData.membership_context)?.description}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="flex items-center space-x-2 mb-2">
+                      <label className="block text-sm font-medium text-gray-300">Badge Text</label>
+                      <Tooltip content="Optional promotional badge text (e.g., 'PRO', 'NEW', 'FREE'). Badges help highlight special features or encourage upgrades.">
+                        <HelpCircle className="h-4 w-4 text-gray-400" />
+                      </Tooltip>
+                    </div>
+                    <input
+                      type="text"
+                      value={formData.badge_text}
+                      onChange={(e) => setFormData({...formData, badge_text: e.target.value})}
+                      className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-electric-500"
+                      placeholder="e.g., PRO, FREE, NEW"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center space-x-2 mb-2">
+                      <label className="block text-sm font-medium text-gray-300">Badge Color</label>
+                      <Tooltip content="Color scheme for the badge. Different colors convey different meanings (Green=FREE, Purple=PRO, Orange=BUSINESS, etc.)">
+                        <HelpCircle className="h-4 w-4 text-gray-400" />
+                      </Tooltip>
+                    </div>
+                    <select
+                      value={formData.badge_color}
+                      onChange={(e) => setFormData({...formData, badge_color: e.target.value})}
+                      className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-electric-500"
+                    >
+                      {badgeColorOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center space-x-2 mb-2">
+                    <label className="block text-sm font-medium text-gray-300">Description</label>
+                    <Tooltip content="Optional internal description for this menu item. Helps you remember what this menu item is for - not shown to users.">
+                      <HelpCircle className="h-4 w-4 text-gray-400" />
+                    </Tooltip>
+                  </div>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({...formData, description: e.target.value})}
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-electric-500"
+                    placeholder="Optional description for this menu item"
+                    rows={2}
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center space-x-2 mb-2">
+                    <label className="block text-sm font-medium text-gray-300">Priority</label>
+                    <Tooltip content="Priority level (1-10) determines the order within the same membership context. Higher priority items appear first. Use this to highlight important features.">
+                      <HelpCircle className="h-4 w-4 text-gray-400" />
+                    </Tooltip>
+                  </div>
+                  <input
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={formData.priority}
+                    onChange={(e) => setFormData({...formData, priority: parseInt(e.target.value) || 1})}
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-electric-500"
+                    placeholder="1-10 (higher = more important)"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    Higher priority items appear first in their context
+                  </p>
                 </div>
 
                 <div className="flex items-center space-x-4">
@@ -846,6 +1162,9 @@ export default function NavigationManager() {
                       className="rounded border-gray-600 bg-gray-700 text-electric-500"
                     />
                     <span className="text-gray-300">Open in new tab</span>
+                    <Tooltip content="Check this for external links to keep users on your site. Internal links usually don't need this.">
+                      <HelpCircle className="h-4 w-4 text-gray-400" />
+                    </Tooltip>
                   </label>
 
                   <label className="flex items-center space-x-2">
@@ -856,6 +1175,9 @@ export default function NavigationManager() {
                       className="rounded border-gray-600 bg-gray-700 text-electric-500"
                     />
                     <span className="text-gray-300">Active (visible in menu)</span>
+                    <Tooltip content="Uncheck to hide this menu item without deleting it. Useful for temporarily disabling features.">
+                      <HelpCircle className="h-4 w-4 text-gray-400" />
+                    </Tooltip>
                   </label>
                 </div>
 
