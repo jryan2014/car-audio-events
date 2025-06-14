@@ -28,7 +28,7 @@ export default function Header() {
               <img 
                 src="/CAE_Logo_V3.png" 
                 alt="Car Audio Events" 
-                className="h-14 w-auto"
+                className="h-16 w-auto"
               />
             </Link>
           </div>
