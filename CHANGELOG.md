@@ -15,6 +15,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.1] - 2025-06-14
+
+### 🐛 **Fixed**
+- **Logo Display Issue**: Fixed broken logo in production environment
+  - Added missing `CAE_Logo_V3.png` file to public directory
+  - Updated Header component to use correct logo path
+  - Resolved 404 error for logo asset on caraudioevents.com
+
+### 🔧 **Technical**
+- Proper asset deployment to production
+- Logo file organization in public directory
+
+---
+
 ## [1.0.0] - 2025-06-14
 
 ### 🎉 **INITIAL PRODUCTION RELEASE**

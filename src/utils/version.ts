@@ -4,7 +4,7 @@
 export const VERSION = {
   MAJOR: 1,
   MINOR: 0,
-  PATCH: 0,
+  PATCH: 1,
   BUILD: Date.now(), // Build timestamp
   RELEASE_DATE: '2025-06-14',
   CODENAME: 'Foundation'
@@ -61,6 +61,17 @@ export const isProduction = (): boolean => {
 
 // Version history for reference
 export const VERSION_HISTORY = [
+  {
+    version: '1.0.1',
+    date: '2025-06-14',
+    codename: 'Foundation',
+    description: 'Logo fix patch release',
+    features: [
+      'Fixed broken logo display in production',
+      'Added missing CAE_Logo_V3.png asset',
+      'Resolved 404 error for logo file'
+    ]
+  },
   {
     version: '1.0.0',
     date: '2025-06-14',
