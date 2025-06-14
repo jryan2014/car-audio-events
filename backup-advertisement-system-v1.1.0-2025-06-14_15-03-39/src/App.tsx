@@ -26,8 +26,6 @@ import EditUser from './pages/EditUser';
 import AdminAnalytics from './pages/AdminAnalytics';
 import AdminBackup from './pages/AdminBackup';
 import AdManagement from './pages/AdManagement';
-import AdvertisePage from './pages/AdvertisePage';
-import MemberAdDashboard from './pages/MemberAdDashboard';
 import CMSPages from './pages/CMSPages';
 import DynamicPage from './pages/DynamicPage';
 import SystemConfiguration from './pages/SystemConfiguration';
@@ -69,8 +67,6 @@ function App() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/directory" element={<Directory />} />
             <Route path="/resources" element={<Resources />} />
-            <Route path="/advertise" element={<AdvertisePage />} />
-            <Route path="/my-ads" element={<MemberAdDashboard />} />
             <Route path="/directory/create" element={<CreateDirectoryListing />} />
             <Route path="/directory/pending" element={<DirectoryListingPending />} />
             <Route path="/claim-organization/:organizationId" element={<ClaimOrganization />} />

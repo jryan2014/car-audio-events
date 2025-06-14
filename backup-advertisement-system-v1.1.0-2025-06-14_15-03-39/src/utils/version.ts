@@ -3,11 +3,11 @@
 
 export const VERSION = {
   MAJOR: 1,
-  MINOR: 1,
-  PATCH: 0,
+  MINOR: 0,
+  PATCH: 1,
   BUILD: Date.now(), // Build timestamp
   RELEASE_DATE: '2025-06-14',
-  CODENAME: 'Advertisement System with AI Integration'
+  CODENAME: 'Foundation'
 } as const;
 
 export const getVersionString = (): string => {
@@ -61,23 +61,6 @@ export const isProduction = (): boolean => {
 
 // Version history for reference
 export const VERSION_HISTORY = [
-  {
-    version: '1.1.0',
-    date: '2025-06-14',
-    codename: 'Advertisement System with AI Integration',
-    description: 'Major advertisement system overhaul with AI-powered features',
-    features: [
-      'Complete advertisement system overhaul',
-      'Modal-based editing system with tooltips',
-      'AI chat assistant for banner creation',
-      'Frontend selling page for advertisers',
-      'Member advertising dashboard',
-      'Enhanced database schema with billing integration',
-      'Advanced targeting and placement options',
-      'Real-time analytics and performance tracking',
-      'Integration with membership and payment systems'
-    ]
-  },
   {
     version: '1.0.1',
     date: '2025-06-14',

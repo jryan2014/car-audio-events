@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Eye, Target, DollarSign, Calendar, MapPin, Tag, BarChart3, Settings } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, Edit, Trash2, Eye, Target, DollarSign, Calendar, MapPin, Tag, BarChart3, Settings, X, HelpCircle, Info, Sparkles, MessageSquare, Upload, Image as ImageIcon, ExternalLink, Users, Building2, Crown, Wrench } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import AdminNavigation from '../components/AdminNavigation';
 
 interface Advertisement {
   id: string;
@@ -12,11 +13,13 @@ interface Advertisement {
   click_url: string;
   advertiser_name: string;
   advertiser_email: string;
-  placement_type: 'header' | 'sidebar' | 'event_page' | 'mobile_banner' | 'footer';
-  size: 'small' | 'medium' | 'large' | 'banner' | 'square';
+  advertiser_user_id?: string; // Link to user account
+  placement_type: 'header' | 'sidebar' | 'event_page' | 'mobile_banner' | 'footer' | 'directory_listing' | 'search_results';
+  size: 'small' | 'medium' | 'large' | 'banner' | 'square' | 'leaderboard' | 'skyscraper';
   target_pages: string[];
   target_keywords: string[];
   target_categories: string[];
+  target_user_types: string[];
   budget: number;
   cost_per_click: number;
   cost_per_impression: number;
@@ -26,8 +29,18 @@ interface Advertisement {
   clicks: number;
   impressions: number;
   spent: number;
+  conversion_rate: number;
+  roi: number;
   created_at: string;
   updated_at: string;
+  // New fields for enhanced system
+  priority: number;
+  frequency_cap: number;
+  geographic_targeting: string[];
+  device_targeting: string[];
+  time_targeting: any;
+  a_b_test_variant?: string;
+  notes: string;
 }
 
 interface AdFormData {
@@ -37,27 +50,62 @@ interface AdFormData {
   click_url: string;
   advertiser_name: string;
   advertiser_email: string;
-  placement_type: 'header' | 'sidebar' | 'event_page' | 'mobile_banner' | 'footer';
-  size: 'small' | 'medium' | 'large' | 'banner' | 'square';
+  advertiser_user_id?: string;
+  placement_type: Advertisement['placement_type'];
+  size: Advertisement['size'];
   target_pages: string[];
   target_keywords: string[];
   target_categories: string[];
+  target_user_types: string[];
   budget: number;
   cost_per_click: number;
   cost_per_impression: number;
   start_date: string;
   end_date: string;
   pricing_model: 'cpc' | 'cpm' | 'fixed';
+  priority: number;
+  frequency_cap: number;
+  geographic_targeting: string[];
+  device_targeting: string[];
+  notes: string;
+}
+
+interface PlacementInfo {
+  type: string;
+  name: string;
+  description: string;
+  dimensions: string;
+  traffic: string;
+  visibility: string;
+  recommended_sizes: string[];
+  pricing_range: string;
+  examples: string[];
 }
 
 export default function AdManagement() {
   const { user } = useAuth();
   const [ads, setAds] = useState<Advertisement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showAdModal, setShowAdModal] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showAIModal, setShowAIModal] = useState(false);
   const [editingAd, setEditingAd] = useState<Advertisement | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [placementFilter, setPlacementFilter] = useState<string>('all');
+  const [error, setError] = useState<string>('');
+  const [success, setSuccess] = useState<string>('');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+  
+  // AI Chat state
+  const [aiMessages, setAiMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
+  const [aiInput, setAiInput] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  
+  // Modal refs
+  const modalRef = useRef<HTMLDivElement>(null);
+  const aiModalRef = useRef<HTMLDivElement>(null);
+
   const [formData, setFormData] = useState<AdFormData>({
     title: '',
     description: '',
@@ -65,21 +113,118 @@ export default function AdManagement() {
     click_url: '',
     advertiser_name: '',
     advertiser_email: '',
+    advertiser_user_id: '',
     placement_type: 'sidebar',
     size: 'medium',
     target_pages: [],
     target_keywords: [],
     target_categories: [],
+    target_user_types: [],
     budget: 100,
     cost_per_click: 0.50,
     cost_per_impression: 0.01,
     start_date: '',
     end_date: '',
-    pricing_model: 'cpc'
+    pricing_model: 'cpc',
+    priority: 1,
+    frequency_cap: 3,
+    geographic_targeting: [],
+    device_targeting: ['desktop', 'mobile'],
+    notes: ''
   });
 
-  // Check if user is admin
-  if (!user || user.membershipType !== 'admin') {
+  // Placement information with detailed specs
+  const placementInfo: Record<string, PlacementInfo> = {
+    header: {
+      type: 'header',
+      name: 'Header Banner',
+      description: 'Premium placement at the top of every page, maximum visibility',
+      dimensions: '728x90 (Leaderboard) or 970x250 (Billboard)',
+      traffic: 'High - Seen by 100% of visitors',
+      visibility: 'Excellent - Above the fold on all devices',
+      recommended_sizes: ['banner', 'leaderboard'],
+      pricing_range: '$2.00-5.00 CPC, $15-25 CPM',
+      examples: ['Brand awareness campaigns', 'Event announcements', 'Product launches']
+    },
+    sidebar: {
+      type: 'sidebar',
+      name: 'Sidebar Advertisement',
+      description: 'Consistent placement on content pages, good for targeted campaigns',
+      dimensions: '300x250 (Medium Rectangle) or 160x600 (Skyscraper)',
+      traffic: 'Medium-High - Visible on most content pages',
+      visibility: 'Good - Consistent placement, less intrusive',
+      recommended_sizes: ['medium', 'square', 'skyscraper'],
+      pricing_range: '$1.50-3.00 CPC, $8-15 CPM',
+      examples: ['Product promotions', 'Service offerings', 'Local business ads']
+    },
+    event_page: {
+      type: 'event_page',
+      name: 'Event Page Placement',
+      description: 'Targeted placement on event detail pages, highly relevant audience',
+      dimensions: '300x250 or 728x90',
+      traffic: 'Medium - Event-specific traffic',
+      visibility: 'Excellent - Highly engaged audience',
+      recommended_sizes: ['medium', 'banner', 'square'],
+      pricing_range: '$2.50-4.00 CPC, $12-20 CPM',
+      examples: ['Event sponsors', 'Related products', 'Competition gear']
+    },
+    mobile_banner: {
+      type: 'mobile_banner',
+      name: 'Mobile Banner',
+      description: 'Mobile-optimized placement for smartphone users',
+      dimensions: '320x50 or 300x250',
+      traffic: 'High - 60%+ mobile traffic',
+      visibility: 'Good - Mobile-optimized display',
+      recommended_sizes: ['small', 'medium'],
+      pricing_range: '$1.00-2.50 CPC, $6-12 CPM',
+      examples: ['Mobile apps', 'Local services', 'Quick purchases']
+    },
+    footer: {
+      type: 'footer',
+      name: 'Footer Placement',
+      description: 'Bottom of page placement, budget-friendly option',
+      dimensions: '728x90 or 300x250',
+      traffic: 'Low-Medium - Scroll-dependent visibility',
+      visibility: 'Fair - Requires user scroll',
+      recommended_sizes: ['banner', 'medium'],
+      pricing_range: '$0.75-1.50 CPC, $4-8 CPM',
+      examples: ['Budget campaigns', 'Brand reinforcement', 'Secondary offers']
+    },
+    directory_listing: {
+      type: 'directory_listing',
+      name: 'Directory Listing',
+      description: 'Integrated with business directory, highly targeted',
+      dimensions: '300x150 or 250x250',
+      traffic: 'Medium - Directory browsers',
+      visibility: 'Excellent - Contextually relevant',
+      recommended_sizes: ['medium', 'square'],
+      pricing_range: '$2.00-3.50 CPC, $10-18 CPM',
+      examples: ['Business listings', 'Service providers', 'Local shops']
+    },
+    search_results: {
+      type: 'search_results',
+      name: 'Search Results',
+      description: 'Appears in search results, keyword-targeted placement',
+      dimensions: '300x100 or 728x90',
+      traffic: 'High - Search-driven traffic',
+      visibility: 'Excellent - Intent-based audience',
+      recommended_sizes: ['banner', 'medium'],
+      pricing_range: '$3.00-6.00 CPC, $20-35 CPM',
+      examples: ['Keyword campaigns', 'Competitive targeting', 'Product searches']
+    }
+  };
+
+  // User type targeting options
+  const userTypes = [
+    { id: 'competitor', name: 'Competitors', icon: Users, description: 'Car audio competitors and enthusiasts' },
+    { id: 'retailer', name: 'Retailers', icon: Building2, description: 'Car audio retailers and dealers' },
+    { id: 'manufacturer', name: 'Manufacturers', icon: Wrench, description: 'Car audio manufacturers and brands' },
+    { id: 'organization', name: 'Organizations', icon: Crown, description: 'Car audio organizations and clubs' },
+    { id: 'general', name: 'General Public', icon: Users, description: 'General car audio enthusiasts' }
+  ];
+
+  // Check if user is admin or has advertiser permissions
+  if (!user || (user.membershipType !== 'admin' && !['retailer', 'manufacturer', 'organization'].includes(user.membershipType || ''))) {
     return <Navigate to="/" replace />;
   }
 
@@ -90,16 +235,23 @@ export default function AdManagement() {
   const loadAds = async () => {
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
+      let query = supabase
         .from('advertisements')
         .select('*')
         .order('created_at', { ascending: false });
+
+      // If not admin, only show user's own ads
+      if (user?.membershipType !== 'admin') {
+        query = query.eq('advertiser_email', user?.email);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setAds(data || []);
     } catch (error) {
       console.error('Error loading ads:', error);
-      // Set empty array instead of mock data
+      setError('Failed to load advertisements');
       setAds([]);
     } finally {
       setIsLoading(false);
@@ -110,12 +262,16 @@ export default function AdManagement() {
     e.preventDefault();
     
     try {
+      setSaveStatus('saving');
       const adData = {
         ...formData,
-        status: 'pending' as const,
+        status: user?.membershipType === 'admin' ? 'approved' : 'pending',
         clicks: 0,
         impressions: 0,
-        spent: 0
+        spent: 0,
+        conversion_rate: 0,
+        roi: 0,
+        advertiser_user_id: user?.id
       };
 
       if (editingAd) {
@@ -125,21 +281,29 @@ export default function AdManagement() {
           .eq('id', editingAd.id);
           
         if (error) throw error;
+        setSuccess('Advertisement updated successfully');
       } else {
         const { error } = await supabase
           .from('advertisements')
           .insert([adData]);
           
         if (error) throw error;
+        setSuccess('Advertisement created successfully');
       }
 
-      setShowCreateForm(false);
+      setShowAdModal(false);
       setEditingAd(null);
       resetForm();
       loadAds();
+      setSaveStatus('success');
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
       console.error('Error saving ad:', error);
-      alert('Failed to save advertisement. Please try again.');
+      setError('Failed to save advertisement. Please try again.');
+      setSaveStatus('error');
+      setTimeout(() => setError(''), 5000);
     }
   };
 
@@ -152,19 +316,26 @@ export default function AdManagement() {
       click_url: ad.click_url,
       advertiser_name: ad.advertiser_name,
       advertiser_email: ad.advertiser_email,
+      advertiser_user_id: ad.advertiser_user_id,
       placement_type: ad.placement_type,
       size: ad.size,
       target_pages: ad.target_pages,
       target_keywords: ad.target_keywords,
       target_categories: ad.target_categories,
+      target_user_types: ad.target_user_types || [],
       budget: ad.budget,
       cost_per_click: ad.cost_per_click,
       cost_per_impression: ad.cost_per_impression,
       start_date: ad.start_date,
       end_date: ad.end_date,
-      pricing_model: ad.cost_per_click > 0 ? 'cpc' : 'cpm'
+      pricing_model: ad.cost_per_click > 0 ? 'cpc' : 'cpm',
+      priority: ad.priority || 1,
+      frequency_cap: ad.frequency_cap || 3,
+      geographic_targeting: ad.geographic_targeting || [],
+      device_targeting: ad.device_targeting || ['desktop', 'mobile'],
+      notes: ad.notes || ''
     });
-    setShowCreateForm(true);
+    setShowAdModal(true);
   };
 
   const handleStatusChange = async (adId: string, newStatus: Advertisement['status']) => {
@@ -176,9 +347,12 @@ export default function AdManagement() {
         
       if (error) throw error;
       loadAds();
+      setSuccess(`Advertisement ${newStatus} successfully`);
+      setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
       console.error('Error updating ad status:', error);
-      alert('Failed to update advertisement status.');
+      setError('Failed to update advertisement status');
+      setTimeout(() => setError(''), 5000);
     }
   };
 
@@ -193,9 +367,12 @@ export default function AdManagement() {
         
       if (error) throw error;
       loadAds();
+      setSuccess('Advertisement deleted successfully');
+      setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
       console.error('Error deleting ad:', error);
-      alert('Failed to delete advertisement.');
+      setError('Failed to delete advertisement');
+      setTimeout(() => setError(''), 5000);
     }
   };
 
@@ -205,128 +382,213 @@ export default function AdManagement() {
       description: '',
       image_url: '',
       click_url: '',
-      advertiser_name: '',
-      advertiser_email: '',
+      advertiser_name: user?.name || '',
+      advertiser_email: user?.email || '',
+      advertiser_user_id: user?.id || '',
       placement_type: 'sidebar',
       size: 'medium',
       target_pages: [],
       target_keywords: [],
       target_categories: [],
+      target_user_types: [],
       budget: 100,
       cost_per_click: 0.50,
       cost_per_impression: 0.01,
       start_date: '',
       end_date: '',
-      pricing_model: 'cpc'
+      pricing_model: 'cpc',
+      priority: 1,
+      frequency_cap: 3,
+      geographic_targeting: [],
+      device_targeting: ['desktop', 'mobile'],
+      notes: ''
     });
   };
 
-  const addTargetItem = (type: 'pages' | 'keywords' | 'categories', value: string) => {
-    if (!value.trim()) return;
+  // Helper component for tooltips
+  const Tooltip = ({ content, children }: { content: string; children: React.ReactNode }) => {
+    const [showTooltip, setShowTooltip] = useState(false);
     
-    const field = `target_${type}` as keyof AdFormData;
-    const currentArray = formData[field] as string[];
+    return (
+      <div className="relative inline-block">
+        <div
+          onMouseEnter={() => setShowTooltip(true)}
+          onMouseLeave={() => setShowTooltip(false)}
+          className="cursor-help"
+        >
+          {children}
+        </div>
+        {showTooltip && (
+          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg shadow-lg z-50 max-w-xs">
+            {content}
+            <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // AI Chat functionality (placeholder for OpenAI integration)
+  const handleAIChat = async () => {
+    if (!aiInput.trim()) return;
     
-    if (!currentArray.includes(value)) {
-      setFormData(prev => ({
-        ...prev,
-        [field]: [...currentArray, value]
-      }));
+    setAiLoading(true);
+    const userMessage = aiInput;
+    setAiInput('');
+    
+    // Add user message
+    setAiMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    
+    try {
+      // TODO: Implement OpenAI integration
+      // For now, provide helpful responses
+      let response = '';
+      
+      if (userMessage.toLowerCase().includes('banner') || userMessage.toLowerCase().includes('design')) {
+        response = "I can help you create effective banner designs! For car audio advertisements, consider:\n\n• Use high-contrast colors (black, red, electric blue)\n• Include clear product images\n• Add compelling headlines like 'Unleash Your Sound'\n• Keep text readable at small sizes\n• Include your brand logo prominently\n\nWould you like specific design recommendations for your placement type?";
+      } else if (userMessage.toLowerCase().includes('targeting')) {
+        response = "Great question about targeting! For car audio ads, I recommend:\n\n• Target 'Competitors' for performance products\n• Target 'Retailers' for B2B opportunities\n• Use keywords like 'SPL', 'sound quality', 'subwoofer'\n• Focus on event pages for maximum engagement\n\nWhat type of product or service are you advertising?";
+      } else {
+        response = "I'm here to help with your car audio advertisement! I can assist with:\n\n• Banner design recommendations\n• Targeting strategies\n• Placement optimization\n• Budget planning\n• Copy writing\n\nWhat specific aspect would you like help with?";
+      }
+      
+      // Add AI response
+      setAiMessages(prev => [...prev, { role: 'assistant', content: response }]);
+    } catch (error) {
+      console.error('AI chat error:', error);
+      setAiMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I encountered an error. Please try again.' }]);
+    } finally {
+      setAiLoading(false);
     }
   };
 
-  const removeTargetItem = (type: 'pages' | 'keywords' | 'categories', index: number) => {
-    const field = `target_${type}` as keyof AdFormData;
-    const currentArray = formData[field] as string[];
-    
-    setFormData(prev => ({
-      ...prev,
-      [field]: currentArray.filter((_, i) => i !== index)
-    }));
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'text-green-400 bg-green-400/10';
-      case 'pending': return 'text-yellow-400 bg-yellow-400/10';
-      case 'approved': return 'text-blue-400 bg-blue-400/10';
-      case 'paused': return 'text-orange-400 bg-orange-400/10';
-      case 'completed': return 'text-gray-400 bg-gray-400/10';
-      case 'rejected': return 'text-red-400 bg-red-400/10';
-      default: return 'text-gray-400 bg-gray-400/10';
-    }
-  };
-
-  const getPlacementInfo = (placement: string, size: string) => {
-    const placements = {
-      header: { name: 'Header Banner', icon: '🔝' },
-      sidebar: { name: 'Sidebar', icon: '📱' },
-      event_page: { name: 'Event Pages', icon: '📅' },
-      mobile_banner: { name: 'Mobile Banner', icon: '📱' },
-      footer: { name: 'Footer', icon: '🔻' }
-    };
-    
-    const sizes = {
-      small: '300x150',
-      medium: '300x250',
-      large: '728x90',
-      banner: '970x250',
-      square: '250x250'
-    };
-    
-    return {
-      ...placements[placement as keyof typeof placements],
-      dimensions: sizes[size as keyof typeof sizes]
-    };
-  };
-
-  const calculateROI = (ad: Advertisement) => {
-    if (ad.spent === 0) return 0;
-    const estimatedRevenue = ad.clicks * 2.5; // Assume $2.50 average value per click
-    return ((estimatedRevenue - ad.spent) / ad.spent * 100);
-  };
-
+  // Filtered ads
   const filteredAds = ads.filter(ad => {
     const matchesSearch = ad.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          ad.advertiser_name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || ad.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesPlacement = placementFilter === 'all' || ad.placement_type === placementFilter;
+    
+    return matchesSearch && matchesStatus && matchesPlacement;
   });
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-electric-500 mx-auto mb-4"></div>
-            <p className="text-gray-400">Loading advertisements...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900">
+      <AdminNavigation />
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-white">Advertisement Management</h1>
-            <p className="text-gray-400">Create and manage advertising campaigns</p>
+            <p className="text-gray-400">Create and manage advertising campaigns with AI assistance</p>
           </div>
           
-          <button
-            onClick={() => {
-              setShowCreateForm(true);
-              setEditingAd(null);
-              resetForm();
-            }}
-            className="bg-electric-500 text-white px-6 py-3 rounded-lg hover:bg-electric-600 transition-colors flex items-center space-x-2"
-          >
-            <Plus className="h-5 w-5" />
-            <span>Create Advertisement</span>
-          </button>
+          <div className="flex items-center space-x-4">
+            <Tooltip content="Get help with advertisement creation and optimization">
+              <button
+                onClick={() => setShowHelpModal(true)}
+                className="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors flex items-center space-x-2"
+              >
+                <HelpCircle className="h-5 w-5" />
+                <span>Help</span>
+              </button>
+            </Tooltip>
+            
+            <Tooltip content="AI-powered banner creation and optimization assistant">
+              <button
+                onClick={() => setShowAIModal(true)}
+                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
+              >
+                <Sparkles className="h-5 w-5" />
+                <span>AI Assistant</span>
+              </button>
+            </Tooltip>
+            
+            <button
+              onClick={() => {
+                setShowAdModal(true);
+                setEditingAd(null);
+                resetForm();
+              }}
+              className="bg-electric-500 text-white px-6 py-3 rounded-lg hover:bg-electric-600 transition-colors flex items-center space-x-2"
+            >
+              <Plus className="h-5 w-5" />
+              <span>Create Advertisement</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Success/Error Messages */}
+        {success && (
+          <div className="mb-6 bg-green-500/10 border border-green-500/20 rounded-lg p-4">
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+              <span className="text-green-400 font-medium">{success}</span>
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="mb-6 bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-red-400 rounded-full"></div>
+              <span className="text-red-400 font-medium">{error}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Filters and Search */}
+        <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-gray-400 text-sm mb-2">Search Advertisements</label>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by title or advertiser..."
+                className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-gray-400 text-sm mb-2">Status Filter</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+              >
+                <option value="all">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="active">Active</option>
+                <option value="paused">Paused</option>
+                <option value="completed">Completed</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-gray-400 text-sm mb-2">Placement Filter</label>
+              <select
+                value={placementFilter}
+                onChange={(e) => setPlacementFilter(e.target.value)}
+                className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+              >
+                <option value="all">All Placements</option>
+                {Object.entries(placementInfo).map(([key, info]) => (
+                  <option key={key} value={key}>{info.name}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="flex items-end">
+              <div className="text-sm text-gray-400">
+                Showing {filteredAds.length} of {ads.length} advertisements
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -354,7 +616,7 @@ export default function AdManagement() {
           <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm">Total Revenue</p>
+                <p className="text-gray-400 text-sm">Total Spent</p>
                 <p className="text-2xl font-bold text-white">
                   ${ads.reduce((sum, ad) => sum + ad.spent, 0).toFixed(2)}
                 </p>
@@ -374,384 +636,767 @@ export default function AdManagement() {
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="flex items-center space-x-4 mb-6">
-          <div className="relative flex-1 max-w-md">
-            <input
-              type="text"
-              placeholder="Search advertisements..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-4 pr-4 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:outline-none focus:border-electric-500"
-            />
+        {/* Loading State */}
+        {isLoading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-electric-500 mx-auto mb-4"></div>
+            <p className="text-gray-400">Loading advertisements...</p>
           </div>
-          
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-600 focus:outline-none focus:border-electric-500"
-          >
-            <option value="all">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="active">Active</option>
-            <option value="paused">Paused</option>
-            <option value="completed">Completed</option>
-            <option value="rejected">Rejected</option>
-          </select>
-        </div>
-
-        {/* Create/Edit Form */}
-        {showCreateForm && (
-          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 mb-8">
-            <h2 className="text-xl font-bold text-white mb-6">
-              {editingAd ? 'Edit Advertisement' : 'Create New Advertisement'}
-            </h2>
-            
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Basic Information */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-gray-400 text-sm mb-2">Advertisement Title *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.title}
-                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                    placeholder="Enter ad title"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-gray-400 text-sm mb-2">Advertiser Name *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.advertiser_name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, advertiser_name: e.target.value }))}
-                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                    placeholder="Company or person name"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-gray-400 text-sm mb-2">Advertiser Email *</label>
-                  <input
-                    type="email"
-                    required
-                    value={formData.advertiser_email}
-                    onChange={(e) => setFormData(prev => ({ ...prev, advertiser_email: e.target.value }))}
-                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                    placeholder="contact@company.com"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-gray-400 text-sm mb-2">Click URL *</label>
-                  <input
-                    type="url"
-                    required
-                    value={formData.click_url}
-                    onChange={(e) => setFormData(prev => ({ ...prev, click_url: e.target.value }))}
-                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                    placeholder="https://example.com"
-                  />
-                </div>
+        ) : (
+          /* Advertisements List */
+          <div className="space-y-6">
+            {filteredAds.length === 0 ? (
+              <div className="text-center py-12">
+                <Target className="h-12 w-12 text-gray-600 mx-auto mb-4" />
+                <h3 className="text-xl font-medium text-gray-400 mb-2">No advertisements found</h3>
+                <p className="text-gray-500">Create your first advertisement to get started.</p>
               </div>
-
-              <div>
-                <label className="block text-gray-400 text-sm mb-2">Description</label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  rows={3}
-                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                  placeholder="Brief description of the advertisement"
-                />
-              </div>
-
-              <div>
-                <label className="block text-gray-400 text-sm mb-2">Image URL</label>
-                <input
-                  type="url"
-                  value={formData.image_url}
-                  onChange={(e) => setFormData(prev => ({ ...prev, image_url: e.target.value }))}
-                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                  placeholder="https://example.com/ad-image.jpg"
-                />
-              </div>
-
-              {/* Placement & Targeting */}
-              <div className="border-t border-gray-700 pt-6">
-                <h3 className="text-lg font-medium text-white mb-4">Placement & Targeting</h3>
+            ) : (
+              filteredAds.map((ad) => {
+                const placement = placementInfo[ad.placement_type];
+                const roi = ad.spent > 0 ? ((ad.clicks * 2.5 - ad.spent) / ad.spent * 100) : 0;
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div>
-                    <label className="block text-gray-400 text-sm mb-2">Placement Type *</label>
-                    <select
-                      value={formData.placement_type}
-                      onChange={(e) => setFormData(prev => ({ ...prev, placement_type: e.target.value as any }))}
-                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                    >
-                      <option value="header">Header Banner</option>
-                      <option value="sidebar">Sidebar</option>
-                      <option value="event_page">Event Pages</option>
-                      <option value="mobile_banner">Mobile Banner</option>
-                      <option value="footer">Footer</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-gray-400 text-sm mb-2">Ad Size *</label>
-                    <select
-                      value={formData.size}
-                      onChange={(e) => setFormData(prev => ({ ...prev, size: e.target.value as any }))}
-                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                    >
-                      <option value="small">Small (300x150)</option>
-                      <option value="medium">Medium (300x250)</option>
-                      <option value="large">Large (728x90)</option>
-                      <option value="banner">Banner (970x250)</option>
-                      <option value="square">Square (250x250)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-gray-400 text-sm mb-2">Pricing Model *</label>
-                    <select
-                      value={formData.pricing_model}
-                      onChange={(e) => setFormData(prev => ({ ...prev, pricing_model: e.target.value as any }))}
-                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                    >
-                      <option value="cpc">Cost Per Click (CPC)</option>
-                      <option value="cpm">Cost Per 1000 Impressions (CPM)</option>
-                      <option value="fixed">Fixed Rate</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Budget & Pricing */}
-              <div className="border-t border-gray-700 pt-6">
-                <h3 className="text-lg font-medium text-white mb-4">Budget & Pricing</h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                  <div>
-                    <label className="block text-gray-400 text-sm mb-2">Total Budget ($) *</label>
-                    <input
-                      type="number"
-                      required
-                      min="1"
-                      step="0.01"
-                      value={formData.budget}
-                      onChange={(e) => setFormData(prev => ({ ...prev, budget: parseFloat(e.target.value) || 0 }))}
-                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                    />
-                  </div>
-
-                  {formData.pricing_model === 'cpc' && (
-                    <div>
-                      <label className="block text-gray-400 text-sm mb-2">Cost Per Click ($)</label>
-                      <input
-                        type="number"
-                        min="0.01"
-                        step="0.01"
-                        value={formData.cost_per_click}
-                        onChange={(e) => setFormData(prev => ({ ...prev, cost_per_click: parseFloat(e.target.value) || 0 }))}
-                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                      />
-                    </div>
-                  )}
-
-                  {formData.pricing_model === 'cpm' && (
-                    <div>
-                      <label className="block text-gray-400 text-sm mb-2">Cost Per 1000 Impressions ($)</label>
-                      <input
-                        type="number"
-                        min="0.01"
-                        step="0.01"
-                        value={formData.cost_per_impression}
-                        onChange={(e) => setFormData(prev => ({ ...prev, cost_per_impression: parseFloat(e.target.value) || 0 }))}
-                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                      />
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="block text-gray-400 text-sm mb-2">Start Date *</label>
-                    <input
-                      type="date"
-                      required
-                      value={formData.start_date}
-                      onChange={(e) => setFormData(prev => ({ ...prev, start_date: e.target.value }))}
-                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-gray-400 text-sm mb-2">End Date *</label>
-                    <input
-                      type="date"
-                      required
-                      value={formData.end_date}
-                      onChange={(e) => setFormData(prev => ({ ...prev, end_date: e.target.value }))}
-                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Form Actions */}
-              <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-700">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowCreateForm(false);
-                    setEditingAd(null);
-                    resetForm();
-                  }}
-                  className="px-6 py-2 text-gray-400 hover:text-white transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="bg-electric-500 text-white px-6 py-2 rounded-lg hover:bg-electric-600 transition-colors"
-                >
-                  {editingAd ? 'Update Advertisement' : 'Create Advertisement'}
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {/* Advertisements List */}
-        <div className="space-y-6">
-          {filteredAds.length === 0 ? (
-            <div className="text-center py-12">
-              <Target className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-              <h3 className="text-xl font-medium text-gray-400 mb-2">No advertisements found</h3>
-              <p className="text-gray-500">Create your first advertisement to get started.</p>
-            </div>
-          ) : (
-            filteredAds.map((ad) => {
-              const placementInfo = getPlacementInfo(ad.placement_type, ad.size);
-              const roi = calculateROI(ad);
-              
-              return (
-                <div key={ad.id} className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="text-xl font-semibold text-white">{ad.title}</h3>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(ad.status)}`}>
-                          {ad.status.charAt(0).toUpperCase() + ad.status.slice(1)}
-                        </span>
+                return (
+                  <div key={ad.id} className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <h3 className="text-xl font-semibold text-white">{ad.title}</h3>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            ad.status === 'active' ? 'text-green-400 bg-green-400/10' :
+                            ad.status === 'pending' ? 'text-yellow-400 bg-yellow-400/10' :
+                            ad.status === 'approved' ? 'text-blue-400 bg-blue-400/10' :
+                            ad.status === 'paused' ? 'text-orange-400 bg-orange-400/10' :
+                            ad.status === 'completed' ? 'text-gray-400 bg-gray-400/10' :
+                            ad.status === 'rejected' ? 'text-red-400 bg-red-400/10' :
+                            'text-gray-400 bg-gray-400/10'
+                          }`}>
+                            {ad.status.charAt(0).toUpperCase() + ad.status.slice(1)}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center space-x-4 text-sm text-gray-400 mb-3">
+                          <span className="flex items-center space-x-1">
+                            <MapPin className="h-4 w-4" />
+                            <span>{placement?.name || ad.placement_type}</span>
+                          </span>
+                          <span>{placement?.dimensions || 'Custom'}</span>
+                          <span>{ad.advertiser_name}</span>
+                        </div>
+                        
+                        {ad.description && (
+                          <p className="text-gray-300 mb-3">{ad.description}</p>
+                        )}
+                        
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+                          <div>
+                            <p className="text-gray-400">Budget</p>
+                            <p className="text-white font-medium">${ad.budget.toFixed(2)}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-400">Spent</p>
+                            <p className="text-white font-medium">${ad.spent.toFixed(2)}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-400">Clicks</p>
+                            <p className="text-white font-medium">{ad.clicks.toLocaleString()}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-400">Impressions</p>
+                            <p className="text-white font-medium">{ad.impressions.toLocaleString()}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-400">ROI</p>
+                            <p className={`font-medium ${roi >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                              {roi.toFixed(1)}%
+                            </p>
+                          </div>
+                        </div>
                       </div>
                       
-                      <div className="flex items-center space-x-4 text-sm text-gray-400 mb-3">
-                        <span className="flex items-center space-x-1">
-                          <span>{placementInfo.icon}</span>
-                          <span>{placementInfo.name}</span>
-                        </span>
-                        <span>{placementInfo.dimensions}</span>
-                        <span>{ad.advertiser_name}</span>
-                      </div>
-                      
-                      {ad.description && (
-                        <p className="text-gray-300 mb-3">{ad.description}</p>
-                      )}
-                      
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
-                        <div>
-                          <p className="text-gray-400">Budget</p>
-                          <p className="text-white font-medium">${ad.budget.toFixed(2)}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-400">Spent</p>
-                          <p className="text-white font-medium">${ad.spent.toFixed(2)}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-400">Clicks</p>
-                          <p className="text-white font-medium">{ad.clicks.toLocaleString()}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-400">Impressions</p>
-                          <p className="text-white font-medium">{ad.impressions.toLocaleString()}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-400">ROI</p>
-                          <p className={`font-medium ${roi >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                            {roi.toFixed(1)}%
-                          </p>
-                        </div>
+                      <div className="flex items-center space-x-2 ml-4">
+                        <Tooltip content="Edit advertisement">
+                          <button
+                            onClick={() => handleEdit(ad)}
+                            className="p-2 text-gray-400 hover:text-electric-400 transition-colors"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                        </Tooltip>
+                        
+                        {user?.membershipType === 'admin' && ad.status === 'pending' && (
+                          <>
+                            <button
+                              onClick={() => handleStatusChange(ad.id, 'approved')}
+                              className="px-3 py-1 bg-green-500/20 text-green-400 rounded text-sm hover:bg-green-500/30 transition-colors"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => handleStatusChange(ad.id, 'rejected')}
+                              className="px-3 py-1 bg-red-500/20 text-red-400 rounded text-sm hover:bg-red-500/30 transition-colors"
+                            >
+                              Reject
+                            </button>
+                          </>
+                        )}
+                        
+                        {ad.status === 'active' && (
+                          <button
+                            onClick={() => handleStatusChange(ad.id, 'paused')}
+                            className="px-3 py-1 bg-orange-500/20 text-orange-400 rounded text-sm hover:bg-orange-500/30 transition-colors"
+                          >
+                            Pause
+                          </button>
+                        )}
+                        
+                        {ad.status === 'paused' && (
+                          <button
+                            onClick={() => handleStatusChange(ad.id, 'active')}
+                            className="px-3 py-1 bg-green-500/20 text-green-400 rounded text-sm hover:bg-green-500/30 transition-colors"
+                          >
+                            Resume
+                          </button>
+                        )}
+                        
+                        <Tooltip content="Delete advertisement">
+                          <button
+                            onClick={() => handleDelete(ad.id)}
+                            className="p-2 text-gray-400 hover:text-red-400 transition-colors"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </Tooltip>
                       </div>
                     </div>
                     
-                    <div className="flex items-center space-x-2 ml-4">
+                    <div className="flex items-center justify-between text-xs text-gray-500 pt-3 border-t border-gray-700">
+                      <span>Campaign: {ad.start_date} to {ad.end_date}</span>
+                      <span>Created: {new Date(ad.created_at).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
+
+        {/* Advertisement Modal */}
+        {showAdModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div ref={modalRef} className="bg-gray-800 rounded-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6 border-b border-gray-700">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-bold text-white">
+                    {editingAd ? 'Edit Advertisement' : 'Create New Advertisement'}
+                  </h3>
+                  <button
+                    onClick={() => setShowAdModal(false)}
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
+              </div>
+
+              <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                {/* Basic Information */}
+                <div>
+                  <h4 className="text-lg font-medium text-white mb-4 flex items-center space-x-2">
+                    <Info className="h-5 w-5 text-electric-400" />
+                    <span>Basic Information</span>
+                  </h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2 flex items-center space-x-2">
+                        <span>Advertisement Title *</span>
+                        <Tooltip content="Clear, descriptive title for your advertisement campaign">
+                          <HelpCircle className="h-4 w-4 text-gray-500" />
+                        </Tooltip>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.title}
+                        onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                        placeholder="e.g., Premium Subwoofer Sale"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2 flex items-center space-x-2">
+                        <span>Advertiser Name *</span>
+                        <Tooltip content="Your company or business name as it will appear in the ad">
+                          <HelpCircle className="h-4 w-4 text-gray-500" />
+                        </Tooltip>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.advertiser_name}
+                        onChange={(e) => setFormData(prev => ({ ...prev, advertiser_name: e.target.value }))}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                        placeholder="Your Company Name"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2 flex items-center space-x-2">
+                        <span>Contact Email *</span>
+                        <Tooltip content="Email address for campaign notifications and billing">
+                          <HelpCircle className="h-4 w-4 text-gray-500" />
+                        </Tooltip>
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        value={formData.advertiser_email}
+                        onChange={(e) => setFormData(prev => ({ ...prev, advertiser_email: e.target.value }))}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                        placeholder="contact@company.com"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2 flex items-center space-x-2">
+                        <span>Click URL *</span>
+                        <Tooltip content="Where users will be taken when they click your ad">
+                          <HelpCircle className="h-4 w-4 text-gray-500" />
+                        </Tooltip>
+                      </label>
+                      <input
+                        type="url"
+                        required
+                        value={formData.click_url}
+                        onChange={(e) => setFormData(prev => ({ ...prev, click_url: e.target.value }))}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                        placeholder="https://yourwebsite.com/landing-page"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-6">
+                    <label className="block text-gray-400 text-sm mb-2 flex items-center space-x-2">
+                      <span>Description</span>
+                      <Tooltip content="Brief description of your advertisement for internal reference">
+                        <HelpCircle className="h-4 w-4 text-gray-500" />
+                      </Tooltip>
+                    </label>
+                    <textarea
+                      value={formData.description}
+                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                      rows={3}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                      placeholder="Brief description of your advertisement campaign"
+                    />
+                  </div>
+
+                  <div className="mt-6">
+                    <label className="block text-gray-400 text-sm mb-2 flex items-center space-x-2">
+                      <span>Banner Image URL</span>
+                      <Tooltip content="Direct URL to your banner image. Use our AI Assistant for design help!">
+                        <HelpCircle className="h-4 w-4 text-gray-500" />
+                      </Tooltip>
+                    </label>
+                    <div className="flex space-x-2">
+                      <input
+                        type="url"
+                        value={formData.image_url}
+                        onChange={(e) => setFormData(prev => ({ ...prev, image_url: e.target.value }))}
+                        className="flex-1 p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                        placeholder="https://yoursite.com/banner.jpg"
+                      />
                       <button
-                        onClick={() => handleEdit(ad)}
-                        className="p-2 text-gray-400 hover:text-electric-400 transition-colors"
-                        title="Edit advertisement"
+                        type="button"
+                        onClick={() => setShowAIModal(true)}
+                        className="px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
                       >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      
-                      {ad.status === 'pending' && (
-                        <>
-                          <button
-                            onClick={() => handleStatusChange(ad.id, 'approved')}
-                            className="px-3 py-1 bg-green-500/20 text-green-400 rounded text-sm hover:bg-green-500/30 transition-colors"
-                          >
-                            Approve
-                          </button>
-                          <button
-                            onClick={() => handleStatusChange(ad.id, 'rejected')}
-                            className="px-3 py-1 bg-red-500/20 text-red-400 rounded text-sm hover:bg-red-500/30 transition-colors"
-                          >
-                            Reject
-                          </button>
-                        </>
-                      )}
-                      
-                      {ad.status === 'active' && (
-                        <button
-                          onClick={() => handleStatusChange(ad.id, 'paused')}
-                          className="px-3 py-1 bg-orange-500/20 text-orange-400 rounded text-sm hover:bg-orange-500/30 transition-colors"
-                        >
-                          Pause
-                        </button>
-                      )}
-                      
-                      {ad.status === 'paused' && (
-                        <button
-                          onClick={() => handleStatusChange(ad.id, 'active')}
-                          className="px-3 py-1 bg-green-500/20 text-green-400 rounded text-sm hover:bg-green-500/30 transition-colors"
-                        >
-                          Resume
-                        </button>
-                      )}
-                      
-                      <button
-                        onClick={() => handleDelete(ad.id)}
-                        className="p-2 text-gray-400 hover:text-red-400 transition-colors"
-                        title="Delete advertisement"
-                      >
-                        <Trash2 className="h-4 w-4" />
+                        <Sparkles className="h-4 w-4" />
+                        <span>AI Help</span>
                       </button>
                     </div>
                   </div>
+                </div>
+
+                {/* Placement & Targeting */}
+                <div className="border-t border-gray-700 pt-6">
+                  <h4 className="text-lg font-medium text-white mb-4 flex items-center space-x-2">
+                    <Target className="h-5 w-5 text-electric-400" />
+                    <span>Placement & Targeting</span>
+                  </h4>
                   
-                  <div className="flex items-center justify-between text-xs text-gray-500 pt-3 border-t border-gray-700">
-                    <span>Campaign: {ad.start_date} to {ad.end_date}</span>
-                    <span>Created: {new Date(ad.created_at).toLocaleDateString()}</span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2 flex items-center space-x-2">
+                        <span>Placement Type *</span>
+                        <Tooltip content="Choose where your ad will be displayed. Each placement has different visibility and pricing.">
+                          <HelpCircle className="h-4 w-4 text-gray-500" />
+                        </Tooltip>
+                      </label>
+                      <select
+                        value={formData.placement_type}
+                        onChange={(e) => setFormData(prev => ({ ...prev, placement_type: e.target.value as any }))}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                      >
+                        {Object.entries(placementInfo).map(([key, info]) => (
+                          <option key={key} value={key}>{info.name} - {info.pricing_range}</option>
+                        ))}
+                      </select>
+                      
+                      {/* Placement Details */}
+                      {formData.placement_type && placementInfo[formData.placement_type] && (
+                        <div className="mt-3 p-3 bg-gray-700/30 rounded-lg border border-gray-600/50">
+                          <div className="text-sm">
+                            <p className="text-white font-medium mb-1">{placementInfo[formData.placement_type].name}</p>
+                            <p className="text-gray-400 mb-2">{placementInfo[formData.placement_type].description}</p>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div>
+                                <span className="text-gray-500">Dimensions:</span>
+                                <span className="text-gray-300 ml-1">{placementInfo[formData.placement_type].dimensions}</span>
+                              </div>
+                              <div>
+                                <span className="text-gray-500">Traffic:</span>
+                                <span className="text-gray-300 ml-1">{placementInfo[formData.placement_type].traffic}</span>
+                              </div>
+                              <div>
+                                <span className="text-gray-500">Visibility:</span>
+                                <span className="text-gray-300 ml-1">{placementInfo[formData.placement_type].visibility}</span>
+                              </div>
+                              <div>
+                                <span className="text-gray-500">Pricing:</span>
+                                <span className="text-gray-300 ml-1">{placementInfo[formData.placement_type].pricing_range}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2 flex items-center space-x-2">
+                        <span>Ad Size *</span>
+                        <Tooltip content="Choose the size that best fits your placement and design">
+                          <HelpCircle className="h-4 w-4 text-gray-500" />
+                        </Tooltip>
+                      </label>
+                      <select
+                        value={formData.size}
+                        onChange={(e) => setFormData(prev => ({ ...prev, size: e.target.value as any }))}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                      >
+                        <option value="small">Small (300x150)</option>
+                        <option value="medium">Medium (300x250)</option>
+                        <option value="large">Large (728x90)</option>
+                        <option value="banner">Banner (970x250)</option>
+                        <option value="square">Square (250x250)</option>
+                        <option value="leaderboard">Leaderboard (728x90)</option>
+                        <option value="skyscraper">Skyscraper (160x600)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Target User Types */}
+                  <div className="mt-6">
+                    <label className="block text-gray-400 text-sm mb-2 flex items-center space-x-2">
+                      <span>Target Audience</span>
+                      <Tooltip content="Select which types of users should see your ad">
+                        <HelpCircle className="h-4 w-4 text-gray-500" />
+                      </Tooltip>
+                    </label>
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                      {userTypes.map((userType) => {
+                        const IconComponent = userType.icon;
+                        const isSelected = formData.target_user_types.includes(userType.id);
+                        
+                        return (
+                          <div
+                            key={userType.id}
+                            onClick={() => {
+                              const newTypes = isSelected
+                                ? formData.target_user_types.filter(t => t !== userType.id)
+                                : [...formData.target_user_types, userType.id];
+                              setFormData(prev => ({ ...prev, target_user_types: newTypes }));
+                            }}
+                            className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                              isSelected
+                                ? 'border-electric-500 bg-electric-500/10 text-electric-400'
+                                : 'border-gray-600 bg-gray-700/30 text-gray-400 hover:border-gray-500'
+                            }`}
+                          >
+                            <div className="text-center">
+                              <IconComponent className="h-6 w-6 mx-auto mb-1" />
+                              <div className="text-xs font-medium">{userType.name}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
-              );
-            })
-          )}
-        </div>
+
+                {/* Budget & Pricing */}
+                <div className="border-t border-gray-700 pt-6">
+                  <h4 className="text-lg font-medium text-white mb-4 flex items-center space-x-2">
+                    <DollarSign className="h-5 w-5 text-electric-400" />
+                    <span>Budget & Pricing</span>
+                  </h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2 flex items-center space-x-2">
+                        <span>Pricing Model *</span>
+                        <Tooltip content="CPC: Pay per click, CPM: Pay per 1000 views, Fixed: One-time payment">
+                          <HelpCircle className="h-4 w-4 text-gray-500" />
+                        </Tooltip>
+                      </label>
+                      <select
+                        value={formData.pricing_model}
+                        onChange={(e) => setFormData(prev => ({ ...prev, pricing_model: e.target.value as any }))}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                      >
+                        <option value="cpc">Cost Per Click (CPC)</option>
+                        <option value="cpm">Cost Per 1000 Impressions (CPM)</option>
+                        <option value="fixed">Fixed Rate</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2 flex items-center space-x-2">
+                        <span>Total Budget ($) *</span>
+                        <Tooltip content="Maximum amount you want to spend on this campaign">
+                          <HelpCircle className="h-4 w-4 text-gray-500" />
+                        </Tooltip>
+                      </label>
+                      <input
+                        type="number"
+                        required
+                        min="1"
+                        step="0.01"
+                        value={formData.budget}
+                        onChange={(e) => setFormData(prev => ({ ...prev, budget: parseFloat(e.target.value) || 0 }))}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                      />
+                    </div>
+
+                    {formData.pricing_model === 'cpc' && (
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-2 flex items-center space-x-2">
+                          <span>Cost Per Click ($)</span>
+                          <Tooltip content="Amount you pay each time someone clicks your ad">
+                            <HelpCircle className="h-4 w-4 text-gray-500" />
+                          </Tooltip>
+                        </label>
+                        <input
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          value={formData.cost_per_click}
+                          onChange={(e) => setFormData(prev => ({ ...prev, cost_per_click: parseFloat(e.target.value) || 0 }))}
+                          className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                        />
+                      </div>
+                    )}
+
+                    {formData.pricing_model === 'cpm' && (
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-2 flex items-center space-x-2">
+                          <span>Cost Per 1000 Impressions ($)</span>
+                          <Tooltip content="Amount you pay for every 1000 times your ad is shown">
+                            <HelpCircle className="h-4 w-4 text-gray-500" />
+                          </Tooltip>
+                        </label>
+                        <input
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          value={formData.cost_per_impression}
+                          onChange={(e) => setFormData(prev => ({ ...prev, cost_per_impression: parseFloat(e.target.value) || 0 }))}
+                          className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                        />
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2 flex items-center space-x-2">
+                        <span>Start Date *</span>
+                        <Tooltip content="When your campaign should begin">
+                          <HelpCircle className="h-4 w-4 text-gray-500" />
+                        </Tooltip>
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        value={formData.start_date}
+                        onChange={(e) => setFormData(prev => ({ ...prev, start_date: e.target.value }))}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2 flex items-center space-x-2">
+                        <span>End Date *</span>
+                        <Tooltip content="When your campaign should end">
+                          <HelpCircle className="h-4 w-4 text-gray-500" />
+                        </Tooltip>
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        value={formData.end_date}
+                        onChange={(e) => setFormData(prev => ({ ...prev, end_date: e.target.value }))}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Advanced Settings */}
+                <div className="border-t border-gray-700 pt-6">
+                  <h4 className="text-lg font-medium text-white mb-4 flex items-center space-x-2">
+                    <Settings className="h-5 w-5 text-electric-400" />
+                    <span>Advanced Settings</span>
+                  </h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2 flex items-center space-x-2">
+                        <span>Priority Level</span>
+                        <Tooltip content="Higher priority ads are shown more frequently (1-10, 10 being highest)">
+                          <HelpCircle className="h-4 w-4 text-gray-500" />
+                        </Tooltip>
+                      </label>
+                      <select
+                        value={formData.priority}
+                        onChange={(e) => setFormData(prev => ({ ...prev, priority: parseInt(e.target.value) }))}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                      >
+                        {[1,2,3,4,5,6,7,8,9,10].map(num => (
+                          <option key={num} value={num}>Priority {num} {num >= 8 ? '(High)' : num >= 5 ? '(Medium)' : '(Low)'}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2 flex items-center space-x-2">
+                        <span>Frequency Cap</span>
+                        <Tooltip content="Maximum times to show this ad to the same user per day">
+                          <HelpCircle className="h-4 w-4 text-gray-500" />
+                        </Tooltip>
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="20"
+                        value={formData.frequency_cap}
+                        onChange={(e) => setFormData(prev => ({ ...prev, frequency_cap: parseInt(e.target.value) || 3 }))}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-6">
+                    <label className="block text-gray-400 text-sm mb-2 flex items-center space-x-2">
+                      <span>Campaign Notes</span>
+                      <Tooltip content="Internal notes about this campaign for your reference">
+                        <HelpCircle className="h-4 w-4 text-gray-500" />
+                      </Tooltip>
+                    </label>
+                    <textarea
+                      value={formData.notes}
+                      onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                      rows={3}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                      placeholder="Internal notes about this campaign..."
+                    />
+                  </div>
+                </div>
+
+                {/* Form Actions */}
+                <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-700">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAdModal(false);
+                      setEditingAd(null);
+                      resetForm();
+                    }}
+                    className="px-6 py-2 text-gray-400 hover:text-white transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saveStatus === 'saving'}
+                    className="bg-electric-500 text-white px-6 py-2 rounded-lg hover:bg-electric-600 transition-colors disabled:opacity-50 flex items-center space-x-2"
+                  >
+                    {saveStatus === 'saving' && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
+                    <span>{editingAd ? 'Update Advertisement' : 'Create Advertisement'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Help Modal */}
+        {showHelpModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-800 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6 border-b border-gray-700">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-bold text-white">Advertisement Help & Documentation</h3>
+                  <button
+                    onClick={() => setShowHelpModal(false)}
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-6">
+                <div>
+                  <h4 className="text-lg font-semibold text-white mb-3">Getting Started</h4>
+                  <div className="space-y-2 text-gray-300">
+                    <p>• Choose your placement type based on your target audience and budget</p>
+                    <p>• Upload high-quality banner images that match the recommended dimensions</p>
+                    <p>• Set realistic budgets and monitor performance regularly</p>
+                    <p>• Use our AI Assistant for design recommendations and optimization tips</p>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-lg font-semibold text-white mb-3">Placement Types</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {Object.entries(placementInfo).map(([key, info]) => (
+                      <div key={key} className="bg-gray-700/30 rounded-lg p-4">
+                        <h5 className="font-medium text-white mb-2">{info.name}</h5>
+                        <p className="text-sm text-gray-400 mb-2">{info.description}</p>
+                        <div className="text-xs text-gray-500">
+                          <p>Dimensions: {info.dimensions}</p>
+                          <p>Pricing: {info.pricing_range}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-lg font-semibold text-white mb-3">Best Practices</h4>
+                  <div className="space-y-2 text-gray-300">
+                    <p>• <strong>Design:</strong> Use high-contrast colors and clear, readable fonts</p>
+                    <p>• <strong>Targeting:</strong> Select specific user types for better conversion rates</p>
+                    <p>• <strong>Budget:</strong> Start with smaller budgets and scale successful campaigns</p>
+                    <p>• <strong>Timing:</strong> Consider event schedules and peak traffic times</p>
+                    <p>• <strong>Testing:</strong> Try different placements and designs to optimize performance</p>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-lg font-semibold text-white mb-3">Pricing Models</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-gray-700/30 rounded-lg p-4">
+                      <h5 className="font-medium text-white mb-2">CPC (Cost Per Click)</h5>
+                      <p className="text-sm text-gray-400">Pay only when users click your ad. Best for driving traffic to your website.</p>
+                    </div>
+                    <div className="bg-gray-700/30 rounded-lg p-4">
+                      <h5 className="font-medium text-white mb-2">CPM (Cost Per Mille)</h5>
+                      <p className="text-sm text-gray-400">Pay per 1000 impressions. Best for brand awareness campaigns.</p>
+                    </div>
+                    <div className="bg-gray-700/30 rounded-lg p-4">
+                      <h5 className="font-medium text-white mb-2">Fixed Rate</h5>
+                      <p className="text-sm text-gray-400">One-time payment for guaranteed placement duration.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* AI Assistant Modal */}
+        {showAIModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div ref={aiModalRef} className="bg-gray-800 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+              <div className="p-6 border-b border-gray-700">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-bold text-white flex items-center space-x-2">
+                    <Sparkles className="h-6 w-6 text-purple-400" />
+                    <span>AI Advertisement Assistant</span>
+                  </h3>
+                  <button
+                    onClick={() => setShowAIModal(false)}
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
+                <p className="text-gray-400 mt-2">Get help with banner design, targeting strategies, and campaign optimization</p>
+              </div>
+
+              <div className="flex-1 flex flex-col">
+                {/* Chat Messages */}
+                <div className="flex-1 p-6 overflow-y-auto space-y-4">
+                  {aiMessages.length === 0 ? (
+                    <div className="text-center py-8">
+                      <MessageSquare className="h-12 w-12 text-gray-600 mx-auto mb-4" />
+                      <h4 className="text-lg font-medium text-gray-400 mb-2">AI Assistant Ready</h4>
+                      <p className="text-gray-500">Ask me about banner design, targeting strategies, or campaign optimization!</p>
+                    </div>
+                  ) : (
+                    aiMessages.map((message, index) => (
+                      <div key={index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[80%] p-3 rounded-lg ${
+                          message.role === 'user' 
+                            ? 'bg-electric-500 text-white' 
+                            : 'bg-gray-700 text-gray-100'
+                        }`}>
+                          <div className="whitespace-pre-wrap">{message.content}</div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                  
+                  {aiLoading && (
+                    <div className="flex justify-start">
+                      <div className="bg-gray-700 text-gray-100 p-3 rounded-lg">
+                        <div className="flex items-center space-x-2">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-400"></div>
+                          <span>AI is thinking...</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Chat Input */}
+                <div className="p-6 border-t border-gray-700">
+                  <div className="flex space-x-4">
+                    <input
+                      type="text"
+                      value={aiInput}
+                      onChange={(e) => setAiInput(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && !aiLoading && handleAIChat()}
+                      placeholder="Ask about banner design, targeting, or optimization..."
+                      className="flex-1 p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                      disabled={aiLoading}
+                    />
+                    <button
+                      onClick={handleAIChat}
+                      disabled={!aiInput.trim() || aiLoading}
+                      className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 flex items-center space-x-2"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                      <span>Send</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

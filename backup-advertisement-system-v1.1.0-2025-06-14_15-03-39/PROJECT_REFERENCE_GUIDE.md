@@ -255,7 +255,7 @@ git log --oneline -5
 ---
 
 **Last Updated**: 2025-06-14
-**Version**: 1.1.0 (Advertisement System with AI Integration)
+**Version**: 1.0.1 (Foundation)
 **Maintainer**: Development Team
 
 ---
