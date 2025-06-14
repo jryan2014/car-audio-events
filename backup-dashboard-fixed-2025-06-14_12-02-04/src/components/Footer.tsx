@@ -221,11 +221,9 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
           {/* Brand - Takes 2 columns on large screens */}
           <div className="space-y-4 lg:col-span-2">
-            <img 
-              src="/car-audio-events-logo.svg" 
-              alt="Car Audio Events" 
-              className="h-16 w-auto"
-            />
+            <h3 className="text-xl font-bold text-electric-400">
+              Car Audio Events
+            </h3>
             <p className="text-gray-400 text-sm leading-relaxed">
               The ultimate platform for car audio competition enthusiasts. Connect, compete, and showcase your sound system.
             </p>

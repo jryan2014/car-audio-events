@@ -24,11 +24,13 @@ export default function Header() {
         <div className="flex justify-between items-center py-4">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-3 flex-shrink-0">
-            <img 
-              src="/car-audio-events-logo.svg" 
-              alt="Car Audio Events" 
-              className="h-12 w-auto"
-            />
+            <div className="w-10 h-10 bg-electric-500 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Users className="h-6 w-6 text-white" />
+            </div>
+            <div className="hidden sm:block">
+              <h1 className="text-xl font-bold text-white whitespace-nowrap">Car Audio Events</h1>
+              <p className="text-xs text-electric-300">Competition Platform</p>
+            </div>
           </Link>
 
           {/* Desktop Navigation - Mega Menu */}
