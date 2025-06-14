@@ -173,59 +173,21 @@ CREATE INDEX IF NOT EXISTS idx_advertisement_impressions_user_timestamp ON adver
 CREATE INDEX IF NOT EXISTS idx_advertisement_clicks_ad_timestamp ON advertisement_clicks(advertisement_id, timestamp);
 CREATE INDEX IF NOT EXISTS idx_advertisement_clicks_user_timestamp ON advertisement_clicks(user_id, timestamp);
 
--- Create RLS policies for advertisements
-ALTER TABLE advertisements ENABLE ROW LEVEL SECURITY;
-
--- Policy: Users can view active advertisements
-CREATE POLICY "Users can view active advertisements" ON advertisements
-    FOR SELECT USING (status = 'active' OR status = 'approved');
-
--- Policy: Advertisers can manage their own advertisements
-CREATE POLICY "Advertisers can manage own advertisements" ON advertisements
-    FOR ALL USING (advertiser_user_id = auth.uid());
-
--- Policy: Admins can manage all advertisements
-CREATE POLICY "Admins can manage all advertisements" ON advertisements
-    FOR ALL USING (
-        EXISTS (
-            SELECT 1 FROM auth.users 
-            WHERE auth.users.id = auth.uid() 
-            AND auth.users.raw_user_meta_data->>'membershipType' = 'admin'
-        )
-    );
-
--- Create RLS policies for advertisement billing
+-- Enable RLS on new tables (simplified policies)
 ALTER TABLE advertisement_billing ENABLE ROW LEVEL SECURITY;
+ALTER TABLE advertisement_campaigns ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_advertisement_preferences ENABLE ROW LEVEL SECURITY;
+ALTER TABLE advertisement_impressions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE advertisement_clicks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE advertisement_analytics ENABLE ROW LEVEL SECURITY;
+ALTER TABLE advertisement_ab_tests ENABLE ROW LEVEL SECURITY;
 
+-- Simple RLS policies (can be enhanced later)
 CREATE POLICY "Users can view own billing" ON advertisement_billing
     FOR SELECT USING (user_id = auth.uid());
 
-CREATE POLICY "Admins can view all billing" ON advertisement_billing
-    FOR ALL USING (
-        EXISTS (
-            SELECT 1 FROM auth.users 
-            WHERE auth.users.id = auth.uid() 
-            AND auth.users.raw_user_meta_data->>'membershipType' = 'admin'
-        )
-    );
-
--- Create RLS policies for advertisement campaigns
-ALTER TABLE advertisement_campaigns ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "Users can manage own campaigns" ON advertisement_campaigns
     FOR ALL USING (user_id = auth.uid());
-
-CREATE POLICY "Admins can manage all campaigns" ON advertisement_campaigns
-    FOR ALL USING (
-        EXISTS (
-            SELECT 1 FROM auth.users 
-            WHERE auth.users.id = auth.uid() 
-            AND auth.users.raw_user_meta_data->>'membershipType' = 'admin'
-        )
-    );
-
--- Create RLS policies for user preferences
-ALTER TABLE user_advertisement_preferences ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can manage own ad preferences" ON user_advertisement_preferences
     FOR ALL USING (user_id = auth.uid());
@@ -358,10 +320,9 @@ SELECT
         ELSE 0
     END as cpc,
     calculate_advertisement_roi(a.id) as roi,
-    u.email as advertiser_email,
+    a.advertiser_email,
     c.name as campaign_name
 FROM advertisements a
-LEFT JOIN auth.users u ON a.advertiser_user_id = u.id
 LEFT JOIN advertisement_campaigns c ON a.campaign_id = c.id;
 
 COMMENT ON TABLE advertisements IS 'Enhanced advertisement system with user integration and advanced features';
