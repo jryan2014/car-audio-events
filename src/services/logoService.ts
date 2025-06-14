@@ -47,15 +47,15 @@ class LogoService {
     try {
       const { data, error } = await supabase
         .from('admin_settings')
-        .select('key_name, key_value')
-        .like('key_name', '%logo%');
+        .select('setting_key, setting_value')
+        .like('setting_key', '%logo%');
 
       if (error) throw error;
 
       // Convert to settings object
       const settings: Record<string, string> = {};
       data?.forEach(item => {
-        settings[item.key_name] = item.key_value || '';
+        settings[item.setting_key] = item.setting_value || '';
       });
 
       // Build logo settings with defaults

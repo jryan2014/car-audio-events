@@ -119,8 +119,8 @@ export default function LogoManager() {
       // Load logo settings directly from admin_settings table
       const { data, error } = await supabase
         .from('admin_settings')
-        .select('key_name, key_value')
-        .like('key_name', '%logo%');
+        .select('setting_key, setting_value')
+        .like('setting_key', '%logo%');
       
       if (error) throw error;
       
@@ -128,7 +128,7 @@ export default function LogoManager() {
         // Convert array to object format
         const settings: Partial<LogoSettings> = {};
         data.forEach(item => {
-          settings[item.key_name as keyof LogoSettings] = item.key_value || '';
+          settings[item.setting_key as keyof LogoSettings] = item.setting_value || '';
         });
         
         // Set defaults for missing values
@@ -246,13 +246,12 @@ export default function LogoManager() {
     const { error } = await supabase
       .from('admin_settings')
       .upsert({
-        key_name: key,
-        key_value: value,
-        is_sensitive: false,
+        setting_key: key,
+        setting_value: value,
         updated_by: user!.id,
         updated_at: new Date().toISOString()
       }, {
-        onConflict: 'key_name'
+        onConflict: 'setting_key'
       });
 
     if (error) throw error;
