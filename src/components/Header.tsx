@@ -26,7 +26,7 @@ export default function Header() {
           <div className="flex-shrink-0 mr-8">
             <Link to="/" className="flex items-center">
               <img 
-                src="/car-audio-events-logo.svg" 
+                src="/CAE_Logo_V3.png" 
                 alt="Car Audio Events" 
                 className="h-20 w-auto"
               />
