@@ -122,10 +122,7 @@ CREATE TABLE IF NOT EXISTS advertisement_impressions (
     page_url TEXT,
     placement_type VARCHAR(50),
     device_type VARCHAR(20),
-    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    
-    INDEX(advertisement_id, timestamp),
-    INDEX(user_id, timestamp)
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Create advertisement clicks tracking
@@ -140,10 +137,7 @@ CREATE TABLE IF NOT EXISTS advertisement_clicks (
     click_url TEXT,
     placement_type VARCHAR(50),
     device_type VARCHAR(20),
-    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    
-    INDEX(advertisement_id, timestamp),
-    INDEX(user_id, timestamp)
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Create advertisement A/B tests table
@@ -172,6 +166,12 @@ CREATE INDEX IF NOT EXISTS idx_advertisements_dates ON advertisements(start_date
 CREATE INDEX IF NOT EXISTS idx_advertisement_analytics_date ON advertisement_analytics(date);
 CREATE INDEX IF NOT EXISTS idx_advertisement_billing_user ON advertisement_billing(user_id);
 CREATE INDEX IF NOT EXISTS idx_advertisement_billing_period ON advertisement_billing(billing_period_start, billing_period_end);
+
+-- Create indexes for impressions and clicks tables
+CREATE INDEX IF NOT EXISTS idx_advertisement_impressions_ad_timestamp ON advertisement_impressions(advertisement_id, timestamp);
+CREATE INDEX IF NOT EXISTS idx_advertisement_impressions_user_timestamp ON advertisement_impressions(user_id, timestamp);
+CREATE INDEX IF NOT EXISTS idx_advertisement_clicks_ad_timestamp ON advertisement_clicks(advertisement_id, timestamp);
+CREATE INDEX IF NOT EXISTS idx_advertisement_clicks_user_timestamp ON advertisement_clicks(user_id, timestamp);
 
 -- Create RLS policies for advertisements
 ALTER TABLE advertisements ENABLE ROW LEVEL SECURITY;
