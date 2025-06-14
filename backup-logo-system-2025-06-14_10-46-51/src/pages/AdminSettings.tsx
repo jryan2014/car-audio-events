@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Key, Save, Eye, EyeOff, Shield, AlertCircle, CheckCircle, Settings, Database, CreditCard, Map, Mail, Bug, TestTube, ExternalLink, Palette } from 'lucide-react';
+import { Key, Save, Eye, EyeOff, Shield, AlertCircle, CheckCircle, Settings, Database, CreditCard, Map, Mail, Bug, TestTube, ExternalLink } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import AdminEmailSettings from '../components/AdminEmailSettings';
-import LogoManager from '../components/LogoManager';
 
 interface IntegrationKeys {
   stripe_publishable_key: string;
@@ -391,7 +390,6 @@ export default function AdminSettings() {
     { id: 'recaptcha', label: 'reCAPTCHA', icon: Shield },
     { id: 'session', label: 'Session', icon: Settings },
     { id: 'email', label: 'Email', icon: Mail },
-    { id: 'logos', label: 'Logos', icon: Palette },
     { id: 'debug', label: 'Debug', icon: Bug }
   ];
 
@@ -855,30 +853,6 @@ export default function AdminSettings() {
                   <div>• System notifications</div>
                 </div>
               </div>
-            </div>
-          )}
-
-          {activeTab === 'logos' && (
-            <div className="space-y-6">
-              <div className="flex items-center space-x-2 mb-6">
-                <Palette className="h-6 w-6 text-electric-500" />
-                <h2 className="text-2xl font-bold text-white">Logo Management</h2>
-              </div>
-              
-              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-6">
-                <div className="flex items-start space-x-3">
-                  <Palette className="h-5 w-5 text-blue-400 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <h4 className="text-sm font-medium text-blue-400">Brand Management</h4>
-                    <p className="text-sm text-blue-300 mt-1">
-                      Upload and configure logos for different areas of your platform. Each logo type 
-                      is optimized for specific use cases and automatically applied across the system.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <LogoManager />
             </div>
           )}
 
