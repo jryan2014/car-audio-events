@@ -185,7 +185,7 @@ export default function EditUser() {
         throw new Error(`Failed to update user: ${updateError.message}`);
       }
 
-      setSuccessMessage('User updated successfully (basic fields only - run database migration for enhanced functionality)');
+      setSuccessMessage('User updated successfully!');
       
       setTimeout(() => {
         navigate(`/admin/users/${user.id}`);
@@ -274,20 +274,7 @@ export default function EditUser() {
                 </div>
               )}
 
-              {!isCheckingFields && (
-                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
-                  <div className="flex items-center space-x-2">
-                    <AlertTriangle className="h-5 w-5 text-yellow-400" />
-                    <div className="text-yellow-400">
-                      <p className="font-medium">Basic Fields Only</p>
-                      <p className="text-sm mt-1">
-                        Currently saving basic fields only (name, membership type, status, etc.). 
-                        Enhanced fields like address and competition details require database migration.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
+
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
