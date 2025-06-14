@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Calendar, DollarSign, TrendingUp, Activity, Shield, AlertTriangle, CheckCircle, UserCheck, FileText, Target, Settings, Archive, Mail, Send, Building2, Menu } from 'lucide-react';
+import { Users, Calendar, DollarSign, TrendingUp, Activity, Shield, AlertTriangle, CheckCircle, UserCheck, FileText, Target, Settings, Archive, Mail, Building2, Menu } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -27,7 +27,7 @@ interface RecentActivity {
 }
 
 export default function AdminDashboard() {
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
     totalUsers: 0,
     activeEvents: 0,
@@ -41,74 +41,118 @@ export default function AdminDashboard() {
   });
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL LOGIC
-  useEffect(() => {
-    if (user && user.membershipType === 'admin') {
-      loadDashboardData();
-      // Log dashboard access
-      ActivityLogger.adminDashboardAccess();
-    }
-  }, [user]);
-
-  // Show loading spinner while authentication is loading
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-electric-500 mx-auto mb-4"></div>
-          <p className="text-white">Loading admin dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Check if user is admin after auth has loaded
+  // Check if user is admin
   if (!user || user.membershipType !== 'admin') {
-    return <Navigate to="/" replace />;
+    console.log('AdminDashboard: Redirecting non-admin user:', user?.membershipType);
+    return <Navigate to="/\" replace />;
   }
+
+  console.log('AdminDashboard: Admin user detected:', user.email, user.membershipType);
+
+  useEffect(() => {
+    loadDashboardData();
+    // Log dashboard access
+    ActivityLogger.adminDashboardAccess();
+  }, []);
 
   const loadDashboardData = async () => {
-    console.log('📊 Loading dashboard with mock data to bypass database issues');
-    setIsLoading(true);
-    
-    // Use mock data instead of database queries to get the dashboard working
-    setTimeout(() => {
-      setStats({
-        totalUsers: 150,
-        activeEvents: 8,
-        totalRevenue: 12500,
-        newRegistrations: 25,
-        pendingVerifications: 5,
-        pendingApprovals: 3,
-        systemAlerts: 1,
-        totalPages: 12,
-        publishedPages: 10
-      });
+    try {
+      setIsLoading(true);
       
-      setRecentActivity([
-        {
-          id: '1',
-          type: 'user_registration',
-          description: 'New user registered: John Doe',
-          timestamp: new Date().toISOString(),
-          user: 'John Doe',
-          severity: 'info'
-        },
-        {
-          id: '2',
-          type: 'event_created',
-          description: 'New event created: Bass Head Championships',
-          timestamp: new Date(Date.now() - 3600000).toISOString(),
-          user: 'Admin',
-          severity: 'info'
-        }
+      // Try to load real dashboard data
+      const [usersResult, eventsResult, revenueResult] = await Promise.allSettled([
+        supabase.from('users').select('id, status, created_at').limit(1000),
+        supabase.from('events').select('id, status, created_at').limit(1000),
+        // Add revenue queries when payment system is implemented
+        Promise.resolve({ data: null, error: null })
       ]);
+
+      let realStats: Partial<DashboardStats> = {};
       
+      if (usersResult.status === 'fulfilled' && usersResult.value.data) {
+        const users = usersResult.value.data;
+        realStats.totalUsers = users.length;
+        realStats.newRegistrations = users.filter(user => {
+          const createdAt = new Date(user.created_at);
+          const thirtyDaysAgo = new Date();
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+          return createdAt >= thirtyDaysAgo;
+        }).length;
+      }
+
+      if (eventsResult.status === 'fulfilled' && eventsResult.value.data) {
+        const events = eventsResult.value.data;
+        realStats.activeEvents = events.filter(event => event.status === 'published').length;
+      }
+
+      // Try to load CMS pages
+      const { data: pagesData } = await supabase.from('cms_pages').select('id, status');
+      if (pagesData) {
+        realStats.totalPages = pagesData.length;
+        realStats.publishedPages = pagesData.filter(page => page.status === 'published').length;
+      }
+
+      // Set real stats or defaults for missing data
+      const finalStats: DashboardStats = {
+        totalUsers: realStats.totalUsers ?? 0,
+        activeEvents: realStats.activeEvents ?? 0,
+        totalRevenue: realStats.totalRevenue ?? 0, // Will be 0 until payment system is implemented
+        newRegistrations: realStats.newRegistrations ?? 0,
+        pendingVerifications: 0, // TODO: Implement verification system
+        pendingApprovals: 0, // TODO: Implement approval system  
+        systemAlerts: 0, // TODO: Implement alert system
+        totalPages: realStats.totalPages ?? 0,
+        publishedPages: realStats.publishedPages ?? 0
+      };
+
+      setStats(finalStats);
+
+      // Load recent activity from audit logs
+      try {
+        const { data: activityData, error: activityError } = await supabase
+          .rpc('get_recent_activity', { limit_count: 10 });
+        
+        if (activityError) {
+          console.error('Failed to load activity data:', activityError);
+          setRecentActivity([]);
+        } else if (activityData) {
+          // Transform the data to match our interface
+          const transformedActivity: RecentActivity[] = activityData.map((activity: any) => ({
+            id: activity.id,
+            type: activity.activity_type,
+            description: activity.description,
+            timestamp: activity.created_at,
+            user: activity.user_name || activity.user_email || 'Unknown User',
+            severity: getSeverityFromType(activity.activity_type)
+          }));
+          setRecentActivity(transformedActivity);
+        } else {
+          setRecentActivity([]);
+        }
+      } catch (activityLoadError) {
+        console.error('Failed to load recent activity:', activityLoadError);
+        setRecentActivity([]);
+      }
+
+    } catch (error) {
+      console.error('Failed to load dashboard data:', error);
+      // Set empty/default stats instead of mock data
+      setStats({
+        totalUsers: 0,
+        activeEvents: 0,
+        totalRevenue: 0,
+        newRegistrations: 0,
+        pendingVerifications: 0,
+        pendingApprovals: 0,
+        systemAlerts: 0,
+        totalPages: 0,
+        publishedPages: 0
+      });
+      setRecentActivity([]);
+    } finally {
       setIsLoading(false);
-      console.log('✅ Dashboard loaded with mock data');
-    }, 500);
+    }
   };
 
   const formatCurrency = (amount: number) => {
@@ -188,43 +232,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // Show loading spinner while dashboard data is loading
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-electric-500 mx-auto mb-4"></div>
-          <p className="text-white">Loading dashboard data...</p>
-          <p className="text-gray-400 text-sm">Welcome, {user.name}</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show error state if there's an error
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 bg-red-500 rounded-lg flex items-center justify-center mx-auto mb-4">
-            <AlertTriangle className="h-6 w-6 text-white" />
-          </div>
-          <h2 className="text-2xl font-bold text-red-400 mb-4">Dashboard Error</h2>
-          <p className="text-gray-400 mb-4">{error}</p>
-          <button
-            onClick={() => {
-              setError(null);
-              loadDashboardData();
-            }}
-            className="bg-electric-500 text-white px-6 py-3 rounded-lg hover:bg-electric-600 transition-colors"
-          >
-            Retry Loading
-          </button>
-        </div>
-      </div>
-    );
-  }
-  
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -450,19 +457,6 @@ export default function AdminDashboard() {
               <div>
                 <h3 className="text-white font-semibold">Contact Settings</h3>
                 <p className="text-gray-400 text-sm">Configure footer contact information</p>
-              </div>
-            </div>
-          </Link>
-
-          <Link
-            to="/admin/email-settings"
-            className="bg-gradient-to-br from-blue-500/20 to-blue-600/20 border border-blue-500/30 rounded-xl p-6 hover:from-blue-500/30 hover:to-blue-600/30 transition-all duration-200 group"
-          >
-            <div className="flex items-center space-x-3">
-              <Send className="h-8 w-8 text-blue-400 group-hover:scale-110 transition-transform" />
-              <div>
-                <h3 className="text-white font-semibold">Email Settings</h3>
-                <p className="text-gray-400 text-sm">Configure Postmark email integration</p>
               </div>
             </div>
           </Link>
