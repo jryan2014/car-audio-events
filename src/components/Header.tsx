@@ -21,7 +21,7 @@ export default function Header() {
   return (
     <header className="bg-gradient-to-r from-black/90 to-purple-900/90 backdrop-blur-lg border-b border-electric-500/20 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center py-4">
+        <div className="flex items-center py-3">
           {/* Logo - Positioned with proper spacing */}
           <div className="flex-shrink-0 mr-8">
             <Link to="/" className="flex items-center">
