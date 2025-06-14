@@ -80,46 +80,46 @@ export default function EditUser() {
       setIsLoading(true);
       setError(null);
 
-      let userData;
-      try {
-        // Try to fetch with new fields first
-        const { data, error: fetchError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', userId)
-          .single();
+      // Only select fields that exist in the current database schema
+      const { data: userData, error: fetchError } = await supabase
+        .from('users')
+        .select(`
+          id,
+          email,
+          name,
+          membership_type,
+          status,
+          location,
+          phone,
+          company_name,
+          verification_status,
+          subscription_plan,
+          last_login_at,
+          created_at,
+          login_count,
+          failed_login_attempts
+        `)
+        .eq('id', userId)
+        .single();
 
-        if (fetchError) throw fetchError;
-        userData = data;
-      } catch (error) {
-        console.log('New fields not available, falling back to basic fields:', error);
-        // Fallback to basic fields if new fields don't exist
-        const { data, error: basicError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', userId)
-          .single();
-
-        if (basicError) throw basicError;
-        userData = data;
-      }
+      if (fetchError) throw fetchError;
 
       setUser(userData);
       setFormData({
         name: userData.name || '',
-        first_name: userData.first_name || '',
-        last_name: userData.last_name || '',
+        first_name: '', // Not available in current schema
+        last_name: '', // Not available in current schema
         membership_type: userData.membership_type || 'competitor',
         status: userData.status || 'active',
         location: userData.location || '',
-        address: userData.address || '',
-        city: userData.city || '',
-        state: userData.state || '',
-        zip: userData.zip || '',
+        address: '', // Not available in current schema
+        city: '', // Not available in current schema
+        state: '', // Not available in current schema
+        zip: '', // Not available in current schema
         phone: userData.phone || '',
         company_name: userData.company_name || '',
-        competition_type: userData.competition_type || 'none',
-        team_id: userData.team_id || '',
+        competition_type: 'none', // Not available in current schema
+        team_id: '', // Not available in current schema
         verification_status: userData.verification_status || 'unverified',
         subscription_plan: userData.subscription_plan || 'free'
       });
@@ -147,34 +147,9 @@ export default function EditUser() {
   };
 
   const checkAvailableFields = async () => {
-    try {
-      setIsCheckingFields(true);
-      // Test if new fields exist by trying to select them with a real query
-      const { data, error } = await supabase
-        .from('users')
-        .select('first_name, last_name, address, city, state, zip, competition_type, team_id')
-        .limit(1);
-      
-      // If we get here without error, the fields exist
-      if (error) {
-        console.log('New fields not available:', error);
-        setHasNewFields(false);
-      } else {
-        console.log('New fields are available');
-        setHasNewFields(true);
-      }
-    } catch (error: any) {
-      console.log('New fields not available - caught error:', error);
-      // Check if it's specifically a column not found error
-      if (error?.message?.includes('column') || error?.code === 'PGRST204') {
-        setHasNewFields(false);
-      } else {
-        // For other errors, assume fields don't exist to be safe
-        setHasNewFields(false);
-      }
-    } finally {
-      setIsCheckingFields(false);
-    }
+    // Skip field checking - use only basic fields that exist in current schema
+    setHasNewFields(false);
+    setIsCheckingFields(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
