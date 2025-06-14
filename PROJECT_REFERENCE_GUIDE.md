@@ -255,31 +255,60 @@ git log --oneline -5
 ---
 
 **Last Updated**: 2025-06-14
-**Version**: 1.0.0 (Foundation)
+**Version**: 1.0.1 (Foundation)
 **Maintainer**: Development Team
 
 ---
 
-## 🏷️ **VERSION SYSTEM**
+## 🏷️ **VERSION SYSTEM** ⚠️ **MANDATORY PROTOCOL**
 
-### **Current Version**: v1.0.0 (Foundation)
+### **Current Version**: v1.0.1 (Foundation)
 - **Release Date**: 2025-06-14
 - **Status**: Production Stable
 - **Changelog**: See CHANGELOG.md for detailed changes
 
-### **Version Management**
-- **Format**: Semantic Versioning (MAJOR.MINOR.PATCH)
-- **Tracking**: package.json, git tags, CHANGELOG.md
-- **Display**: Admin dashboard shows current version
-- **Utility**: `src/utils/version.ts` for version management
+### **🔴 CRITICAL VERSION RULES**
+1. **ALWAYS INCREMENT VERSION** for ANY production change
+2. **FOLLOW SEMANTIC VERSIONING** strictly (MAJOR.MINOR.PATCH)
+3. **UPDATE ALL VERSION FILES** in single commit
+4. **CREATE GIT TAGS** for every version
+5. **WAIT FOR DEPLOYMENT** before confirming version is live
 
-### **Release Process**
-1. Update version in `src/utils/version.ts`
-2. Update CHANGELOG.md with changes
-3. Commit changes: `git commit -m "Release v1.x.x"`
-4. Tag release: `git tag v1.x.x`
-5. Push to production: `git push origin main --tags`
-6. Verify deployment and version display
+### **Version Types & When to Use**
+- **PATCH (x.x.X)**: Bug fixes, hotfixes, small corrections
+  - Examples: Logo fixes, typo corrections, broken links
+- **MINOR (x.X.0)**: New features, enhancements, additions
+  - Examples: New admin features, UI improvements, new pages
+- **MAJOR (X.0.0)**: Breaking changes, major overhauls
+  - Examples: Database schema changes, API changes, major redesigns
+
+### **🔧 MANDATORY VERSION UPDATE PROCESS**
+**EVERY production change MUST follow this exact process:**
+
+1. **Update package.json**: Change version number
+2. **Update src/utils/version.ts**: 
+   - Update VERSION.PATCH/MINOR/MAJOR
+   - Add entry to VERSION_HISTORY array
+   - Update BUILD timestamp
+3. **Update CHANGELOG.md**: Add new version section with changes
+4. **Commit version changes**: `git commit -m "VERSION: Increment to vX.X.X for [reason]"`
+5. **Create git tag**: `git tag vX.X.X -m "vX.X.X: [description]"`
+6. **Push with tags**: `git push origin main --tags`
+7. **Rebuild if needed**: `npm run build` (for local testing)
+8. **Verify deployment**: Check admin dashboard shows new version
+9. **Wait 2-5 minutes**: Allow production deployment to complete
+
+### **Version File Locations**
+- **package.json**: `"version": "1.0.1"`
+- **src/utils/version.ts**: VERSION object and VERSION_HISTORY
+- **CHANGELOG.md**: Detailed change documentation
+- **Admin Dashboard**: Displays current version to users
+
+### **🚨 VERSION DEPLOYMENT TIMING**
+- **Local Development**: Shows new version immediately
+- **Production**: Takes 2-5 minutes after push to rebuild and deploy
+- **Browser Cache**: May need hard refresh (Ctrl+F5) to see changes
+- **CDN Cache**: May take additional time to propagate globally
 
 ---
 
