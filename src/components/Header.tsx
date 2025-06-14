@@ -25,7 +25,7 @@ export default function Header() {
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-3 flex-shrink-0">
             <img 
-              src="/car-audio-events-logo.svg" 
+              src="/CAE_Logo_noBgColor.png" 
               alt="Car Audio Events" 
               className="h-12 w-auto"
             />
