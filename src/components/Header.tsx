@@ -21,17 +21,19 @@ export default function Header() {
   return (
     <header className="bg-gradient-to-r from-black/90 to-purple-900/90 backdrop-blur-lg border-b border-electric-500/20 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center py-4">
-          {/* Logo */}
-          <Link to="/" className="flex items-center space-x-3 flex-shrink-0">
-            <img 
-              src="/CAE_Logo_noBgColor.png" 
-              alt="Car Audio Events" 
-              className="h-12 w-auto"
-            />
-          </Link>
+        <div className="flex items-center py-4">
+          {/* Logo - Positioned with proper spacing */}
+          <div className="flex-shrink-0 mr-8">
+            <Link to="/" className="flex items-center">
+              <img 
+                src="/CAE_Logo_noBgColor.png" 
+                alt="Car Audio Events" 
+                className="h-12 w-auto"
+              />
+            </Link>
+          </div>
 
-          {/* Desktop Navigation - Mega Menu */}
+          {/* Desktop Navigation - Mega Menu - Centered */}
           <div className="hidden md:flex flex-1 justify-center">
             <MegaMenu 
               isAuthenticated={isAuthenticated} 
@@ -40,8 +42,8 @@ export default function Header() {
             />
           </div>
 
-          {/* User Menu */}
-          <div className="flex items-center space-x-4 flex-shrink-0">
+          {/* User Menu - Right aligned */}
+          <div className="flex items-center space-x-4 flex-shrink-0 ml-auto">
             {isAuthenticated ? (
               <div className="flex items-center space-x-4">
                 {/* User Dropdown */}
