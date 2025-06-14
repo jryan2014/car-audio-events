@@ -5,7 +5,6 @@ import { Navigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { ActivityLogger } from '../utils/activityLogger';
 import AdminNavigation from '../components/AdminNavigation';
-import { getFullVersionString } from '../utils/version';
 
 interface DashboardStats {
   totalUsers: number;
@@ -246,14 +245,9 @@ export default function AdminDashboard() {
           </div>
           
           <div className="bg-gradient-to-r from-electric-500/10 to-purple-500/10 border border-electric-500/20 rounded-xl p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <CheckCircle className="h-5 w-5 text-green-400" />
-                <span className="text-green-400 font-medium">System Status: All systems operational</span>
-              </div>
-              <div className="text-gray-400 text-sm">
-                Platform {getFullVersionString()}
-              </div>
+            <div className="flex items-center space-x-2">
+              <CheckCircle className="h-5 w-5 text-green-400" />
+              <span className="text-green-400 font-medium">System Status: All systems operational</span>
             </div>
           </div>
         </div>
