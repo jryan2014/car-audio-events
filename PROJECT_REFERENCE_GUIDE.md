@@ -174,7 +174,9 @@ project/
 1. **Test all affected functionality**
 2. **Update this guide if needed**
 3. **Mark TODO items as complete**
-4. **Wait for user approval before GitHub push**
+4. **🚨 CRITICAL: NEVER PUSH TO PRODUCTION WITHOUT USER QA APPROVAL 🚨**
+5. **Present completed feature to user for testing**
+6. **Wait for explicit user approval before any git push to main**
 
 ---
 
@@ -272,7 +274,8 @@ git log --oneline -5
 2. **FOLLOW SEMANTIC VERSIONING** strictly (MAJOR.MINOR.PATCH)
 3. **UPDATE ALL VERSION FILES** in single commit
 4. **CREATE GIT TAGS** for every version
-5. **WAIT FOR DEPLOYMENT** before confirming version is live
+5. **NEVER PUSH TO PRODUCTION WITHOUT USER QA APPROVAL**
+6. **WAIT FOR DEPLOYMENT** before confirming version is live
 
 ### **Version Types & When to Use**
 - **PATCH (x.x.X)**: Bug fixes, hotfixes, small corrections
@@ -293,10 +296,12 @@ git log --oneline -5
 3. **Update CHANGELOG.md**: Add new version section with changes
 4. **Commit version changes**: `git commit -m "VERSION: Increment to vX.X.X for [reason]"`
 5. **Create git tag**: `git tag vX.X.X -m "vX.X.X: [description]"`
-6. **Push with tags**: `git push origin main --tags`
-7. **Rebuild if needed**: `npm run build` (for local testing)
-8. **Verify deployment**: Check admin dashboard shows new version
-9. **Wait 2-5 minutes**: Allow production deployment to complete
+6. **🚨 STOP - DO NOT PUSH TO PRODUCTION YET 🚨**
+7. **WAIT FOR USER QA APPROVAL**: User must test locally and explicitly approve
+8. **Only after user approval**: `git push origin main --tags`
+9. **Rebuild if needed**: `npm run build` (for local testing)
+10. **Verify deployment**: Check admin dashboard shows new version
+11. **Wait 2-5 minutes**: Allow production deployment to complete
 
 ### **Version File Locations**
 - **package.json**: `"version": "1.0.1"`
