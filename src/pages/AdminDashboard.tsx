@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { ActivityLogger } from '../utils/activityLogger';
+import AdminNavigation from '../components/AdminNavigation';
 
 interface DashboardStats {
   totalUsers: number;
@@ -42,19 +43,15 @@ export default function AdminDashboard() {
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check if user is admin
-  if (!user || user.membershipType !== 'admin') {
-    console.log('AdminDashboard: Redirecting non-admin user:', user?.membershipType);
-    return <Navigate to="/\" replace />;
-  }
-
-  console.log('AdminDashboard: Admin user detected:', user.email, user.membershipType);
+  console.log('AdminDashboard: Admin user detected:', user?.email, user?.membershipType);
 
   useEffect(() => {
-    loadDashboardData();
-    // Log dashboard access
-    ActivityLogger.adminDashboardAccess();
-  }, []);
+    if (user) {
+      loadDashboardData();
+      // Log dashboard access
+      ActivityLogger.adminDashboardAccess();
+    }
+  }, [user]);
 
   const loadDashboardData = async () => {
     try {
@@ -243,7 +240,7 @@ export default function AdminDashboard() {
             </div>
             <div>
               <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
-              <p className="text-gray-400">Welcome back, {user.name}</p>
+              <p className="text-gray-400">Welcome back, {user?.name || 'Admin User'}</p>
             </div>
           </div>
           

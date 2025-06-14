@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
+import AdminLayout from './components/AdminLayout';
 import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
 import Events from './pages/Events';
@@ -74,28 +75,28 @@ function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/pricing" element={<Pricing />} />
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/admin/dashboard" element={<AdminDashboard />} />
-            <Route path="/admin/settings" element={<AdminSettings />} />
-            <Route path="/admin/users" element={<AdminUsers />} />
-            <Route path="/admin/users/:userId" element={<UserDetails />} />
-            <Route path="/admin/users/:userId/edit" element={<EditUser />} />
-            <Route path="/admin/membership" element={<AdminMembership />} />
-            <Route path="/admin/events" element={<AdminEvents />} />
-            <Route path="/admin/backup" element={<AdminBackup />} />
+            <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
+            <Route path="/admin/dashboard" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
+            <Route path="/admin/settings" element={<AdminLayout><AdminSettings /></AdminLayout>} />
+            <Route path="/admin/users" element={<AdminLayout><AdminUsers /></AdminLayout>} />
+            <Route path="/admin/users/:userId" element={<AdminLayout><UserDetails /></AdminLayout>} />
+            <Route path="/admin/users/:userId/edit" element={<AdminLayout><EditUser /></AdminLayout>} />
+            <Route path="/admin/membership" element={<AdminLayout><AdminMembership /></AdminLayout>} />
+            <Route path="/admin/events" element={<AdminLayout><AdminEvents /></AdminLayout>} />
+            <Route path="/admin/backup" element={<AdminLayout><AdminBackup /></AdminLayout>} />
             <Route path="/create-event" element={<CreateEvent />} />
             <Route path="/events/:id/edit" element={<EditEvent />} />
-            <Route path="/admin/analytics" element={<AdminAnalytics />} />
-            <Route path="/admin/ad-management" element={<AdManagement />} />
-            <Route path="/admin/cms-pages" element={<CMSPages />} />
+            <Route path="/admin/analytics" element={<AdminLayout><AdminAnalytics /></AdminLayout>} />
+            <Route path="/admin/ad-management" element={<AdminLayout><AdManagement /></AdminLayout>} />
+            <Route path="/admin/cms-pages" element={<AdminLayout><CMSPages /></AdminLayout>} />
             <Route path="/pages/:slug" element={<DynamicPage />} />
-            <Route path="/admin/system-configuration" element={<SystemConfiguration />} />
-            <Route path="/admin/system-configuration-demo" element={<SystemConfigurationDemo />} />
-            <Route path="/admin/organizations" element={<OrganizationManager />} />
-            <Route path="/admin/contact-settings" element={<AdminContactSettingsPage />} />
-            <Route path="/admin/email-settings" element={<AdminEmailSettingsPage />} />
-            <Route path="/admin/navigation-manager" element={<NavigationManager />} />
-            <Route path="/admin/directory-manager" element={<DirectoryManager />} />
+            <Route path="/admin/system-configuration" element={<AdminLayout><SystemConfiguration /></AdminLayout>} />
+            <Route path="/admin/system-configuration-demo" element={<AdminLayout><SystemConfigurationDemo /></AdminLayout>} />
+            <Route path="/admin/organizations" element={<AdminLayout><OrganizationManager /></AdminLayout>} />
+            <Route path="/admin/contact-settings" element={<AdminLayout><AdminContactSettingsPage /></AdminLayout>} />
+            <Route path="/admin/email-settings" element={<AdminLayout><AdminEmailSettingsPage /></AdminLayout>} />
+            <Route path="/admin/navigation-manager" element={<AdminLayout><NavigationManager /></AdminLayout>} />
+            <Route path="/admin/directory-manager" element={<AdminLayout><DirectoryManager /></AdminLayout>} />
           </Routes>
         </Layout>
       </Router>
