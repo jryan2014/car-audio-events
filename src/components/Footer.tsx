@@ -222,7 +222,7 @@ export default function Footer() {
           {/* Brand - Takes 2 columns on large screens */}
           <div className="space-y-4 lg:col-span-2">
             <img 
-              src="/CAE_Logo_noBgColor.png" 
+              src="/CAE_LogoV2.png" 
               alt="Car Audio Events" 
               className="h-16 w-auto"
             />
