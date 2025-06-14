@@ -106,6 +106,14 @@ src/
 ## 📝 **DEVELOPMENT TODO LIST**
 
 ### 🔥 **HIGH PRIORITY**
+- [ ] **Enhanced User Management**: Complete admin user management system
+  - [ ] Full user profile editing (address, billing details, personal info)
+  - [ ] Invoice creation and management system
+  - [ ] Send invoices to users for payment
+  - [ ] Billing and membership history tracking
+  - [ ] Login analytics (last login, days since login, login frequency)
+  - [ ] Advanced user actions (Edit, Suspend, Delete, Cancel Subscriptions)
+  - [ ] User activity monitoring and reporting
 - [ ] **Email System**: Complete Postmark integration and templates
 - [ ] **Payment Processing**: Finalize Stripe payment flows
 - [ ] **Event Registration**: Complete event signup/payment process
