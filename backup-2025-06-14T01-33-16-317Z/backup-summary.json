@@ -1,0 +1,18 @@
+{
+  "backup_completed_at": "2025-06-14T01:33:17.399Z",
+  "backup_directory": "backup-2025-06-14T01-33-16-317Z",
+  "total_tables": 9,
+  "tables_with_data": 3,
+  "total_rows": 24,
+  "files_created": [
+    "backup-manifest.json",
+    "restore-backup.cjs",
+    "users.json",
+    "profiles.json",
+    "cms_pages.json",
+    "events.json",
+    "organizations.json",
+    "teams.json",
+    "payments.json"
+  ]
+}

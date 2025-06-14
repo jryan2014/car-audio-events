@@ -1,15 +1,15 @@
-import { createClient } from 'npm:@supabase/supabase-js@2';
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-};
+}
 
-Deno.serve(async (req: Request) => {
+serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders })
   }
 
   try {
@@ -17,73 +17,81 @@ Deno.serve(async (req: Request) => {
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    );
+    )
 
-    // Get membership type from URL if provided
-    const url = new URL(req.url);
-    const membershipType = url.searchParams.get('type');
+    // Get query parameters
+    const url = new URL(req.url)
+    const type = url.searchParams.get('type')
 
-    // Fetch membership plans
+    // Build query - filter out plans that are hidden on frontend
     let query = supabaseClient
       .from('membership_plans')
       .select('*')
       .eq('is_active', true)
-      .order('display_order', { ascending: true });
+      .eq('hidden_on_frontend', false)
+      .order('display_order', { ascending: true })
 
-    // Filter by membership type if provided
-    if (membershipType) {
-      query = query.eq('type', membershipType);
+    // Filter by type if provided
+    if (type) {
+      // Since the existing schema doesn't have a type column, we'll filter by name pattern
+      if (type === 'competitor') {
+        query = query.or('name.ilike.%competitor%')
+      } else if (type === 'retailer') {
+        query = query.or('name.ilike.%retailer%')
+      } else if (type === 'organization') {
+        query = query.or('name.ilike.%organization%')
+      }
     }
 
-    const { data: plans, error } = await query;
+    const { data: plans, error } = await query
 
     if (error) {
+      console.error('Database error:', error)
       return new Response(
         JSON.stringify({ error: 'Failed to fetch membership plans', details: error.message }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
-      );
+      )
     }
 
-    // Format the plans for better frontend consumption
-    const formattedPlans = plans.map(plan => ({
+    // Transform the data to match expected format
+    const transformedPlans = plans?.map(plan => ({
       id: plan.id,
       name: plan.name,
-      type: plan.type,
-      price: plan.price,
-      formattedPrice: `$${plan.price.toFixed(2)}`,
-      period: plan.billing_period,
       description: plan.description,
-      features: Array.isArray(plan.features) ? plan.features : [],
-      permissions: Array.isArray(plan.permissions) ? plan.permissions : [],
-      limits: plan.limits || {},
-      isFeatured: plan.is_featured,
-      displayOrder: plan.display_order
-    }));
+      price: plan.price,
+      billing_period: plan.billing_cycle, // Map billing_cycle to billing_period for frontend compatibility
+      features: plan.features || [],
+      max_events: plan.max_events,
+      max_participants: plan.max_participants,
+      is_active: plan.is_active,
+      is_featured: plan.name.toLowerCase().includes('pro'), // Mark Pro plans as featured
+      hidden_on_frontend: plan.hidden_on_frontend || false,
+      display_order: plan.display_order,
+      created_at: plan.created_at,
+      updated_at: plan.updated_at
+    })) || []
 
     return new Response(
-      JSON.stringify({ plans: formattedPlans }),
+      JSON.stringify({ 
+        plans: transformedPlans,
+        count: transformedPlans.length 
+      }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
-    );
+    )
 
   } catch (error) {
-    console.error('Unexpected error:', error);
+    console.error('Unexpected error:', error)
     return new Response(
-      JSON.stringify({ error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ error: 'Internal server error', details: error.message }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
-    );
+    )
   }
-});
+})
