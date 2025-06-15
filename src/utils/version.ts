@@ -3,11 +3,11 @@
 
 export const VERSION = {
   MAJOR: 1,
-  MINOR: 1,
-  PATCH: 0,
+  MINOR: 3,
+  PATCH: 1,
   BUILD: Date.now(), // Build timestamp
-  RELEASE_DATE: '2025-06-14',
-  CODENAME: 'Advertisement System with AI Integration'
+  RELEASE_DATE: '2025-06-15',
+  CODENAME: 'Admin Analytics Fixes'
 } as const;
 
 export const getVersionString = (): string => {
@@ -61,6 +61,21 @@ export const isProduction = (): boolean => {
 
 // Version history for reference
 export const VERSION_HISTORY = [
+  {
+    version: '1.3.1',
+    date: '2025-06-15',
+    codename: 'Admin Analytics Fixes',
+    description: 'Fixed admin analytics theming, removed mock data, and improved consistency',
+    features: [
+      'Fixed AI Access Control Status red text to match site theming',
+      'Changed Usage Alerts Configured from orange to green status',
+      'Removed all mock data from admin analytics',
+      'Updated all section headers to use consistent electric-400 theming',
+      'Removed unconfigured providers (Midjourney, Adobe Firefly) from display',
+      'Set realistic user counts and cost data to zero for fresh installation',
+      'Improved admin analytics visual consistency across all sections'
+    ]
+  },
   {
     version: '1.1.0',
     date: '2025-06-14',

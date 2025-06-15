@@ -16,6 +16,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.1] - 2025-06-15
+
+### 🎨 **Admin Analytics UI Fixes**
+- **Consistent Theming**: Fixed all section headers to use `text-electric-400` instead of `text-red-400`
+  - AI Access Control Status header now matches site theming
+  - Usage Breakdown by User Type header styling corrected
+  - AI Provider Status header styling corrected
+  - Business Model Compliance header styling corrected
+
+- **Status Indicator Improvements**:
+  - Changed "Usage Alerts Configured" from orange/warning to green/success status
+  - Updated icon from `AlertCircle` to `CheckCircle` to reflect proper configuration
+  - Improved visual consistency across all status indicators
+
+### 🧹 **Data Cleanup**
+- **Removed Mock Data**: Eliminated all placeholder/mock data from admin analytics
+  - Usage Breakdown by User Type: Reset all counts to realistic values (0 for unused types, 1 for admin)
+  - Cost tracking: Set all spending to $0.00 for fresh installation
+  - Admin stats initialization: Changed from mock values to real data or zeros
+  - loadAdminStats function: Removed fallback mock values
+
+- **Provider Display Cleanup**:
+  - Removed Midjourney and Adobe Firefly from provider status display
+  - Only shows providers that have actual configuration options in the system
+  - Cleaner, more accurate provider status representation
+
+### 🔧 **Technical Improvements**
+- **Real Data Integration**: Admin analytics now pulls from actual database with proper fallbacks
+- **Consistent Color Scheme**: All admin sections now follow the site's electric-blue theming
+- **Improved User Experience**: More accurate status representations and cleaner interface
+
+### 🐛 **Bug Fixes**
+- **Visual Consistency**: Fixed inconsistent red text that didn't match site design
+- **Status Accuracy**: Corrected misleading orange status for properly configured features
+- **Data Accuracy**: Removed confusing mock data that didn't reflect actual system state
+
+---
+
 ## [1.3.0] - 2025-06-14
 
 ### 🖼️ **AI Image Management System**
