@@ -118,25 +118,34 @@ export default function AdDisplay({ placement, pageType = 'general', className =
     if (isBot()) return; // Don't track bot impressions
 
     try {
-      // Update impression count
-      const { data: currentAd } = await supabase
+      // Update impression count - this should work for anonymous users
+      const { data: currentAd, error: selectError } = await supabase
         .from('advertisements')
         .select('impressions')
         .eq('id', adId)
         .single();
 
+      if (selectError) {
+        console.log('Could not fetch ad for impression tracking:', selectError.message);
+        return;
+      }
+
       if (currentAd) {
-        await supabase
+        const { error: updateError } = await supabase
           .from('advertisements')
           .update({ 
             impressions: (currentAd.impressions || 0) + 1
           })
           .eq('id', adId);
+
+        if (updateError) {
+          console.log('Could not update impression count:', updateError.message);
+        }
       }
 
-      // Track detailed impression (if table exists)
+      // Track detailed impression (if table exists and user has access)
       try {
-        await supabase
+        const { error: insertError } = await supabase
           .from('advertisement_impressions')
           .insert({
             advertisement_id: adId,
@@ -146,12 +155,18 @@ export default function AdDisplay({ placement, pageType = 'general', className =
             user_agent: navigator.userAgent.substring(0, 500),
             ip_address: null // Will be handled server-side
           });
+
+        if (insertError) {
+          // Don't log 401 errors as they're expected for anonymous users
+          if (insertError.code !== 'PGRST301' && !insertError.message.includes('401')) {
+            console.log('Detailed impression tracking not available:', insertError.message);
+          }
+        }
       } catch (detailError) {
-        // Ignore if detailed tracking table doesn't exist
-        console.log('Detailed impression tracking not available');
+        // Silently ignore detailed tracking errors
       }
     } catch (error) {
-      console.error('Error tracking impression:', error);
+      console.log('Error tracking impression:', error);
     }
   };
 
@@ -160,24 +175,30 @@ export default function AdDisplay({ placement, pageType = 'general', className =
 
     try {
       // Update click count
-      const { data: currentAd } = await supabase
+      const { data: currentAd, error: selectError } = await supabase
         .from('advertisements')
         .select('clicks')
         .eq('id', ad.id)
         .single();
 
-      if (currentAd) {
-        await supabase
+      if (selectError) {
+        console.log('Could not fetch ad for click tracking:', selectError.message);
+      } else if (currentAd) {
+        const { error: updateError } = await supabase
           .from('advertisements')
           .update({ 
             clicks: (currentAd.clicks || 0) + 1
           })
           .eq('id', ad.id);
+
+        if (updateError) {
+          console.log('Could not update click count:', updateError.message);
+        }
       }
 
-      // Track detailed click (if table exists)
+      // Track detailed click (if table exists and user has access)
       try {
-        await supabase
+        const { error: insertError } = await supabase
           .from('advertisement_clicks')
           .insert({
             advertisement_id: ad.id,
@@ -188,15 +209,21 @@ export default function AdDisplay({ placement, pageType = 'general', className =
             user_agent: navigator.userAgent.substring(0, 500),
             ip_address: null // Will be handled server-side
           });
+
+        if (insertError) {
+          // Don't log 401 errors as they're expected for anonymous users
+          if (insertError.code !== 'PGRST301' && !insertError.message.includes('401')) {
+            console.log('Detailed click tracking not available:', insertError.message);
+          }
+        }
       } catch (detailError) {
-        // Ignore if detailed tracking table doesn't exist
-        console.log('Detailed click tracking not available');
+        // Silently ignore detailed tracking errors
       }
 
       // Open ad in new tab
       window.open(ad.click_url, '_blank', 'noopener,noreferrer');
     } catch (error) {
-      console.error('Error tracking click:', error);
+      console.log('Error tracking click:', error);
       // Still open the ad even if tracking fails
       window.open(ad.click_url, '_blank', 'noopener,noreferrer');
     }

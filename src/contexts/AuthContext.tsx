@@ -106,6 +106,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(null);
         } else if (event === 'TOKEN_REFRESHED' && session) {
           setSession(session);
+        } else if (event === 'INITIAL_SESSION') {
+          // Handle initial session load
+          if (session?.user) {
+            setSession(session);
+            const userProfile = await fetchUserProfile(session.user.id);
+            setUser(userProfile);
+          }
         }
         
         setLoading(false);
