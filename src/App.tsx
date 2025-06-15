@@ -93,6 +93,7 @@ function App() {
             <Route path="/events/:id/edit" element={<EditEvent />} />
             <Route path="/admin/analytics" element={<AdminLayout><AdminAnalytics /></AdminLayout>} />
             <Route path="/admin/ad-management" element={<AdminLayout><AdManagement /></AdminLayout>} />
+            <Route path="/ai-configuration" element={<AIConfiguration />} />
             <Route path="/admin/ai-configuration" element={<AdminLayout><AIConfiguration /></AdminLayout>} />
             <Route path="/admin/cms-pages" element={<AdminLayout><CMSPages /></AdminLayout>} />
             <Route path="/pages/:slug" element={<DynamicPage />} />

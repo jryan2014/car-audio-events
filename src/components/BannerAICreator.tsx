@@ -31,15 +31,17 @@ interface BannerAICreatorProps {
   onClose?: () => void;
   initialPlacement?: string;
   initialSize?: string;
+  externalOpen?: boolean;
 }
 
 export default function BannerAICreator({ 
   onImageSelect, 
   onClose, 
   initialPlacement = 'Homepage Header',
-  initialSize = 'leaderboard'
+  initialSize = 'leaderboard',
+  externalOpen = false
 }: BannerAICreatorProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(externalOpen);
   const [step, setStep] = useState<'setup' | 'generating' | 'results'>('setup');
   const [selectedSize, setSelectedSize] = useState<string>(initialSize);
   const [placement, setPlacement] = useState(initialPlacement);
@@ -78,14 +80,22 @@ export default function BannerAICreator({
     }
   }, [isOpen]);
 
-  // Debug prop changes
+  // Debug prop changes (reduced logging to prevent memory issues)
   useEffect(() => {
-    console.log('BannerAICreator props changed:', { initialSize, initialPlacement, isOpen });
-  }, [initialSize, initialPlacement, isOpen]);
+    if (externalOpen) {
+      console.log('BannerAICreator opened externally');
+    }
+  }, [externalOpen]);
+
+  // Sync external open state
+  useEffect(() => {
+    if (externalOpen !== undefined) {
+      setIsOpen(externalOpen);
+    }
+  }, [externalOpen]);
 
   // Prevent modal from closing due to prop changes
   useEffect(() => {
-    console.log('initialSize changed to:', initialSize, 'current selectedSize:', selectedSize);
     // Don't update selectedSize if modal is open to prevent unwanted behavior
     if (!isOpen) {
       setSelectedSize(initialSize);
@@ -95,7 +105,7 @@ export default function BannerAICreator({
         placement: initialPlacement
       });
     }
-  }, [initialSize, initialPlacement, isOpen, selectedSize]);
+  }, [initialSize, initialPlacement, isOpen]);
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -206,38 +216,42 @@ export default function BannerAICreator({
 
   const saveImageToDatabase = async (image: GeneratedImage) => {
     try {
-      // This would typically save to your database
-      // For now, we'll just log it
-      console.log('Saving image to database:', {
-        url: image.url,
-        prompt: image.prompt,
-        provider: image.provider,
-        cost: image.cost,
-        size_name: image.size.name,
-        size_width: image.size.width,
-        size_height: image.size.height,
-        advertiser_id: 'current-advertiser-id', // Would come from context
-        advertiser_name: 'Current Advertiser', // Would come from context
-        ad_id: null, // Not associated with an ad yet
-        ad_title: null,
-        is_active: false,
-        is_archived: false,
-        metadata: {
-          variation_type: image.id.includes('-bold') ? 'bold' : 
-                         image.id.includes('-clean') ? 'clean' : 
-                         image.id.includes('-luxury') ? 'luxury' : 'standard'
-        }
+      // Save to the AI image management system
+      const response = await fetch('/api/ai-images', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: image.url,
+          prompt: image.prompt,
+          provider: image.provider,
+          cost: image.cost,
+          size_name: image.size.name,
+          size_width: image.size.width,
+          size_height: image.size.height,
+          advertiser_id: 'current-advertiser-id', // Would come from context
+          advertiser_name: 'Current Advertiser', // Would come from context
+          ad_id: null, // Not associated with an ad yet
+          ad_title: null,
+          is_active: false,
+          is_archived: false,
+          metadata: {
+            variation_type: image.id.includes('-bold') ? 'bold' : 
+                           image.id.includes('-clean') ? 'clean' : 
+                           image.id.includes('-luxury') ? 'luxury' : 'standard'
+          }
+        })
       });
-      
-      // In a real implementation, you would make an API call here:
-      // const response = await fetch('/api/ai-images', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(imageData)
-      // });
+
+      if (!response.ok) {
+        throw new Error(`Failed to save image: ${response.statusText}`);
+      }
+
+      console.log('Successfully saved image to database:', image.id);
       
     } catch (error) {
       console.error('Failed to save image to database:', error);
+      // Don't throw error to prevent breaking the generation flow
+      // Just log it and continue
     }
   };
 

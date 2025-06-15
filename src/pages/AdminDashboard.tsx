@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Calendar, DollarSign, TrendingUp, Activity, Shield, AlertTriangle, CheckCircle, UserCheck, FileText, Target, Settings, Archive, Mail, Building2, Menu } from 'lucide-react';
+import { Users, Calendar, DollarSign, TrendingUp, Activity, Shield, AlertTriangle, CheckCircle, UserCheck, FileText, Target, Settings, Archive, Mail, Building2, Menu, Brain, Zap } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -17,6 +17,9 @@ interface DashboardStats {
   pendingApprovals: number;
   totalPages: number;
   publishedPages: number;
+  aiImagesGenerated: number;
+  aiWritingRequests: number;
+  aiTotalCost: number;
 }
 
 interface RecentActivity {
@@ -39,15 +42,17 @@ export default function AdminDashboard() {
     systemAlerts: 0,
     pendingApprovals: 0,
     totalPages: 0,
-    publishedPages: 0
+    publishedPages: 0,
+    aiImagesGenerated: 0,
+    aiWritingRequests: 0,
+    aiTotalCost: 0
   });
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  console.log('AdminDashboard: Admin user detected:', user?.email, user?.membershipType);
-
   useEffect(() => {
     if (user) {
+      console.log('AdminDashboard: Admin user detected:', user?.email, user?.membershipType);
       loadDashboardData();
       // Log dashboard access
       ActivityLogger.adminDashboardAccess();
@@ -91,6 +96,26 @@ export default function AdminDashboard() {
         realStats.publishedPages = pagesData.filter(page => page.status === 'published').length;
       }
 
+      // Load real AI stats for admin
+      let aiStats = { aiImagesGenerated: 0, aiWritingRequests: 0, aiTotalCost: 0 };
+      try {
+        const { aiService } = await import('../services/aiService');
+        const allProviderStats = await aiService.getProviderStats(); // Get all users' stats
+        const overallStats = await aiService.getOverallStats(); // Get system-wide stats
+        
+        // Calculate system-wide AI usage
+        const imageStats = allProviderStats.filter(stat => stat.service_type === 'image');
+        const textStats = allProviderStats.filter(stat => stat.service_type === 'text');
+        
+        aiStats = {
+          aiImagesGenerated: imageStats.reduce((sum, stat) => sum + stat.total_requests_all_time, 0),
+          aiWritingRequests: textStats.reduce((sum, stat) => sum + stat.total_requests_all_time, 0),
+          aiTotalCost: overallStats.totalCost
+        };
+      } catch (error) {
+        console.error('Failed to load AI stats for admin:', error);
+      }
+
       // Set real stats or defaults for missing data
       const finalStats: DashboardStats = {
         totalUsers: realStats.totalUsers ?? 0,
@@ -101,7 +126,10 @@ export default function AdminDashboard() {
         pendingApprovals: 0, // TODO: Implement approval system  
         systemAlerts: 0, // TODO: Implement alert system
         totalPages: realStats.totalPages ?? 0,
-        publishedPages: realStats.publishedPages ?? 0
+        publishedPages: realStats.publishedPages ?? 0,
+        aiImagesGenerated: aiStats.aiImagesGenerated,
+        aiWritingRequests: aiStats.aiWritingRequests,
+        aiTotalCost: aiStats.aiTotalCost
       };
 
       setStats(finalStats);
@@ -145,7 +173,10 @@ export default function AdminDashboard() {
         pendingApprovals: 0,
         systemAlerts: 0,
         totalPages: 0,
-        publishedPages: 0
+        publishedPages: 0,
+        aiImagesGenerated: 0,
+        aiWritingRequests: 0,
+        aiTotalCost: 0
       });
       setRecentActivity([]);
     } finally {
@@ -330,6 +361,36 @@ export default function AdminDashboard() {
               <FileText className="h-8 w-8 text-orange-500" />
             </div>
           </div>
+
+          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-400 text-sm">AI Images Generated</p>
+                <p className="text-2xl font-bold text-white">{stats.aiImagesGenerated.toLocaleString()}</p>
+              </div>
+              <Brain className="h-8 w-8 text-cyan-500" />
+            </div>
+          </div>
+
+          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-400 text-sm">AI Writing Requests</p>
+                <p className="text-2xl font-bold text-white">{stats.aiWritingRequests.toLocaleString()}</p>
+              </div>
+              <Zap className="h-8 w-8 text-indigo-500" />
+            </div>
+          </div>
+
+          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-400 text-sm">AI Total Cost</p>
+                <p className="text-2xl font-bold text-white">{formatCurrency(stats.aiTotalCost)}</p>
+              </div>
+              <DollarSign className="h-8 w-8 text-emerald-500" />
+            </div>
+          </div>
         </div>
 
         {/* Quick Actions */}
@@ -499,6 +560,19 @@ export default function AdminDashboard() {
               <div>
                 <h3 className="text-white font-semibold">Directory Manager</h3>
                 <p className="text-gray-400 text-sm">Manage business listings and directory</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            to="/ai-configuration"
+            className="bg-gradient-to-br from-cyan-500/20 to-cyan-600/20 border border-cyan-500/30 rounded-xl p-6 hover:from-cyan-500/30 hover:to-cyan-600/30 transition-all duration-200 group"
+          >
+            <div className="flex items-center space-x-3">
+              <Brain className="h-8 w-8 text-cyan-400 group-hover:scale-110 transition-transform" />
+              <div>
+                <h3 className="text-white font-semibold">AI Management</h3>
+                <p className="text-gray-400 text-sm">Configure AI services and view usage analytics</p>
               </div>
             </div>
           </Link>

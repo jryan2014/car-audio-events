@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import Header from './Header';
 import Footer from './Footer';
 import PasswordChangeModal from './PasswordChangeModal';
@@ -10,7 +11,12 @@ interface LayoutProps {
 }
 
 export default function Layout({ children }: LayoutProps) {
-  const { user, loading } = useAuth();
+  const location = useLocation();
+
+  // Scroll to top on route change
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900">

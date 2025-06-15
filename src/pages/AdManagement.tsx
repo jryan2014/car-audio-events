@@ -4,7 +4,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import BannerAICreator from '../components/BannerAICreator';
+import AdvertisementImageManager from '../components/AdvertisementImageManager';
 import type { GeneratedImage } from '../lib/imageGeneration';
+import type { AdvertisementImage } from '../types/advertisement';
 
 interface Advertisement {
   id: string;
@@ -645,10 +647,39 @@ export default function AdManagement() {
 
   // Handle size change and update image URL accordingly
   const handleSizeChange = (newSize: string) => {
-    setFormData(prev => ({
-      ...prev,
+    setFormData(prev => ({ 
+      ...prev, 
       size: newSize as Advertisement['size'],
       image_url: updateImageUrlForSize(prev.image_url, newSize)
+    }));
+  };
+
+  // Generate automatic naming convention for ads
+  const generateAdName = (placement: string, size: string, variant?: string) => {
+    const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const placementCode = placement.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3);
+    const sizeCode = size.toUpperCase().slice(0, 3);
+    const variantCode = variant ? `_${variant.toUpperCase()}` : '';
+    return `AD_${placementCode}_${sizeCode}_${timestamp}${variantCode}`;
+  };
+
+  // Auto-generate title when placement or size changes
+  const handlePlacementChange = (newPlacement: string) => {
+    const autoTitle = generateAdName(newPlacement, formData.size);
+    setFormData(prev => ({ 
+      ...prev, 
+      placement_type: newPlacement as Advertisement['placement_type'],
+      title: prev.title || autoTitle // Only set if title is empty
+    }));
+  };
+
+  const handleSizeChangeWithTitle = (newSize: string) => {
+    const autoTitle = generateAdName(formData.placement_type, newSize);
+    setFormData(prev => ({ 
+      ...prev, 
+      size: newSize as Advertisement['size'],
+      image_url: updateImageUrlForSize(prev.image_url, newSize),
+      title: prev.title || autoTitle // Only set if title is empty
     }));
   };
 
@@ -992,14 +1023,30 @@ export default function AdManagement() {
                           <HelpCircle className="h-4 w-4 text-gray-500" />
                         </Tooltip>
                       </label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.title}
-                        onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                        placeholder="e.g., Premium Subwoofer Sale"
-                      />
+                      <div className="relative">
+                        <input
+                          type="text"
+                          required
+                          value={formData.title}
+                          onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                          className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500 pr-12"
+                          placeholder="e.g., Premium Subwoofer Sale"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const autoTitle = generateAdName(formData.placement_type, formData.size);
+                            setFormData(prev => ({ ...prev, title: autoTitle }));
+                          }}
+                          className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 rounded transition-colors"
+                          title="Auto-generate naming convention"
+                        >
+                          <Wand2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <div className="mt-1 text-xs text-gray-500">
+                        💡 Auto-naming format: AD_[PLACEMENT]_[SIZE]_[DATE] (e.g., AD_SID_MED_20250115)
+                      </div>
                     </div>
 
                     <div>
@@ -1070,30 +1117,40 @@ export default function AdManagement() {
                     />
                   </div>
 
+                  {/* Enhanced Image Management */}
                   <div className="mt-6">
                     <label className="block text-gray-400 text-sm mb-2 flex items-center space-x-2">
-                      <span>Banner Image URL</span>
-                      <Tooltip content="Direct URL to your banner image (JPG, PNG, GIF supported)">
+                      <span>Advertisement Images</span>
+                      <Tooltip content="Manage multiple images, A/B test variants, and track performance for each image">
                         <HelpCircle className="h-4 w-4 text-gray-500" />
                       </Tooltip>
                     </label>
-                    <div className="flex space-x-2">
+                    
+                    {/* Legacy Image URL field for backward compatibility */}
+                    <div className="mb-4">
                       <input
                         type="url"
                         value={formData.image_url}
                         onChange={(e) => setFormData(prev => ({ ...prev, image_url: e.target.value }))}
-                        className="flex-1 p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                        placeholder="https://yoursite.com/banner.jpg"
-                      />
-                      <BannerAICreator
-                        onImageSelect={handleAIImageSelect}
-                        initialPlacement={placementInfo[formData.placement_type]?.name || 'Advertisement'}
-                        initialSize={formData.size}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                        placeholder="Or paste an image URL directly..."
                       />
                     </div>
-                    
-                    {/* Image Preview */}
-                    {formData.image_url && (
+
+                                         {/* Image Manager Component for new advertisements */}
+                     {editingAd?.id && (
+                       <AdvertisementImageManager
+                         advertisementId={editingAd.id}
+                         onImageSelect={(image: AdvertisementImage) => {
+                           setFormData(prev => ({ ...prev, image_url: image.image_url }));
+                         }}
+                         placement={placementInfo[formData.placement_type]?.name || 'Advertisement'}
+                         size={formData.size}
+                       />
+                     )}
+
+                    {/* Simple image preview for direct URLs */}
+                    {formData.image_url && !editingAd?.id && (
                       <div className="mt-3 p-3 bg-gray-700/30 rounded-lg border border-gray-600/50">
                         <p className="text-sm text-gray-400 mb-2">Banner Preview:</p>
                         <img
@@ -1109,6 +1166,16 @@ export default function AdManagement() {
                         <div className="hidden text-sm text-red-400">
                           Failed to load image. Please check the URL.
                         </div>
+                      </div>
+                    )}
+
+                    {/* Notice for new advertisements */}
+                    {!editingAd?.id && (
+                      <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                        <p className="text-blue-400 text-sm">
+                          💡 <strong>Pro Tip:</strong> After creating this advertisement, you'll be able to manage multiple images, 
+                          set up A/B tests, and track individual image performance using our advanced image management system.
+                        </p>
                       </div>
                     )}
                   </div>
@@ -1131,7 +1198,7 @@ export default function AdManagement() {
                       </label>
                       <select
                         value={formData.placement_type}
-                        onChange={(e) => setFormData(prev => ({ ...prev, placement_type: e.target.value as any }))}
+                        onChange={(e) => handlePlacementChange(e.target.value)}
                         className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
                       >
                         {Object.entries(placementInfo).map(([key, info]) => (
@@ -1178,7 +1245,7 @@ export default function AdManagement() {
                       <select
                         value={formData.size}
                         onChange={(e) => {
-                          handleSizeChange(e.target.value as Advertisement['size']);
+                          handleSizeChangeWithTitle(e.target.value);
                         }}
                         className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
                       >
