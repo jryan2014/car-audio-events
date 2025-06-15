@@ -102,10 +102,122 @@ interface FormData {
 // Tooltip component
 const Tooltip = ({ children, content }: { children: React.ReactNode; content: string }) => {
   const [isVisible, setIsVisible] = useState(false);
+  const [position, setPosition] = useState<'top' | 'bottom' | 'left' | 'right'>('top');
+  const [adjustedPosition, setAdjustedPosition] = useState({ x: 0, y: 0 });
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isVisible && tooltipRef.current && triggerRef.current) {
+      const tooltip = tooltipRef.current;
+      const trigger = triggerRef.current;
+      const triggerRect = trigger.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      
+      // Set initial position to measure tooltip dimensions
+      tooltip.style.visibility = 'hidden';
+      tooltip.style.display = 'block';
+      const tooltipRect = tooltip.getBoundingClientRect();
+      tooltip.style.visibility = 'visible';
+
+      // Determine best position based on available space
+      let bestPosition: 'top' | 'bottom' | 'left' | 'right' = 'bottom';
+      let adjustX = 0;
+      let adjustY = 0;
+
+      // Check space above
+      const spaceAbove = triggerRect.top;
+      // Check space below  
+      const spaceBelow = viewportHeight - triggerRect.bottom;
+      // Check space left
+      const spaceLeft = triggerRect.left;
+      // Check space right
+      const spaceRight = viewportWidth - triggerRect.right;
+
+      // Prefer bottom if there's enough space, otherwise top
+      if (spaceBelow >= tooltipRect.height + 8) {
+        bestPosition = 'bottom';
+      } else if (spaceAbove >= tooltipRect.height + 8) {
+        bestPosition = 'top';
+      } else if (spaceRight >= tooltipRect.width + 8) {
+        bestPosition = 'right';
+      } else if (spaceLeft >= tooltipRect.width + 8) {
+        bestPosition = 'left';
+      } else {
+        // Force bottom and adjust if needed
+        bestPosition = 'bottom';
+      }
+
+      // For horizontal positions (top/bottom), ensure tooltip doesn't go off screen horizontally
+      if (bestPosition === 'top' || bestPosition === 'bottom') {
+        const tooltipLeft = triggerRect.left + triggerRect.width / 2 - tooltipRect.width / 2;
+        if (tooltipLeft < 8) {
+          adjustX = 8 - tooltipLeft;
+        } else if (tooltipLeft + tooltipRect.width > viewportWidth - 8) {
+          adjustX = (viewportWidth - 8) - (tooltipLeft + tooltipRect.width);
+        }
+      }
+
+      // For vertical positions (left/right), ensure tooltip doesn't go off screen vertically
+      if (bestPosition === 'left' || bestPosition === 'right') {
+        const tooltipTop = triggerRect.top + triggerRect.height / 2 - tooltipRect.height / 2;
+        if (tooltipTop < 8) {
+          adjustY = 8 - tooltipTop;
+        } else if (tooltipTop + tooltipRect.height > viewportHeight - 8) {
+          adjustY = (viewportHeight - 8) - (tooltipTop + tooltipRect.height);
+        }
+      }
+
+      setPosition(bestPosition);
+      setAdjustedPosition({ x: adjustX, y: adjustY });
+    }
+  }, [isVisible]);
+
+  const getTooltipClasses = () => {
+    const baseClasses = "absolute z-[9999] px-3 py-2 text-sm text-white bg-gray-900 rounded-lg shadow-xl border border-gray-700 w-max max-w-[280px] sm:max-w-[320px]";
+    
+    switch (position) {
+      case 'top':
+        return `${baseClasses} bottom-full left-1/2 transform -translate-x-1/2 mb-2`;
+      case 'bottom':
+        return `${baseClasses} top-full left-1/2 transform -translate-x-1/2 mt-2`;
+      case 'left':
+        return `${baseClasses} right-full top-1/2 transform -translate-y-1/2 mr-2`;
+      case 'right':
+        return `${baseClasses} left-full top-1/2 transform -translate-y-1/2 ml-2`;
+      default:
+        return `${baseClasses} top-full left-1/2 transform -translate-x-1/2 mt-2`;
+    }
+  };
+
+  const getArrowClasses = () => {
+    const baseClasses = "absolute w-0 h-0";
+    
+    switch (position) {
+      case 'top':
+        return `${baseClasses} top-full left-1/2 transform -translate-x-1/2 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900`;
+      case 'bottom':
+        return `${baseClasses} bottom-full left-1/2 transform -translate-x-1/2 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-900`;
+      case 'left':
+        return `${baseClasses} left-full top-1/2 transform -translate-y-1/2 border-t-4 border-b-4 border-l-4 border-transparent border-l-gray-900`;
+      case 'right':
+        return `${baseClasses} right-full top-1/2 transform -translate-y-1/2 border-t-4 border-b-4 border-r-4 border-transparent border-r-gray-900`;
+      default:
+        return `${baseClasses} bottom-full left-1/2 transform -translate-x-1/2 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-900`;
+    }
+  };
+
+  const getTooltipStyle = () => {
+    return {
+      transform: `translate(${adjustedPosition.x}px, ${adjustedPosition.y}px)`,
+    };
+  };
 
   return (
     <div className="relative inline-block">
       <div
+        ref={triggerRef}
         onMouseEnter={() => setIsVisible(true)}
         onMouseLeave={() => setIsVisible(false)}
         className="cursor-help"
@@ -113,10 +225,14 @@ const Tooltip = ({ children, content }: { children: React.ReactNode; content: st
         {children}
       </div>
       {isVisible && (
-        <div className="absolute z-50 px-4 py-3 text-sm text-white bg-gray-900 rounded-lg shadow-xl border border-gray-700 -top-2 left-6 transform -translate-y-full w-80 max-w-sm">
+        <div 
+          ref={tooltipRef} 
+          className={getTooltipClasses()}
+          style={getTooltipStyle()}
+        >
           <div className="relative">
-            <div className="whitespace-pre-line leading-relaxed">{content}</div>
-            <div className="absolute top-full left-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+            <div className="whitespace-pre-line leading-relaxed break-words text-left">{content}</div>
+            <div className={getArrowClasses()}></div>
           </div>
         </div>
       )}

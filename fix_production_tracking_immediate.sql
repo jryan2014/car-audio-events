@@ -29,6 +29,13 @@ CREATE TABLE IF NOT EXISTS advertisement_clicks (
 ALTER TABLE advertisement_impressions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE advertisement_clicks ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist to avoid conflicts
+DROP POLICY IF EXISTS "Allow anonymous impression tracking" ON advertisement_impressions;
+DROP POLICY IF EXISTS "Allow anonymous click tracking" ON advertisement_clicks;
+DROP POLICY IF EXISTS "Authenticated users can view impression data" ON advertisement_impressions;
+DROP POLICY IF EXISTS "Authenticated users can view click data" ON advertisement_clicks;
+DROP POLICY IF EXISTS "Allow anonymous impression count updates" ON advertisements;
+
 -- Create RLS Policies for Anonymous Tracking
 CREATE POLICY "Allow anonymous impression tracking" ON advertisement_impressions
     FOR INSERT WITH CHECK (true);
@@ -52,11 +59,28 @@ CREATE POLICY "Allow anonymous impression count updates" ON advertisements
 CREATE INDEX IF NOT EXISTS idx_advertisement_impressions_ad_id ON advertisement_impressions(advertisement_id);
 CREATE INDEX IF NOT EXISTS idx_advertisement_clicks_ad_id ON advertisement_clicks(advertisement_id);
 
--- Add foreign key constraints if advertisements table exists
-ALTER TABLE advertisement_impressions 
-ADD CONSTRAINT advertisement_impressions_advertisement_id_fkey 
-FOREIGN KEY (advertisement_id) REFERENCES advertisements(id) ON DELETE CASCADE;
-
-ALTER TABLE advertisement_clicks 
-ADD CONSTRAINT advertisement_clicks_advertisement_id_fkey 
-FOREIGN KEY (advertisement_id) REFERENCES advertisements(id) ON DELETE CASCADE; 
+-- Add foreign key constraints only if they don't already exist
+DO $$
+BEGIN
+    -- Add foreign key constraint for impressions if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'advertisement_impressions_advertisement_id_fkey'
+        AND table_name = 'advertisement_impressions'
+    ) THEN
+        ALTER TABLE advertisement_impressions 
+        ADD CONSTRAINT advertisement_impressions_advertisement_id_fkey 
+        FOREIGN KEY (advertisement_id) REFERENCES advertisements(id) ON DELETE CASCADE;
+    END IF;
+    
+    -- Add foreign key constraint for clicks if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'advertisement_clicks_advertisement_id_fkey'
+        AND table_name = 'advertisement_clicks'
+    ) THEN
+        ALTER TABLE advertisement_clicks 
+        ADD CONSTRAINT advertisement_clicks_advertisement_id_fkey 
+        FOREIGN KEY (advertisement_id) REFERENCES advertisements(id) ON DELETE CASCADE;
+    END IF;
+END $$; 
