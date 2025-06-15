@@ -4,10 +4,10 @@
 export const VERSION = {
   MAJOR: 1,
   MINOR: 3,
-  PATCH: 1,
+  PATCH: 2,
   BUILD: Date.now(), // Build timestamp
   RELEASE_DATE: '2025-06-15',
-  CODENAME: 'Admin Analytics Fixes'
+  CODENAME: 'Connection Status Restoration'
 } as const;
 
 export const getVersionString = (): string => {
@@ -61,6 +61,21 @@ export const isProduction = (): boolean => {
 
 // Version history for reference
 export const VERSION_HISTORY = [
+  {
+    version: '1.3.2',
+    date: '2025-06-15',
+    codename: 'Connection Status Restoration',
+    description: 'Restored missing connection status badges and improved status display logic',
+    features: [
+      'Restored connection status badges on Configuration tab',
+      'Restored connection status badges on Writing Assistant tab',
+      'Fixed connection status display logic to always show status',
+      'Improved status text: "Not Configured" for missing API keys',
+      'Enhanced status accuracy: "Connected", "Error", "Testing", "Checking..."',
+      'Fixed missing functionality that was accidentally removed',
+      'Consistent status display across all AI configuration tabs'
+    ]
+  },
   {
     version: '1.3.1',
     date: '2025-06-15',
