@@ -28,6 +28,7 @@ import AdminBackup from './pages/AdminBackup';
 import AdManagement from './pages/AdManagement';
 import AdvertisePage from './pages/AdvertisePage';
 import MemberAdDashboard from './pages/MemberAdDashboard';
+import AIConfiguration from './pages/AIConfiguration';
 import CMSPages from './pages/CMSPages';
 import DynamicPage from './pages/DynamicPage';
 import SystemConfiguration from './pages/SystemConfiguration';
@@ -92,6 +93,7 @@ function App() {
             <Route path="/events/:id/edit" element={<EditEvent />} />
             <Route path="/admin/analytics" element={<AdminLayout><AdminAnalytics /></AdminLayout>} />
             <Route path="/admin/ad-management" element={<AdminLayout><AdManagement /></AdminLayout>} />
+            <Route path="/admin/ai-configuration" element={<AdminLayout><AIConfiguration /></AdminLayout>} />
             <Route path="/admin/cms-pages" element={<AdminLayout><CMSPages /></AdminLayout>} />
             <Route path="/pages/:slug" element={<DynamicPage />} />
             <Route path="/admin/system-configuration" element={<AdminLayout><SystemConfiguration /></AdminLayout>} />

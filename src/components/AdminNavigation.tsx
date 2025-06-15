@@ -9,7 +9,8 @@ import {
   Building2, 
   Menu as MenuIcon, 
   Settings, 
-  BarChart3 
+  BarChart3,
+  Bot
 } from 'lucide-react';
 
 interface AdminNavItem {
@@ -55,6 +56,12 @@ const adminNavItems: AdminNavItem[] = [
     href: '/admin/ad-management',
     icon: Target,
     description: 'Advertisement management'
+  },
+  {
+    name: 'AI Config',
+    href: '/admin/ai-configuration',
+    icon: Bot,
+    description: 'AI services configuration'
   },
   {
     name: 'Navigation',

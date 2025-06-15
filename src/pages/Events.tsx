@@ -4,6 +4,7 @@ import { Calendar, MapPin, Users, Clock, Heart, Star, Filter, Search, Trophy } f
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import PageHeader from '../components/PageHeader';
+import AdDisplay from '../components/AdDisplay';
 
 interface Event {
   id: string;
@@ -247,128 +248,138 @@ export default function Events() {
         </div>
 
         {/* Events Grid */}
-        {filteredEvents.length === 0 ? (
-          <div className="text-center py-12">
-            <Calendar className="h-16 w-16 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400 text-lg mb-2">No events found</p>
-            <p className="text-gray-500">Try adjusting your filters or check back later for new events</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredEvents.map((event) => (
-              <div key={event.id} className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl overflow-hidden hover:border-electric-500/50 transition-all duration-300 group">
-                {/* Event Header */}
-                <div className="p-6 pb-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <span 
-                          className="px-2 py-1 rounded-full text-xs font-medium"
-                          style={{ 
-                            backgroundColor: `${event.event_categories?.color}20`,
-                            color: event.event_categories?.color 
-                          }}
-                        >
-                          {event.event_categories?.name}
-                        </span>
-                        {event.metadata?.season_year && (
-                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-electric-500/20 text-electric-400">
-                            {event.metadata.season_year} Season
-                          </span>
-                        )}
-                        {isEventPast(event.end_date) && (
-                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-500/20 text-gray-400">
-                            Past Event
-                          </span>
-                        )}
-                      </div>
-                      <h3 className="text-xl font-bold text-white group-hover:text-electric-400 transition-colors">
-                        {event.title}
-                      </h3>
-                    </div>
-                    
-                    {user && (
-                      <button
-                        onClick={() => toggleFavorite(event.id)}
-                        className={`p-2 rounded-lg transition-colors ${
-                          favorites.has(event.id)
-                            ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
-                            : 'bg-gray-700/50 text-gray-400 hover:bg-red-500/20 hover:text-red-400'
-                        }`}
-                        title={favorites.has(event.id) ? 'Remove from favorites' : 'Add to favorites'}
-                      >
-                        <Heart className={`h-4 w-4 ${favorites.has(event.id) ? 'fill-current' : ''}`} />
-                      </button>
-                    )}
-                  </div>
-
-                  <p className="text-gray-400 text-sm mb-4 line-clamp-2">{event.description}</p>
-
-                  {/* Event Details */}
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center text-gray-300">
-                      <Calendar className="h-4 w-4 mr-2 text-electric-500" />
-                      <span>{formatDate(event.start_date)}</span>
-                      {event.start_date !== event.end_date && (
-                        <span> - {formatDate(event.end_date)}</span>
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center text-gray-300">
-                      <MapPin className="h-4 w-4 mr-2 text-electric-500" />
-                      <span>{event.venue_name}, {event.city}, {event.state}</span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center text-gray-300">
-                        <Users className="h-4 w-4 mr-2 text-electric-500" />
-                        <span>
-                          {event._count?.registrations || 0} registered
-                          {event.max_participants && ` / ${event.max_participants}`}
-                        </span>
-                      </div>
-                      
-                      {event.metadata?.favorites_count && event.metadata.favorites_count > 0 && (
-                        <div className="flex items-center text-red-400">
-                          <Heart className="h-4 w-4 mr-1 fill-current" />
-                          <span className="text-sm">{event.metadata.favorites_count}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {event.registration_fee > 0 && (
-                      <div className="flex items-center text-green-400">
-                        <span className="font-medium">${event.registration_fee}</span>
-                        <span className="text-gray-400 ml-1">registration fee</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Organizer */}
-                  <div className="mt-4 pt-4 border-t border-gray-700">
-                    <p className="text-xs text-gray-500">
-                      Organized by <span className="text-gray-400 font-medium">
-                        {event.users?.company_name || event.users?.name}
-                      </span>
-                    </p>
-                  </div>
-                </div>
-
-                {/* Action Button */}
-                <div className="px-6 pb-6">
-                  <Link
-                    to={`/events/${event.id}`}
-                    onClick={() => trackEventView(event.id)}
-                    className="w-full bg-electric-500 text-white py-3 px-4 rounded-lg font-medium hover:bg-electric-600 transition-colors duration-200 flex items-center justify-center space-x-2"
-                  >
-                    <span>View Details</span>
-                    <Trophy className="h-4 w-4" />
-                  </Link>
-                </div>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Main Content */}
+          <div className="lg:col-span-3">
+            {filteredEvents.length === 0 ? (
+              <div className="text-center py-12">
+                <Calendar className="h-16 w-16 text-gray-600 mx-auto mb-4" />
+                <p className="text-gray-400 text-lg mb-2">No events found</p>
+                <p className="text-gray-500">Try adjusting your filters or check back later for new events</p>
               </div>
-            ))}
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {filteredEvents.map((event) => (
+                  <div key={event.id} className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl overflow-hidden hover:border-electric-500/50 transition-all duration-300 group">
+                    {/* Event Header */}
+                    <div className="p-6 pb-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <span 
+                              className="px-2 py-1 rounded-full text-xs font-medium"
+                              style={{ 
+                                backgroundColor: `${event.event_categories?.color}20`,
+                                color: event.event_categories?.color 
+                              }}
+                            >
+                              {event.event_categories?.name}
+                            </span>
+                            {event.metadata?.season_year && (
+                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-electric-500/20 text-electric-400">
+                                {event.metadata.season_year} Season
+                              </span>
+                            )}
+                            {isEventPast(event.end_date) && (
+                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-500/20 text-gray-400">
+                                Past Event
+                              </span>
+                            )}
+                          </div>
+                          <h3 className="text-xl font-bold text-white group-hover:text-electric-400 transition-colors">
+                            {event.title}
+                          </h3>
+                        </div>
+                        
+                        {user && (
+                          <button
+                            onClick={() => toggleFavorite(event.id)}
+                            className={`p-2 rounded-lg transition-colors ${
+                              favorites.has(event.id)
+                                ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+                                : 'bg-gray-700/50 text-gray-400 hover:bg-red-500/20 hover:text-red-400'
+                            }`}
+                            title={favorites.has(event.id) ? 'Remove from favorites' : 'Add to favorites'}
+                          >
+                            <Heart className={`h-4 w-4 ${favorites.has(event.id) ? 'fill-current' : ''}`} />
+                          </button>
+                        )}
+                      </div>
+
+                      <p className="text-gray-400 text-sm mb-4 line-clamp-2">{event.description}</p>
+
+                      {/* Event Details */}
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center text-gray-300">
+                          <Calendar className="h-4 w-4 mr-2 text-electric-500" />
+                          <span>{formatDate(event.start_date)}</span>
+                          {event.start_date !== event.end_date && (
+                            <span> - {formatDate(event.end_date)}</span>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center text-gray-300">
+                          <MapPin className="h-4 w-4 mr-2 text-electric-500" />
+                          <span>{event.venue_name}, {event.city}, {event.state}</span>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center text-gray-300">
+                            <Users className="h-4 w-4 mr-2 text-electric-500" />
+                            <span>
+                              {event._count?.registrations || 0} registered
+                              {event.max_participants && ` / ${event.max_participants}`}
+                            </span>
+                          </div>
+                          
+                          {event.metadata?.favorites_count && event.metadata.favorites_count > 0 && (
+                            <div className="flex items-center text-red-400">
+                              <Heart className="h-4 w-4 mr-1 fill-current" />
+                              <span className="text-sm">{event.metadata.favorites_count}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {event.registration_fee > 0 && (
+                          <div className="flex items-center text-green-400">
+                            <span className="font-medium">${event.registration_fee}</span>
+                            <span className="text-gray-400 ml-1">registration fee</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Organizer */}
+                      <div className="mt-4 pt-4 border-t border-gray-700">
+                        <p className="text-xs text-gray-500">
+                          Organized by <span className="text-gray-400 font-medium">
+                            {event.users?.company_name || event.users?.name}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Action Button */}
+                    <div className="px-6 pb-6">
+                      <Link
+                        to={`/events/${event.id}`}
+                        onClick={() => trackEventView(event.id)}
+                        className="w-full bg-electric-500 text-white py-3 px-4 rounded-lg font-medium hover:bg-electric-600 transition-colors duration-200 flex items-center justify-center space-x-2"
+                      >
+                        <span>View Details</span>
+                        <Trophy className="h-4 w-4" />
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        )}
+
+          {/* Sidebar */}
+          <div className="lg:col-span-1">
+            <AdDisplay placement="sidebar" pageType="events" />
+          </div>
+        </div>
       </div>
     </div>
   );

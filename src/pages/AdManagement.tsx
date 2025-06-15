@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Edit, Trash2, Eye, Target, DollarSign, Calendar, MapPin, Tag, BarChart3, Settings, X, HelpCircle, Info, Sparkles, MessageSquare, Upload, Image as ImageIcon, ExternalLink, Users, Building2, Crown, Wrench } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Target, DollarSign, Calendar, MapPin, Tag, BarChart3, Settings, X, HelpCircle, Info, Sparkles, MessageSquare, Upload, Image as ImageIcon, ExternalLink, Users, Building2, Crown, Wrench, Wand2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import AdminNavigation from '../components/AdminNavigation';
+import BannerAICreator from '../components/BannerAICreator';
+import type { GeneratedImage } from '../lib/imageGeneration';
 
 interface Advertisement {
   id: string;
@@ -263,8 +264,12 @@ export default function AdManagement() {
     
     try {
       setSaveStatus('saving');
+      
+      // Prepare data for database - exclude pricing_model as it's not in the table
+      const { pricing_model, ...dbData } = formData;
+      
       const adData = {
-        ...formData,
+        ...dbData,
         status: user?.membershipType === 'admin' ? 'approved' : 'pending',
         clicks: 0,
         impressions: 0,
@@ -309,6 +314,14 @@ export default function AdManagement() {
 
   const handleEdit = (ad: Advertisement) => {
     setEditingAd(ad);
+    
+    // Convert timestamp dates to YYYY-MM-DD format for date inputs
+    const formatDateForInput = (dateString: string) => {
+      if (!dateString) return '';
+      const date = new Date(dateString);
+      return date.toISOString().split('T')[0];
+    };
+    
     setFormData({
       title: ad.title,
       description: ad.description,
@@ -326,8 +339,8 @@ export default function AdManagement() {
       budget: ad.budget,
       cost_per_click: ad.cost_per_click,
       cost_per_impression: ad.cost_per_impression,
-      start_date: ad.start_date,
-      end_date: ad.end_date,
+      start_date: formatDateForInput(ad.start_date),
+      end_date: formatDateForInput(ad.end_date),
       pricing_model: ad.cost_per_click > 0 ? 'cpc' : 'cpm',
       priority: ad.priority || 1,
       frequency_cap: ad.frequency_cap || 3,
@@ -409,6 +422,10 @@ export default function AdManagement() {
   const Tooltip = ({ content, children }: { content: string; children: React.ReactNode }) => {
     const [showTooltip, setShowTooltip] = useState(false);
     
+    // Only hide tooltips when AI Assistant or Help modals are open
+    // Allow tooltips to show when ad creation modal is open (users need form field help)
+    const shouldShowTooltip = showTooltip && !showAIModal && !showHelpModal;
+    
     return (
       <div className="relative inline-block">
         <div
@@ -418,17 +435,17 @@ export default function AdManagement() {
         >
           {children}
         </div>
-        {showTooltip && (
-          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg shadow-lg z-50 max-w-xs">
-            {content}
-            <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+        {shouldShowTooltip && (
+          <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg shadow-lg z-[9999] min-w-max max-w-sm">
+            <div className="whitespace-nowrap">{content}</div>
+            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-b-gray-900"></div>
           </div>
         )}
       </div>
     );
   };
 
-  // AI Chat functionality (placeholder for OpenAI integration)
+  // AI Chat functionality with image generation
   const handleAIChat = async () => {
     if (!aiInput.trim()) return;
     
@@ -440,16 +457,16 @@ export default function AdManagement() {
     setAiMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     
     try {
-      // TODO: Implement OpenAI integration
-      // For now, provide helpful responses
       let response = '';
       
-      if (userMessage.toLowerCase().includes('banner') || userMessage.toLowerCase().includes('design')) {
-        response = "I can help you create effective banner designs! For car audio advertisements, consider:\n\n• Use high-contrast colors (black, red, electric blue)\n• Include clear product images\n• Add compelling headlines like 'Unleash Your Sound'\n• Keep text readable at small sizes\n• Include your brand logo prominently\n\nWould you like specific design recommendations for your placement type?";
+      if (userMessage.toLowerCase().includes('banner') || userMessage.toLowerCase().includes('design') || userMessage.toLowerCase().includes('create')) {
+        response = "I can help you create professional banner designs! I now have AI image generation capabilities:\n\n🎨 **AI Banner Creator Features:**\n• Generate custom banners with DALL-E 3\n• Multiple size options (leaderboard, rectangle, skyscraper, etc.)\n• Car audio-specific design prompts\n• Professional automotive styling\n• High-quality HD options available\n\n💡 **Design Tips:**\n• Use high-contrast colors (electric blue, red, black, silver)\n• Include clear product imagery\n• Add compelling headlines\n• Ensure text is readable at banner size\n• Include space for your logo\n\n**Click the 'Create with AI' button in the ad form to generate custom banners!**\n\nWhat type of banner would you like to create?";
       } else if (userMessage.toLowerCase().includes('targeting')) {
         response = "Great question about targeting! For car audio ads, I recommend:\n\n• Target 'Competitors' for performance products\n• Target 'Retailers' for B2B opportunities\n• Use keywords like 'SPL', 'sound quality', 'subwoofer'\n• Focus on event pages for maximum engagement\n\nWhat type of product or service are you advertising?";
+      } else if (userMessage.toLowerCase().includes('ai') || userMessage.toLowerCase().includes('generate')) {
+        response = "🤖 **AI Features Available:**\n\n**Image Generation:**\n• DALL-E 3 powered banner creation\n• Multiple variations per request\n• Professional car audio themes\n• Custom sizing for different placements\n\n**Content Assistance:**\n• Ad copy suggestions\n• Targeting recommendations\n• Placement optimization\n• Budget planning\n\n**Getting Started:**\n1. Click 'Create with AI' in the ad form\n2. Choose your banner size and placement\n3. Describe what you want\n4. Get 3 professional variations\n5. Download or use directly\n\nWhat would you like to create first?";
       } else {
-        response = "I'm here to help with your car audio advertisement! I can assist with:\n\n• Banner design recommendations\n• Targeting strategies\n• Placement optimization\n• Budget planning\n• Copy writing\n\nWhat specific aspect would you like help with?";
+        response = "I'm your AI assistant for car audio advertisements! I can help with:\n\n🎨 **Banner Creation** - Generate custom banners with AI\n📊 **Targeting Strategies** - Optimize your audience reach\n📍 **Placement Optimization** - Choose the best ad positions\n💰 **Budget Planning** - Maximize your ROI\n✍️ **Copy Writing** - Create compelling ad text\n\n**New: AI Image Generation!** Click 'Create with AI' in the ad form to generate professional banners.\n\nWhat specific aspect would you like help with?";
       }
       
       // Add AI response
@@ -462,6 +479,15 @@ export default function AdManagement() {
     }
   };
 
+  // Handle AI-generated image selection
+  const handleAIImageSelect = (image: GeneratedImage) => {
+    setFormData(prev => ({
+      ...prev,
+      image_url: image.url
+    }));
+    setSuccess('AI-generated banner selected successfully!');
+  };
+
   // Filtered ads
   const filteredAds = ads.filter(ad => {
     const matchesSearch = ad.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -472,10 +498,44 @@ export default function AdManagement() {
     return matchesSearch && matchesStatus && matchesPlacement;
   });
 
+  // Helper function to update image URL based on size
+  const updateImageUrlForSize = (originalUrl: string, newSize: string): string => {
+    if (!originalUrl) return '';
+    
+    const sizeMap: Record<string, { width: number; height: number }> = {
+      small: { width: 300, height: 150 },
+      medium: { width: 300, height: 250 },
+      large: { width: 728, height: 90 },
+      banner: { width: 970, height: 250 },
+      square: { width: 250, height: 250 },
+      leaderboard: { width: 728, height: 90 },
+      skyscraper: { width: 160, height: 600 }
+    };
+
+    const dimensions = sizeMap[newSize];
+    if (!dimensions) return originalUrl;
+
+    // Handle Unsplash URLs
+    if (originalUrl.includes('unsplash.com')) {
+      const baseUrl = originalUrl.split('?')[0];
+      return `${baseUrl}?w=${dimensions.width}&h=${dimensions.height}&fit=crop&crop=center`;
+    }
+
+    // Handle other image services or return original
+    return originalUrl;
+  };
+
+  // Handle size change and update image URL accordingly
+  const handleSizeChange = (newSize: string) => {
+    setFormData(prev => ({
+      ...prev,
+      size: newSize as Advertisement['size'],
+      image_url: updateImageUrlForSize(prev.image_url, newSize)
+    }));
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900">
-      <AdminNavigation />
-      
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -495,15 +555,13 @@ export default function AdManagement() {
               </button>
             </Tooltip>
             
-            <Tooltip content="AI-powered banner creation and optimization assistant">
-              <button
-                onClick={() => setShowAIModal(true)}
-                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
-              >
-                <Sparkles className="h-5 w-5" />
-                <span>AI Assistant</span>
-              </button>
-            </Tooltip>
+            <button
+              onClick={() => setShowAIModal(true)}
+              className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
+            >
+              <Sparkles className="h-5 w-5" />
+              <span>AI Assistant</span>
+            </button>
             
             <button
               onClick={() => {
@@ -663,24 +721,25 @@ export default function AdManagement() {
                         <div className="flex items-center space-x-3 mb-2">
                           <h3 className="text-xl font-semibold text-white">{ad.title}</h3>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            ad.status === 'active' ? 'text-green-400 bg-green-400/10' :
-                            ad.status === 'pending' ? 'text-yellow-400 bg-yellow-400/10' :
-                            ad.status === 'approved' ? 'text-blue-400 bg-blue-400/10' :
-                            ad.status === 'paused' ? 'text-orange-400 bg-orange-400/10' :
-                            ad.status === 'completed' ? 'text-gray-400 bg-gray-400/10' :
-                            ad.status === 'rejected' ? 'text-red-400 bg-red-400/10' :
-                            'text-gray-400 bg-gray-400/10'
+                            ad.status === 'active' ? 'bg-green-500/20 text-green-400' :
+                            ad.status === 'approved' ? 'bg-blue-500/20 text-blue-400' :
+                            ad.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                            ad.status === 'paused' ? 'bg-gray-500/20 text-gray-400' :
+                            'bg-red-500/20 text-red-400'
                           }`}>
                             {ad.status.charAt(0).toUpperCase() + ad.status.slice(1)}
                           </span>
                         </div>
                         
+                        {/* Ad ID and Placement Info */}
                         <div className="flex items-center space-x-4 text-sm text-gray-400 mb-3">
                           <span className="flex items-center space-x-1">
-                            <MapPin className="h-4 w-4" />
-                            <span>{placement?.name || ad.placement_type}</span>
+                            <span className="font-mono text-xs bg-gray-700/50 px-2 py-1 rounded">ID: {ad.id.slice(0, 8)}</span>
                           </span>
-                          <span>{placement?.dimensions || 'Custom'}</span>
+                          <span className="flex items-center space-x-1">
+                            <span>{placement.name}</span>
+                          </span>
+                          <span>{placement.dimensions}</span>
                           <span>{ad.advertiser_name}</span>
                         </div>
                         
@@ -896,7 +955,7 @@ export default function AdManagement() {
                   <div className="mt-6">
                     <label className="block text-gray-400 text-sm mb-2 flex items-center space-x-2">
                       <span>Banner Image URL</span>
-                      <Tooltip content="Direct URL to your banner image. Use our AI Assistant for design help!">
+                      <Tooltip content="Direct URL to your banner image (JPG, PNG, GIF supported)">
                         <HelpCircle className="h-4 w-4 text-gray-500" />
                       </Tooltip>
                     </label>
@@ -908,15 +967,32 @@ export default function AdManagement() {
                         className="flex-1 p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
                         placeholder="https://yoursite.com/banner.jpg"
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowAIModal(true)}
-                        className="px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
-                      >
-                        <Sparkles className="h-4 w-4" />
-                        <span>AI Help</span>
-                      </button>
+                      <BannerAICreator
+                        onImageSelect={handleAIImageSelect}
+                        initialPlacement={placementInfo[formData.placement_type]?.name || 'Advertisement'}
+                        initialSize={formData.size}
+                      />
                     </div>
+                    
+                    {/* Image Preview */}
+                    {formData.image_url && (
+                      <div className="mt-3 p-3 bg-gray-700/30 rounded-lg border border-gray-600/50">
+                        <p className="text-sm text-gray-400 mb-2">Banner Preview:</p>
+                        <img
+                          src={formData.image_url}
+                          alt="Banner preview"
+                          className="max-w-full h-auto max-h-32 rounded border border-gray-600"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            target.nextElementSibling?.classList.remove('hidden');
+                          }}
+                        />
+                        <div className="hidden text-sm text-red-400">
+                          Failed to load image. Please check the URL.
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -983,7 +1059,9 @@ export default function AdManagement() {
                       </label>
                       <select
                         value={formData.size}
-                        onChange={(e) => setFormData(prev => ({ ...prev, size: e.target.value as any }))}
+                        onChange={(e) => {
+                          handleSizeChange(e.target.value as Advertisement['size']);
+                        }}
                         className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
                       >
                         <option value="small">Small (300x150)</option>
@@ -1046,24 +1124,6 @@ export default function AdManagement() {
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                     <div>
                       <label className="block text-gray-400 text-sm mb-2 flex items-center space-x-2">
-                        <span>Pricing Model *</span>
-                        <Tooltip content="CPC: Pay per click, CPM: Pay per 1000 views, Fixed: One-time payment">
-                          <HelpCircle className="h-4 w-4 text-gray-500" />
-                        </Tooltip>
-                      </label>
-                      <select
-                        value={formData.pricing_model}
-                        onChange={(e) => setFormData(prev => ({ ...prev, pricing_model: e.target.value as any }))}
-                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                      >
-                        <option value="cpc">Cost Per Click (CPC)</option>
-                        <option value="cpm">Cost Per 1000 Impressions (CPM)</option>
-                        <option value="fixed">Fixed Rate</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-gray-400 text-sm mb-2 flex items-center space-x-2">
                         <span>Total Budget ($) *</span>
                         <Tooltip content="Maximum amount you want to spend on this campaign">
                           <HelpCircle className="h-4 w-4 text-gray-500" />
@@ -1078,6 +1138,24 @@ export default function AdManagement() {
                         onChange={(e) => setFormData(prev => ({ ...prev, budget: parseFloat(e.target.value) || 0 }))}
                         className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
                       />
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2 flex items-center space-x-2">
+                        <span>Pricing Model *</span>
+                        <Tooltip content="CPC: Pay per click, CPM: Pay per 1000 views, Fixed: One-time payment">
+                          <HelpCircle className="h-4 w-4 text-gray-500" />
+                        </Tooltip>
+                      </label>
+                      <select
+                        value={formData.pricing_model}
+                        onChange={(e) => setFormData(prev => ({ ...prev, pricing_model: e.target.value as any }))}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                      >
+                        <option value="cpc">Cost Per Click (CPC)</option>
+                        <option value="cpm">Cost Per 1000 Impressions (CPM)</option>
+                        <option value="fixed">Fixed Rate</option>
+                      </select>
                     </div>
 
                     {formData.pricing_model === 'cpc' && (
@@ -1243,7 +1321,7 @@ export default function AdManagement() {
         {/* Help Modal */}
         {showHelpModal && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-800 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-gray-800 rounded-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
               <div className="p-6 border-b border-gray-700">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xl font-bold text-white">Advertisement Help & Documentation</h3>
@@ -1256,7 +1334,90 @@ export default function AdManagement() {
                 </div>
               </div>
 
-              <div className="p-6 space-y-6">
+              <div className="p-6 space-y-8">
+                {/* Ad Placement Taxonomy */}
+                <div>
+                  <h4 className="text-lg font-semibold text-white mb-4 flex items-center space-x-2">
+                    <Target className="h-5 w-5 text-electric-400" />
+                    <span>Advertisement Placement Taxonomy</span>
+                  </h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Primary Placements */}
+                    <div className="bg-gray-700/30 rounded-lg p-4">
+                      <h5 className="font-semibold text-electric-400 mb-3">Primary Placements</h5>
+                      <div className="space-y-3 text-sm">
+                        <div>
+                          <div className="font-medium text-white">Header Banner (HB)</div>
+                          <div className="text-gray-400">Top of page, maximum visibility</div>
+                          <div className="text-xs text-gray-500">ID Format: HB-001, HB-002, etc.</div>
+                        </div>
+                        <div>
+                          <div className="font-medium text-white">Sidebar Rectangle (SR)</div>
+                          <div className="text-gray-400">Content page sidebars</div>
+                          <div className="text-xs text-gray-500">ID Format: SR-001, SR-002, etc.</div>
+                        </div>
+                        <div>
+                          <div className="font-medium text-white">Footer Banner (FB)</div>
+                          <div className="text-gray-400">Bottom of page placement</div>
+                          <div className="text-xs text-gray-500">ID Format: FB-001, FB-002, etc.</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Specialized Placements */}
+                    <div className="bg-gray-700/30 rounded-lg p-4">
+                      <h5 className="font-semibold text-electric-400 mb-3">Specialized Placements</h5>
+                      <div className="space-y-3 text-sm">
+                        <div>
+                          <div className="font-medium text-white">Event Page (EP)</div>
+                          <div className="text-gray-400">Event detail and listing pages</div>
+                          <div className="text-xs text-gray-500">ID Format: EP-001, EP-002, etc.</div>
+                        </div>
+                        <div>
+                          <div className="font-medium text-white">Directory Listing (DL)</div>
+                          <div className="text-gray-400">Business directory pages</div>
+                          <div className="text-xs text-gray-500">ID Format: DL-001, DL-002, etc.</div>
+                        </div>
+                        <div>
+                          <div className="font-medium text-white">Search Results (SR)</div>
+                          <div className="text-gray-400">Search and filter result pages</div>
+                          <div className="text-xs text-gray-500">ID Format: SRP-001, SRP-002, etc.</div>
+                        </div>
+                        <div>
+                          <div className="font-medium text-white">Mobile Banner (MB)</div>
+                          <div className="text-gray-400">Mobile-optimized placements</div>
+                          <div className="text-xs text-gray-500">ID Format: MB-001, MB-002, etc.</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Size Standards */}
+                  <div className="mt-6 bg-gray-700/30 rounded-lg p-4">
+                    <h5 className="font-semibold text-electric-400 mb-3">Standard Ad Sizes</h5>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <div className="font-medium text-white">Banner Sizes</div>
+                        <div className="text-gray-400">• Leaderboard: 728×90px</div>
+                        <div className="text-gray-400">• Banner: 970×250px</div>
+                        <div className="text-gray-400">• Large: 728×90px</div>
+                      </div>
+                      <div>
+                        <div className="font-medium text-white">Rectangle Sizes</div>
+                        <div className="text-gray-400">• Medium Rectangle: 300×250px</div>
+                        <div className="text-gray-400">• Square: 250×250px</div>
+                        <div className="text-gray-400">• Small: 300×150px</div>
+                      </div>
+                      <div>
+                        <div className="font-medium text-white">Vertical Sizes</div>
+                        <div className="text-gray-400">• Skyscraper: 160×600px</div>
+                        <div className="text-gray-400">• Wide Skyscraper: 300×600px</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div>
                   <h4 className="text-lg font-semibold text-white mb-3">Getting Started</h4>
                   <div className="space-y-2 text-gray-300">
@@ -1264,51 +1425,6 @@ export default function AdManagement() {
                     <p>• Upload high-quality banner images that match the recommended dimensions</p>
                     <p>• Set realistic budgets and monitor performance regularly</p>
                     <p>• Use our AI Assistant for design recommendations and optimization tips</p>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="text-lg font-semibold text-white mb-3">Placement Types</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {Object.entries(placementInfo).map(([key, info]) => (
-                      <div key={key} className="bg-gray-700/30 rounded-lg p-4">
-                        <h5 className="font-medium text-white mb-2">{info.name}</h5>
-                        <p className="text-sm text-gray-400 mb-2">{info.description}</p>
-                        <div className="text-xs text-gray-500">
-                          <p>Dimensions: {info.dimensions}</p>
-                          <p>Pricing: {info.pricing_range}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="text-lg font-semibold text-white mb-3">Best Practices</h4>
-                  <div className="space-y-2 text-gray-300">
-                    <p>• <strong>Design:</strong> Use high-contrast colors and clear, readable fonts</p>
-                    <p>• <strong>Targeting:</strong> Select specific user types for better conversion rates</p>
-                    <p>• <strong>Budget:</strong> Start with smaller budgets and scale successful campaigns</p>
-                    <p>• <strong>Timing:</strong> Consider event schedules and peak traffic times</p>
-                    <p>• <strong>Testing:</strong> Try different placements and designs to optimize performance</p>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="text-lg font-semibold text-white mb-3">Pricing Models</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-gray-700/30 rounded-lg p-4">
-                      <h5 className="font-medium text-white mb-2">CPC (Cost Per Click)</h5>
-                      <p className="text-sm text-gray-400">Pay only when users click your ad. Best for driving traffic to your website.</p>
-                    </div>
-                    <div className="bg-gray-700/30 rounded-lg p-4">
-                      <h5 className="font-medium text-white mb-2">CPM (Cost Per Mille)</h5>
-                      <p className="text-sm text-gray-400">Pay per 1000 impressions. Best for brand awareness campaigns.</p>
-                    </div>
-                    <div className="bg-gray-700/30 rounded-lg p-4">
-                      <h5 className="font-medium text-white mb-2">Fixed Rate</h5>
-                      <p className="text-sm text-gray-400">One-time payment for guaranteed placement duration.</p>
-                    </div>
                   </div>
                 </div>
               </div>

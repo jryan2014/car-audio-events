@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, BarChart3, DollarSign, Eye, Target, TrendingUp, Calendar, Settings, HelpCircle, Sparkles } from 'lucide-react';
+import { Plus, BarChart3, DollarSign, Eye, Target, TrendingUp, Calendar, Settings, HelpCircle, Sparkles, Edit, Trash2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import AdDisplay from '../components/AdDisplay';
 
 interface Advertisement {
   id: string;
@@ -18,6 +19,9 @@ interface Advertisement {
   start_date: string;
   end_date: string;
   created_at: string;
+  advertiser_name: string;
+  image_url: string;
+  click_url: string;
 }
 
 interface CampaignStats {
@@ -137,8 +141,8 @@ export default function MemberAdDashboard() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white">My Advertising Dashboard</h1>
-            <p className="text-gray-400">Manage your campaigns and track performance</p>
+            <h1 className="text-3xl font-bold text-white">My Advertisements</h1>
+            <p className="text-gray-400">Manage your advertising campaigns and track performance</p>
           </div>
           
           <div className="flex items-center space-x-4">
@@ -147,15 +151,15 @@ export default function MemberAdDashboard() {
               className="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors flex items-center space-x-2"
             >
               <HelpCircle className="h-5 w-5" />
-              <span>Learn More</span>
+              <span>Advertising Info</span>
             </Link>
             
             <Link
-              to="/admin/ad-management"
+              to="/admin/ads"
               className="bg-electric-500 text-white px-6 py-3 rounded-lg hover:bg-electric-600 transition-colors flex items-center space-x-2"
             >
               <Plus className="h-5 w-5" />
-              <span>Create Campaign</span>
+              <span>Create New Ad</span>
             </Link>
           </div>
         </div>
@@ -304,17 +308,31 @@ export default function MemberAdDashboard() {
                           </span>
                         </div>
                         
+                        {/* Ad ID and Placement Info */}
                         <div className="flex items-center space-x-4 text-sm text-gray-400 mb-2">
-                          <span>{ad.placement_type.replace('_', ' ')}</span>
+                          <span className="font-mono text-xs bg-gray-700/50 px-2 py-1 rounded">
+                            ID: {ad.id.slice(0, 8)}
+                          </span>
+                          <span className="capitalize">{ad.placement_type.replace('_', ' ')}</span>
                           <span>•</span>
-                          <span>{ad.size}</span>
+                          <span className="capitalize">{ad.size}</span>
                           <span>•</span>
                           <span>{ad.start_date} to {ad.end_date}</span>
                         </div>
                         
                         {ad.description && (
-                          <p className="text-gray-300 text-sm">{ad.description}</p>
+                          <p className="text-gray-300 text-sm mb-2">{ad.description}</p>
                         )}
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <Link
+                          to={`/admin/ads?edit=${ad.id}`}
+                          className="p-2 text-gray-400 hover:text-white transition-colors"
+                          title="Edit Ad"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Link>
                       </div>
                     </div>
                     

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, MapPin, Trophy, Users, Star, ArrowRight, Volume2, Zap } from 'lucide-react';
 import GoogleMap from '../components/GoogleMap';
+import AdDisplay from '../components/AdDisplay';
 import { supabase } from '../lib/supabase';
 
 interface FeaturedEvent {
@@ -207,6 +208,11 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Header Advertisement */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <AdDisplay placement="header" pageType="home" className="flex justify-center" />
+      </div>
 
       {/* Stats Section */}
       <section className="py-12 bg-black/50">

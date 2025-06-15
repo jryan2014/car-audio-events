@@ -49,6 +49,7 @@ export default function AdminSettings() {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [activeTab, setActiveTab] = useState('stripe');
   const [debugModeEnabled, setDebugModeEnabled] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Check if user is admin
   if (!user || user.membershipType !== 'admin') {
@@ -63,11 +64,10 @@ export default function AdminSettings() {
 
   const loadExistingKeys = async () => {
     try {
-      // Load keys from admin_settings table
       const { data, error } = await supabase
         .from('admin_settings')
-        .select('key_name, key_value')
-        .in('key_name', [
+        .select('key, value')
+        .in('key', [
           'stripe_publishable_key',
           'stripe_secret_key', 
           'stripe_webhook_secret',
@@ -87,62 +87,38 @@ export default function AdminSettings() {
         ]);
 
       if (error) {
-        console.error('Database error:', error);
-        throw error;
+        console.error('Error loading admin settings:', error);
+        return;
       }
 
-      // Convert array to object format
-      const dbKeys: Partial<IntegrationKeys> = {};
-      data?.forEach(item => {
-        const key = item.key_name as keyof IntegrationKeys;
-        if (key === 'stripe_test_mode') {
-          dbKeys[key] = item.key_value === 'true';
-        } else {
-          dbKeys[key] = item.key_value;
-        }
-      });
-
-      // Merge with environment variables as fallbacks
-      setKeys({
-        stripe_publishable_key: dbKeys.stripe_publishable_key || import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '',
-        stripe_secret_key: dbKeys.stripe_secret_key || '',
-        stripe_webhook_secret: dbKeys.stripe_webhook_secret || '',
-        stripe_webhook_endpoint: dbKeys.stripe_webhook_endpoint || '',
-        stripe_test_mode: dbKeys.stripe_test_mode ?? true,
-        supabase_url: dbKeys.supabase_url || import.meta.env.VITE_SUPABASE_URL || '',
-        supabase_anon_key: dbKeys.supabase_anon_key || import.meta.env.VITE_SUPABASE_ANON_KEY || '',
-        supabase_service_role_key: dbKeys.supabase_service_role_key || '',
-        google_maps_api_key: dbKeys.google_maps_api_key || import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
-        recaptcha_site_key: dbKeys.recaptcha_site_key || '',
-        recaptcha_secret_key: dbKeys.recaptcha_secret_key || '',
-        recaptcha_enabled: dbKeys.recaptcha_enabled ?? false,
-        recaptcha_score_threshold: dbKeys.recaptcha_score_threshold || '',
-        session_timeout_hours: dbKeys.session_timeout_hours || '',
-        session_inactivity_timeout_hours: dbKeys.session_inactivity_timeout_hours || '',
-        session_remember_me_days: dbKeys.session_remember_me_days || ''
-      });
-
+      if (data) {
+        const keyMap: { [key: string]: string } = {};
+        data.forEach((item: any) => {
+          keyMap[item.key] = item.value || '';
+        });
+        
+        // Merge with environment variables as fallbacks
+        setKeys({
+          stripe_publishable_key: keyMap.stripe_publishable_key || import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '',
+          stripe_secret_key: keyMap.stripe_secret_key || '',
+          stripe_webhook_secret: keyMap.stripe_webhook_secret || '',
+          stripe_webhook_endpoint: keyMap.stripe_webhook_endpoint || '',
+          stripe_test_mode: keyMap.stripe_test_mode === 'true',
+          supabase_url: keyMap.supabase_url || import.meta.env.VITE_SUPABASE_URL || '',
+          supabase_anon_key: keyMap.supabase_anon_key || import.meta.env.VITE_SUPABASE_ANON_KEY || '',
+          supabase_service_role_key: keyMap.supabase_service_role_key || '',
+          google_maps_api_key: keyMap.google_maps_api_key || import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
+          recaptcha_site_key: keyMap.recaptcha_site_key || import.meta.env.VITE_RECAPTCHA_SITE_KEY || '',
+          recaptcha_secret_key: keyMap.recaptcha_secret_key || '',
+          recaptcha_enabled: keyMap.recaptcha_enabled === 'true',
+          recaptcha_score_threshold: keyMap.recaptcha_score_threshold || '0.5',
+          session_timeout_hours: keyMap.session_timeout_hours || '24',
+          session_inactivity_timeout_hours: keyMap.session_inactivity_timeout_hours || '2',
+          session_remember_me_days: keyMap.session_remember_me_days || '30'
+        });
+      }
     } catch (error) {
-      console.error('Failed to load existing keys:', error);
-      // Fallback to environment variables only
-      setKeys({
-        stripe_publishable_key: import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '',
-        stripe_secret_key: '',
-        stripe_webhook_secret: '',
-        stripe_webhook_endpoint: '',
-        stripe_test_mode: true,
-        supabase_url: import.meta.env.VITE_SUPABASE_URL || '',
-        supabase_anon_key: import.meta.env.VITE_SUPABASE_ANON_KEY || '',
-        supabase_service_role_key: '',
-        google_maps_api_key: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
-        recaptcha_site_key: '',
-        recaptcha_secret_key: '',
-        recaptcha_enabled: false,
-        recaptcha_score_threshold: '',
-        session_timeout_hours: '',
-        session_inactivity_timeout_hours: '',
-        session_remember_me_days: ''
-      });
+      console.error('Error loading admin settings:', error);
     }
   };
 
@@ -150,12 +126,12 @@ export default function AdminSettings() {
     try {
       const { data, error } = await supabase
         .from('admin_settings')
-        .select('key_value')
-        .eq('key_name', 'login_debug_mode')
+        .select('value')
+        .eq('key', 'login_debug_mode')
         .single();
       
       if (!error && data) {
-        setDebugModeEnabled(data.key_value === 'true');
+        setDebugModeEnabled(data.value === 'true');
       }
     } catch (error) {
       console.log('Debug mode setting not found, defaulting to false');
@@ -167,13 +143,13 @@ export default function AdminSettings() {
       const { error } = await supabase
         .from('admin_settings')
         .upsert({
-          key_name: 'login_debug_mode',
-          key_value: enabled.toString(),
+          key: 'login_debug_mode',
+          value: enabled.toString(),
           is_sensitive: false,
           updated_by: user!.id,
           updated_at: new Date().toISOString()
         }, {
-          onConflict: 'key_name'
+          onConflict: 'key'
         });
 
       if (error) throw error;
@@ -287,8 +263,8 @@ export default function AdminSettings() {
     try {
       // Prepare data for upsert
       const settingsToUpdate = Object.entries(keys).map(([key, value]) => ({
-        key_name: key,
-        key_value: typeof value === 'boolean' ? value.toString() : value as string,
+        key: key,
+        value: typeof value === 'boolean' ? value.toString() : value as string,
         is_sensitive: ['stripe_secret_key', 'stripe_webhook_secret', 'supabase_service_role_key'].includes(key),
         description: getKeyDescription(key),
         updated_by: user!.id,
@@ -299,7 +275,7 @@ export default function AdminSettings() {
       const { error } = await supabase
         .from('admin_settings')
         .upsert(settingsToUpdate, {
-          onConflict: 'key_name'
+          onConflict: 'key'
         });
 
       if (error) {
