@@ -10,8 +10,11 @@ interface RichTextEditorProps {
 
 export default function RichTextEditor({ value, onChange, placeholder, className }: RichTextEditorProps) {
   const quillRef = useRef<ReactQuill>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
   const [isReady, setIsReady] = useState(false);
   const [cssLoaded, setCssLoaded] = useState(false);
+  const [isSticky, setIsSticky] = useState(false);
+  const [toolbarHeight, setToolbarHeight] = useState(0);
 
   // Dynamically load Quill CSS only when component is used
   useEffect(() => {
@@ -28,6 +31,66 @@ export default function RichTextEditor({ value, onChange, placeholder, className
 
     loadQuillCSS();
   }, [cssLoaded]);
+
+  // Handle sticky toolbar with JavaScript
+  useEffect(() => {
+    if (!isReady || !quillRef.current) return;
+
+    const handleScroll = () => {
+      const quillElement = quillRef.current?.getEditor()?.root?.parentElement?.parentElement;
+      if (!quillElement) return;
+
+      const toolbar = quillElement.querySelector('.ql-toolbar') as HTMLElement;
+      if (!toolbar) return;
+
+      const rect = quillElement.getBoundingClientRect();
+      const toolbarRect = toolbar.getBoundingClientRect();
+      
+      // Store toolbar height for spacing
+      if (toolbarHeight === 0) {
+        setToolbarHeight(toolbarRect.height);
+      }
+
+      // Check if the editor is in view and toolbar should be sticky
+      const shouldBeSticky = rect.top <= 0 && rect.bottom > toolbarRect.height;
+      
+      if (shouldBeSticky !== isSticky) {
+        setIsSticky(shouldBeSticky);
+      }
+    };
+
+    // Add scroll listener
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll(); // Initial check
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [isReady, isSticky, toolbarHeight]);
+
+  // Apply sticky classes when state changes
+  useEffect(() => {
+    if (!isReady || !quillRef.current) return;
+
+    const quillElement = quillRef.current?.getEditor()?.root?.parentElement?.parentElement;
+    if (!quillElement) return;
+
+    const toolbar = quillElement.querySelector('.ql-toolbar') as HTMLElement;
+    const container = quillElement.querySelector('.ql-container') as HTMLElement;
+    
+    if (toolbar && container) {
+      if (isSticky) {
+        toolbar.classList.add('toolbar-sticky');
+        container.classList.add('container-with-sticky-toolbar');
+        // Add padding to prevent content jump
+        container.style.paddingTop = `${toolbarHeight}px`;
+      } else {
+        toolbar.classList.remove('toolbar-sticky');
+        container.classList.remove('container-with-sticky-toolbar');
+        container.style.paddingTop = '0px';
+      }
+    }
+  }, [isSticky, toolbarHeight, isReady]);
 
   // Suppress React warnings for ReactQuill and inject custom styles
   useEffect(() => {
@@ -97,10 +160,18 @@ export default function RichTextEditor({ value, onChange, placeholder, className
         border: 1px solid rgb(75, 85, 99) !important;
         border-bottom: none !important;
         border-radius: 0.5rem 0.5rem 0 0 !important;
-        position: sticky !important;
-        top: 0 !important;
+        transition: all 0.2s ease-in-out !important;
         z-index: 1000 !important;
+      }
+      
+      .ql-toolbar.toolbar-sticky {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+        border-radius: 0 !important;
+        z-index: 1000 !important;
       }
       
       .ql-container {
@@ -110,6 +181,10 @@ export default function RichTextEditor({ value, onChange, placeholder, className
         border-radius: 0 0 0.5rem 0.5rem !important;
         color: white !important;
         min-height: 300px;
+      }
+      
+      .ql-container.container-with-sticky-toolbar {
+        margin-top: 0 !important;
       }
       
       /* Ensure sticky toolbar works properly in different scroll contexts */
