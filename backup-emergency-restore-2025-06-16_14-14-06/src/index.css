@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom animations */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { 
+    opacity: 0; 
+    transform: translateY(20px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { 
+    opacity: 1; 
+    filter: drop-shadow(0 0 8px currentColor);
+  }
+  50% { 
+    opacity: 0.8; 
+    filter: drop-shadow(0 0 12px currentColor);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.6s ease-out;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.6s ease-out;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Line clamp utilities */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Custom page subtitle utility - prevents text wrapping issues */
+.page-subtitle {
+  @apply text-lg sm:text-xl text-gray-400 max-w-4xl mx-auto leading-relaxed;
+}
+
+/* Responsive page subtitle variants */
+.page-subtitle-large {
+  @apply text-xl sm:text-2xl text-gray-400 max-w-5xl mx-auto leading-relaxed;
+}
+
+.page-subtitle-small {
+  @apply text-base sm:text-lg text-gray-400 max-w-3xl mx-auto leading-relaxed;
+}
