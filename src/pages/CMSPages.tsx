@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase';
 import RichTextEditor from '../components/RichTextEditor';
 import AIWritingAssistant from '../components/AIWritingAssistant';
 import CMSPageHelp from '../components/CMSPageHelp';
-import { scrollToRef, useAutoScrollToForm, useAutoFocusFirstInput } from '../utils/focusUtils';
+import { scrollToRef, useAutoScrollToForm } from '../utils/focusUtils';
 
 interface CMSPage {
   id: string;
@@ -59,6 +59,7 @@ export default function CMSPages() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showHelp, setShowHelp] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
+  const [hasFocusedOnFormShow, setHasFocusedOnFormShow] = useState(false);
   const [formData, setFormData] = useState<PageFormData>({
     title: '',
     slug: '',
@@ -84,8 +85,30 @@ export default function CMSPages() {
   // Auto-scroll to form when it becomes visible
   useAutoScrollToForm(formRef, showCreateForm);
   
-  // Auto-focus first input when form becomes visible
-  useAutoFocusFirstInput(formRef, showCreateForm);
+  // Auto-focus first input when form becomes visible (but only once per form show)
+  useEffect(() => {
+    if (showCreateForm && !hasFocusedOnFormShow && formRef.current) {
+      const firstInput = formRef.current.querySelector(
+        'input:not([disabled]):not([readonly]), textarea:not([disabled]):not([readonly]), select:not([disabled])'
+      ) as HTMLElement;
+      
+      if (firstInput) {
+        setTimeout(() => {
+          try {
+            if ('focus' in firstInput && typeof firstInput.focus === 'function') {
+              firstInput.focus({ preventScroll: false });
+            }
+          } catch (error) {
+            console.warn('Focus failed:', error);
+          }
+        }, 200);
+      }
+      setHasFocusedOnFormShow(true);
+    } else if (!showCreateForm) {
+      // Reset focus tracking when form is hidden
+      setHasFocusedOnFormShow(false);
+    }
+  }, [showCreateForm, hasFocusedOnFormShow]);
 
   const loadPages = async () => {
     try {
@@ -306,6 +329,7 @@ export default function CMSPages() {
       show_in_sitemap: page.show_in_sitemap !== false
     });
     setEditingPage(page);
+    setHasFocusedOnFormShow(false); // Reset focus tracking for edit mode
     setShowCreateForm(true);
   };
 
@@ -349,6 +373,11 @@ export default function CMSPages() {
       ...prev,
       content: prev.content + '\n\n' + content
     }));
+  };
+
+  const handleCreateNew = () => {
+    setHasFocusedOnFormShow(false); // Reset focus tracking for new page
+    setShowCreateForm(true);
   };
 
   const getPageTypeFromSlug = (slug: string): string => {
@@ -432,7 +461,7 @@ export default function CMSPages() {
             </button>
             
             <button
-              onClick={() => setShowCreateForm(true)}
+              onClick={handleCreateNew}
               className="bg-electric-500 text-white px-6 py-3 rounded-lg hover:bg-electric-600 transition-colors flex items-center space-x-2"
             >
               <Plus className="h-5 w-5" />
@@ -572,6 +601,7 @@ export default function CMSPages() {
                   onClick={() => {
                     setShowCreateForm(false);
                     setEditingPage(null);
+                    setHasFocusedOnFormShow(false); // Reset focus tracking
                     setFormData({
                       title: '',
                       slug: '',
@@ -938,6 +968,7 @@ export default function CMSPages() {
                   onClick={() => {
                     setShowCreateForm(false);
                     setEditingPage(null);
+                    setHasFocusedOnFormShow(false); // Reset focus tracking
                     setFormData({
                       title: '',
                       slug: '',
