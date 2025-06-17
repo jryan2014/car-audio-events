@@ -10,11 +10,8 @@ interface RichTextEditorProps {
 
 export default function RichTextEditor({ value, onChange, placeholder, className }: RichTextEditorProps) {
   const quillRef = useRef<ReactQuill>(null);
-  const toolbarRef = useRef<HTMLDivElement>(null);
   const [isReady, setIsReady] = useState(false);
   const [cssLoaded, setCssLoaded] = useState(false);
-  const [isSticky, setIsSticky] = useState(false);
-  const [toolbarHeight, setToolbarHeight] = useState(0);
 
   // Dynamically load Quill CSS only when component is used
   useEffect(() => {
@@ -32,149 +29,58 @@ export default function RichTextEditor({ value, onChange, placeholder, className
     loadQuillCSS();
   }, [cssLoaded]);
 
-  // Handle sticky toolbar with JavaScript
+  // Suppress ReactQuill deprecation warnings and inject custom CSS
   useEffect(() => {
-    if (!isReady || !quillRef.current) return;
+    if (!cssLoaded) return;
 
-    const handleScroll = () => {
-      const quillElement = quillRef.current?.getEditor()?.root?.parentElement?.parentElement;
-      if (!quillElement) return;
-
-      const toolbar = quillElement.querySelector('.ql-toolbar') as HTMLElement;
-      if (!toolbar) return;
-
-      const rect = quillElement.getBoundingClientRect();
-      const toolbarRect = toolbar.getBoundingClientRect();
-      
-      // Store toolbar height for spacing
-      if (toolbarHeight === 0) {
-        setToolbarHeight(toolbarRect.height);
-      }
-
-      // Check if the editor is in view and toolbar should be sticky
-      const shouldBeSticky = rect.top <= 0 && rect.bottom > toolbarRect.height;
-      
-      if (shouldBeSticky !== isSticky) {
-        setIsSticky(shouldBeSticky);
-      }
-    };
-
-    // Add scroll listener
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll(); // Initial check
-
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, [isReady, isSticky, toolbarHeight]);
-
-  // Apply sticky classes when state changes
-  useEffect(() => {
-    if (!isReady || !quillRef.current) return;
-
-    const quillElement = quillRef.current?.getEditor()?.root?.parentElement?.parentElement;
-    if (!quillElement) return;
-
-    const toolbar = quillElement.querySelector('.ql-toolbar') as HTMLElement;
-    const container = quillElement.querySelector('.ql-container') as HTMLElement;
+    // Suppress console warnings for ReactQuill deprecation issues
+    const originalError = console.error;
+    const originalWarn = console.warn;
     
-    if (toolbar && container) {
-      if (isSticky) {
-        toolbar.classList.add('toolbar-sticky');
-        container.classList.add('container-with-sticky-toolbar');
-        // Add padding to prevent content jump
-        container.style.paddingTop = `${toolbarHeight}px`;
-      } else {
-        toolbar.classList.remove('toolbar-sticky');
-        container.classList.remove('container-with-sticky-toolbar');
-        container.style.paddingTop = '0px';
-      }
-    }
-  }, [isSticky, toolbarHeight, isReady]);
-
-  // Suppress React warnings for ReactQuill and inject custom styles
-  useEffect(() => {
-    if (!cssLoaded) return; // Wait for CSS to load first
-
-    const originalConsoleError = console.error;
-    const originalConsoleWarn = console.warn;
-
-    // Filter out known ReactQuill and Quill.js deprecation warnings
     console.error = (...args) => {
       const message = String(args[0]);
-      if (
-        message.includes('findDOMNode is deprecated') ||
-        message.includes('DOMNodeInserted mutation event') ||
-        message.includes('Listener added for a \'DOMNodeInserted\' mutation event') ||
-        message.includes('Support for this event type has been removed')
-      ) {
-        return; // Suppress these specific warnings
+      if (message.includes('findDOMNode is deprecated') || 
+          message.includes('DOMNodeInserted') ||
+          message.includes('mutation event')) {
+        return; // Suppress ReactQuill warnings
       }
-      originalConsoleError.apply(console, args);
+      originalError.apply(console, args);
     };
-
+    
     console.warn = (...args) => {
       const message = String(args[0]);
-      if (
-        message.includes('findDOMNode is deprecated') ||
-        message.includes('DOMNodeInserted mutation event') ||
-        message.includes('Listener added for a \'DOMNodeInserted\' mutation event') ||
-        message.includes('Support for this event type has been removed')
-      ) {
-        return; // Suppress these specific warnings
+      if (message.includes('findDOMNode is deprecated') || 
+          message.includes('DOMNodeInserted') ||
+          message.includes('mutation event')) {
+        return; // Suppress ReactQuill warnings
       }
-      originalConsoleWarn.apply(console, args);
+      originalWarn.apply(console, args);
     };
 
-    // Also suppress console.log messages that might contain deprecation warnings
-    const originalConsoleLog = console.log;
-    console.log = (...args) => {
-      const message = String(args[0]);
-      if (
-        message.includes('Deprecation') ||
-        message.includes('DOMNodeInserted') ||
-        message.includes('mutation event')
-      ) {
-        return; // Suppress these specific log messages
-      }
-      originalConsoleLog.apply(console, args);
-    };
-
-    // Patch addEventListener to prevent deprecated mutation events
-    const originalAddEventListener = Element.prototype.addEventListener;
-    Element.prototype.addEventListener = function(type: string, listener: any, options?: any) {
-      // Block deprecated mutation events that Quill.js tries to use
-      if (type === 'DOMNodeInserted' || type === 'DOMSubtreeModified' || type === 'DOMNodeRemoved') {
-        console.debug(`Blocked deprecated mutation event: ${type}`);
-        return; // Don't add the deprecated listener
-      }
-      return originalAddEventListener.call(this, type, listener, options);
-    };
-
-    // Inject custom CSS for Quill editor dark theme
     const style = document.createElement('style');
+    style.id = 'quill-sticky-toolbar-styles';
     style.textContent = `
-      .ql-toolbar {
-        background: rgba(55, 65, 81, 0.95) !important;
-        backdrop-filter: blur(10px) !important;
+      /* Sticky toolbar implementation */
+      .sticky-toolbar-editor .ql-toolbar {
+        position: sticky !important;
+        top: 104px !important;
+        z-index: 1000 !important;
+        background: rgba(55, 65, 81, 0.98) !important;
+        backdrop-filter: blur(12px) !important;
+        -webkit-backdrop-filter: blur(12px) !important;
         border: 1px solid rgb(75, 85, 99) !important;
         border-bottom: none !important;
         border-radius: 0.5rem 0.5rem 0 0 !important;
-        transition: all 0.2s ease-in-out !important;
-        z-index: 1000 !important;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3) !important;
+        transition: box-shadow 0.2s ease !important;
       }
       
-      .ql-toolbar.toolbar-sticky {
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
-        border-radius: 0 !important;
-        z-index: 1000 !important;
+      /* Enhanced shadow when sticky */
+      .sticky-toolbar-editor .ql-toolbar:hover {
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
       }
       
-      .ql-container {
+      .sticky-toolbar-editor .ql-container {
         background: rgba(55, 65, 81, 0.5) !important;
         border: 1px solid rgb(75, 85, 99) !important;
         border-top: none !important;
@@ -183,107 +89,105 @@ export default function RichTextEditor({ value, onChange, placeholder, className
         min-height: 300px;
       }
       
-      .ql-container.container-with-sticky-toolbar {
-        margin-top: 0 !important;
-      }
-      
-      /* Ensure sticky toolbar works properly in different scroll contexts */
-      .quill-wrapper {
-        position: relative !important;
-        z-index: 1 !important;
-      }
-      
-      .quill-wrapper .ql-snow {
-        border: none !important;
-      }
-      
-      .ql-editor {
+      .sticky-toolbar-editor .ql-editor {
         color: white !important;
         font-size: 14px;
         line-height: 1.6;
+        padding: 12px 15px !important;
       }
       
-      .ql-editor.ql-blank::before {
+      .sticky-toolbar-editor .ql-editor.ql-blank::before {
         color: rgb(156, 163, 175) !important;
         font-style: italic;
       }
       
-      .ql-toolbar .ql-stroke {
+      /* Toolbar button styling */
+      .sticky-toolbar-editor .ql-toolbar .ql-stroke {
         stroke: rgb(156, 163, 175) !important;
       }
       
-      .ql-toolbar .ql-fill {
+      .sticky-toolbar-editor .ql-toolbar .ql-fill {
         fill: rgb(156, 163, 175) !important;
       }
       
-      .ql-toolbar .ql-picker-label {
+      .sticky-toolbar-editor .ql-toolbar .ql-picker-label {
         color: rgb(156, 163, 175) !important;
       }
       
-      .ql-toolbar .ql-picker-options {
-        background: rgb(55, 65, 81) !important;
+      .sticky-toolbar-editor .ql-toolbar .ql-picker-options {
+        background: rgba(55, 65, 81, 0.98) !important;
+        backdrop-filter: blur(12px) !important;
         border: 1px solid rgb(75, 85, 99) !important;
         z-index: 1001 !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
       }
       
-      .ql-toolbar .ql-picker-item {
+      .sticky-toolbar-editor .ql-toolbar .ql-picker-item {
         color: rgb(156, 163, 175) !important;
       }
       
-      .ql-toolbar .ql-picker-item:hover {
+      .sticky-toolbar-editor .ql-toolbar .ql-picker-item:hover {
         background: rgba(59, 130, 246, 0.1) !important;
         color: rgb(59, 130, 246) !important;
       }
       
-      .ql-toolbar button:hover {
+      .sticky-toolbar-editor .ql-toolbar button:hover {
         color: rgb(59, 130, 246) !important;
       }
       
-      .ql-toolbar button:hover .ql-stroke {
+      .sticky-toolbar-editor .ql-toolbar button:hover .ql-stroke {
         stroke: rgb(59, 130, 246) !important;
       }
       
-      .ql-toolbar button:hover .ql-fill {
+      .sticky-toolbar-editor .ql-toolbar button:hover .ql-fill {
         fill: rgb(59, 130, 246) !important;
       }
       
-      .ql-toolbar button.ql-active {
+      .sticky-toolbar-editor .ql-toolbar button.ql-active {
         color: rgb(59, 130, 246) !important;
       }
       
-      .ql-toolbar button.ql-active .ql-stroke {
+      .sticky-toolbar-editor .ql-toolbar button.ql-active .ql-stroke {
         stroke: rgb(59, 130, 246) !important;
       }
       
-      .ql-toolbar button.ql-active .ql-fill {
+      .sticky-toolbar-editor .ql-toolbar button.ql-active .ql-fill {
         fill: rgb(59, 130, 246) !important;
       }
       
-      .ql-snow .ql-tooltip {
-        background: rgb(55, 65, 81) !important;
+      /* Tooltips and overlays */
+      .sticky-toolbar-editor .ql-snow .ql-tooltip {
+        background: rgba(55, 65, 81, 0.98) !important;
+        backdrop-filter: blur(12px) !important;
         border: 1px solid rgb(75, 85, 99) !important;
         color: white !important;
         z-index: 1002 !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
       }
       
-      .ql-snow .ql-tooltip input {
+      .sticky-toolbar-editor .ql-snow .ql-tooltip input {
         background: rgb(75, 85, 99) !important;
         border: 1px solid rgb(107, 114, 128) !important;
         color: white !important;
       }
       
-      .ql-snow .ql-tooltip a {
+      .sticky-toolbar-editor .ql-snow .ql-tooltip a {
         color: rgb(59, 130, 246) !important;
       }
       
-      /* Enhanced mobile responsiveness for sticky toolbar */
+      /* Mobile responsiveness */
       @media (max-width: 768px) {
-        .ql-toolbar {
-          padding: 8px 4px !important;
+        .sticky-toolbar-editor .ql-toolbar {
+          padding: 8px 6px !important;
         }
         
-        .ql-toolbar .ql-formats {
-          margin-right: 8px !important;
+        .sticky-toolbar-editor .ql-toolbar .ql-formats {
+          margin-right: 6px !important;
+        }
+        
+        .sticky-toolbar-editor .ql-toolbar button {
+          width: 28px !important;
+          height: 28px !important;
         }
       }
     `;
@@ -292,11 +196,14 @@ export default function RichTextEditor({ value, onChange, placeholder, className
     setIsReady(true);
 
     return () => {
-      console.error = originalConsoleError;
-      console.warn = originalConsoleWarn;
-      console.log = originalConsoleLog;
-      Element.prototype.addEventListener = originalAddEventListener;
-      document.head.removeChild(style);
+      // Restore original console methods
+      console.error = originalError;
+      console.warn = originalWarn;
+      
+      const existingStyle = document.getElementById('quill-sticky-toolbar-styles');
+      if (existingStyle) {
+        document.head.removeChild(existingStyle);
+      }
     };
   }, [cssLoaded]);
 

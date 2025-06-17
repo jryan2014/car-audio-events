@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Edit, Trash2, Eye, FileText, Globe, Search, HelpCircle, Info, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, FileText, Globe, Search, HelpCircle, Info, X, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import RichTextEditor from '../components/RichTextEditor';
 import AIWritingAssistant from '../components/AIWritingAssistant';
 import CMSPageHelp from '../components/CMSPageHelp';
+import { useNotifications } from '../components/NotificationSystem';
 
 
 interface CMSPage {
@@ -51,6 +52,7 @@ interface PageFormData {
 
 export default function CMSPages() {
   const { user } = useAuth();
+  const { showSuccess, showError, showWarning, showInfo } = useNotifications();
   const [pages, setPages] = useState<CMSPage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -77,6 +79,8 @@ export default function CMSPages() {
   if (!user || user.membershipType !== 'admin') {
     return <Navigate to="/" replace />;
   }
+
+
 
   useEffect(() => {
     loadPages();
@@ -192,7 +196,7 @@ export default function CMSPages() {
     
     // Check if user is authenticated and admin
     if (!user || user.membershipType !== 'admin') {
-      alert('Access denied. Only administrators can save pages.');
+      showError('Access Denied', 'Only administrators can save pages.');
       return;
     }
     
@@ -202,7 +206,7 @@ export default function CMSPages() {
       
       if (sessionError || !session) {
         console.error('❌ Session error:', sessionError);
-        alert('Authentication expired. Please log in again.');
+        showError('Session Expired', 'Please log in again to continue.');
         return;
       }
       
@@ -317,11 +321,20 @@ export default function CMSPages() {
       setEditingPage(null);
       await loadPages();
       
-      alert(editingPage ? 'Page updated successfully!' : 'Page created successfully!');
+      showSuccess(
+        editingPage ? 'Page Updated!' : 'Page Created!',
+        editingPage 
+          ? 'Your page has been updated successfully and is now live.' 
+          : 'Your new page has been created successfully and is ready to publish.'
+      );
       
     } catch (error: any) {
       console.error('❌ Error saving page:', error);
-      alert(`Error saving page: ${error.message}`);
+      showError(
+        'Save Failed',
+        `Unable to save page: ${error.message}`,
+        true // persistent error
+      );
     }
   };
 
@@ -348,7 +361,14 @@ export default function CMSPages() {
   };
 
   const handleDelete = async (pageId: string) => {
-    if (!confirm('Are you sure you want to delete this page? This action cannot be undone.')) {
+    // Show warning notification first
+    showWarning(
+      'Delete Confirmation Required',
+      'This action cannot be undone. Please confirm you want to delete this page.',
+      8000
+    );
+    
+    if (!confirm('⚠️ PERMANENT DELETE: Are you absolutely sure you want to delete this page? This action cannot be undone.')) {
       return;
     }
 
@@ -360,10 +380,10 @@ export default function CMSPages() {
 
       if (error) throw error;
       await loadPages();
-      alert('Page deleted successfully!');
+      showSuccess('Page Deleted!', 'The page has been permanently removed from your website.');
     } catch (error: any) {
       console.error('Error deleting page:', error);
-      alert(`Error deleting page: ${error.message}`);
+      showError('Delete Failed', `Unable to delete page: ${error.message}`);
     }
   };
 
@@ -392,6 +412,7 @@ export default function CMSPages() {
   const handleCreateNew = () => {
     setHasFocusedOnFormShow(false); // Reset focus tracking for new page
     setShowCreateForm(true);
+    showInfo('Page Editor Opened', 'Fill in the form below to create your new page.');
   };
 
   const getPageTypeFromSlug = (slug: string): string => {
@@ -466,6 +487,7 @@ export default function CMSPages() {
           
           <div className="flex items-center space-x-3">
             <button
+              type="button"
               onClick={() => setShowHelp(true)}
               className="bg-gray-700 text-gray-300 px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors flex items-center space-x-2"
               title="View Help Guide"
@@ -475,6 +497,7 @@ export default function CMSPages() {
             </button>
             
             <button
+              type="button"
               onClick={handleCreateNew}
               className="bg-electric-500 text-white px-6 py-3 rounded-lg hover:bg-electric-600 transition-colors flex items-center space-x-2"
             >
@@ -572,6 +595,7 @@ export default function CMSPages() {
                         )}
                         
                         <button
+                          type="button"
                           onClick={() => handleEdit(page)}
                           className="p-2 bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition-colors"
                           title="Edit Page"
@@ -580,6 +604,7 @@ export default function CMSPages() {
                         </button>
                         
                         <button
+                          type="button"
                           onClick={() => handleDelete(page.id)}
                           className="p-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors"
                           title="Delete Page"
@@ -597,14 +622,52 @@ export default function CMSPages() {
 
         {/* Create/Edit Form */}
         {showCreateForm && (
-          <div ref={formRef} className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 mb-8">
+          <div ref={formRef} className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-6 mb-8">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-white">
-                {editingPage ? 'Edit Page' : 'Create New Page'}
-              </h2>
+              <div className="flex items-center space-x-4">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setShowCreateForm(false);
+                    setEditingPage(null);
+                    setHasFocusedOnFormShow(false);
+                    setFormData({
+                      title: '',
+                      slug: '',
+                      content: '',
+                      meta_title: '',
+                      meta_description: '',
+                      meta_keywords: [],
+                      status: 'draft',
+                      is_featured: false,
+                      navigation_placement: 'none',
+                      parent_nav_item: '',
+                      footer_section: 'quick_links',
+                      nav_order: 0,
+                      nav_title: '',
+                      show_in_sitemap: true
+                    });
+                  }}
+                  className="text-gray-400 hover:text-electric-400 transition-colors flex items-center space-x-2"
+                  title="Back to CMS Pages list"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  <span className="text-sm">Back to Pages</span>
+                </button>
+                <h2 className="text-xl font-bold text-white">
+                  {editingPage ? 'Edit Page' : 'Create New Page'}
+                </h2>
+              </div>
               <div className="flex items-center space-x-3">
                 <button
-                  onClick={() => setShowHelp(true)}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setShowHelp(true);
+                  }}
                   className="text-gray-400 hover:text-electric-400 transition-colors flex items-center space-x-1"
                   title="Need help? Click for detailed field explanations"
                 >
@@ -612,7 +675,10 @@ export default function CMSPages() {
                   <span className="text-sm">Need Help?</span>
                 </button>
                 <button
-                  onClick={() => {
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     setShowCreateForm(false);
                     setEditingPage(null);
                     setHasFocusedOnFormShow(false); // Reset focus tracking
@@ -881,13 +947,11 @@ export default function CMSPages() {
                     </div>
                   </div>
                 </div>
-                <div className="quill-wrapper">
-                  <RichTextEditor
-                    value={formData.content}
-                    onChange={(value: string) => setFormData(prev => ({ ...prev, content: value }))}
-                    placeholder="Start writing your page content here... You can use the toolbar above to format text, add links, images, and more."
-                  />
-                </div>
+                <RichTextEditor
+                  value={formData.content}
+                  onChange={(value: string) => setFormData(prev => ({ ...prev, content: value }))}
+                  placeholder="Start writing your page content here... You can use the toolbar above to format text, add links, images, and more."
+                />
                 <p className="text-xs text-gray-500 mt-2">
                   💡 Use the toolbar to format text, add links, images, lists, and more. The content will be saved as HTML.
                 </p>

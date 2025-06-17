@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import AdminLayout from './components/AdminLayout';
 import { AuthProvider } from './contexts/AuthContext';
+import { NotificationProvider } from './components/NotificationSystem';
 
 // Convert all page imports to lazy loading for code splitting
 const Home = React.lazy(() => import('./pages/Home'));
@@ -74,10 +75,11 @@ function App() {
 
   return (
     <AuthProvider>
-      <Router>
-        <Layout>
-          <Suspense fallback={<LoadingSpinner />}>
-            <Routes>
+      <NotificationProvider>
+        <Router>
+          <Layout>
+            <Suspense fallback={<LoadingSpinner />}>
+              <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/events" element={<Events />} />
@@ -127,6 +129,7 @@ function App() {
           </Suspense>
         </Layout>
       </Router>
+      </NotificationProvider>
     </AuthProvider>
   );
 }
