@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase';
 import RichTextEditor from '../components/RichTextEditor';
 import AIWritingAssistant from '../components/AIWritingAssistant';
 import CMSPageHelp from '../components/CMSPageHelp';
-import { scrollToRef, useAutoScrollToForm } from '../utils/focusUtils';
+
 
 interface CMSPage {
   id: string;
@@ -82,12 +82,26 @@ export default function CMSPages() {
     loadPages();
   }, []);
 
-  // Auto-scroll to form when it becomes visible
-  useAutoScrollToForm(formRef, showCreateForm);
-  
-  // Auto-focus first input when form becomes visible (but only once per form show)
+  // Auto-scroll to form and focus first input when it becomes visible (but only once per form show)
   useEffect(() => {
     if (showCreateForm && !hasFocusedOnFormShow && formRef.current) {
+      // Scroll to form first
+      setTimeout(() => {
+        if (formRef.current) {
+          try {
+            formRef.current.scrollIntoView({
+              behavior: 'smooth',
+              block: 'start',
+              inline: 'nearest'
+            });
+          } catch (error) {
+            console.warn('ScrollIntoView failed, using fallback:', error);
+            formRef.current.scrollIntoView(true);
+          }
+        }
+      }, 100);
+
+      // Then focus first input after scroll
       const firstInput = formRef.current.querySelector(
         'input:not([disabled]):not([readonly]), textarea:not([disabled]):not([readonly]), select:not([disabled])'
       ) as HTMLElement;
@@ -96,12 +110,12 @@ export default function CMSPages() {
         setTimeout(() => {
           try {
             if ('focus' in firstInput && typeof firstInput.focus === 'function') {
-              firstInput.focus({ preventScroll: false });
+              firstInput.focus({ preventScroll: true }); // Prevent additional scrolling from focus
             }
           } catch (error) {
             console.warn('Focus failed:', error);
           }
-        }, 200);
+        }, 300); // Wait for scroll to complete
       }
       setHasFocusedOnFormShow(true);
     } else if (!showCreateForm) {
