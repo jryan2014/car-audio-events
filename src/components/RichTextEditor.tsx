@@ -92,10 +92,15 @@ export default function RichTextEditor({ value, onChange, placeholder, className
     const style = document.createElement('style');
     style.textContent = `
       .ql-toolbar {
-        background: rgba(55, 65, 81, 0.5) !important;
+        background: rgba(55, 65, 81, 0.95) !important;
+        backdrop-filter: blur(10px) !important;
         border: 1px solid rgb(75, 85, 99) !important;
         border-bottom: none !important;
         border-radius: 0.5rem 0.5rem 0 0 !important;
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 1000 !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
       }
       
       .ql-container {
@@ -105,6 +110,16 @@ export default function RichTextEditor({ value, onChange, placeholder, className
         border-radius: 0 0 0.5rem 0.5rem !important;
         color: white !important;
         min-height: 300px;
+      }
+      
+      /* Ensure sticky toolbar works properly in different scroll contexts */
+      .quill-wrapper {
+        position: relative !important;
+        z-index: 1 !important;
+      }
+      
+      .quill-wrapper .ql-snow {
+        border: none !important;
       }
       
       .ql-editor {
@@ -133,6 +148,7 @@ export default function RichTextEditor({ value, onChange, placeholder, className
       .ql-toolbar .ql-picker-options {
         background: rgb(55, 65, 81) !important;
         border: 1px solid rgb(75, 85, 99) !important;
+        z-index: 1001 !important;
       }
       
       .ql-toolbar .ql-picker-item {
@@ -172,6 +188,7 @@ export default function RichTextEditor({ value, onChange, placeholder, className
         background: rgb(55, 65, 81) !important;
         border: 1px solid rgb(75, 85, 99) !important;
         color: white !important;
+        z-index: 1002 !important;
       }
       
       .ql-snow .ql-tooltip input {
@@ -182,6 +199,17 @@ export default function RichTextEditor({ value, onChange, placeholder, className
       
       .ql-snow .ql-tooltip a {
         color: rgb(59, 130, 246) !important;
+      }
+      
+      /* Enhanced mobile responsiveness for sticky toolbar */
+      @media (max-width: 768px) {
+        .ql-toolbar {
+          padding: 8px 4px !important;
+        }
+        
+        .ql-toolbar .ql-formats {
+          margin-right: 8px !important;
+        }
       }
     `;
     
@@ -226,7 +254,7 @@ export default function RichTextEditor({ value, onChange, placeholder, className
   }
 
   return (
-    <div className={`quill-wrapper ${className || ''}`}>
+    <div className={`quill-wrapper sticky-toolbar-editor ${className || ''}`}>
       <ReactQuill
         ref={quillRef}
         value={value}
