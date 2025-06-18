@@ -2,17 +2,21 @@
  * Google Maps API utilities and configuration
  */
 
-// Get Google Maps API key from environment variables
-export const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+import { isDevelopment } from '../utils/version';
 
-// Add debugging for environment variables
-console.log('Environment debug:', {
-  VITE_GOOGLE_MAPS_API_KEY: GOOGLE_MAPS_API_KEY ? `${GOOGLE_MAPS_API_KEY.substring(0, 8)}...` : 'NOT SET',
-  VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL ? 'SET' : 'NOT SET',
-  VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY ? 'SET' : 'NOT SET',
-  NODE_ENV: import.meta.env.NODE_ENV || 'not set',
-  MODE: import.meta.env.MODE || 'not set'
-});
+// Environment variable for Google Maps API key
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+
+// Debug logging in development only
+if (isDevelopment()) {
+  console.log('Environment debug:', {
+    VITE_GOOGLE_MAPS_API_KEY: GOOGLE_MAPS_API_KEY ? GOOGLE_MAPS_API_KEY.substring(0, 10) + '...' : 'NOT SET',
+    VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL ? 'SET' : 'NOT SET',
+    VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY ? 'SET' : 'NOT SET',
+    NODE_ENV: process.env.NODE_ENV || 'not set',
+    MODE: import.meta.env.MODE
+  });
+}
 
 // Track loading state
 let isLoading = false;
@@ -103,33 +107,33 @@ export const loadGoogleMapsApi = (): Promise<void> => {
       
       console.log('Creating new Google Maps script tag...');
       
-      // Dynamically load the script
+      // Create a unique callback name
+      const callbackName = `googleMapsCallback_${Date.now()}`;
+      
+      // Set up the callback function
+      (window as any)[callbackName] = () => {
+        console.log('Google Maps API fully loaded via callback');
+        isLoading = false;
+        // Clean up the callback
+        delete (window as any)[callbackName];
+        resolve();
+      };
+      
+      // Dynamically load the script with callback
       const script = document.createElement('script');
-      const scriptUrl = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places,geometry`;
+      const scriptUrl = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places,geometry&loading=async&callback=${callbackName}`;
       script.src = scriptUrl;
       script.async = true;
       script.defer = true;
       
       console.log('Loading Google Maps from:', scriptUrl.replace(GOOGLE_MAPS_API_KEY, 'API_KEY_HIDDEN'));
       
-      script.onload = () => {
-        console.log('Google Maps script loaded successfully');
-        if (window.google && window.google.maps) {
-          console.log('Google Maps API is now available');
-          isLoading = false;
-          resolve();
-        } else {
-          const error = 'Google Maps script loaded but API not available';
-          console.error(error);
-          isLoading = false;
-          reject(new Error(error));
-        }
-      };
-      
       script.onerror = (event) => {
         const error = 'Failed to load Google Maps API - check your API key, billing, and internet connection';
         console.error(error, event);
         isLoading = false;
+        // Clean up the callback
+        delete (window as any)[callbackName];
         reject(new Error(error));
       };
       

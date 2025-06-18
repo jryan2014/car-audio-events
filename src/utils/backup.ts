@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import JSZip from 'jszip';
+import { isDevelopment } from './version';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseServiceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -318,7 +319,9 @@ export function initializeBackupSystem() {
   // Initialize cron service for automatic backups
   const initializeCronService = async () => {
     try {
-      console.log('🔄 Loading cron service...');
+      if (isDevelopment()) {
+    console.log('🔄 Loading cron service...');
+  }
       const { initializeCronService, cronService } = await import('./cronService');
       console.log('📦 Cron service loaded, initializing...');
       initializeCronService();

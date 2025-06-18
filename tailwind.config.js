@@ -1,29 +1,26 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: {
-    files: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
-    options: {
-      // Enable scanning of dynamic class names in strings
-      safelist: {
-        standard: [
-          // Dynamic color classes used in AdminMembership component
-          'bg-blue-500', 'bg-purple-500', 'bg-orange-500', 'bg-green-500',
-          'bg-blue-500/20', 'bg-purple-500/20', 'bg-orange-500/20', 'bg-green-500/20',
-          'text-blue-400', 'text-purple-400', 'text-orange-400', 'text-green-400',
-          'border-blue-500', 'border-purple-500', 'border-orange-500', 'border-green-500',
-          // Common dynamic classes that might be missed
-          'opacity-0', 'opacity-100', 'scale-95', 'scale-100',
-          'translate-y-0', 'translate-y-2', '-translate-y-2',
-        ],
-        // Pattern-based safelist for dynamic values
-        pattern: [
-          /^bg-(blue|purple|orange|green)-(500|400)$/,
-          /^text-(blue|purple|orange|green)-(400|500)$/,
-          /^border-(blue|purple|orange|green)-(500|400)$/,
-        ]
-      }
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  safelist: [
+    // Dynamic color classes used in AdminMembership component
+    'bg-blue-500', 'bg-purple-500', 'bg-orange-500', 'bg-green-500',
+    'bg-blue-500/20', 'bg-purple-500/20', 'bg-orange-500/20', 'bg-green-500/20',
+    'text-blue-400', 'text-purple-400', 'text-orange-400', 'text-green-400',
+    'border-blue-500', 'border-purple-500', 'border-orange-500', 'border-green-500',
+    // Common dynamic classes that might be missed
+    'opacity-0', 'opacity-100', 'scale-95', 'scale-100',
+    'translate-y-0', 'translate-y-2', '-translate-y-2',
+    // Pattern-based safelist for dynamic values
+    {
+      pattern: /^bg-(blue|purple|orange|green)-(500|400)$/,
+    },
+    {
+      pattern: /^text-(blue|purple|orange|green)-(400|500)$/,
+    },
+    {
+      pattern: /^border-(blue|purple|orange|green)-(500|400)$/,
     }
-  },
+  ],
   theme: {
     extend: {
       colors: {
@@ -99,8 +96,4 @@ export default {
     },
   },
   plugins: [],
-  // Add CSS optimization for production builds
-  experimental: {
-    optimizeUniversalDefaults: true,
-  },
 };

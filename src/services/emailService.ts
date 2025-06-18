@@ -1,4 +1,5 @@
 import { Client } from 'postmark';
+import { isDevelopment } from '../utils/version';
 
 // Email service configuration
 interface EmailConfig {
@@ -81,7 +82,9 @@ class EmailService {
       };
       this.client = new Client(apiKey);
       this.isConfigured = true;
-      console.log('✅ Postmark email service initialized successfully');
+      if (isDevelopment()) {
+        console.log('✅ Postmark email service initialized successfully');
+      }
     } else {
       console.warn('⚠️ Postmark API key not found. Email service will use fallback mode.');
       this.isConfigured = false;
