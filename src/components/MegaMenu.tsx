@@ -97,7 +97,15 @@ export default function MegaMenu({ isAuthenticated, user, onLinkClick }: MegaMen
         return;
       }
 
-      console.log('Raw navigation data from database:', data);
+      if (import.meta.env.MODE === 'development') {
+        console.log('Raw navigation data from database:', data);
+      }
+
+      if (!data || data.length === 0) {
+        // No data in database, use fallback
+        setNavigationItems(getFallbackNavigation());
+        return;
+      }
 
       // Build hierarchical structure
       const itemsMap = new Map<string, NavigationItem>();
@@ -147,13 +155,22 @@ export default function MegaMenu({ isAuthenticated, user, onLinkClick }: MegaMen
       };
 
       sortItems(rootItems);
-      console.log('Hierarchical navigation items:', rootItems);
+      if (import.meta.env.MODE === 'development') {
+        console.log('Hierarchical navigation items:', rootItems);
+      }
 
       // Filter by membership
       const filteredItems = filterItemsByMembership(rootItems);
-      console.log('Filtered navigation items:', filteredItems);
+      if (import.meta.env.MODE === 'development') {
+        console.log('Filtered navigation items:', filteredItems);
+      }
 
-      setNavigationItems(filteredItems);
+      // If no items after filtering for non-authenticated users, use fallback
+      if (filteredItems.length === 0 && !isAuthenticated) {
+        setNavigationItems(getFallbackNavigation());
+      } else {
+        setNavigationItems(filteredItems);
+      }
     } catch (error) {
       console.error('Error loading navigation:', error);
       setNavigationItems(getFallbackNavigation());

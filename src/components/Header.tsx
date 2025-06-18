@@ -98,7 +98,7 @@ export default function Header() {
                   {/* User Dropdown Menu */}
                   {isUserDropdownOpen && (
                     <div 
-                      className="absolute right-0 top-full mt-2 w-72 bg-gray-800/95 backdrop-blur-sm border border-gray-700/50 rounded-xl shadow-2xl z-50"
+                      className="absolute right-0 top-full mt-2 w-64 max-w-[90vw] bg-gray-800/95 backdrop-blur-sm border border-gray-700/50 rounded-xl shadow-2xl z-50"
                       onMouseLeave={() => setIsUserDropdownOpen(false)}
                     >
                       <div className="p-2">
@@ -140,7 +140,7 @@ export default function Header() {
                                 className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
                               >
                                 <Users className="h-3 w-3" />
-                                <span>User Management</span>
+                                <span>Users</span>
                               </Link>
                               
                               <Link
@@ -149,7 +149,7 @@ export default function Header() {
                                 className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
                               >
                                 <Calendar className="h-3 w-3" />
-                                <span>Event Management</span>
+                                <span>Events</span>
                               </Link>
                               
                               <Link
@@ -158,7 +158,7 @@ export default function Header() {
                                 className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
                               >
                                 <FileText className="h-3 w-3" />
-                                <span>CMS Pages</span>
+                                <span>CMS</span>
                               </Link>
                               
                               <Link
@@ -167,7 +167,7 @@ export default function Header() {
                                 className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
                               >
                                 <Target className="h-3 w-3" />
-                                <span>Advertisement Management</span>
+                                <span>Ads</span>
                               </Link>
                               
                               <Link
@@ -176,7 +176,7 @@ export default function Header() {
                                 className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
                               >
                                 <Building2 className="h-3 w-3" />
-                                <span>Organizations</span>
+                                <span>Orgs</span>
                               </Link>
                               
                               <Link
@@ -185,7 +185,7 @@ export default function Header() {
                                 className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
                               >
                                 <Menu className="h-3 w-3" />
-                                <span>Navigation Manager</span>
+                                <span>Navigation</span>
                               </Link>
                               
                               <Link
@@ -194,7 +194,7 @@ export default function Header() {
                                 className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
                               >
                                 <Settings className="h-3 w-3" />
-                                <span>System Config</span>
+                                <span>System</span>
                               </Link>
                               
                               <Link
@@ -222,7 +222,7 @@ export default function Header() {
                                 className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
                               >
                                 <Target className="h-3 w-3" />
-                                <span>Advertisement Management</span>
+                                <span>Ads</span>
                               </Link>
                               
                               {user.membershipType === 'organization' && (
@@ -232,7 +232,7 @@ export default function Header() {
                                   className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
                                 >
                                   <Building2 className="h-3 w-3" />
-                                  <span>Organization Management</span>
+                                  <span>My Organization</span>
                                 </Link>
                               )}
                             </div>
