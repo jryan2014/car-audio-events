@@ -323,14 +323,18 @@ export function initializeBackupSystem() {
     console.log('🔄 Loading cron service...');
   }
       const { initializeCronService, cronService } = await import('./cronService');
-      console.log('📦 Cron service loaded, initializing...');
+      if (import.meta.env.MODE === 'development') {
+    console.log('📦 Cron service loaded, initializing...');
+  }
       initializeCronService();
       console.log('🚀 Cron service initialization complete');
       
       // Log current status
       setTimeout(() => {
         const status = cronService.getStatus();
-        console.log('📊 Cron service status:', status);
+        if (import.meta.env.MODE === 'development') {
+      console.log('📊 Cron service status:', status);
+    }
       }, 1000);
     } catch (error) {
       console.error('❌ Failed to initialize cron service:', error);

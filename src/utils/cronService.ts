@@ -157,7 +157,9 @@ class CronService {
     if (job.enabled && this.isRunning) {
       this.scheduleJob(job);
     }
-    console.log(`📅 Added cron job: ${job.name} (${job.schedule} ${job.timezone})`);
+    if (import.meta.env.MODE === 'development') {
+      console.log(`📅 Added cron job: ${job.name} (${job.schedule} ${job.timezone})`);
+    }
   }
 
   /**
@@ -191,7 +193,9 @@ class CronService {
         }
       }
       
-      console.log(`${enabled ? '✅' : '❌'} ${enabled ? 'Enabled' : 'Disabled'} cron job: ${job.name}`);
+      if (import.meta.env.MODE === 'development') {
+        console.log(`${enabled ? '✅' : '❌'} ${enabled ? 'Enabled' : 'Disabled'} cron job: ${job.name}`);
+      }
     }
   }
 
@@ -234,7 +238,9 @@ class CronService {
 
       this.intervals.set(job.id, timeout as any);
       
-      console.log(`⏰ Scheduled job ${job.name} to run at ${nextRun.toLocaleString('en-US', { timeZone: job.timezone })}`);
+      if (import.meta.env.MODE === 'development') {
+        console.log(`⏰ Scheduled job ${job.name} to run at ${nextRun.toLocaleString('en-US', { timeZone: job.timezone })}`);
+      }
     } else {
       console.log(`⚠️ Next run time for ${job.name} is in the past, recalculating...`);
       // If the time is in the past, schedule for tomorrow
@@ -301,11 +307,13 @@ class CronService {
       }
     }
     
-    console.log(`✅ Cron service started with ${this.jobs.size} jobs`);
-    
-    // Log job details for debugging
-    for (const job of this.jobs.values()) {
-      console.log(`🔍 Job: ${job.name}, Enabled: ${job.enabled}, Next Run: ${job.nextRun || 'Not scheduled'}`);
+    if (import.meta.env.MODE === 'development') {
+      console.log(`✅ Cron service started with ${this.jobs.size} jobs`);
+      
+      // Log job details for debugging
+      for (const job of this.jobs.values()) {
+        console.log(`🔍 Job: ${job.name}, Enabled: ${job.enabled}, Next Run: ${job.nextRun || 'Not scheduled'}`);
+      }
     }
   }
 
@@ -440,7 +448,9 @@ export function initializeCronService() {
     cronService.stop();
   });
   
-  console.log('✅ Cron service initialized');
+      if (import.meta.env.MODE === 'development') {
+      console.log('✅ Cron service initialized');
+    }
 }
 
 /**
