@@ -231,7 +231,7 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, isO
     }
   };
 
-  // Fallback navigation if database fails
+  // Comprehensive fallback navigation if database fails
   const getFallbackNavigation = (): NavigationItem[] => {
     const baseItems: NavigationItem[] = [
       {
@@ -263,6 +263,57 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, isO
         target_blank: false,
         membership_context: 'base',
         is_active: true
+      },
+      {
+        id: 'resources',
+        title: 'Resources',
+        icon: 'BookOpen',
+        nav_order: 4,
+        target_blank: false,
+        membership_context: 'base',
+        is_active: true,
+        children: [
+          {
+            id: 'get-holt',
+            title: 'Get Holt',
+            href: '/get-holt',
+            icon: 'Lightbulb',
+            nav_order: 1,
+            target_blank: false,
+            membership_context: 'base',
+            is_active: true
+          },
+          {
+            id: 'organizations',
+            title: 'Organizations',
+            href: '/organizations',
+            icon: 'Building2',
+            nav_order: 2,
+            target_blank: false,
+            membership_context: 'base',
+            is_active: true
+          },
+          {
+            id: 'help-center',
+            title: 'Help Center',
+            href: '/help',
+            icon: 'HelpCircle',
+            nav_order: 3,
+            target_blank: false,
+            membership_context: 'base',
+            is_active: true
+          },
+          {
+            id: 'contact-us',
+            title: 'Contact Us',
+            href: '/contact',
+            icon: 'MessageSquare',
+            nav_order: 4,
+            target_blank: false,
+            membership_context: 'base',
+            is_active: true
+          }
+        ]
       }
     ];
 
@@ -273,7 +324,7 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, isO
         title: 'Join Now',
         href: '/pricing',
         icon: 'Crown',
-        nav_order: 4,
+        nav_order: 5,
         target_blank: false,
         membership_context: 'base',
         is_active: true
