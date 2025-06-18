@@ -3,11 +3,11 @@
 
 export const VERSION = {
   MAJOR: 1,
-  MINOR: 3,
-  PATCH: 3,
+  MINOR: 4,
+  PATCH: 1,
   BUILD: Date.now(), // Build timestamp
-  RELEASE_DATE: '2025-06-17',
-  CODENAME: 'Professional Notification System'
+  RELEASE_DATE: '2025-01-30',
+  CODENAME: 'Security Console Log Protection'
 } as const;
 
 export const getVersionString = (): string => {
@@ -61,6 +61,44 @@ export const isProduction = (): boolean => {
 
 // Version history for reference
 export const VERSION_HISTORY = [
+  {
+    version: '1.4.1',
+    date: '2025-01-30',
+    codename: 'Security Console Log Protection',
+    description: 'Critical security patch to protect sensitive API information from console exposure in production',
+    features: [
+      'Protected Supabase configuration debug logs from production console exposure',
+      'Secured Google Maps API key information with development-only visibility',
+      'Protected Postmark email service configuration from end user visibility',
+      'Prevented cron job and backup scheduling information from appearing in console',
+      'Added isDevelopment() checks to all sensitive debug logging',
+      'Fixed Google Maps async loading with proper callback mechanism',
+      'Resolved advertisement system 403 Forbidden errors',
+      'Restored admin activity tracking functions (log_activity, get_recent_activity)',
+      'Enhanced Google Maps performance with loading=async optimization',
+      'Improved platform security posture for production deployment'
+    ]
+  },
+  {
+    version: '1.4.0',
+    date: '2025-06-17',
+    codename: 'Stripe Payment Integration',
+    description: 'Complete Stripe payment system implementation for event registration and monetization',
+    features: [
+      'Implemented Supabase Edge Functions for Stripe payment processing',
+      'Created create-payment-intent function with user authentication and validation',
+      'Built confirm-payment function with database integration and event registration',
+      'Developed stripe-webhook handler for payment status synchronization',
+      'Created comprehensive payments database table with RLS security policies',
+      'Integrated payment system with existing event registration workflow',
+      'Built payment history view with event details and user information',
+      'Created secure payment processing with proper error handling',
+      'Added deployment script for automated Stripe integration setup',
+      'Implemented comprehensive testing and validation framework',
+      'Enhanced PaymentForm component with modern Stripe Elements integration',
+      'Added admin payment management and monitoring capabilities'
+    ]
+  },
   {
     version: '1.3.3',
     date: '2025-06-17',
