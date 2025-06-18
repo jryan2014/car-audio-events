@@ -89,6 +89,7 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, isO
 
       if (error) {
         console.error('Mobile - Supabase error loading navigation:', error);
+        console.log('Mobile - Using fallback navigation due to DB error');
         setNavigationItems(getFallbackNavigation());
         return;
       }
@@ -152,6 +153,7 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, isO
       setNavigationItems(filteredItems);
     } catch (error) {
       console.error('Mobile - Error loading navigation:', error);
+      console.log('Mobile - Using fallback navigation');
       setNavigationItems(getFallbackNavigation());
     } finally {
       setIsLoading(false);
@@ -317,7 +319,7 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, isO
       }
     ];
 
-    // Add membership-specific items for unauthenticated users
+    // Add membership-specific items
     if (!isAuthenticated) {
       baseItems.push({
         id: 'pricing',
@@ -329,8 +331,20 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, isO
         membership_context: 'base',
         is_active: true
       });
+    } else if (user) {
+      baseItems.push({
+        id: 'dashboard',
+        title: 'Dashboard',
+        href: user.membershipType === 'admin' ? '/admin/dashboard' : '/dashboard',
+        icon: 'BarChart3',
+        nav_order: 5,
+        target_blank: false,
+        membership_context: 'base',
+        is_active: true
+      });
     }
 
+    console.log('Mobile - Fallback navigation created:', baseItems.length, 'items');
     return baseItems;
   };
 
@@ -478,7 +492,11 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, isO
         {/* Navigation Items */}
         <div className="flex-1 overflow-y-auto">
           <div className="py-2">
-            {renderNavigationItems(navigationItems)}
+            {navigationItems.length > 0 ? (
+              renderNavigationItems(navigationItems)
+            ) : (
+              renderNavigationItems(getFallbackNavigation())
+            )}
           </div>
         </div>
 
