@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import DashboardWidgets, { Widget } from '../components/DashboardWidgets';
+import { ServiceWorkerManager } from '../components/ServiceWorkerManager';
 
 interface DashboardStats {
   totalCompetitions: number;
@@ -564,6 +565,13 @@ export default function Dashboard() {
             isEditMode={isEditMode}
             onEditModeChange={setIsEditMode}
           />
+        </div>
+
+        {/* System Status for Members */}
+        <div className="mt-8 flex justify-end">
+          <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-700/30 rounded-lg p-3">
+            <ServiceWorkerManager showFullInterface={false} />
+          </div>
         </div>
       </div>
     </div>

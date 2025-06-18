@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { ActivityLogger } from '../utils/activityLogger';
 import AdminNavigation from '../components/AdminNavigation';
 import { getFullVersionString } from '../utils/version';
+import { ServiceWorkerManager } from '../components/ServiceWorkerManager';
 
 interface DashboardStats {
   totalUsers: number;
@@ -580,7 +581,13 @@ export default function AdminDashboard() {
 
         {/* Recent Activity */}
         <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-          <h2 className="text-xl font-bold text-white mb-6">Recent Activity</h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-white">Recent Activity</h2>
+            {/* System Status for Admins */}
+            <div className="bg-gray-700/30 rounded-lg p-2">
+              <ServiceWorkerManager showFullInterface={false} />
+            </div>
+          </div>
           
           {isLoading ? (
             <div className="text-center py-8">

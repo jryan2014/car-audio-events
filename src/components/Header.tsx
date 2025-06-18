@@ -4,7 +4,6 @@ import { Menu, X, User, Calendar, MapPin, Users, LogOut, Settings, Shield, Packa
 import { useAuth } from '../contexts/AuthContext';
 import MegaMenu from './MegaMenu';
 import MobileMegaMenu from './MobileMegaMenu';
-import { ServiceWorkerManager } from './ServiceWorkerManager';
 import { GlobalSearch } from './GlobalSearch';
 import NotificationCenter from './NotificationCenter';
 
@@ -65,9 +64,6 @@ export default function Header() {
 
           {/* User Menu - Right aligned */}
           <div className="flex items-center space-x-4 flex-shrink-0 ml-auto">
-            {/* Service Worker Status */}
-            <ServiceWorkerManager showFullInterface={false} />
-            
             {/* Notification Center */}
             {isAuthenticated && <NotificationCenter />}
             
