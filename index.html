@@ -6,6 +6,46 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Car Audio Events - Competition Platform</title>
     
+    <!-- Properly Configured Content Security Policy for Security -->
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' 
+        https://js.stripe.com 
+        https://maps.googleapis.com 
+        https://www.google.com
+        https://maps.gstatic.com;
+      style-src 'self' 'unsafe-inline' 
+        https://fonts.googleapis.com;
+      font-src 'self' 
+        https://fonts.gstatic.com 
+        https://fonts.googleapis.com;
+      img-src 'self' data: blob: https: http:;
+      connect-src 'self' 
+        https://nqvisvranvjaghvrdaaz.supabase.co 
+        wss://nqvisvranvjaghvrdaaz.supabase.co
+        https://api.stripe.com
+        https://maps.googleapis.com
+        https://maps.gstatic.com
+        https://fonts.googleapis.com
+        https://fonts.gstatic.com
+        https://api.openai.com;
+      frame-src 'self' 
+        https://www.google.com 
+        https://maps.google.com
+        https://js.stripe.com;
+      object-src 'none';
+      base-uri 'self';
+      form-action 'self' https://api.stripe.com;
+      frame-ancestors 'none';
+      upgrade-insecure-requests;
+    ">
+    
+    <!-- Security Headers -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+    
     <!-- Critical resource hints for performance -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -84,12 +124,12 @@
       }
     </style>
     
-    <!-- Error handling script -->
+    <!-- Enhanced Security & Error handling script -->
     <script>
       let loadTimeout;
       let hasLoaded = false;
       
-      // Clear any existing service workers
+      // Clear any existing service workers (security cleanup)
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(function(registrations) {
           for(let registration of registrations) {
@@ -97,6 +137,16 @@
           }
         });
       }
+      
+      // Security: Prevent clickjacking and frame embedding
+      if (window !== window.top) {
+        window.top.location = window.location;
+      }
+      
+      // Security: Enhanced CSP violation reporting
+      document.addEventListener('securitypolicyviolation', (e) => {
+        console.warn('CSP Violation:', e.violatedDirective, e.blockedURI);
+      });
       
       // Set a timeout to show error message if app doesn't load
       loadTimeout = setTimeout(() => {
@@ -113,7 +163,7 @@
                   <ul style="margin: 8px 0; padding-left: 20px;">
                     <li>Network connectivity issues</li>
                     <li>Browser cache conflicts</li>
-                    <li>Script loading problems</li>
+                    <li>Security policy restrictions</li>
                   </ul>
                   <button class="retry-button" onclick="window.location.reload()">
                     Reload Page
@@ -136,13 +186,15 @@
         }, 2000);
       });
       
-      // Log errors to console for debugging
+      // Enhanced error logging for security monitoring
       window.addEventListener('error', (e) => {
         console.error('Page Error:', e.error);
+        // In production, you could send this to a logging service
       });
       
       window.addEventListener('unhandledrejection', (e) => {
         console.error('Unhandled Promise Rejection:', e.reason);
+        // In production, you could send this to a logging service
       });
     </script>
   </head>

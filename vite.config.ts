@@ -1,6 +1,50 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
+// Security headers configuration
+const securityHeaders = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'X-XSS-Protection': '1; mode=block',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(self), payment=(self)'
+};
+
+// Content Security Policy
+const csp = `
+  default-src 'self';
+  script-src 'self' 'unsafe-inline' 'unsafe-eval' 
+    https://js.stripe.com 
+    https://maps.googleapis.com 
+    https://www.google.com
+    https://maps.gstatic.com;
+  style-src 'self' 'unsafe-inline' 
+    https://fonts.googleapis.com;
+  font-src 'self' 
+    https://fonts.gstatic.com 
+    https://fonts.googleapis.com;
+  img-src 'self' data: blob: https: http:;
+  connect-src 'self' 
+    https://nqvisvranvjaghvrdaaz.supabase.co 
+    wss://nqvisvranvjaghvrdaaz.supabase.co
+    https://api.stripe.com
+    https://maps.googleapis.com
+    https://maps.gstatic.com
+    https://fonts.googleapis.com
+    https://fonts.gstatic.com
+    https://api.openai.com;
+  frame-src 'self' 
+    https://www.google.com 
+    https://maps.google.com
+    https://js.stripe.com;
+  object-src 'none';
+  base-uri 'self';
+  form-action 'self' https://api.stripe.com;
+  frame-ancestors 'none';
+  upgrade-insecure-requests;
+`.replace(/\s+/g, ' ').trim();
+
 // Minimal configuration without PWA/service worker for stable production
 export default defineConfig({
   plugins: [
@@ -33,10 +77,20 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    host: true
+    host: true,
+    // Security headers for development
+    headers: {
+      ...securityHeaders,
+      'Content-Security-Policy': csp
+    }
   },
   preview: {
     port: 4173,
-    host: true
+    host: true,
+    // Security headers for preview/staging
+    headers: {
+      ...securityHeaders,
+      'Content-Security-Policy': csp
+    }
   }
 });
