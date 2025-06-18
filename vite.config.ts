@@ -117,39 +117,31 @@ export default defineConfig({
     sourcemap: false,
     minify: 'esbuild', // Use esbuild for faster minification
     target: 'es2020', // Modern browser target for better optimization
-    chunkSizeWarningLimit: 300, // Reduced from 500 to encourage smaller chunks
+    chunkSizeWarningLimit: 1000, // Increased to reduce warnings
     cssCodeSplit: true, // Enable CSS code splitting
     
     rollupOptions: {
-      // Enable aggressive tree shaking
+      // Simplified tree shaking
       treeshake: {
-        preset: 'recommended',
-        moduleSideEffects: false,
-        propertyReadSideEffects: false,
-        unknownGlobalSideEffects: false
+        preset: 'recommended'
       },
       
       output: {
-        // Add timestamp to filenames for cache busting
-        entryFileNames: `assets/[name]-[hash]-${Date.now()}.js`,
-        chunkFileNames: `assets/[name]-[hash]-${Date.now()}.js`,
-        assetFileNames: `assets/[name]-[hash]-${Date.now()}.[ext]`,
+        // Simplified filenames without timestamps to reduce cache issues
+        entryFileNames: `assets/[name]-[hash].js`,
+        chunkFileNames: `assets/[name]-[hash].js`,
+        assetFileNames: `assets/[name]-[hash].[ext]`,
         
-        // Advanced manual chunks for optimal loading
+        // Simplified manual chunks to prevent JavaScript errors
         manualChunks: (id) => {
-          // React core (keep small and separate)
-          if (id.includes('react/') && !id.includes('react-dom')) {
-            return 'react-core';
+          // Core React libraries
+          if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) {
+            return 'react-vendor';
           }
           
-          // React DOM (separate from core)
-          if (id.includes('react-dom')) {
-            return 'react-dom';
-          }
-          
-          // React Router (separate chunk)
+          // React Router
           if (id.includes('react-router')) {
-            return 'react-router';
+            return 'router';
           }
           
           // Supabase client
@@ -157,162 +149,31 @@ export default defineConfig({
             return 'supabase';
           }
           
-          // Lucide icons - separate chunk for better caching
+          // Icons
           if (id.includes('lucide-react')) {
             return 'icons';
           }
           
-          // OpenAI and AI-related packages
-          if (id.includes('openai') || id.includes('ai')) {
-            return 'ai-vendor';
-          }
-          
-          // Editor packages (Quill)
-          if (id.includes('quill') || id.includes('react-quill')) {
-            return 'editor';
-          }
-          
-          // Google Maps
-          if (id.includes('@googlemaps') || id.includes('google-maps')) {
-            return 'maps';
-          }
-          
-          // Stripe
-          if (id.includes('@stripe') || id.includes('stripe')) {
-            return 'stripe';
-          }
-          
-          // Split admin pages into smaller chunks
-          
-          // Admin user management
-          if (id.includes('pages/AdminUsers') || 
-              id.includes('pages/UserDetails') ||
-              id.includes('pages/EditUser') ||
-              id.includes('pages/AdminMembership')) {
-            return 'admin-users';
-          }
-          
-          // Admin content management
-          if (id.includes('pages/AdminEvents') || 
-              id.includes('pages/CreateEvent') ||
-              id.includes('pages/EditEvent') ||
-              id.includes('pages/CMSPages') ||
-              id.includes('pages/NavigationManager')) {
-            return 'admin-content';
-          }
-          
-          // Admin system management
-          if (id.includes('pages/AdminSettings') ||
-              id.includes('pages/SystemConfiguration') ||
-              id.includes('pages/AdminBackup') ||
-              id.includes('pages/AdminDashboard')) {
-            return 'admin-system';
-          }
-          
-          // Admin analytics and advanced features
-          if (id.includes('pages/AdminAnalytics') ||
-              id.includes('pages/DirectoryManager') ||
-              id.includes('pages/OrganizationManager') ||
-              id.includes('pages/CompetitionManagement')) {
-            return 'admin-analytics';
-          }
-          
-          // Advertisement management (large feature)
-          if (id.includes('pages/AdManagement') ||
-              id.includes('pages/AdvertisePage') ||
-              id.includes('pages/MemberAdDashboard')) {
-            return 'ad-management';
-          }
-          
-          // AI Configuration (separate from other AI features)
-          if (id.includes('pages/AIConfiguration') ||
-              id.includes('components/BannerAICreator') ||
-              id.includes('components/WebScraperModal')) {
-            return 'ai-config';
-          }
-          
-          // Public pages - core user experience
-          if (id.includes('pages/Home') || 
-              id.includes('pages/Dashboard') ||
-              id.includes('pages/Events') ||
-              id.includes('pages/EventDetails')) {
-            return 'public-core';
-          }
-          
-          // Public pages - secondary
-          if (id.includes('pages/Directory') ||
-              id.includes('pages/Resources') ||
-              id.includes('pages/Pricing') ||
-              id.includes('pages/SearchResults')) {
-            return 'public-secondary';
-          }
-          
-          // Authentication pages
-          if (id.includes('pages/Login') || 
-              id.includes('pages/Register') ||
-              id.includes('pages/ForgotPassword') ||
-              id.includes('pages/ResetPassword')) {
-            return 'auth-pages';
-          }
-          
-          // User profile and personal features
-          if (id.includes('pages/Profile') ||
-              id.includes('pages/NotificationHistory') ||
-              id.includes('pages/ClaimOrganization') ||
-              id.includes('pages/CreateDirectoryListing')) {
-            return 'user-features';
-          }
-          
-          // Competition and scoring
-          if (id.includes('components/JudgeScoring') ||
-              id.includes('components/Competition')) {
-            return 'competition';
-          }
-          
-          // Backup and management utilities
-          if (id.includes('utils/backup') ||
-              id.includes('services/backup') ||
-              id.includes('components/BackupManager')) {
-            return 'backup-utils';
-          }
-          
-          // Utility packages
-          if (id.includes('date-fns') || id.includes('moment')) {
-            return 'date-utils';
-          }
-          
-          // Charts and visualization
-          if (id.includes('chart') || id.includes('recharts') || id.includes('d3')) {
-            return 'charts';
-          }
-          
-          // Large vendor packages that should be separate
-          if (id.includes('node_modules') && id.length > 1000) {
-            return 'vendor-large';
-          }
-          
-          // Default vendor chunk for remaining node_modules
-          if (id.includes('node_modules')) {
+          // Other vendor libraries
+          if (id.includes('node_modules/')) {
             return 'vendor';
           }
         }
       }
     }
   },
-  
-  // Performance optimizations for development
   server: {
-    hmr: {
-      overlay: false // Disable overlay for better performance
-    },
-    host: true
+    port: 5173,
+    host: true,
+    headers: {
+      'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https: http:; connect-src 'self' https://nqvisvranvjaghvrdaaz.supabase.co wss://nqvisvranvjaghvrdaaz.supabase.co https://api.stripe.com https://maps.googleapis.com https://maps.gstatic.com https://fonts.googleapis.com https://fonts.gstatic.com https://api.openai.com; frame-src 'self' https://www.google.com https://maps.google.com;"
+    }
   },
-  
-  // Experimental features for better performance
-  experimental: {
-    renderBuiltUrl(filename) {
-      // Use relative URLs for better caching
-      return `./${filename}`;
+  preview: {
+    port: 4173,
+    host: true,
+    headers: {
+      'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https: http:; connect-src 'self' https://nqvisvranvjaghvrdaaz.supabase.co wss://nqvisvranvjaghvrdaaz.supabase.co https://api.stripe.com https://maps.googleapis.com https://maps.gstatic.com https://fonts.googleapis.com https://fonts.gstatic.com https://api.openai.com; frame-src 'self' https://www.google.com https://maps.google.com;"
     }
   }
 });
