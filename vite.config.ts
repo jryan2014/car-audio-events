@@ -107,63 +107,144 @@ export default defineConfig({
       'react-dom',
       'react-router-dom',
       '@supabase/supabase-js'
-    ]
+    ],
+    // Force optimization of commonly used packages
+    force: true
   },
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
     sourcemap: false,
     minify: 'esbuild', // Use esbuild for faster minification
-    target: 'es2015', // Modern browser target for better optimization
-    chunkSizeWarningLimit: 500, // Reduced from 1600 to encourage smaller chunks
+    target: 'es2020', // Modern browser target for better optimization
+    chunkSizeWarningLimit: 300, // Reduced from 500 to encourage smaller chunks
     cssCodeSplit: true, // Enable CSS code splitting
+    
     rollupOptions: {
-      // Enable tree shaking
+      // Enable aggressive tree shaking
       treeshake: {
         preset: 'recommended',
         moduleSideEffects: false,
         propertyReadSideEffects: false,
         unknownGlobalSideEffects: false
       },
+      
       output: {
         // Add timestamp to filenames for cache busting
         entryFileNames: `assets/[name]-[hash]-${Date.now()}.js`,
         chunkFileNames: `assets/[name]-[hash]-${Date.now()}.js`,
         assetFileNames: `assets/[name]-[hash]-${Date.now()}.[ext]`,
+        
+        // Advanced manual chunks for optimal loading
         manualChunks: (id) => {
-          // React and core dependencies
-          if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
-            return 'react';
+          // React core (keep small and separate)
+          if (id.includes('react/') && !id.includes('react-dom')) {
+            return 'react-core';
           }
           
-          // Supabase
+          // React DOM (separate from core)
+          if (id.includes('react-dom')) {
+            return 'react-dom';
+          }
+          
+          // React Router (separate chunk)
+          if (id.includes('react-router')) {
+            return 'react-router';
+          }
+          
+          // Supabase client
           if (id.includes('@supabase') || id.includes('supabase')) {
             return 'supabase';
           }
           
           // Lucide icons - separate chunk for better caching
-          if (id.includes('lucide-react') || id.includes('components/icons')) {
+          if (id.includes('lucide-react')) {
             return 'icons';
           }
           
-          // Admin pages - group together since they're used by admin users
-          if (id.includes('pages/Admin') || 
-              id.includes('pages/SystemConfiguration') ||
-              id.includes('pages/UserDetails') ||
-              id.includes('pages/EditUser') ||
-              id.includes('pages/NavigationManager') ||
-              id.includes('pages/DirectoryManager') ||
-              id.includes('pages/CMSPages')) {
-            return 'admin-pages';
+          // OpenAI and AI-related packages
+          if (id.includes('openai') || id.includes('ai')) {
+            return 'ai-vendor';
           }
           
-          // Public pages - frequently accessed
+          // Editor packages (Quill)
+          if (id.includes('quill') || id.includes('react-quill')) {
+            return 'editor';
+          }
+          
+          // Google Maps
+          if (id.includes('@googlemaps') || id.includes('google-maps')) {
+            return 'maps';
+          }
+          
+          // Stripe
+          if (id.includes('@stripe') || id.includes('stripe')) {
+            return 'stripe';
+          }
+          
+          // Split admin pages into smaller chunks
+          
+          // Admin user management
+          if (id.includes('pages/AdminUsers') || 
+              id.includes('pages/UserDetails') ||
+              id.includes('pages/EditUser') ||
+              id.includes('pages/AdminMembership')) {
+            return 'admin-users';
+          }
+          
+          // Admin content management
+          if (id.includes('pages/AdminEvents') || 
+              id.includes('pages/CreateEvent') ||
+              id.includes('pages/EditEvent') ||
+              id.includes('pages/CMSPages') ||
+              id.includes('pages/NavigationManager')) {
+            return 'admin-content';
+          }
+          
+          // Admin system management
+          if (id.includes('pages/AdminSettings') ||
+              id.includes('pages/SystemConfiguration') ||
+              id.includes('pages/AdminBackup') ||
+              id.includes('pages/AdminDashboard')) {
+            return 'admin-system';
+          }
+          
+          // Admin analytics and advanced features
+          if (id.includes('pages/AdminAnalytics') ||
+              id.includes('pages/DirectoryManager') ||
+              id.includes('pages/OrganizationManager') ||
+              id.includes('pages/CompetitionManagement')) {
+            return 'admin-analytics';
+          }
+          
+          // Advertisement management (large feature)
+          if (id.includes('pages/AdManagement') ||
+              id.includes('pages/AdvertisePage') ||
+              id.includes('pages/MemberAdDashboard')) {
+            return 'ad-management';
+          }
+          
+          // AI Configuration (separate from other AI features)
+          if (id.includes('pages/AIConfiguration') ||
+              id.includes('components/BannerAICreator') ||
+              id.includes('components/WebScraperModal')) {
+            return 'ai-config';
+          }
+          
+          // Public pages - core user experience
           if (id.includes('pages/Home') || 
-              id.includes('pages/Events') ||
-              id.includes('pages/EventDetails') ||
               id.includes('pages/Dashboard') ||
-              id.includes('pages/Directory')) {
-            return 'public-pages';
+              id.includes('pages/Events') ||
+              id.includes('pages/EventDetails')) {
+            return 'public-core';
+          }
+          
+          // Public pages - secondary
+          if (id.includes('pages/Directory') ||
+              id.includes('pages/Resources') ||
+              id.includes('pages/Pricing') ||
+              id.includes('pages/SearchResults')) {
+            return 'public-secondary';
           }
           
           // Authentication pages
@@ -174,12 +255,18 @@ export default defineConfig({
             return 'auth-pages';
           }
           
-          // AI and Configuration pages
-          if (id.includes('pages/AIConfiguration') ||
-              id.includes('pages/SystemConfigurationDemo') ||
-              id.includes('components/BannerAICreator') ||
-              id.includes('components/WebScraperModal')) {
-            return 'ai-features';
+          // User profile and personal features
+          if (id.includes('pages/Profile') ||
+              id.includes('pages/NotificationHistory') ||
+              id.includes('pages/ClaimOrganization') ||
+              id.includes('pages/CreateDirectoryListing')) {
+            return 'user-features';
+          }
+          
+          // Competition and scoring
+          if (id.includes('components/JudgeScoring') ||
+              id.includes('components/Competition')) {
+            return 'competition';
           }
           
           // Backup and management utilities
@@ -189,7 +276,7 @@ export default defineConfig({
             return 'backup-utils';
           }
           
-          // Date/time libraries
+          // Utility packages
           if (id.includes('date-fns') || id.includes('moment')) {
             return 'date-utils';
           }
@@ -199,17 +286,12 @@ export default defineConfig({
             return 'charts';
           }
           
-          // Form libraries
-          if (id.includes('react-hook-form') || id.includes('formik')) {
-            return 'forms';
+          // Large vendor packages that should be separate
+          if (id.includes('node_modules') && id.length > 1000) {
+            return 'vendor-large';
           }
           
-          // Text editor
-          if (id.includes('react-quill') || id.includes('quill')) {
-            return 'editor';
-          }
-          
-          // Other vendor libraries
+          // Default vendor chunk for remaining node_modules
           if (id.includes('node_modules')) {
             return 'vendor';
           }
@@ -217,31 +299,20 @@ export default defineConfig({
       }
     }
   },
+  
+  // Performance optimizations for development
   server: {
-    port: 5173,
-    host: true, // Allow external connections
-    strictPort: true, // Exit if port is already in use
-    // Force browser to not cache during development
-    headers: {
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0'
-    },
-    // WebSocket configuration for better compatibility
     hmr: {
-      port: 5173,
-      // Fallback to polling if WebSocket fails
-      overlay: true
+      overlay: false // Disable overlay for better performance
     },
-    // Enable CORS for development
-    cors: true
+    host: true
   },
-  preview: {
-    // Handle SPA routing for preview mode
-    open: true
-  },
-  // Handle client-side routing - this fixes the refresh issue
-  appType: 'spa',
-  // Ensure proper base configuration
-  base: '/'
+  
+  // Experimental features for better performance
+  experimental: {
+    renderBuiltUrl(filename) {
+      // Use relative URLs for better caching
+      return `./${filename}`;
+    }
+  }
 });

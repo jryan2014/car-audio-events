@@ -1,0 +1,31 @@
+BACKUP: Database Security Phase 2 - RLS Enablement
+Backup created: 06/17/2025 22:36:49
+
+=== PURPOSE ===
+Enabling RLS on 5 critical tables with existing policies
+
+=== CRITICAL TABLES ===
+- advertisements (HIGH RISK)
+- event_categories (HIGH RISK)
+- events (HIGH RISK)
+- profiles (HIGH RISK)
+- users (CRITICAL RISK)
+
+=== CURRENT STATUS ===
+These tables have security policies but RLS is DISABLED
+This is a MAJOR SECURITY VULNERABILITY
+
+=== PHASE 2 APPROACH ===
+1. Start with lowest risk (event_categories)
+2. Progress to medium risk (advertisements, events)
+3. Handle high risk (profiles)
+4. Complete with critical (users)
+5. Full verification and testing
+
+=== ROLLBACK PLAN ===
+Disable RLS on any table that breaks functionality
+Investigate policy issues
+Re-enable properly
+
+Size: 3.96 MB
+Files: 195

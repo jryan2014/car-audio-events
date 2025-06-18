@@ -1,0 +1,95 @@
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import Stripe from 'https://esm.sh/stripe@14.21.0'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  try {
+    // Get Stripe secret key from environment
+    const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY')
+    if (!stripeSecretKey) {
+      throw new Error('STRIPE_SECRET_KEY environment variable is not set')
+    }
+
+    // Initialize Stripe
+    const stripe = new Stripe(stripeSecretKey, {
+      apiVersion: '2023-10-16',
+    })
+
+    // Get Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+    // Parse request body
+    const { amount, currency = 'usd', metadata = {} } = await req.json()
+
+    // Validate amount
+    if (!amount || amount < 50) { // Minimum $0.50 USD
+      throw new Error('Amount must be at least $0.50 USD')
+    }
+
+    // Get user from authorization header
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      throw new Error('No authorization header')
+    }
+
+    const token = authHeader.replace('Bearer ', '')
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token)
+    
+    if (userError || !user) {
+      throw new Error('Invalid user token')
+    }
+
+    // Create payment intent
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: Math.round(amount), // Amount in cents
+      currency: currency.toLowerCase(),
+      metadata: {
+        user_id: user.id,
+        user_email: user.email,
+        ...metadata
+      },
+      automatic_payment_methods: {
+        enabled: true,
+      },
+    })
+
+    // Log payment intent creation
+    console.log(`Payment intent created: ${paymentIntent.id} for user: ${user.email}`)
+
+    return new Response(
+      JSON.stringify({
+        client_secret: paymentIntent.client_secret,
+        payment_intent_id: paymentIntent.id
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      }
+    )
+
+  } catch (error) {
+    console.error('Error creating payment intent:', error)
+    
+    return new Response(
+      JSON.stringify({
+        error: error.message || 'Failed to create payment intent'
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      }
+    )
+  }
+}) 

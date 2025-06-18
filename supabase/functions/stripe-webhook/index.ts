@@ -1,11 +1,10 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import Stripe from 'https://esm.sh/stripe@13.11.0'
+import Stripe from 'https://esm.sh/stripe@14.21.0'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, stripe-signature',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
 interface Database {
@@ -46,6 +45,41 @@ interface Database {
           metadata?: any
         }
       }
+      payments: {
+        Insert: {
+          id: string
+          user_id: string
+          amount: number
+          currency: string
+          status: string
+          metadata: any
+          stripe_payment_intent_id: string
+          created_at: string
+          updated_at: string
+        }
+        Update: {
+          amount?: number
+          currency?: string
+          status?: string
+          metadata?: any
+          stripe_payment_intent_id?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      event_registrations: {
+        Insert: {
+          user_id: string
+          event_id: string
+          payment_id: string
+          registration_date: string
+          status: string
+        }
+        Update: {
+          registration_date?: string
+          status?: string
+        }
+      }
     }
   }
 }
@@ -57,80 +91,150 @@ serve(async (req) => {
   }
 
   try {
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const supabase = createClient<Database>(supabaseUrl, supabaseKey)
+    // Get Stripe secret key and webhook secret from environment
+    const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY')
+    const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET')
+    
+    if (!stripeSecretKey || !webhookSecret) {
+      throw new Error('Missing Stripe configuration')
+    }
 
     // Initialize Stripe
-    const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY')
-    if (!stripeSecretKey) {
-      throw new Error('Stripe secret key not configured')
-    }
-    
     const stripe = new Stripe(stripeSecretKey, {
-      apiVersion: '2024-06-20', // Using Stripe API V2
-      httpClient: Stripe.createFetchHttpClient(),
+      apiVersion: '2023-10-16',
     })
 
-    // Get the webhook signing secret
-    const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET')
-    if (!webhookSecret) {
-      throw new Error('Stripe webhook secret not configured')
-    }
+    // Get Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey)
 
     // Get the raw body and signature
     const body = await req.text()
     const signature = req.headers.get('stripe-signature')
 
     if (!signature) {
-      throw new Error('Missing stripe-signature header')
+      throw new Error('No Stripe signature found')
     }
 
-    // Verify the webhook signature
+    // Verify webhook signature
     let event: Stripe.Event
     try {
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
     } catch (err) {
       console.error('Webhook signature verification failed:', err)
-      return new Response(`Webhook signature verification failed: ${err.message}`, {
-        status: 400,
-        headers: corsHeaders,
-      })
+      return new Response('Invalid signature', { status: 400 })
     }
 
-    console.log('Processing webhook event:', event.type)
+    console.log(`Received webhook event: ${event.type}`)
 
-    // Handle different webhook events
+    // Handle different event types
     switch (event.type) {
-      case 'customer.subscription.created':
-      case 'customer.subscription.updated': {
-        const subscription = event.data.object as Stripe.Subscription
-        await handleSubscriptionChange(supabase, subscription)
-        break
-      }
-
-      case 'customer.subscription.deleted': {
-        const subscription = event.data.object as Stripe.Subscription
-        await handleSubscriptionCancelled(supabase, subscription)
-        break
-      }
-
-      case 'invoice.payment_succeeded': {
-        const invoice = event.data.object as Stripe.Invoice
-        await handlePaymentSucceeded(supabase, invoice)
-        break
-      }
-
-      case 'invoice.payment_failed': {
-        const invoice = event.data.object as Stripe.Invoice
-        await handlePaymentFailed(supabase, invoice)
-        break
-      }
-
       case 'payment_intent.succeeded': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent
-        await handlePaymentIntentSucceeded(supabase, paymentIntent)
+        
+        // Create or update payment record
+        const { error: upsertError } = await supabase
+          .from('payments')
+          .upsert({
+            id: paymentIntent.id,
+            user_id: paymentIntent.metadata.user_id,
+            amount: paymentIntent.amount,
+            currency: paymentIntent.currency,
+            status: paymentIntent.status,
+            metadata: paymentIntent.metadata,
+            stripe_payment_intent_id: paymentIntent.id,
+            created_at: new Date(paymentIntent.created * 1000).toISOString(),
+            updated_at: new Date().toISOString()
+          })
+
+        if (upsertError) {
+          console.error('Error upserting payment record:', upsertError)
+        }
+
+        // If this is an event registration payment, ensure registration exists
+        if (paymentIntent.metadata.event_id && paymentIntent.metadata.user_id) {
+          const { error: registrationError } = await supabase
+            .from('event_registrations')
+            .upsert({
+              user_id: paymentIntent.metadata.user_id,
+              event_id: paymentIntent.metadata.event_id,
+              payment_id: paymentIntent.id,
+              registration_date: new Date().toISOString(),
+              status: 'confirmed'
+            })
+
+          if (registrationError) {
+            console.error('Error creating event registration:', registrationError)
+          } else {
+            console.log(`Event registration confirmed for user ${paymentIntent.metadata.user_id}`)
+          }
+        }
+
+        break
+      }
+
+      case 'payment_intent.payment_failed': {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent
+        
+        // Update payment record with failed status
+        const { error: updateError } = await supabase
+          .from('payments')
+          .upsert({
+            id: paymentIntent.id,
+            user_id: paymentIntent.metadata.user_id,
+            amount: paymentIntent.amount,
+            currency: paymentIntent.currency,
+            status: paymentIntent.status,
+            metadata: paymentIntent.metadata,
+            stripe_payment_intent_id: paymentIntent.id,
+            created_at: new Date(paymentIntent.created * 1000).toISOString(),
+            updated_at: new Date().toISOString()
+          })
+
+        if (updateError) {
+          console.error('Error updating failed payment record:', updateError)
+        }
+
+        break
+      }
+
+      case 'payment_intent.canceled': {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent
+        
+        // Update payment record with canceled status
+        const { error: updateError } = await supabase
+          .from('payments')
+          .upsert({
+            id: paymentIntent.id,
+            user_id: paymentIntent.metadata.user_id,
+            amount: paymentIntent.amount,
+            currency: paymentIntent.currency,
+            status: paymentIntent.status,
+            metadata: paymentIntent.metadata,
+            stripe_payment_intent_id: paymentIntent.id,
+            created_at: new Date(paymentIntent.created * 1000).toISOString(),
+            updated_at: new Date().toISOString()
+          })
+
+        if (updateError) {
+          console.error('Error updating canceled payment record:', updateError)
+        }
+
+        // Remove any associated event registrations
+        if (paymentIntent.metadata.event_id && paymentIntent.metadata.user_id) {
+          const { error: deleteError } = await supabase
+            .from('event_registrations')
+            .delete()
+            .eq('user_id', paymentIntent.metadata.user_id)
+            .eq('event_id', paymentIntent.metadata.event_id)
+            .eq('payment_id', paymentIntent.id)
+
+          if (deleteError) {
+            console.error('Error removing event registration:', deleteError)
+          }
+        }
+
         break
       }
 
@@ -138,27 +242,23 @@ serve(async (req) => {
         console.log(`Unhandled event type: ${event.type}`)
     }
 
-    // Log the webhook activity
-    await supabase.from('activity_logs').insert({
-      activity_type: 'stripe_webhook',
-      activity_description: `Processed ${event.type} webhook`,
-      metadata: {
-        event_id: event.id,
-        event_type: event.type,
-        processed_at: new Date().toISOString()
-      }
-    })
-
     return new Response(JSON.stringify({ received: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200,
     })
 
   } catch (error) {
-    console.error('Webhook processing error:', error)
-    return new Response(`Webhook processing error: ${error.message}`, {
-      status: 500,
-      headers: corsHeaders,
-    })
+    console.error('Webhook error:', error)
+    
+    return new Response(
+      JSON.stringify({
+        error: error.message || 'Webhook processing failed'
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      }
+    )
   }
 })
 
