@@ -258,12 +258,30 @@ export default function Header() {
               </div>
             )}
 
-            {/* Mobile menu button */}
+            {/* Mobile menu button - shows hamburger for guests, user name for logged in */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden text-gray-300 hover:text-white transition-colors duration-200"
+              className="md:hidden text-gray-300 hover:text-white transition-colors duration-200 flex items-center space-x-2"
             >
-              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              {isAuthenticated && user ? (
+                <>
+                  {user.profileImage ? (
+                    <img 
+                      src={user.profileImage} 
+                      alt={user.name}
+                      className="w-6 h-6 rounded-full border border-electric-500"
+                    />
+                  ) : (
+                    <User className="h-5 w-5 p-1 bg-electric-500 rounded-full text-white" />
+                  )}
+                  <span className="font-medium text-sm">{user.name}</span>
+                  {isMenuOpen ? <X className="h-5 w-5" /> : <ChevronDown className="h-4 w-4" />}
+                </>
+              ) : (
+                <>
+                  {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+                </>
+              )}
             </button>
           </div>
         </div>

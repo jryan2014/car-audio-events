@@ -36,7 +36,7 @@ export const VERSION = {
   VERSION_STRING: '${version}',
   BUILD: ${Date.now()}, // Build timestamp
   RELEASE_DATE: '2025-01-17',
-  CODENAME: 'Security Fortress'
+  CODENAME: 'Blood Brothers'
 } as const;
 
 export const getVersionString = (): string => {
@@ -93,24 +93,24 @@ export const VERSION_HISTORY = [
   {
     version: '${version}',
     date: '2025-01-17',
-    codename: 'Security Fortress',
-    description: 'Major security overhaul with comprehensive protection while maintaining full functionality',
+    codename: 'Blood Brothers',
+    description: 'Mobile responsiveness overhaul with comprehensive layout fixes and deployment automation',
     features: [
-      '🔒 Implemented comprehensive Content Security Policy (CSP) protection',
-      '🛡️ Added security headers: HSTS, XSS Protection, Clickjacking Prevention',
-      '🚨 Fixed critical production failures with emergency site restoration',
-      '⚡ Resolved PWA/Service Worker conflicts causing site outages',
-      '🔧 Eliminated JavaScript bundle errors from aggressive code splitting',
-      '🔍 Added CSP violation monitoring and security event logging',
-      '📋 Created comprehensive security documentation (SECURITY.md)',
-      '✅ Protected against XSS, Clickjacking, MITM, and Data Injection attacks',
-      '🌐 Secured external connections to only trusted domains (Stripe, Google, Supabase)',
-      '🚀 Maintained full functionality while achieving robust security posture',
-      '⚠️ Strategically disabled PWA to eliminate service worker attack vectors',
-      '🔗 Enforced HTTPS with upgrade-insecure-requests policy',
-      '📱 Fixed mobile menu memory leaks and infinite loops',
-      '🔧 Made version system dynamic to prevent version mismatches',
-      '🤖 Implemented automatic version control system'
+      '📱 Fixed completely broken mobile layout with map dominating viewport',
+      '🍔 Cleaned mobile header - removed clutter, left only hamburger menu',
+      '🔍 Moved search functionality into mobile menu for clean UX',
+      '🔐 Integrated login/register buttons into mobile menu system',
+      '🗺️ Disabled mobile map hover cards (desktop-only feature)',
+      '📐 Implemented progressive height scaling across all device sizes',
+      '🚀 Fixed automatic version incrementing in build process',
+      '⚡ Enhanced deployment workflow with 4-phase verification',
+      '🔧 Resolved version system integration with build pipeline',
+      '📋 Created comprehensive mobile responsiveness protocols',
+      '🎯 Eliminated mobile menu overlapping content issues',
+      '🔄 Implemented step-by-step deployment with user confirmation',
+      '📱 Optimized mobile header for clean, professional appearance',
+      '🛠️ Fixed version bump integration for automatic deployment versioning',
+      '🤝 Established Blood Brothers collaboration workflow'
     ]
   },
   {

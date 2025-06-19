@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight, Calendar, MapPin, Users, FileText, Home, Building2, Settings, BarChart3, User, Crown, BookOpen, HelpCircle, MessageSquare, Lightbulb, Search } from 'lucide-react';
 import Badge from './Badge';
 import { GlobalSearch } from './GlobalSearch';
+import { supabase } from '../lib/supabase';
 
 interface MobileMegaMenuProps {
   isAuthenticated: boolean;
@@ -18,16 +19,177 @@ interface MobileMegaMenuProps {
   isOpen: boolean;
 }
 
-interface SimpleNavItem {
+interface NavigationItem {
   id: string;
   title: string;
   href?: string;
-  icon: React.ComponentType<any>;
-  children?: SimpleNavItem[];
+  icon?: string;
+  children?: NavigationItem[];
+  is_visible: boolean;
+  requires_auth: boolean;
+  membership_types?: string[];
 }
 
 export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, isOpen }: MobileMegaMenuProps) {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const [navigationItems, setNavigationItems] = useState<NavigationItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Icon mapping
+  const getIcon = (iconName?: string) => {
+    const iconMap: Record<string, React.ComponentType<any>> = {
+      'Home': Home,
+      'Calendar': Calendar,
+      'MapPin': MapPin,
+      'BookOpen': BookOpen,
+      'Building2': Building2,
+      'HelpCircle': HelpCircle,
+      'MessageSquare': MessageSquare,
+      'Lightbulb': Lightbulb,
+      'BarChart3': BarChart3,
+      'Settings': Settings,
+      'Users': Users,
+      'FileText': FileText
+    };
+    return iconMap[iconName || 'FileText'] || FileText;
+  };
+
+  useEffect(() => {
+    fetchNavigationItems();
+  }, [isAuthenticated, user]);
+
+  const fetchNavigationItems = async () => {
+    try {
+      setLoading(true);
+      
+      const { data, error } = await supabase
+        .from('navigation_items')
+        .select('*')
+        .eq('is_visible', true)
+        .order('sort_order', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching navigation:', error);
+        // Fallback to hardcoded items
+        setNavigationItems(getDefaultNavigation());
+        return;
+      }
+
+      // Filter items based on authentication and membership
+      const filteredItems = data?.filter(item => {
+        // Check authentication requirement
+        if (item.requires_auth && !isAuthenticated) {
+          return false;
+        }
+
+        // Check membership types
+        if (item.membership_types && item.membership_types.length > 0 && user) {
+          return item.membership_types.includes(user.membershipType);
+        }
+
+        return true;
+      }) || [];
+
+      // Organize items into hierarchy
+      const organizedItems = organizeNavigationItems(filteredItems);
+      setNavigationItems(organizedItems);
+    } catch (error) {
+      console.error('Error in fetchNavigationItems:', error);
+      setNavigationItems(getDefaultNavigation());
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getDefaultNavigation = (): NavigationItem[] => {
+    return [
+      {
+        id: 'home',
+        title: 'Home',
+        href: '/',
+        icon: 'Home',
+        is_visible: true,
+        requires_auth: false
+      },
+      {
+        id: 'events',
+        title: 'Events',
+        href: '/events',
+        icon: 'Calendar',
+        is_visible: true,
+        requires_auth: false
+      },
+      {
+        id: 'directory',
+        title: 'Directory',
+        href: '/directory',
+        icon: 'MapPin',
+        is_visible: true,
+        requires_auth: false
+      },
+      {
+        id: 'resources',
+        title: 'Resources',
+        icon: 'BookOpen',
+        is_visible: true,
+        requires_auth: false,
+        children: [
+          {
+            id: 'get-holt',
+            title: 'Get Holt',
+            href: '/get-holt',
+            icon: 'Lightbulb',
+            is_visible: true,
+            requires_auth: false
+          },
+          {
+            id: 'organizations',
+            title: 'Organizations',
+            href: '/organizations',
+            icon: 'Building2',
+            is_visible: true,
+            requires_auth: false
+          },
+          {
+            id: 'help-center',
+            title: 'Help Center',
+            href: '/help',
+            icon: 'HelpCircle',
+            is_visible: true,
+            requires_auth: false
+          },
+          {
+            id: 'contact-us',
+            title: 'Contact Us',
+            href: '/contact',
+            icon: 'MessageSquare',
+            is_visible: true,
+            requires_auth: false
+          }
+        ]
+      }
+    ];
+  };
+
+  const organizeNavigationItems = (items: NavigationItem[]): NavigationItem[] => {
+    const itemMap = new Map<string, NavigationItem>();
+    const rootItems: NavigationItem[] = [];
+
+    // Create a map of all items
+    items.forEach(item => {
+      itemMap.set(item.id, { ...item, children: [] });
+    });
+
+    // Organize into hierarchy and filter root items
+    items.forEach(item => {
+      const mappedItem = itemMap.get(item.id);
+      if (mappedItem) {
+        rootItems.push(mappedItem);
+      }
+    });
+
+    return rootItems;
+  };
 
   const handleLinkClick = (href: string) => {
     if (onLinkClick) {
@@ -45,75 +207,12 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, isO
     setExpandedItems(newExpanded);
   };
 
-  // Simple hardcoded navigation - no database calls, no complex logic
-  const navigationItems: SimpleNavItem[] = [
-    {
-      id: 'home',
-      title: 'Home',
-      href: '/',
-      icon: Home
-    },
-    {
-      id: 'events',
-      title: 'Events',
-      href: '/events',
-      icon: Calendar
-    },
-    {
-      id: 'directory',
-      title: 'Directory',
-      href: '/directory',
-      icon: MapPin
-    },
-    {
-      id: 'resources',
-      title: 'Resources',
-      icon: BookOpen,
-      children: [
-        {
-          id: 'get-holt',
-          title: 'Get Holt',
-          href: '/get-holt',
-          icon: Lightbulb
-        },
-        {
-          id: 'organizations',
-          title: 'Organizations',
-          href: '/organizations',
-          icon: Building2
-        },
-        {
-          id: 'help-center',
-          title: 'Help Center',
-          href: '/help',
-          icon: HelpCircle
-        },
-        {
-          id: 'contact-us',
-          title: 'Contact Us',
-          href: '/contact',
-          icon: MessageSquare
-        }
-      ]
-    }
-  ];
-
-  // Add membership-specific items
-  if (isAuthenticated && user) {
-    navigationItems.push({
-      id: 'dashboard',
-      title: 'Dashboard',
-      href: user.membershipType === 'admin' ? '/admin/dashboard' : '/dashboard',
-      icon: BarChart3
-    });
-  }
-
-  const renderNavigationItems = (items: SimpleNavItem[], depth: number = 0): React.ReactNode => {
+  const renderNavigationItems = (items: NavigationItem[], depth: number = 0): React.ReactNode => {
     return items.map((item) => {
       const hasChildren = item.children && item.children.length > 0;
       const isExpanded = expandedItems.has(item.id);
       const paddingLeft = depth * 16 + 16;
-      const IconComponent = item.icon;
+      const IconComponent = getIcon(item.icon);
 
       return (
         <div key={item.id} className="border-b border-gray-700/30 last:border-b-0">
@@ -219,7 +318,13 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, isO
         {/* Navigation Items */}
         <div className="flex-1 overflow-y-auto">
           <div className="py-2">
-            {renderNavigationItems(navigationItems)}
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="text-gray-400">Loading navigation...</div>
+              </div>
+            ) : (
+              renderNavigationItems(navigationItems)
+            )}
           </div>
         </div>
 

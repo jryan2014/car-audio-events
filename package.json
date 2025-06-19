@@ -1,11 +1,11 @@
 {
   "name": "car-audio-competition-platform",
   "private": true,
-  "version": "1.5.6",
+  "version": "1.5.12",
   "type": "module",
   "scripts": {
     "dev": "npm run version:generate && vite",
-    "build": "npm run version:generate && tsc && vite build",
+    "build": "npm run version:bump:patch && tsc && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "analyze": "node scripts/analyze-bundle.js",
