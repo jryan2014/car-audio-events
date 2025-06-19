@@ -172,7 +172,7 @@ export default function Home() {
   return (
     <div className="animate-fade-in">
       {/* Hero Section */}
-      <section className="relative overflow-hidden h-[60vh] md:h-[70vh]">
+      <section className="relative overflow-hidden h-[40vh] sm:h-[50vh] md:h-[60vh] lg:h-[70vh]">
         <div className="h-full relative">
           {/* World Map Background - NO OVERLAY */}
           <div className="absolute inset-0 z-0">
@@ -181,7 +181,7 @@ export default function Home() {
           
           {/* Content positioned on the left side - NO OVERLAY ON MAP */}
           <div className="absolute left-0 top-0 h-full flex items-center z-10">
-            <div className="max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg mx-4 md:ml-8 animate-slide-up">
+            <div className="max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg mx-2 sm:mx-4 md:ml-8 animate-slide-up">
               {/* Clean text container positioned to left - doesn't cover map */}
               <div className="bg-black/80 backdrop-blur-md rounded-2xl p-3 sm:p-4 md:p-5 border border-white/20 shadow-2xl">
               <div className="flex items-center space-x-1 mb-2 md:mb-3">
