@@ -25,7 +25,7 @@ export const CreditCardLogos: React.FC<CreditCardLogosProps> = ({
         <span className="text-gray-400 text-sm font-medium">We accept:</span>
       )}
       <img 
-        src="/images/Stripe-CC-LogosV2.png" 
+        src="/assets/images/stripe-cc-logos.png" 
         alt="We accept Visa, Mastercard, American Express, and Discover" 
         className={`${logoHeight} w-auto`}
       />
