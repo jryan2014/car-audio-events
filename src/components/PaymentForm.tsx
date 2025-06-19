@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { CreditCard, Lock, AlertCircle, CheckCircle } from 'lucide-react';
 import { createPaymentIntent } from '../lib/stripe';
+import { CreditCardLogos } from './CreditCardLogos';
 
 interface PaymentFormProps {
   amount: number;
@@ -162,6 +163,9 @@ export default function PaymentForm({ amount, description, onSuccess, onError, m
           )}
         </button>
 
+        {/* Credit Card Logos */}
+        <CreditCardLogos size="md" showText={false} className="justify-center" />
+        
         <div className="flex items-center justify-center space-x-4 text-xs text-gray-400">
           <div className="flex items-center space-x-1">
             <Lock className="h-3 w-3" />

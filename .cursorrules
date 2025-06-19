@@ -1,0 +1,411 @@
+# Car Audio Competition Platform - Cursor Rules
+
+## Project Overview
+This is a React/TypeScript car audio competition platform using Supabase as BaaS, with Stripe payments, AI integration, and comprehensive admin features.
+
+## Tech Stack
+- **Frontend**: React 18.3.1, TypeScript 5.5.3, Vite 6.3.5
+- **Styling**: Tailwind CSS 3.4.1, Lucide React icons
+- **Backend**: Supabase (PostgreSQL, Auth, Edge Functions)
+- **Payments**: Stripe integration
+- **AI**: OpenAI GPT integration
+- **Email**: Postmark service
+
+## Coding Standards
+
+### TypeScript
+- Always use TypeScript for new files
+- Define interfaces for all props and data structures
+- Use strict type checking
+- Prefer `interface` over `type` for object definitions
+- Use proper generic types for reusable components
+
+### React
+- Use functional components with hooks
+- Prefer named exports over default exports
+- Use React.memo() for performance optimization when needed
+- Custom hooks should start with `use` prefix
+- Keep components under 200 lines when possible
+
+### File Structure
+- Components in `src/components/`
+- Pages in `src/pages/`
+- Utilities in `src/utils/`
+- Types in `src/types/`
+- Hooks in `src/hooks/`
+- Services in `src/services/`
+
+### Naming Conventions
+- **Components**: PascalCase (e.g., `UserProfile.tsx`)
+- **Files**: kebab-case for utilities (e.g., `user-utils.ts`)
+- **Variables**: camelCase
+- **Constants**: UPPER_SNAKE_CASE
+- **CSS Classes**: Tailwind utility classes
+
+### Supabase Integration
+- Use the existing `supabase` client from `src/lib/supabase`
+- Always handle errors from Supabase operations
+- Use Row Level Security (RLS) policies
+- Prefer real-time subscriptions for live data
+- Use TypeScript types for database schemas
+
+### Security
+- Never expose API keys in frontend code
+- Use environment variables for sensitive data
+- Implement proper authentication checks
+- Follow RLS policies for database access
+- Sanitize user inputs
+
+### Performance
+- Use lazy loading for routes
+- Implement proper loading states
+- Use React.memo() for expensive components
+- Optimize images and assets
+- Use Vite's code splitting features
+
+## Code Style
+
+### Imports
+```typescript
+// External libraries first
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+
+// Internal imports
+import { supabase } from '../lib/supabase';
+import { UserProfile } from '../types/user';
+import { formatDate } from '../utils/date-utils';
+```
+
+### Component Structure
+```typescript
+interface ComponentProps {
+  title: string;
+  isVisible: boolean;
+  onClose: () => void;
+}
+
+export const Component: React.FC<ComponentProps> = ({ 
+  title, 
+  isVisible, 
+  onClose 
+}) => {
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // Effect logic here
+  }, []);
+
+  const handleAction = async () => {
+    try {
+      setLoading(true);
+      // Async logic here
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-center">
+      {/* Component JSX */}
+    </div>
+  );
+};
+```
+
+### Error Handling
+- Always wrap async operations in try-catch
+- Provide meaningful error messages
+- Use loading states for async operations
+- Handle edge cases gracefully
+
+### CSS/Styling
+- Use Tailwind CSS utility classes
+- Follow mobile-first responsive design
+- Use consistent spacing scale
+- Prefer Tailwind over custom CSS
+- Use semantic color names from theme
+
+## Database Conventions
+- Table names: snake_case
+- Column names: snake_case
+- Use UUIDs for primary keys
+- Include created_at and updated_at timestamps
+- Implement proper RLS policies
+
+## API Integration
+- Use proper TypeScript types for API responses
+- Handle loading and error states
+- Implement retry logic for critical operations
+- Use proper HTTP status codes
+
+## Testing
+- Write unit tests for utility functions
+- Test components with user interactions
+- Mock external services in tests
+- Use meaningful test descriptions
+
+## Version Control
+- Use the automatic version control system
+- Never edit `src/utils/version.ts` manually
+- Use semantic versioning for releases
+- Write clear commit messages
+
+## AI Assistant Guidelines
+- Provide complete, working code examples
+- Include proper TypeScript types
+- Follow the established patterns in the codebase
+- Consider performance implications
+- Suggest improvements when relevant
+
+## Common Patterns
+
+### Supabase Queries
+```typescript
+const { data, error } = await supabase
+  .from('table_name')
+  .select('*')
+  .eq('column', value);
+
+if (error) {
+  console.error('Database error:', error);
+  return;
+}
+```
+
+### Form Handling
+```typescript
+const [formData, setFormData] = useState<FormData>({});
+const [loading, setLoading] = useState(false);
+
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
+  
+  try {
+    // Form submission logic
+  } catch (error) {
+    console.error('Form error:', error);
+  } finally {
+    setLoading(false);
+  }
+};
+```
+
+## Avoid
+- Using `any` type
+- Direct DOM manipulation
+- Inline styles (use Tailwind)
+- Hardcoded strings (use constants)
+- Unhandled promises
+- Memory leaks in useEffect
+
+## Project-Specific Notes
+- Mobile menu has been simplified to prevent memory leaks
+- Version system is automated - don't manually edit version files
+- Use the existing notification system instead of browser alerts
+- Follow the established admin dashboard patterns
+- Maintain consistency with existing UI components
+
+## Performance Considerations
+- The project has had memory issues with complex components
+- Prefer simple, direct implementations over complex abstractions
+- Use React.memo() judiciously
+- Clean up subscriptions and event listeners
+
+Remember: This is a production platform handling real users and payments. Prioritize security, performance, and user experience in all implementations.
+
+## 🚨 CRITICAL PRODUCTION PROTOCOLS
+
+### 🔴 ABSOLUTE PROHIBITIONS (NEVER DO)
+- ❌ **NEVER reset or drop the database** - This is a production environment with real user data
+- ❌ **NEVER disable RLS as a "quick fix"** - Security is non-negotiable
+- ❌ **NEVER work without creating a backup first** - Always backup before significant changes
+- ❌ **NEVER modify database security settings without explicit approval**
+- ❌ **NEVER make changes that could break authentication**
+- ❌ **NEVER work on multiple unrelated features simultaneously**
+- ❌ **NEVER skip the mandatory QA process**
+- ❌ **NEVER give multiple instructions at once** - User is new to development
+- ❌ **NEVER continue without explicit user confirmation between steps**
+- ❌ **NEVER use local database** - Always use remote Supabase database
+- ❌ **NEVER provide multiple SQL files** - Only ONE SQL file per task
+
+### ✅ MANDATORY REQUIREMENTS (ALWAYS DO)
+- ✅ **ALWAYS create backup** before any significant changes (backup-[feature-name]-YYYY-MM-DD_HH-mm-ss)
+- ✅ **ALWAYS use step-by-step approach** with user confirmation at each stage
+- ✅ **ALWAYS provide only ONE SQL file** to be run in Supabase editor
+- ✅ **ALWAYS use remote database only** - Never suggest local database work
+- ✅ **ALWAYS explain what each step does and why it's needed**
+- ✅ **ALWAYS wait for "proceed" or "continue" before next step**
+- ✅ **ALWAYS test all changes thoroughly before presenting**
+- ✅ **ALWAYS consider impact on existing functionality**
+- ✅ **ALWAYS follow the automatic version control system**
+- ✅ **ALWAYS use the existing Supabase client from src/lib/supabase**
+
+### 🛡️ DATABASE SAFETY PROTOCOLS
+- **Remote Database Only**: All database work must be done on the remote Supabase instance
+- **Single SQL File Rule**: Provide exactly ONE .sql file per task to run in Supabase editor
+- **No Database Resets**: Never suggest dropping, truncating, or resetting database tables
+- **RLS Protection**: Row Level Security policies must remain enabled and functional
+- **Backup First**: Always create backup before any database schema changes
+- **Step-by-Step Verification**: Each database change must be verified before proceeding
+
+### 🔄 PRODUCTION WORKFLOW
+1. **ACKNOWLEDGE PROTOCOLS**: Confirm understanding of all production rules
+2. **CREATE BACKUP**: Follow naming convention backup-[feature-name]-YYYY-MM-DD_HH-mm-ss
+3. **PLAN APPROACH**: Outline implementation strategy and get approval
+4. **SINGLE SQL FILE**: Provide only ONE SQL file for database changes
+5. **STEP-BY-STEP**: Execute with user confirmation at each stage
+6. **TEST THOROUGHLY**: Complete QA before presenting results
+7. **DOCUMENT CHANGES**: Update relevant documentation
+
+### 📞 COMMUNICATION PROTOCOL
+```
+STANDARD RESPONSE FORMAT:
+1. Acknowledge the request
+2. Confirm understanding of production constraints
+3. Outline step-by-step plan
+4. Request approval before proceeding
+5. Provide only ONE SQL file if database changes needed
+6. Wait for user confirmation before each step
+7. Explain what each step does and why
+```
+
+### 🚨 EMERGENCY PROCEDURES
+If something goes wrong:
+1. **STOP** all work immediately
+2. **ASSESS** the scope of the issue
+3. **NOTIFY** the user of the problem
+4. **RESTORE** from backup if necessary
+5. **DOCUMENT** what went wrong and why
+
+This is a production environment with real users and data. Every action must be deliberate, safe, and approved.
+
+### 📝 PROTOCOL MANAGEMENT & .cursorrules MAINTENANCE
+
+#### 🔄 UPDATING .cursorrules FILE
+- **Protocol Revision Authority**: AI agents MAY suggest updates to .cursorrules but ONLY with explicit user approval
+- **No Autonomous Changes**: NEVER modify .cursorrules without user permission
+- **Approval Required**: All protocol changes must be reviewed and approved before implementation
+- **Documentation**: Explain WHY each protocol change is needed and what problem it solves
+
+#### 🚨 WHEN TO RECOMMEND NEW RULES
+AI agents SHOULD recommend new .cursorrules additions when they encounter:
+
+1. **Recurring Issues**: Same problems happening multiple times across different tasks
+2. **Security Gaps**: New security vulnerabilities or attack vectors discovered
+3. **Performance Problems**: Patterns that consistently cause memory leaks or performance issues
+4. **User Safety**: Situations that could lead to data loss or system instability
+5. **Workflow Inefficiencies**: Processes that could be standardized for better consistency
+6. **New Technology Integration**: When adding new tools or services that need specific protocols
+7. **Production Incidents**: After any system failures or emergency situations
+
+#### 📋 PROTOCOL RECOMMENDATION FORMAT
+```
+🔧 PROTOCOL RECOMMENDATION
+
+Issue Identified: [DESCRIBE THE PROBLEM]
+Frequency: [HOW OFTEN THIS OCCURS]
+Risk Level: [CRITICAL/HIGH/MEDIUM/LOW]
+Current Impact: [WHAT HAPPENS NOW]
+
+Proposed Rule Addition:
+❌/✅ [SPECIFIC RULE TEXT]
+
+Rationale: [WHY THIS RULE IS NEEDED]
+Benefits: [HOW THIS IMPROVES SAFETY/EFFICIENCY]
+Implementation: [HOW TO ENFORCE THIS RULE]
+
+Examples of when this would apply:
+- [SCENARIO 1]
+- [SCENARIO 2]
+
+Request: May I add this rule to .cursorrules with your approval?
+```
+
+#### 🎯 PROTOCOL REVIEW TRIGGERS
+AI agents should proactively suggest protocol reviews when:
+- **After Major Incidents**: Any system failure or data issues
+- **New Feature Rollouts**: When adding significant new functionality
+- **Security Updates**: After implementing security patches or fixes
+- **Performance Optimizations**: When memory or speed issues are resolved
+- **User Feedback**: When users report confusion or workflow problems
+- **Technology Changes**: When upgrading major dependencies or tools
+
+#### ✅ APPROVED PROTOCOL CHANGES PROCESS
+1. **Identify Need**: Recognize pattern requiring new rule
+2. **Document Issue**: Provide clear examples and impact assessment
+3. **Propose Solution**: Draft specific rule text and rationale
+4. **Request Approval**: Get explicit user permission before changes
+5. **Update File**: Modify .cursorrules with approved changes
+6. **Communicate**: Notify about the update and why it was needed
+7. **Monitor**: Watch for effectiveness of new rule
+
+This ensures .cursorrules evolves safely while maintaining production stability.
+
+## 🧪 TESTING & DATA PROTOCOLS
+
+### Mock Data Management
+- **Testing Only**: Mock data is permitted ONLY during development and testing phases
+- **QA Completion**: ALL mock data MUST be removed once QA is finalized
+- **Production Clean**: Only real data and genuine statistics allowed on production server
+- **Data Verification**: Always verify data authenticity before production deployment
+- **Mock Data Markers**: Clearly mark all mock data with comments for easy identification
+
+## 📋 .cursorrules FILE GOVERNANCE
+
+### Rule Modification Protocol
+- **Approval Required**: ALL rule removals must be explicitly approved by James before implementation
+- **No Autonomous Deletions**: NEVER remove rules without explicit permission
+- **Presentation First**: The complete updated .cursorrules file MUST be presented and approved before being saved and activated
+- **Change Documentation**: All rule changes must be logged in the version history
+
+### File Management Standards
+- **Always Present Before Save**: Show complete file content and get approval before activation
+- **Version Control**: Maintain detailed version log at bottom of file
+- **Change Tracking**: Document what changed, when, and why
+
+## 🗂️ PROJECT ORGANIZATION PROTOCOLS
+
+### Folder Structure Management
+- **Clean Organization**: Maintain clean, logical folder structure at all times
+- **Daily Cleanup**: Run folder cleanup operations daily to remove temporary files
+- **File Categorization**: Ensure all files are in appropriate directories
+- **Remove Obsolete**: Delete outdated backups, temporary scripts, and unused files
+- **Documentation Current**: Keep documentation files up-to-date and relevant
+
+### Daily Maintenance Tasks
+- Remove temporary files and scripts
+- Clean up old backup directories (keep only recent essential backups)
+- Organize loose files into appropriate directories
+- Update documentation as needed
+- Verify folder structure integrity
+
+## 👥 COMMUNICATION PROTOCOLS
+
+### Personal Address Standards
+- **James**: Erik will address the user as "James" in all communications
+- **Erik**: James will address the AI assistant as "Erik"
+- **Professional Courtesy**: Maintain respectful, professional communication tone
+- **Clear Identification**: Always use names when beginning conversations or major task sections
+
+This ensures .cursorrules evolves safely while maintaining production stability.
+
+---
+
+## 📊 VERSION HISTORY & CHANGELOG
+
+### Version 1.1.0 - January 30, 2025
+**Lines**: 411 total lines
+**Changes Made**:
+- Added Mock Data Management protocols for testing phases
+- Implemented .cursorrules File Governance with approval requirements
+- Added Project Organization Protocols with daily cleanup requirements
+- Established Communication Protocols (James/Erik naming convention)
+- Added comprehensive Version History tracking system
+
+**Rationale**: Enhanced production safety, improved project organization, established clear communication standards, and implemented proper governance for rule changes.
+
+**Previous Version**: 1.0.0 (346 lines) - Initial comprehensive rules implementation 

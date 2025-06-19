@@ -1,0 +1,11 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Auto-generate version file before commit
+echo "🔄 Generating version file..."
+npm run version:generate
+
+# Add the generated version file to the commit
+git add src/utils/version.ts
+
+echo "✅ Version file updated and staged for commit" 

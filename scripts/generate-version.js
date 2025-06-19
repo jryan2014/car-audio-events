@@ -1,13 +1,40 @@
-// Auto-generated version file - DO NOT EDIT MANUALLY
-// Generated at: 2025-06-19T09:19:02.608Z
-// Source: package.json v1.5.4
+#!/usr/bin/env node
+
+/**
+ * Automatic Version Generator
+ * This script generates a TypeScript file with version information from package.json
+ * Run this before build to ensure version consistency
+ */
+
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Get the project root directory
+const projectRoot = path.resolve(__dirname, '..');
+
+// Read package.json
+const packageJsonPath = path.join(projectRoot, 'package.json');
+const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+
+// Parse version
+const version = packageJson.version;
+const [major, minor, patch] = version.split('.').map(Number);
+
+// Generate the version file content
+const versionFileContent = `// Auto-generated version file - DO NOT EDIT MANUALLY
+// Generated at: ${new Date().toISOString()}
+// Source: package.json v${version}
 
 export const VERSION = {
-  MAJOR: 1,
-  MINOR: 5,
-  PATCH: 4,
-  VERSION_STRING: '1.5.4',
-  BUILD: 1750324742608, // Build timestamp
+  MAJOR: ${major},
+  MINOR: ${minor},
+  PATCH: ${patch},
+  VERSION_STRING: '${version}',
+  BUILD: ${Date.now()}, // Build timestamp
   RELEASE_DATE: '2025-01-17',
   CODENAME: 'Security Fortress'
 } as const;
@@ -17,12 +44,12 @@ export const getVersionString = (): string => {
 };
 
 export const getFullVersionString = (): string => {
-  return `v${getVersionString()} (${VERSION.CODENAME})`;
+  return \`v\${getVersionString()} (\${VERSION.CODENAME})\`;
 };
 
 export const getBuildInfo = (): string => {
   const buildDate = new Date(VERSION.BUILD);
-  return `Build ${VERSION.BUILD} - ${buildDate.toLocaleDateString()}`;
+  return \`Build \${VERSION.BUILD} - \${buildDate.toLocaleDateString()}\`;
 };
 
 export const getVersionInfo = () => {
@@ -64,7 +91,7 @@ export const isProduction = (): boolean => {
 // Version history for reference
 export const VERSION_HISTORY = [
   {
-    version: '1.5.4',
+    version: '${version}',
     date: '2025-01-17',
     codename: 'Security Fortress',
     description: 'Major security overhaul with comprehensive protection while maintaining full functionality',
@@ -157,3 +184,13 @@ export const getVersionStatus = () => {
     needsUpdate: isNewerVersion(currentVersion, latestInHistory)
   };
 };
+`;
+
+// Write the version file
+const versionFilePath = path.join(projectRoot, 'src', 'utils', 'version.ts');
+fs.writeFileSync(versionFilePath, versionFileContent);
+
+console.log(`✅ Version file generated successfully!`);
+console.log(`📦 Package version: ${version}`);
+console.log(`📁 Generated: ${versionFilePath}`);
+console.log(`🕐 Build timestamp: ${Date.now()}`); 

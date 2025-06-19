@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Facebook, Twitter, Instagram, Youtube, Mail, Phone } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { CreditCardLogos } from './CreditCardLogos';
 
 interface CMSPage {
   id: string;
@@ -243,6 +244,9 @@ export default function Footer() {
                 <Youtube className="h-5 w-5" />
               </a>
             </div>
+            
+            {/* Credit Card Logos */}
+            <CreditCardLogos size="sm" className="mt-4" />
           </div>
 
           {/* Quick Links */}
