@@ -408,6 +408,13 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, isO
   return (
     <div className="lg:hidden fixed inset-0 z-50 bg-gray-900/95 backdrop-blur-sm">
       <div className="flex flex-col h-full">
+        {/* DEBUG BANNER */}
+        <div className="bg-red-500 text-white text-center py-4 font-bold text-lg">
+          🚨 MOBILE MENU v1.5.19 OPEN 🚨<br/>
+          isAuthenticated: {isAuthenticated ? 'YES' : 'NO'}<br/>
+          navItems: {navigationItems.length}
+        </div>
+
         {/* User Profile Section */}
         {isAuthenticated && user && (
           <div className="bg-gradient-to-r from-electric-500/20 to-purple-500/20 border-b border-gray-700/50 p-6">
