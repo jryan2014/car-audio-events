@@ -130,10 +130,29 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, isO
       };
 
       sortItems(rootItems);
+      
+      console.log('Mobile Menu Debug:', {
+        isAuthenticated,
+        userContext: getUserMembershipContext(),
+        rootItemsCount: rootItems.length,
+        rootItems: rootItems.map(item => ({ id: item.id, title: item.title, membership_contexts: item.membership_contexts }))
+      });
 
       // Filter by membership (same logic as desktop)
       const filteredItems = filterItemsByMembership(rootItems);
-      setNavigationItems(filteredItems);
+      
+      console.log('Filtered items for mobile menu:', {
+        filteredCount: filteredItems.length,
+        filteredItems: filteredItems.map(item => ({ id: item.id, title: item.title }))
+      });
+      
+      // If no items after filtering for non-authenticated users, use fallback
+      if (filteredItems.length === 0 && !isAuthenticated) {
+        console.log('No items found for non-authenticated users, using fallback navigation');
+        setNavigationItems(getDefaultNavigation());
+      } else {
+        setNavigationItems(filteredItems);
+      }
     } catch (error) {
       console.error('Error in fetchNavigationItems:', error);
       setNavigationItems(getDefaultNavigation());
