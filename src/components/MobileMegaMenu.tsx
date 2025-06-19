@@ -406,13 +406,6 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, isO
   return (
     <div className="lg:hidden fixed inset-0 z-50 bg-gray-900/95 backdrop-blur-sm">
       <div className="flex flex-col h-full">
-        {/* DEBUG BANNER */}
-        <div className="bg-red-500 text-white text-center py-4 font-bold text-lg">
-          🚨 MOBILE MENU v1.5.19 OPEN 🚨<br/>
-          isAuthenticated: {isAuthenticated ? 'YES' : 'NO'}<br/>
-          navItems: {navigationItems.length}
-        </div>
-
         {/* User Profile Section */}
         {isAuthenticated && user && (
           <div className="bg-gradient-to-r from-electric-500/20 to-purple-500/20 border-b border-gray-700/50 p-6">
@@ -472,46 +465,37 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, isO
         {/* Navigation Items */}
         <div className="flex-1 overflow-y-auto">
           <div className="py-2">
-            {/* DEBUG INFO */}
-            <div className="bg-yellow-500 text-black p-2 text-sm">
-              DEBUG: loading={loading ? 'true' : 'false'}, isAuthenticated={isAuthenticated ? 'true' : 'false'}, navItems={navigationItems.length}
-            </div>
-            
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <div className="text-gray-400">Loading navigation...</div>
               </div>
             ) : !isAuthenticated ? (
-              // HARDCODED NAVIGATION FOR NON-AUTHENTICATED USERS (FUCK THE DATABASE)
-              <>
-                <div className="bg-green-500 text-black p-2 text-sm">DEBUG: HARDCODED NAV SECTION</div>
-                <Link to="/" onClick={() => handleLinkClick('/')} className="flex items-center px-6 py-4 text-gray-300 hover:text-white hover:bg-gray-700/30 transition-colors duration-200">
-                  <Home className="h-5 w-5 mr-3" />
+              // HARDCODED NAVIGATION FOR NON-AUTHENTICATED USERS
+              <div className="space-y-2">
+                <Link to="/" onClick={() => handleLinkClick('/')} className="flex items-center px-6 py-4 text-gray-300 hover:text-white hover:bg-gray-700/30 transition-colors duration-200 border-b border-gray-700/20">
+                  <Home className="h-5 w-5 mr-3 text-electric-400" />
                   <span className="font-medium">Home</span>
                 </Link>
-                <Link to="/events" onClick={() => handleLinkClick('/events')} className="flex items-center px-6 py-4 text-gray-300 hover:text-white hover:bg-gray-700/30 transition-colors duration-200">
-                  <Calendar className="h-5 w-5 mr-3" />
+                <Link to="/events" onClick={() => handleLinkClick('/events')} className="flex items-center px-6 py-4 text-gray-300 hover:text-white hover:bg-gray-700/30 transition-colors duration-200 border-b border-gray-700/20">
+                  <Calendar className="h-5 w-5 mr-3 text-electric-400" />
                   <span className="font-medium">Events</span>
                 </Link>
-                <Link to="/directory" onClick={() => handleLinkClick('/directory')} className="flex items-center px-6 py-4 text-gray-300 hover:text-white hover:bg-gray-700/30 transition-colors duration-200">
-                  <MapPin className="h-5 w-5 mr-3" />
+                <Link to="/directory" onClick={() => handleLinkClick('/directory')} className="flex items-center px-6 py-4 text-gray-300 hover:text-white hover:bg-gray-700/30 transition-colors duration-200 border-b border-gray-700/20">
+                  <MapPin className="h-5 w-5 mr-3 text-electric-400" />
                   <span className="font-medium">Directory</span>
                 </Link>
-                <div className="border-b border-gray-700/30">
+                <div className="border-b border-gray-700/20">
                   <button className="w-full flex items-center justify-between px-6 py-4 text-gray-300 hover:text-white hover:bg-gray-700/30 transition-colors duration-200">
                     <div className="flex items-center">
-                      <BookOpen className="h-5 w-5 mr-3" />
+                      <BookOpen className="h-5 w-5 mr-3 text-electric-400" />
                       <span className="font-medium">Resources</span>
                     </div>
                     <ChevronRight className="h-5 w-5" />
                   </button>
                 </div>
-              </>
+              </div>
             ) : (
-              <>
-                <div className="bg-blue-500 text-white p-2 text-sm">DEBUG: AUTHENTICATED NAV SECTION</div>
-                {renderNavigationItems(navigationItems)}
-              </>
+              renderNavigationItems(navigationItems)
             )}
           </div>
         </div>

@@ -334,21 +334,18 @@ export default function MegaMenu({ isAuthenticated, user, onLinkClick }: MegaMen
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center">
-        <div className="bg-yellow-500 text-black px-4 py-2 rounded">
-          🔄 DESKTOP MEGAMENU LOADING v1.5.21...
+      <nav className="hidden lg:flex items-center space-x-8">
+        <div className="animate-pulse flex space-x-8">
+          <div className="h-4 bg-gray-700 rounded w-16"></div>
+          <div className="h-4 bg-gray-700 rounded w-16"></div>
+          <div className="h-4 bg-gray-700 rounded w-16"></div>
         </div>
-      </div>
+      </nav>
     );
   }
 
   return (
-    <nav className="relative">
-      {/* DEBUG BANNER */}
-      <div className="bg-blue-500 text-white text-center py-1 text-sm font-bold mb-2">
-        🖥️ DESKTOP MEGAMENU v1.5.21 | Items: {navigationItems.length} | Auth: {isAuthenticated ? 'YES' : 'NO'}
-      </div>
-      
+    <nav className="hidden lg:flex items-center space-x-8">
       <ul className="flex items-center space-x-8">
         {navigationItems.map((item) => {
           const hasChildren = item.children && item.children.length > 0;

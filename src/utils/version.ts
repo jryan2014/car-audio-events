@@ -1,13 +1,13 @@
 // Auto-generated version file - DO NOT EDIT MANUALLY
-// Generated at: 2025-06-19T21:39:15.642Z
-// Source: package.json v1.5.22
+// Generated at: 2025-06-19T21:44:13.789Z
+// Source: package.json v1.5.23
 
 export const VERSION = {
   MAJOR: 1,
   MINOR: 5,
-  PATCH: 22,
-  VERSION_STRING: '1.5.22',
-  BUILD: 1750369155642, // Build timestamp
+  PATCH: 23,
+  VERSION_STRING: '1.5.23',
+  BUILD: 1750369453789, // Build timestamp
   RELEASE_DATE: '2025-01-17',
   CODENAME: 'Blood Brothers'
 } as const;
@@ -64,7 +64,7 @@ export const isProduction = (): boolean => {
 // Version history for reference
 export const VERSION_HISTORY = [
   {
-    version: '1.5.22',
+    version: '1.5.23',
     date: '2025-01-17',
     codename: 'Blood Brothers',
     description: 'Mobile responsiveness overhaul with comprehensive layout fixes and deployment automation',

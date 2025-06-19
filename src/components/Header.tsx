@@ -22,11 +22,6 @@ export default function Header() {
 
   return (
     <header className="bg-gradient-to-r from-black/90 to-purple-900/90 backdrop-blur-lg border-b border-electric-500/20 sticky top-0 z-50">
-      {/* NUCLEAR DEBUG BANNER */}
-      <div className="bg-red-600 text-white text-center py-2 font-bold">
-        🚨 HEADER DEBUG v1.5.21 🚨 | Auth: {isAuthenticated ? 'YES' : 'NO'} | User: {user?.name || 'NONE'}
-      </div>
-      
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center py-3">
           {/* Logo - Positioned with proper spacing */}
