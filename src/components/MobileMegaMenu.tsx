@@ -24,10 +24,17 @@ interface NavigationItem {
   title: string;
   href?: string;
   icon?: string;
+  nav_order: number;
+  parent_id?: string;
+  target_blank: boolean;
+  membership_context?: string;
+  membership_contexts?: string[];
+  badge_text?: string;
+  badge_color?: string;
+  description?: string;
+  priority?: number;
+  is_active: boolean;
   children?: NavigationItem[];
-  is_visible: boolean;
-  requires_auth: boolean;
-  membership_types?: string[];
 }
 
 export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, isOpen }: MobileMegaMenuProps) {
@@ -63,10 +70,10 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, isO
       setLoading(true);
       
       const { data, error } = await supabase
-        .from('navigation_items')
+        .from('navigation_menu_items')
         .select('*')
-        .eq('is_visible', true)
-        .order('sort_order', { ascending: true });
+        .eq('is_active', true)
+        .order('nav_order', { ascending: true });
 
       if (error) {
         console.error('Error fetching navigation:', error);
@@ -75,30 +82,135 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, isO
         return;
       }
 
-      // Filter items based on authentication and membership
-      const filteredItems = data?.filter(item => {
-        // Check authentication requirement
-        if (item.requires_auth && !isAuthenticated) {
-          return false;
+      // Build hierarchical structure (same as desktop MegaMenu)
+      const itemsMap = new Map<string, NavigationItem>();
+      const rootItems: NavigationItem[] = [];
+
+      // First pass: create all items
+      data?.forEach(item => {
+        const navItem: NavigationItem = {
+          id: item.id,
+          title: item.title,
+          href: item.href,
+          icon: item.icon,
+          nav_order: item.nav_order,
+          parent_id: item.parent_id,
+          target_blank: item.target_blank,
+          membership_context: item.membership_context,
+          membership_contexts: item.membership_contexts,
+          badge_text: item.badge_text,
+          badge_color: item.badge_color,
+          description: item.description,
+          priority: item.priority,
+          is_active: item.is_active,
+          children: []
+        };
+        itemsMap.set(item.id, navItem);
+      });
+
+      // Second pass: build hierarchy
+      itemsMap.forEach(item => {
+        if (item.parent_id && itemsMap.has(item.parent_id)) {
+          const parent = itemsMap.get(item.parent_id)!;
+          parent.children = parent.children || [];
+          parent.children.push(item);
+        } else {
+          rootItems.push(item);
         }
+      });
 
-        // Check membership types
-        if (item.membership_types && item.membership_types.length > 0 && user) {
-          return item.membership_types.includes(user.membershipType);
-        }
+      // Sort children by nav_order
+      const sortItems = (items: NavigationItem[]) => {
+        items.sort((a, b) => a.nav_order - b.nav_order);
+        items.forEach(item => {
+          if (item.children && item.children.length > 0) {
+            sortItems(item.children);
+          }
+        });
+      };
 
-        return true;
-      }) || [];
+      sortItems(rootItems);
 
-      // Organize items into hierarchy
-      const organizedItems = organizeNavigationItems(filteredItems);
-      setNavigationItems(organizedItems);
+      // Filter by membership (same logic as desktop)
+      const filteredItems = filterItemsByMembership(rootItems);
+      setNavigationItems(filteredItems);
     } catch (error) {
       console.error('Error in fetchNavigationItems:', error);
       setNavigationItems(getDefaultNavigation());
     } finally {
       setLoading(false);
     }
+  };
+
+  const filterItemsByMembership = (items: NavigationItem[]): NavigationItem[] => {
+    const userContext = getUserMembershipContext();
+    
+    return items.filter(item => {
+      // Check if item is visible to current user context
+      if (item.membership_contexts && item.membership_contexts.length > 0) {
+        // If item has 'base' context, everyone can see it
+        if (item.membership_contexts.includes('base')) {
+          return true;
+        }
+        // Admin can see everything
+        if (userContext === 'admin') {
+          return true;
+        }
+        // Check if user's context is in the allowed contexts
+        return item.membership_contexts.includes(userContext);
+      }
+      
+      // Fallback to old membership_context field
+      if (item.membership_context) {
+        return isItemVisibleToUser(item.membership_context);
+      }
+      
+      // If no membership context specified, show to everyone
+      return true;
+    }).map(item => ({
+      ...item,
+      children: item.children ? filterItemsByMembership(item.children) : []
+    }));
+  };
+
+  const getUserMembershipContext = (): string => {
+    if (!isAuthenticated || !user) {
+      return 'base';
+    }
+    
+    // Map membership types to contexts
+    switch (user.membershipType) {
+      case 'admin': return 'admin';
+      case 'competitor': return 'competitor';
+      case 'manufacturer': return 'manufacturer';
+      case 'retailer': return 'retailer';
+      case 'organization': return 'organization';
+      default: return 'base';
+    }
+  };
+
+  const isItemVisibleToUser = (membershipContext: string): boolean => {
+    // Handle 'all' context - visible to everyone
+    if (membershipContext === 'all' || membershipContext === 'base') {
+      return true;
+    }
+    
+    // Handle 'authenticated' context - requires login
+    if (membershipContext === 'authenticated') {
+      return isAuthenticated;
+    }
+    
+    // Handle 'admin' context - requires admin role
+    if (membershipContext === 'admin') {
+      return isAuthenticated && user?.membershipType === 'admin';
+    }
+    
+    // Handle specific membership types
+    if (isAuthenticated && user) {
+      return user.membershipType === membershipContext;
+    }
+    
+    return false;
   };
 
   const getDefaultNavigation = (): NavigationItem[] => {
@@ -108,88 +220,97 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, isO
         title: 'Home',
         href: '/',
         icon: 'Home',
-        is_visible: true,
-        requires_auth: false
+        nav_order: 1,
+        target_blank: false,
+        membership_contexts: ['base'],
+        is_active: true,
+        children: []
       },
       {
         id: 'events',
         title: 'Events',
         href: '/events',
         icon: 'Calendar',
-        is_visible: true,
-        requires_auth: false
+        nav_order: 2,
+        target_blank: false,
+        membership_contexts: ['base'],
+        is_active: true,
+        children: []
       },
       {
         id: 'directory',
         title: 'Directory',
         href: '/directory',
         icon: 'MapPin',
-        is_visible: true,
-        requires_auth: false
+        nav_order: 3,
+        target_blank: false,
+        membership_contexts: ['base'],
+        is_active: true,
+        children: []
       },
       {
         id: 'resources',
         title: 'Resources',
         icon: 'BookOpen',
-        is_visible: true,
-        requires_auth: false,
+        nav_order: 4,
+        target_blank: false,
+        membership_contexts: ['base'],
+        is_active: true,
         children: [
           {
             id: 'get-holt',
             title: 'Get Holt',
             href: '/get-holt',
             icon: 'Lightbulb',
-            is_visible: true,
-            requires_auth: false
+            nav_order: 1,
+            parent_id: 'resources',
+            target_blank: false,
+            membership_contexts: ['base'],
+            is_active: true,
+            children: []
           },
           {
             id: 'organizations',
             title: 'Organizations',
             href: '/organizations',
             icon: 'Building2',
-            is_visible: true,
-            requires_auth: false
+            nav_order: 2,
+            parent_id: 'resources',
+            target_blank: false,
+            membership_contexts: ['base'],
+            is_active: true,
+            children: []
           },
           {
             id: 'help-center',
             title: 'Help Center',
             href: '/help',
             icon: 'HelpCircle',
-            is_visible: true,
-            requires_auth: false
+            nav_order: 3,
+            parent_id: 'resources',
+            target_blank: false,
+            membership_contexts: ['base'],
+            is_active: true,
+            children: []
           },
           {
             id: 'contact-us',
             title: 'Contact Us',
             href: '/contact',
             icon: 'MessageSquare',
-            is_visible: true,
-            requires_auth: false
+            nav_order: 4,
+            parent_id: 'resources',
+            target_blank: false,
+            membership_contexts: ['base'],
+            is_active: true,
+            children: []
           }
         ]
       }
     ];
   };
 
-  const organizeNavigationItems = (items: NavigationItem[]): NavigationItem[] => {
-    const itemMap = new Map<string, NavigationItem>();
-    const rootItems: NavigationItem[] = [];
 
-    // Create a map of all items
-    items.forEach(item => {
-      itemMap.set(item.id, { ...item, children: [] });
-    });
-
-    // Organize into hierarchy and filter root items
-    items.forEach(item => {
-      const mappedItem = itemMap.get(item.id);
-      if (mappedItem) {
-        rootItems.push(mappedItem);
-      }
-    });
-
-    return rootItems;
-  };
 
   const handleLinkClick = (href: string) => {
     if (onLinkClick) {
