@@ -172,7 +172,7 @@ export default function Home() {
   return (
     <div className="animate-fade-in">
       {/* Hero Section */}
-      <section className="relative overflow-hidden h-[40vh] sm:h-[50vh] md:h-[60vh] lg:h-[70vh]">
+      <section className="relative overflow-hidden h-[50vh] sm:h-[55vh] md:h-[60vh] lg:h-[70vh] mt-0">
         <div className="h-full relative">
           {/* World Map Background - NO OVERLAY */}
           <div className="absolute inset-0 z-0">
@@ -180,28 +180,28 @@ export default function Home() {
           </div>
           
           {/* Content positioned on the left side - NO OVERLAY ON MAP */}
-          <div className="absolute left-0 top-0 h-full flex items-center z-10">
-            <div className="max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg mx-2 sm:mx-4 md:ml-8 animate-slide-up">
+          <div className="absolute left-0 top-1/2 transform -translate-y-1/2 h-auto flex items-center z-10 w-full">
+            <div className="max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg mx-2 sm:mx-4 md:ml-8 animate-slide-up w-full">
               {/* Clean text container positioned to left - doesn't cover map */}
-              <div className="bg-black/80 backdrop-blur-md rounded-2xl p-3 sm:p-4 md:p-5 border border-white/20 shadow-2xl">
-              <div className="flex items-center space-x-1 mb-2 md:mb-3">
-                <Volume2 className="h-5 w-5 md:h-6 md:w-6 text-electric-500 animate-pulse-glow" />
+              <div className="bg-black/90 backdrop-blur-md rounded-2xl p-4 sm:p-5 md:p-6 border border-white/20 shadow-2xl max-w-full">
+              <div className="flex items-center space-x-2 mb-3">
+                <Volume2 className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 text-electric-500 animate-pulse-glow" />
                 <span className="text-electric-400 font-semibold text-xs sm:text-sm">TURN IT UP LOUD</span>
               </div>
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-white mb-2 md:mb-3 leading-tight">
+              <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black text-white mb-3 leading-tight">
                 Car Audio 
                 <span className="text-electric-400"> 
                   Competition
                 </span>
                 <br />Events
               </h1>
-              <p className="text-xs sm:text-sm md:text-base text-gray-300 mb-3 md:mb-4 leading-relaxed">
+              <p className="text-sm sm:text-base md:text-lg text-gray-300 mb-4 leading-relaxed">
                 Connect with the car audio community. Find competitions, track your scores, 
                 showcase your system, and compete with the best sound enthusiasts worldwide.
               </p>
-              <div className="flex space-x-2">
-                <Link to="/register" className="flex-1 bg-electric-500 text-white px-3 py-2 rounded-lg text-xs sm:text-sm font-bold hover:bg-electric-600 transition-all duration-200 shadow-lg flex items-center justify-center">Join</Link>
-                <Link to="/events" className="flex-1 bg-white/10 text-white px-3 py-2 rounded-lg text-xs sm:text-sm font-bold hover:bg-white/20 transition-all duration-200 border border-white/20 flex items-center justify-center">Events</Link>
+              <div className="flex space-x-3">
+                <Link to="/register" className="flex-1 bg-electric-500 text-white px-4 py-3 rounded-lg text-sm font-bold hover:bg-electric-600 transition-all duration-200 shadow-lg flex items-center justify-center">Join</Link>
+                <Link to="/events" className="flex-1 bg-white/10 text-white px-4 py-3 rounded-lg text-sm font-bold hover:bg-white/20 transition-all duration-200 border border-white/20 flex items-center justify-center">Events</Link>
               </div>
               </div>
             </div>
