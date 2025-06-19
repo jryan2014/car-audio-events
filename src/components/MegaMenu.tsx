@@ -334,91 +334,96 @@ export default function MegaMenu({ isAuthenticated, user, onLinkClick }: MegaMen
 
   if (isLoading) {
     return (
-      <nav className="hidden lg:flex items-center space-x-8">
-        <div className="animate-pulse flex space-x-8">
-          <div className="h-4 bg-gray-700 rounded w-16"></div>
-          <div className="h-4 bg-gray-700 rounded w-16"></div>
-          <div className="h-4 bg-gray-700 rounded w-16"></div>
+      <div className="flex items-center justify-center">
+        <div className="bg-yellow-500 text-black px-4 py-2 rounded">
+          🔄 DESKTOP MEGAMENU LOADING v1.5.21...
         </div>
-      </nav>
+      </div>
     );
   }
 
   return (
-    <nav className="hidden lg:flex items-center space-x-8">
-      {navigationItems.map((item) => {
-        const hasChildren = item.children && item.children.length > 0;
-        const isOpen = openDropdown === item.id;
+    <nav className="relative">
+      {/* DEBUG BANNER */}
+      <div className="bg-blue-500 text-white text-center py-1 text-sm font-bold mb-2">
+        🖥️ DESKTOP MEGAMENU v1.5.21 | Items: {navigationItems.length} | Auth: {isAuthenticated ? 'YES' : 'NO'}
+      </div>
+      
+      <ul className="flex items-center space-x-8">
+        {navigationItems.map((item) => {
+          const hasChildren = item.children && item.children.length > 0;
+          const isOpen = openDropdown === item.id;
 
-        return (
-          <div
-            key={item.id}
-            className="relative"
-            onMouseEnter={() => hasChildren && handleMouseEnter(item.id)}
-            onMouseLeave={() => hasChildren && handleMouseLeave()}
-          >
-            {item.href ? (
-              <Link
-                to={item.href}
-                target={item.target_blank ? '_blank' : undefined}
-                rel={item.target_blank ? 'noopener noreferrer' : undefined}
-                onClick={() => handleLinkClick(item.href!)}
-                className="flex items-center space-x-2 text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium py-2 group"
-              >
-                {renderIcon(item.icon)}
-                <span>{item.title}</span>
-                {hasChildren && (
-                  <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
-                )}
-              </Link>
-            ) : (
-              <button
-                className="flex items-center space-x-2 text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium py-2 group"
-              >
-                {renderIcon(item.icon)}
-                <span>{item.title}</span>
-                {hasChildren && (
-                  <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
-                )}
-              </button>
-            )}
+          return (
+            <div
+              key={item.id}
+              className="relative"
+              onMouseEnter={() => hasChildren && handleMouseEnter(item.id)}
+              onMouseLeave={() => hasChildren && handleMouseLeave()}
+            >
+              {item.href ? (
+                <Link
+                  to={item.href}
+                  target={item.target_blank ? '_blank' : undefined}
+                  rel={item.target_blank ? 'noopener noreferrer' : undefined}
+                  onClick={() => handleLinkClick(item.href!)}
+                  className="flex items-center space-x-2 text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium py-2 group"
+                >
+                  {renderIcon(item.icon)}
+                  <span>{item.title}</span>
+                  {hasChildren && (
+                    <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+                  )}
+                </Link>
+              ) : (
+                <button
+                  className="flex items-center space-x-2 text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium py-2 group"
+                >
+                  {renderIcon(item.icon)}
+                  <span>{item.title}</span>
+                  {hasChildren && (
+                    <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+                  )}
+                </button>
+              )}
 
-            {/* Dropdown Menu */}
-            {hasChildren && isOpen && (
-              <div
-                className="absolute left-0 top-full mt-2 w-80 bg-gray-800/95 backdrop-blur-sm border border-gray-700/50 rounded-xl shadow-2xl z-50"
-                onMouseEnter={() => handleMouseEnter(item.id)}
-                onMouseLeave={handleMouseLeave}
-              >
-                <div className="p-4">
-                  <div className="space-y-1">
-                    {item.children!.map((child) => (
-                      <Link
-                        key={child.id}
-                        to={child.href || '#'}
-                        target={child.target_blank ? '_blank' : undefined}
-                        rel={child.target_blank ? 'noopener noreferrer' : undefined}
-                        onClick={() => handleLinkClick(child.href || '#')}
-                        className="flex items-start space-x-3 px-3 py-3 text-gray-300 hover:text-white hover:bg-gray-700/50 rounded-lg transition-colors duration-200 group"
-                      >
-                        {renderIcon(child.icon)}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-2 mb-1">
-                            <span className="font-medium text-sm">{child.title}</span>
+              {/* Dropdown Menu */}
+              {hasChildren && isOpen && (
+                <div
+                  className="absolute left-0 top-full mt-2 w-80 bg-gray-800/95 backdrop-blur-sm border border-gray-700/50 rounded-xl shadow-2xl z-50"
+                  onMouseEnter={() => handleMouseEnter(item.id)}
+                  onMouseLeave={handleMouseLeave}
+                >
+                  <div className="p-4">
+                    <div className="space-y-1">
+                      {item.children!.map((child) => (
+                        <Link
+                          key={child.id}
+                          to={child.href || '#'}
+                          target={child.target_blank ? '_blank' : undefined}
+                          rel={child.target_blank ? 'noopener noreferrer' : undefined}
+                          onClick={() => handleLinkClick(child.href || '#')}
+                          className="flex items-start space-x-3 px-3 py-3 text-gray-300 hover:text-white hover:bg-gray-700/50 rounded-lg transition-colors duration-200 group"
+                        >
+                          {renderIcon(child.icon)}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center space-x-2 mb-1">
+                              <span className="font-medium text-sm">{child.title}</span>
+                            </div>
+                            {child.description && (
+                              <p className="text-xs text-gray-400 leading-relaxed">{child.description}</p>
+                            )}
                           </div>
-                          {child.description && (
-                            <p className="text-xs text-gray-400 leading-relaxed">{child.description}</p>
-                          )}
-                        </div>
-                      </Link>
-                    ))}
+                        </Link>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
-        );
-      })}
+              )}
+            </div>
+          );
+        })}
+      </ul>
     </nav>
   );
 } 
