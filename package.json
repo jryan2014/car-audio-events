@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "npm run version:generate && vite",
-    "build": "npm run version:bump:patch && tsc && vite build",
+    "build": "tsc && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "analyze": "node scripts/analyze-bundle.js",
