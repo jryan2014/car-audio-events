@@ -353,55 +353,59 @@ export default function GoogleMap() {
         infoWindow.open(mapInstance, marker);
       });
 
-      // Add hover effects
-      marker.addListener('mouseover', () => {
-        isHovering = true;
-        
-        // Close any existing hover windows
-        for (let i = 0; i < events.length; i++) {
-          if (window[`hoverWindow${i}`]) {
-            window[`hoverWindow${i}`].close();
+      // Add hover effects (only on desktop)
+      const isMobile = window.innerWidth <= 768;
+      
+      if (!isMobile) {
+        marker.addListener('mouseover', () => {
+          isHovering = true;
+          
+          // Close any existing hover windows
+          for (let i = 0; i < events.length; i++) {
+            if (window[`hoverWindow${i}`]) {
+              window[`hoverWindow${i}`].close();
+            }
           }
-        }
 
-        marker.setIcon({
-          path: window.google.maps.SymbolPath.CIRCLE,
-          scale: 18,
-          fillColor: '#22d3ee',
-          fillOpacity: 1,
-          strokeColor: '#ffffff',
-          strokeWeight: 4,
+          marker.setIcon({
+            path: window.google.maps.SymbolPath.CIRCLE,
+            scale: 18,
+            fillColor: '#22d3ee',
+            fillOpacity: 1,
+            strokeColor: '#ffffff',
+            strokeWeight: 4,
+          });
+          
+          // Show preview on hover
+          const hoverWindow = new window.google.maps.InfoWindow({
+            content: createHoverContent(event),
+            maxWidth: 250,
+            pixelOffset: new window.google.maps.Size(0, -15)
+          });
+          
+          hoverWindow.open(mapInstance, marker);
+          window[`hoverWindow${index}`] = hoverWindow;
         });
-        
-        // Show preview on hover
-        const hoverWindow = new window.google.maps.InfoWindow({
-          content: createHoverContent(event),
-          maxWidth: 250,
-          pixelOffset: new window.google.maps.Size(0, -15)
-        });
-        
-        hoverWindow.open(mapInstance, marker);
-        window[`hoverWindow${index}`] = hoverWindow;
-      });
 
-      marker.addListener('mouseout', () => {
-        isHovering = false;
-        
-        marker.setIcon({
-          path: window.google.maps.SymbolPath.CIRCLE,
-          scale: 12,
-          fillColor: event.pin_color,
-          fillOpacity: 1,
-          strokeColor: '#ffffff',
-          strokeWeight: 3,
+        marker.addListener('mouseout', () => {
+          isHovering = false;
+          
+          marker.setIcon({
+            path: window.google.maps.SymbolPath.CIRCLE,
+            scale: 12,
+            fillColor: event.pin_color,
+            fillOpacity: 1,
+            strokeColor: '#ffffff',
+            strokeWeight: 3,
+          });
+          
+          setTimeout(() => {
+            if (window[`hoverWindow${index}`]) {
+              window[`hoverWindow${index}`].close();
+            }
+          }, 200);
         });
-        
-        setTimeout(() => {
-          if (window[`hoverWindow${index}`]) {
-            window[`hoverWindow${index}`].close();
-          }
-        }, 200);
-      });
+      }
 
       // Store the interval for cleanup
       (marker as any).blinkInterval = blinkInterval;

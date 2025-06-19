@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight, Calendar, MapPin, Users, FileText, Home, Building2, Settings, BarChart3, User, Crown, BookOpen, HelpCircle, MessageSquare, Lightbulb } from 'lucide-react';
+import { ChevronRight, Calendar, MapPin, Users, FileText, Home, Building2, Settings, BarChart3, User, Crown, BookOpen, HelpCircle, MessageSquare, Lightbulb, Search } from 'lucide-react';
 import Badge from './Badge';
+import { GlobalSearch } from './GlobalSearch';
 
 interface MobileMegaMenuProps {
   isAuthenticated: boolean;
@@ -206,6 +207,14 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, isO
             </div>
           </div>
         )}
+
+        {/* Search Section */}
+        <div className="border-b border-gray-700/50 p-4">
+          <GlobalSearch 
+            className="w-full"
+            placeholder="Search events, businesses, users..."
+          />
+        </div>
 
         {/* Navigation Items */}
         <div className="flex-1 overflow-y-auto">

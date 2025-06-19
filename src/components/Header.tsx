@@ -52,15 +52,7 @@ export default function Header() {
             />
           </div>
 
-          {/* Mobile Search Button */}
-          <div className="md:hidden flex items-center">
-            <Link
-              to="/search"
-              className="text-gray-300 hover:text-electric-400 transition-colors duration-200 p-2"
-            >
-              <Search className="h-6 w-6" />
-            </Link>
-          </div>
+
 
           {/* User Menu - Right aligned */}
           <div className="flex items-center space-x-4 flex-shrink-0 ml-auto">
@@ -249,39 +241,21 @@ export default function Header() {
                 </div>
               </div>
             ) : (
-              <>
-                {/* Desktop Auth Buttons */}
-                <div className="hidden md:flex items-center space-x-4">
-                  <Link 
-                    to="/login"
-                    className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium"
-                  >
-                    Login
-                  </Link>
-                  <Link 
-                    to="/register"
-                    className="bg-electric-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-electric-600 transition-all duration-200 shadow-lg"
-                  >
-                    Register
-                  </Link>
-                </div>
-                
-                {/* Mobile Auth Buttons */}
-                <div className="md:hidden flex items-center space-x-2 mr-2">
-                  <Link 
-                    to="/login"
-                    className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium text-sm px-2 py-1"
-                  >
-                    Login
-                  </Link>
-                  <Link 
-                    to="/register"
-                    className="bg-electric-500 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-electric-600 transition-all duration-200 shadow-lg text-sm"
-                  >
-                    Register
-                  </Link>
-                </div>
-              </>
+              /* Desktop Auth Buttons Only */
+              <div className="hidden md:flex items-center space-x-4">
+                <Link 
+                  to="/login"
+                  className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium"
+                >
+                  Login
+                </Link>
+                <Link 
+                  to="/register"
+                  className="bg-electric-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-electric-600 transition-all duration-200 shadow-lg"
+                >
+                  Register
+                </Link>
+              </div>
             )}
 
             {/* Mobile menu button */}
