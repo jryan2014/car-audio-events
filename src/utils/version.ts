@@ -1,13 +1,13 @@
 // Auto-generated version file - DO NOT EDIT MANUALLY
-// Generated at: 2025-06-19T19:20:04.380Z
-// Source: package.json v1.5.5
+// Generated at: 2025-06-19T19:31:12.287Z
+// Source: package.json v1.5.6
 
 export const VERSION = {
   MAJOR: 1,
   MINOR: 5,
-  PATCH: 5,
-  VERSION_STRING: '1.5.5',
-  BUILD: 1750360804381, // Build timestamp
+  PATCH: 6,
+  VERSION_STRING: '1.5.6',
+  BUILD: 1750361472288, // Build timestamp
   RELEASE_DATE: '2025-01-17',
   CODENAME: 'Security Fortress'
 } as const;
@@ -64,7 +64,7 @@ export const isProduction = (): boolean => {
 // Version history for reference
 export const VERSION_HISTORY = [
   {
-    version: '1.5.5',
+    version: '1.5.6',
     date: '2025-01-17',
     codename: 'Security Fortress',
     description: 'Major security overhaul with comprehensive protection while maintaining full functionality',
