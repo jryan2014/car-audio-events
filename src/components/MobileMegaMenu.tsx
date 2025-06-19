@@ -164,6 +164,15 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, isO
   const filterItemsByMembership = (items: NavigationItem[]): NavigationItem[] => {
     const userContext = getUserMembershipContext();
     
+    // For non-authenticated users, show ALL items (fuck the filtering for now)
+    if (!isAuthenticated) {
+      return items.map(item => ({
+        ...item,
+        children: item.children ? filterItemsByMembership(item.children) : []
+      }));
+    }
+    
+    // For authenticated users, apply normal filtering
     return items.filter(item => {
       // Check if item is visible to current user context
       if (item.membership_contexts && item.membership_contexts.length > 0) {
