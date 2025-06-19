@@ -1,7 +1,7 @@
 {
   "name": "car-audio-competition-platform",
   "private": true,
-  "version": "1.5.20",
+  "version": "1.5.21",
   "type": "module",
   "scripts": {
     "dev": "npm run version:generate && vite",

@@ -338,8 +338,6 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, isO
     ];
   };
 
-
-
   const handleLinkClick = (href: string) => {
     if (onLinkClick) {
       onLinkClick();
@@ -474,6 +472,11 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, isO
         {/* Navigation Items */}
         <div className="flex-1 overflow-y-auto">
           <div className="py-2">
+            {/* DEBUG INFO */}
+            <div className="bg-yellow-500 text-black p-2 text-sm">
+              DEBUG: loading={loading ? 'true' : 'false'}, isAuthenticated={isAuthenticated ? 'true' : 'false'}, navItems={navigationItems.length}
+            </div>
+            
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <div className="text-gray-400">Loading navigation...</div>
@@ -481,6 +484,7 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, isO
             ) : !isAuthenticated ? (
               // HARDCODED NAVIGATION FOR NON-AUTHENTICATED USERS (FUCK THE DATABASE)
               <>
+                <div className="bg-green-500 text-black p-2 text-sm">DEBUG: HARDCODED NAV SECTION</div>
                 <Link to="/" onClick={() => handleLinkClick('/')} className="flex items-center px-6 py-4 text-gray-300 hover:text-white hover:bg-gray-700/30 transition-colors duration-200">
                   <Home className="h-5 w-5 mr-3" />
                   <span className="font-medium">Home</span>
@@ -504,7 +508,10 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, isO
                 </div>
               </>
             ) : (
-              renderNavigationItems(navigationItems)
+              <>
+                <div className="bg-blue-500 text-white p-2 text-sm">DEBUG: AUTHENTICATED NAV SECTION</div>
+                {renderNavigationItems(navigationItems)}
+              </>
             )}
           </div>
         </div>
