@@ -471,6 +471,31 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, isO
               <div className="flex items-center justify-center py-8">
                 <div className="text-gray-400">Loading navigation...</div>
               </div>
+            ) : !isAuthenticated ? (
+              // HARDCODED NAVIGATION FOR NON-AUTHENTICATED USERS (FUCK THE DATABASE)
+              <>
+                <Link to="/" onClick={() => handleLinkClick('/')} className="flex items-center px-6 py-4 text-gray-300 hover:text-white hover:bg-gray-700/30 transition-colors duration-200">
+                  <Home className="h-5 w-5 mr-3" />
+                  <span className="font-medium">Home</span>
+                </Link>
+                <Link to="/events" onClick={() => handleLinkClick('/events')} className="flex items-center px-6 py-4 text-gray-300 hover:text-white hover:bg-gray-700/30 transition-colors duration-200">
+                  <Calendar className="h-5 w-5 mr-3" />
+                  <span className="font-medium">Events</span>
+                </Link>
+                <Link to="/directory" onClick={() => handleLinkClick('/directory')} className="flex items-center px-6 py-4 text-gray-300 hover:text-white hover:bg-gray-700/30 transition-colors duration-200">
+                  <MapPin className="h-5 w-5 mr-3" />
+                  <span className="font-medium">Directory</span>
+                </Link>
+                <div className="border-b border-gray-700/30">
+                  <button className="w-full flex items-center justify-between px-6 py-4 text-gray-300 hover:text-white hover:bg-gray-700/30 transition-colors duration-200">
+                    <div className="flex items-center">
+                      <BookOpen className="h-5 w-5 mr-3" />
+                      <span className="font-medium">Resources</span>
+                    </div>
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                </div>
+              </>
             ) : (
               renderNavigationItems(navigationItems)
             )}
