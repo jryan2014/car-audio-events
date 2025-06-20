@@ -311,7 +311,7 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, onL
           <div key={item.id}>
             <button
               onClick={() => toggleExpanded(item.id)}
-              className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-gray-700/50 transition-colors duration-200"
+              className="w-full flex items-center justify-between p-3 rounded-lg text-gray-300 hover:text-white hover:bg-gray-700/50 transition-colors duration-200"
               style={{ paddingLeft: `${1 + depth * 1.5}rem` }}
             >
               <div className="flex items-center">
@@ -337,7 +337,7 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, onL
             target={item.target_blank ? '_blank' : '_self'}
             rel={item.target_blank ? 'noopener noreferrer' : ''}
             onClick={() => handleLinkClick(item.href!)}
-            className="flex items-center p-3 rounded-lg hover:bg-gray-700/50 transition-colors duration-200"
+            className="flex items-center p-3 rounded-lg text-gray-300 hover:text-white hover:bg-gray-700/50 transition-colors duration-200"
             style={{ paddingLeft: `${1 + depth * 1.5}rem` }}
           >
             {Icon && <Icon className="mr-3 h-5 w-5" />}
