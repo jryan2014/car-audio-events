@@ -1,9 +1,22 @@
 # Changelog
 
-All notable changes to the Car Audio Events Competition Platform will be documented in this file.
+All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Fixed
+- Navigation menu logic for both mobile and desktop to correctly display links for authenticated users.
+- Corrected an issue where `onLogout` was not being passed to `MobileMegaMenu`.
+
+### Changed
+- Consolidated version history from `.cursorrules` and `generate-version.js` into this file.
+- Strengthened `.cursorrules` with more explicit protocols for deployment, backups, file organization, and security.
+
+---
+*This changelog was established on June 19, 2025.*
 
 ## [1.5.23] - 2025-01-17 - "Blood Brothers"
 
@@ -41,15 +54,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.0] - Initial Version
 -   Established the first comprehensive version of the production protocols, including the tech stack, coding standards, security rules, and database conventions.
-
-## [Unreleased]
-
-### Planned
-- Mobile Responsiveness Audit and Optimization
-- Performance Bundle Size Optimization
-- Global Search Implementation
-- Enhanced Analytics Dashboard
-- Email Template Configuration
 
 ## [1.4.1] - 2025-01-30
 

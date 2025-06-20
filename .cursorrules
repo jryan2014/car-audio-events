@@ -11,6 +11,13 @@ This is a React/TypeScript car audio competition platform using Supabase as BaaS
 - **AI**: OpenAI GPT integration
 - **Email**: Postmark service
 
+## 📋 CODE GENERATION PROTOCOL
+
+Before creating any new file (e.g., `.tsx`, `.ts`), you MUST follow this workflow:
+1. **Identify File Type**: State the purpose of the file (e.g., "This is a new React component," "This is a utility function").
+2. **Determine Correct Path**: Based on the `File Structure` rules under `Coding Standards`, determine and state the full, correct path for the new file (e.g., "The component will be created at `src/components/new/NewComponent.tsx`").
+3. **Request Approval**: Ask for permission to proceed before creating the file.
+
 ## Coding Standards
 
 ### TypeScript
@@ -53,6 +60,7 @@ This is a React/TypeScript car audio competition platform using Supabase as BaaS
 - Never expose API keys in frontend code
 - Use environment variables for sensitive data
 - Implement proper authentication checks
+- **Explicit Check Requirement**: When implementing or modifying any feature that touches authentication or user permissions, you MUST explicitly state the check being performed and the reasoning for it (e.g., "Adding a check to ensure only the profile owner can edit their profile.").
 - Follow RLS policies for database access
 - Sanitize user inputs
 
@@ -66,7 +74,7 @@ This is a React/TypeScript car audio competition platform using Supabase as BaaS
 ## Code Style
 
 ### Imports
-```typescript
+`
 // External libraries first
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
@@ -75,10 +83,10 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { UserProfile } from '../types/user';
 import { formatDate } from '../utils/date-utils';
-```
+`
 
 ### Component Structure
-```typescript
+`
 interface ComponentProps {
   title: string;
   isVisible: boolean;
@@ -113,11 +121,12 @@ export const Component: React.FC<ComponentProps> = ({
     </div>
   );
 };
-```
+`
 
 ### Error Handling
 - Always wrap async operations in try-catch
 - Provide meaningful error messages
+- **Error Message Specificity**: Error messages MUST identify the source of the error and, if possible, suggest a solution (e.g., "Database Error: Failed to fetch user profile. Please check your connection or try again later.").
 - Use loading states for async operations
 - Handle edge cases gracefully
 
@@ -139,6 +148,7 @@ export const Component: React.FC<ComponentProps> = ({
 - Use proper TypeScript types for API responses
 - Handle loading and error states
 - Implement retry logic for critical operations
+- **Definition of Critical Operations**: Critical operations that MAY require retry logic include, but are not limited to: payment processing, user registration, event submission, and final data-saving actions. When implementing such a feature, you MUST state whether you are including retry logic and why.
 - Use proper HTTP status codes
 
 ## Testing
@@ -146,6 +156,7 @@ export const Component: React.FC<ComponentProps> = ({
 - Test components with user interactions
 - Mock external services in tests
 - Use meaningful test descriptions
+- **Test Description Format**: Test descriptions SHOULD follow a "should do X when Y" format (e.g., `it('should disable the submit button when the form is invalid')`).
 
 ## Version Control
 - Use the automatic version control system
@@ -163,7 +174,7 @@ export const Component: React.FC<ComponentProps> = ({
 ## Common Patterns
 
 ### Supabase Queries
-```typescript
+`
 const { data, error } = await supabase
   .from('table_name')
   .select('*')
@@ -173,10 +184,10 @@ if (error) {
   console.error('Database error:', error);
   return;
 }
-```
+`
 
 ### Form Handling
-```typescript
+`
 const [formData, setFormData] = useState<FormData>({});
 const [loading, setLoading] = useState(false);
 
@@ -192,7 +203,7 @@ const handleSubmit = async (e: React.FormEvent) => {
     setLoading(false);
   }
 };
-```
+`
 
 ## Avoid
 - Using `any` type
@@ -233,6 +244,7 @@ Remember: This is a production platform handling real users and payments. Priori
 - ❌ **NEVER provide multiple SQL files** - Only ONE SQL file per task
 
 ### ✅ MANDATORY REQUIREMENTS (ALWAYS DO)
+- **Before executing ANY multi-step task (e.g., deployment, feature implementation, refactoring), you MUST copy this entire checklist into your response and confirm each point.**
 - ✅ **ALWAYS create backup** before any significant changes (backup-[feature-name]-YYYY-MM-DD_HH-mm-ss)
 - ✅ **ALWAYS use step-by-step approach** with user confirmation at each stage
 - ✅ **ALWAYS provide only ONE SQL file** to be run in Supabase editor
@@ -245,6 +257,7 @@ Remember: This is a production platform handling real users and payments. Priori
 - ✅ **ALWAYS use the existing Supabase client from src/lib/supabase**
 
 ### 🛡️ DATABASE SAFETY PROTOCOLS
+- **Before executing ANY database operation (SQL file, schema change), you MUST reference the MANDATORY REQUIREMENTS checklist and receive user confirmation.**
 - **Remote Database Only**: All database work must be done on the remote Supabase instance
 - **Single SQL File Rule**: Provide exactly ONE .sql file per task to run in Supabase editor
 - **No Database Resets**: Never suggest dropping, truncating, or resetting database tables
@@ -254,7 +267,7 @@ Remember: This is a production platform handling real users and payments. Priori
 
 ### 🔄 PRODUCTION WORKFLOW
 1. **ACKNOWLEDGE PROTOCOLS**: Confirm understanding of all production rules
-2. **CREATE BACKUP**: Follow naming convention backup-[feature-name]-YYYY-MM-DD_HH-mm-ss
+2. **EXECUTE BACKUP**: State that you are performing a backup as per the `MANDATORY REQUIREMENTS` and get approval before proceeding.
 3. **PLAN APPROACH**: Outline implementation strategy and get approval
 4. **SINGLE SQL FILE**: Provide only ONE SQL file for database changes
 5. **STEP-BY-STEP**: Execute with user confirmation at each stage
@@ -262,7 +275,7 @@ Remember: This is a production platform handling real users and payments. Priori
 7. **DOCUMENT CHANGES**: Update relevant documentation
 
 ### 📞 COMMUNICATION PROTOCOL
-```
+`
 STANDARD RESPONSE FORMAT:
 1. Acknowledge the request
 2. Confirm understanding of production constraints
@@ -271,7 +284,7 @@ STANDARD RESPONSE FORMAT:
 5. Provide only ONE SQL file if database changes needed
 6. Wait for user confirmation before each step
 7. Explain what each step does and why
-```
+`
 
 ### 🚨 EMERGENCY PROCEDURES
 If something goes wrong:
@@ -303,7 +316,7 @@ AI agents SHOULD recommend new .cursorrules additions when they encounter:
 7. **Production Incidents**: After any system failures or emergency situations
 
 #### 📋 PROTOCOL RECOMMENDATION FORMAT
-```
+`
 🔧 PROTOCOL RECOMMENDATION
 
 Issue Identified: [DESCRIBE THE PROBLEM]
@@ -323,7 +336,7 @@ Examples of when this would apply:
 - [SCENARIO 2]
 
 Request: May I add this rule to .cursorrules with your approval?
-```
+`
 
 #### 🎯 PROTOCOL REVIEW TRIGGERS
 AI agents should proactively suggest protocol reviews when:
@@ -369,21 +382,26 @@ This ensures .cursorrules evolves safely while maintaining production stability.
 - **Line Count Accuracy**: Verify actual line count matches version history
 - **Incremental Versioning**: Use semantic versioning for all .cursorrules updates
 
-## 🗂️ PROJECT ORGANIZATION PROTOCOLS
+## 🗂️ PROJECT ORGANIZATION & MAINTENANCE PROTOCOLS
 
-### Folder Structure Management
-- **Clean Organization**: Maintain clean, logical folder structure at all times
-- **Daily Cleanup**: Run folder cleanup operations daily to remove temporary files
-- **File Categorization**: Ensure all files are in appropriate directories
-- **Remove Obsolete**: Delete outdated backups, temporary scripts, and unused files
-- **Documentation Current**: Keep documentation files up-to-date and relevant
+### File & Folder Structure Management
+- **Clean Organization**: Maintain clean, logical folder structure at all times.
+- **File Categorization**: Ensure all files are in appropriate directories as defined by the `Coding Standards` and `IMAGE & ASSET ORGANIZATION PROTOCOLS`.
+- **Clean Main Directory**: Keep only active, current files in the main project directory. Temporary files, scripts, and archives must be placed in designated subdirectories.
+- **Archive After QA**: After QA completion, move implementation files to appropriate archive locations (e.g., `_archive/implemented-features/`).
+- **Catalog Maintenance**: When files are moved, update `_archive/BACKUP_CATALOG.md` and `_archive/SQL_CATALOG.md`.
+
+### Backup Management
+- **Backup Location**: All new backups MUST be placed in a dedicated `_archive/backups/` directory. NEVER create backups in the project root.
+- **Backup Retention Policy**: The `_archive/backups/` folder should contain ONLY the last 3 days of backups.
+- **Backup Archiving**: Daily, any backups in `_archive/backups/` older than 3 days MUST be moved to `_archive/backups-archive/`.
+- **Remove Obsolete**: Delete outdated temporary scripts and unused files.
 
 ### Daily Maintenance Tasks
-- Remove temporary files and scripts
-- Clean up old backup directories (keep only recent essential backups)
-- Organize loose files into appropriate directories
-- Update documentation as needed
-- Verify folder structure integrity
+- Run folder cleanup operations daily to remove temporary files and scripts.
+- Verify backup retention policies are being followed.
+- Organize any loose files into their appropriate directories.
+- Update documentation as needed.
 
 ## 👥 COMMUNICATION PROTOCOLS
 
@@ -392,32 +410,6 @@ This ensures .cursorrules evolves safely while maintaining production stability.
 - **Erik**: James will address the AI assistant as "Erik"
 - **Professional Courtesy**: Maintain respectful, professional communication tone
 - **Clear Identification**: Always use names when beginning conversations or major task sections
-
-## 🧹 PROJECT ORGANIZATION & MAINTENANCE PROTOCOLS
-
-### File & Folder Structure Management
-- **Clean Organization**: Maintain clean, logical folder structure at all times
-- **Daily Cleanup**: Remove temporary files, organize loose files into appropriate directories
-- **Archive After QA**: After QA completion, move implementation files to appropriate archive locations
-- **Catalog Maintenance**: Update BACKUP_CATALOG.md and SQL_CATALOG.md when files are moved
-- **Archive Organization**: Use structured subdirectories (disabled-migrations, historical-development, implemented-features, emergency-fixes)
-- **Clean Main Directory**: Keep only active, current files in main project directory
-
-### Archive Workflow Protocol
-1. **Complete Feature/Fix**: Implement and test functionality
-2. **QA Completion**: Verify feature works correctly in production
-3. **Archive Implementation**: Move setup/implementation files to appropriate archive subdirectory
-4. **Update Catalogs**: Document file locations and purposes in catalog files
-5. **Verify Cleanliness**: Ensure main directory remains organized and professional
-
-### Production Safety for File Organization
-- **Phase-Based Changes**: Implement file organization in phases to avoid production disruption
-- **Path Analysis**: Before moving files, scan codebase for hardcoded references
-- **Backwards Compatibility**: Maintain backwards compatibility during transitions
-- **Test After Changes**: Verify all functionality after any file reorganization
-- **Documentation Updates**: Update configuration files and documentation with new paths
-
-This ensures .cursorrules evolves safely while maintaining production stability.
 
 ## 🖼️ IMAGE & ASSET ORGANIZATION PROTOCOLS
 
@@ -444,6 +436,12 @@ This ensures .cursorrules evolves safely while maintaining production stability.
 - ❌ **NEVER use scattered directories** like root `images/` folder
 - ❌ **NEVER create custom image directories** outside the organized structure
 
+### ✅ Mandatory Asset Management Workflow
+Before adding or modifying any image or asset, you MUST:
+1. **State the Asset's Purpose**: (e.g., "This is the new primary logo").
+2. **Confirm the Destination Path**: State the exact, full path where the file will be placed, referencing the categories above (e.g., "As per the rules, it will be placed at `/public/assets/logos/cae-logo-new.png`").
+3. **Request Approval**: Ask for permission to proceed before creating or moving the file.
+
 ### Production Asset Guidelines
 - **Test new assets**: Verify images load correctly in both development and production
 - **Optimize file sizes**: Compress images appropriately for web use
@@ -456,8 +454,6 @@ This ensures .cursorrules evolves safely while maintaining production stability.
 - **Update all references**: When adding new images, update any related components
 - **Test thoroughly**: Verify image loading in Header, Footer, and any custom components
 - **Document changes**: Note any new assets in commit messages and documentation
-
-This organized structure ensures professional asset management and scalable development.
 
 ## 🚀 PRODUCTION DEPLOYMENT PROTOCOLS
 
@@ -473,27 +469,40 @@ When users say these phrases, AI agents MUST execute the full deployment workflo
 - **Alternative Commands**: `"Deploy the changes"`, `"Initiate deployment process"`
 - **Context Commands**: `"Push to GitHub and deploy to Netlify"`
 
-### Mandatory 4-Phase Deployment Process
-**Phase 1: Pre-Deployment Verification**
-```bash
+### 🚨 Mandatory Pre-Deployment Checklist
+Before beginning ANY deployment phase, you MUST perform and confirm the following pre-checks:
+- ✅ **Acknowledge Protocols**: Confirm understanding of all production rules.
+- ✅ **RULE CONFIRMATION**: For each step, you MUST explicitly state the primary rule from `.cursorrules` that governs the action before requesting user approval.
+- ✅ **STEP-BY-STEP CONFIRMATION**: Confirm that user approval ("proceed" or "continue") is required between EACH individual command in all phases.
+
+### Mandatory 5-Phase Deployment Process
+
+**Phase 1: Mandatory Backup**
+- The first step MUST be to create a backup.
+- This is governed by the rule: ✅ **ALWAYS create backup** before any significant changes.
+- The backup MUST follow the naming convention: `backup-[feature-name]-YYYY-MM-DD_HH-mm-ss`.
+- The backup MUST be placed in the `_archive/backups/` directory as per the `PROJECT ORGANIZATION & MAINTENANCE PROTOCOLS`.
+
+**Phase 2: Pre-Deployment Verification**
+`bash
 npm run build                    # ✅ ALWAYS verify build first
 dir dist\assets                  # ✅ Check asset organization
-```
+`
 
-**Phase 2: Git Operations**
-```bash
+**Phase 3: Git Operations**
+`bash
 git status                       # ✅ Review all changes
 git add [specific-files]         # ✅ NEVER use git add .
 git commit -m "feat: [desc]"     # ✅ Semantic commit messages
 git push origin main             # ✅ Triggers auto-deployment
-```
+`
 
-**Phase 3: Deployment Monitoring**
+**Phase 4: Deployment Monitoring**
 - Guide user to Netlify dashboard
 - Monitor build logs for errors
 - Verify deployment completion
 
-**Phase 4: Production Verification**
+**Phase 5: Production Verification**
 - Test production site functionality
 - Verify asset loading
 - Confirm zero broken links
@@ -504,7 +513,7 @@ git push origin main             # ✅ Triggers auto-deployment
 - ✅ **Use specific `git add` commands** - avoid committing unwanted files
 - ✅ **Monitor Netlify build logs** - ensure successful deployment
 - ✅ **Verify production functionality** - confirm deployment success
-- ❌ **NEVER skip any phase** - all 4 phases are mandatory
+- ❌ **NEVER skip any phase** - all 5 phases are mandatory
 - ❌ **NEVER use `git add .`** - too risky for production
 
 ### GitHub → Netlify Integration Flow
@@ -552,9 +561,9 @@ This process ensures zero-downtime deployments with full rollback capability.
 
 ---
 
-## 📊 .CURSORRULES CHANGELOG
+## 📊 .CURSORRULES FILE CHANGELOG
 
-This section tracks changes to the rules themselves. The official project changelog is in `CHANGELOG.md`.
+This section tracks changes **only to the .cursorrules file itself**. The official project changelog is in `CHANGELOG.md`.
 
 ### Protocol Updates
 

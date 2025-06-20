@@ -249,13 +249,14 @@ export default function Header() {
                 </div>
               )}
 
-              {/* Hamburger Menu Button */}
-              <div className="md:hidden">
+              {/* Mobile Menu Button - Right-most on mobile */}
+              <div className="flex md:hidden">
                 <button
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
-                  className="text-gray-300 hover:text-electric-400"
+                  className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
                 >
-                  {isMenuOpen ? <X className="h-8 w-8" /> : <Menu className="h-8 w-8" />}
+                  <span className="sr-only">Open main menu</span>
+                  {isMenuOpen ? <X className="block h-6 w-6" aria-hidden="true" /> : <Menu className="block h-6 w-6" aria-hidden="true" />}
                 </button>
               </div>
             </div>
@@ -263,14 +264,14 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Mobile Menu */}
+      {/* Mobile Menu - Full-screen overlay */}
       {isMenuOpen && (
-        <div className="md:hidden">
+        <div className="md:hidden absolute top-full inset-x-0 min-h-screen bg-black/95 z-50">
           <MobileMegaMenu 
             isAuthenticated={isAuthenticated} 
             user={user || undefined} 
-            onLinkClick={() => setIsMenuOpen(false)} 
-            onLogout={handleLogout}
+            onLinkClick={() => setIsMenuOpen(false)}
+            onLogout={handleLogout} 
           />
         </div>
       )}

@@ -306,101 +306,75 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, onL
       const isExpanded = expandedItems.has(item.id);
       const hasChildren = item.children && item.children.length > 0;
 
-      if (item.href) {
-        return (
-          <Link
-            key={item.id}
-            to={item.href}
-            target={item.target_blank ? '_blank' : '_self'}
-            rel={item.target_blank ? 'noopener noreferrer' : ''}
-            onClick={() => handleLinkClick(item.href!)}
-            className={`flex items-center p-3 text-base font-normal rounded-lg transition duration-75 group
-              ${depth > 0 ? 'pl-11' : ''}
-              ${location.pathname === item.href ? 'bg-electric-500/20 text-electric-300' : 'text-gray-300 hover:bg-gray-700/50 hover:text-white'}
-            `}
-          >
-            <Icon className="w-5 h-5 text-gray-400 group-hover:text-white transition duration-75" />
-            <span className="flex-1 ml-3 whitespace-nowrap">{item.title}</span>
-            {item.badge_text && (
-              <Badge color={item.badge_color || 'blue'}>{item.badge_text}</Badge>
-            )}
-          </Link>
-        );
-      }
+      if (!item.href) return null;
 
       return (
-        <div key={item.id}>
-          <button
-            onClick={() => toggleExpanded(item.id)}
-            className={`flex items-center w-full p-3 text-base font-normal rounded-lg transition duration-75 group
-              ${depth > 0 ? 'pl-11' : ''}
-              ${isExpanded ? 'bg-gray-700/50 text-white' : 'text-gray-300 hover:bg-gray-700/50 hover:text-white'}
-            `}
-          >
-            <Icon className="w-5 h-5 text-gray-400 group-hover:text-white transition duration-75" />
-            <span className="flex-1 ml-3 text-left whitespace-nowrap">{item.title}</span>
-            <ChevronRight className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
-          </button>
-          {isExpanded && hasChildren && (
-            <div className="py-2 space-y-2">
-              {renderNavigationItems(item.children!, depth + 1)}
-            </div>
+        <Link
+          key={item.id}
+          to={item.href}
+          target={item.target_blank ? '_blank' : '_self'}
+          rel={item.target_blank ? 'noopener noreferrer' : ''}
+          onClick={() => handleLinkClick(item.href!)}
+          className="flex items-center p-3 rounded-lg hover:bg-gray-700/50 transition-colors duration-200"
+          style={{ paddingLeft: `${1 + depth * 1.5}rem` }}
+        >
+          {Icon && <Icon className="mr-3 h-5 w-5" />}
+          <span className="flex-1 font-semibold">{item.title}</span>
+          {item.badge_text && item.badge_color && (
+            <Badge text={item.badge_text} color={item.badge_color} />
           )}
-        </div>
+        </Link>
       );
     });
   };
 
   return (
-    <div className="bg-gradient-to-b from-black/90 to-purple-900/90 backdrop-blur-lg border-t border-electric-500/20 px-4 py-4 space-y-4">
+    <div className="flex flex-col h-full bg-black/95">
       {/* Search Bar */}
-      <div className="px-2">
+      <div className="p-4 border-b border-gray-700/50">
         <GlobalSearch 
           className="w-full"
           placeholder="Search..."
-          onSearch={() => onLinkClick && onLinkClick()}
         />
       </div>
 
-      {/* Main Navigation */}
-      {loading ? (
-        <div className="text-center text-gray-400 p-4">Loading Navigation...</div>
-      ) : (
-        renderNavigationItems(navigationItems)
-      )}
-
-      {/* Auth buttons */}
-      {!isAuthenticated && (
-        <div className="pt-4 mt-4 border-t border-gray-700 space-y-2">
-          <Link 
-            to="/login"
-            onClick={onLinkClick}
-            className="block w-full text-center bg-gray-700/50 hover:bg-gray-600/50 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200"
-          >
-            Login
-          </Link>
-          <Link 
-            to="/register"
-            onClick={onLinkClick}
-            className="block w-full text-center bg-electric-600 hover:bg-electric-500 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200"
-          >
-            Register
-          </Link>
-        </div>
-      )}
+      <div className="flex-grow overflow-y-auto">
+        {loading ? (
+          <div className="p-4 text-center text-gray-400">Loading navigation...</div>
+        ) : (
+          renderNavigationItems(navigationItems)
+        )}
+      </div>
       
-      {/* Logout button */}
-      {isAuthenticated && onLogout && (
-         <div className="pt-4 mt-4 border-t border-gray-700">
+      {/* Auth buttons */}
+      <div className="p-4 border-t border-gray-700/50">
+        {isAuthenticated ? (
           <button
             onClick={onLogout}
-            className="w-full flex items-center justify-center p-3 text-base font-normal text-gray-300 rounded-lg hover:bg-red-500/20 hover:text-red-400 group transition-colors duration-200"
+            className="w-full text-left flex items-center p-3 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors duration-200"
           >
-            <Users className="w-5 h-5 mr-3" />
-            Logout
+            <Users className="mr-3 h-5 w-5" />
+            <span className="font-semibold">Logout</span>
           </button>
-        </div>
-      )}
+        ) : (
+          <div className="space-y-2">
+            <Link
+              to="/login"
+              onClick={onLinkClick}
+              className="block w-full text-center px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white font-semibold transition-colors duration-200"
+            >
+              Login
+            </Link>
+            <Link
+              to="/register"
+              onClick={onLinkClick}
+              className="block w-full text-center px-4 py-2 rounded-lg bg-electric-600 hover:bg-electric-500 text-white font-bold transition-colors duration-200"
+            >
+              Register
+            </Link>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
