@@ -16,7 +16,7 @@ interface MobileMegaMenuProps {
     profileImage?: string;
   };
   onLinkClick?: () => void;
-  isOpen: boolean;
+  onLogout?: () => void;
 }
 
 interface NavigationItem {
@@ -37,7 +37,7 @@ interface NavigationItem {
   children?: NavigationItem[];
 }
 
-export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, isOpen }: MobileMegaMenuProps) {
+export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, onLogout }: MobileMegaMenuProps) {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [navigationItems, setNavigationItems] = useState<NavigationItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -249,10 +249,8 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, isO
         href: '/',
         icon: 'Home',
         nav_order: 1,
-        target_blank: false,
-        membership_contexts: ['base'],
         is_active: true,
-        children: []
+        target_blank: false,
       },
       {
         id: 'events',
@@ -260,10 +258,8 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, isO
         href: '/events',
         icon: 'Calendar',
         nav_order: 2,
-        target_blank: false,
-        membership_contexts: ['base'],
         is_active: true,
-        children: []
+        target_blank: false,
       },
       {
         id: 'directory',
@@ -271,70 +267,18 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, isO
         href: '/directory',
         icon: 'MapPin',
         nav_order: 3,
-        target_blank: false,
-        membership_contexts: ['base'],
         is_active: true,
-        children: []
+        target_blank: false,
       },
       {
         id: 'resources',
         title: 'Resources',
+        href: '/resources',
         icon: 'BookOpen',
         nav_order: 4,
-        target_blank: false,
-        membership_contexts: ['base'],
         is_active: true,
-        children: [
-          {
-            id: 'get-holt',
-            title: 'Get Holt',
-            href: '/get-holt',
-            icon: 'Lightbulb',
-            nav_order: 1,
-            parent_id: 'resources',
-            target_blank: false,
-            membership_contexts: ['base'],
-            is_active: true,
-            children: []
-          },
-          {
-            id: 'organizations',
-            title: 'Organizations',
-            href: '/organizations',
-            icon: 'Building2',
-            nav_order: 2,
-            parent_id: 'resources',
-            target_blank: false,
-            membership_contexts: ['base'],
-            is_active: true,
-            children: []
-          },
-          {
-            id: 'help-center',
-            title: 'Help Center',
-            href: '/help',
-            icon: 'HelpCircle',
-            nav_order: 3,
-            parent_id: 'resources',
-            target_blank: false,
-            membership_contexts: ['base'],
-            is_active: true,
-            children: []
-          },
-          {
-            id: 'contact-us',
-            title: 'Contact Us',
-            href: '/contact',
-            icon: 'MessageSquare',
-            nav_order: 4,
-            parent_id: 'resources',
-            target_blank: false,
-            membership_contexts: ['base'],
-            is_active: true,
-            children: []
-          }
-        ]
-      }
+        target_blank: false,
+      },
     ];
   };
 
@@ -345,54 +289,60 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, isO
   };
 
   const toggleExpanded = (itemId: string) => {
-    const newExpanded = new Set(expandedItems);
-    if (newExpanded.has(itemId)) {
-      newExpanded.delete(itemId);
-    } else {
-      newExpanded.add(itemId);
-    }
-    setExpandedItems(newExpanded);
+    setExpandedItems(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(itemId)) {
+        newSet.delete(itemId);
+      } else {
+        newSet.add(itemId);
+      }
+      return newSet;
+    });
   };
 
   const renderNavigationItems = (items: NavigationItem[], depth: number = 0): React.ReactNode => {
     return items.map((item) => {
-      const hasChildren = item.children && item.children.length > 0;
+      const Icon = getIcon(item.icon);
       const isExpanded = expandedItems.has(item.id);
-      const paddingLeft = depth * 16 + 16;
-      const IconComponent = getIcon(item.icon);
+      const hasChildren = item.children && item.children.length > 0;
+
+      if (item.href) {
+        return (
+          <Link
+            key={item.id}
+            to={item.href}
+            target={item.target_blank ? '_blank' : '_self'}
+            rel={item.target_blank ? 'noopener noreferrer' : ''}
+            onClick={() => handleLinkClick(item.href!)}
+            className={`flex items-center p-3 text-base font-normal rounded-lg transition duration-75 group
+              ${depth > 0 ? 'pl-11' : ''}
+              ${location.pathname === item.href ? 'bg-electric-500/20 text-electric-300' : 'text-gray-300 hover:bg-gray-700/50 hover:text-white'}
+            `}
+          >
+            <Icon className="w-5 h-5 text-gray-400 group-hover:text-white transition duration-75" />
+            <span className="flex-1 ml-3 whitespace-nowrap">{item.title}</span>
+            {item.badge_text && (
+              <Badge color={item.badge_color || 'blue'}>{item.badge_text}</Badge>
+            )}
+          </Link>
+        );
+      }
 
       return (
-        <div key={item.id} className="border-b border-gray-700/30 last:border-b-0">
-          {item.href && !hasChildren ? (
-            <Link
-              to={item.href}
-              onClick={() => handleLinkClick(item.href!)}
-              className="flex items-center justify-between px-6 py-4 text-gray-300 hover:text-white hover:bg-gray-700/30 transition-colors duration-200"
-              style={{ paddingLeft: `${paddingLeft}px` }}
-            >
-              <div className="flex items-center space-x-3">
-                <IconComponent className="h-5 w-5" />
-                <span className="font-medium">{item.title}</span>
-              </div>
-            </Link>
-          ) : (
-            <button
-              onClick={() => hasChildren ? toggleExpanded(item.id) : item.href && handleLinkClick(item.href)}
-              className="w-full flex items-center justify-between px-6 py-4 text-gray-300 hover:text-white hover:bg-gray-700/30 transition-colors duration-200"
-              style={{ paddingLeft: `${paddingLeft}px` }}
-            >
-              <div className="flex items-center space-x-3">
-                <IconComponent className="h-5 w-5" />
-                <span className="font-medium">{item.title}</span>
-              </div>
-              {hasChildren && (
-                <ChevronRight className={`h-5 w-5 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
-              )}
-            </button>
-          )}
-          
-          {hasChildren && isExpanded && (
-            <div className="bg-gray-800/50">
+        <div key={item.id}>
+          <button
+            onClick={() => toggleExpanded(item.id)}
+            className={`flex items-center w-full p-3 text-base font-normal rounded-lg transition duration-75 group
+              ${depth > 0 ? 'pl-11' : ''}
+              ${isExpanded ? 'bg-gray-700/50 text-white' : 'text-gray-300 hover:bg-gray-700/50 hover:text-white'}
+            `}
+          >
+            <Icon className="w-5 h-5 text-gray-400 group-hover:text-white transition duration-75" />
+            <span className="flex-1 ml-3 text-left whitespace-nowrap">{item.title}</span>
+            <ChevronRight className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+          </button>
+          {isExpanded && hasChildren && (
+            <div className="py-2 space-y-2">
               {renderNavigationItems(item.children!, depth + 1)}
             </div>
           )}
@@ -401,156 +351,56 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, isO
     });
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="lg:hidden fixed inset-0 z-50 bg-gray-900/95 backdrop-blur-sm">
-      <div className="flex flex-col h-full">
-        {/* User Profile Section */}
-        {isAuthenticated && user && (
-          <div className="bg-gradient-to-r from-electric-500/20 to-purple-500/20 border-b border-gray-700/50 p-6">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-electric-400 to-purple-500 rounded-full flex items-center justify-center">
-                {user.profileImage ? (
-                  <img src={user.profileImage} alt={user.name} className="w-full h-full rounded-full object-cover" />
-                ) : (
-                  <User className="h-6 w-6 text-white" />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-white font-semibold truncate">{user.name}</h3>
-                <div className="flex items-center space-x-2 mt-1">
-                  <span className="text-sm text-gray-300 capitalize">{user.membershipType}</span>
-                  {user.subscriptionLevel && (
-                    <Badge 
-                      text={user.subscriptionLevel.toUpperCase()} 
-                      color={user.subscriptionLevel === 'pro' ? 'purple' : 'green'} 
-                      size="sm"
-                    />
-                  )}
-                </div>
-              </div>
-            </div>
-            
-            {/* Quick Actions Grid */}
-            <div className="grid grid-cols-2 gap-3 mt-6">
-              <Link
-                to="/dashboard"
-                onClick={() => handleLinkClick('/dashboard')}
-                className="flex items-center justify-center space-x-2 bg-gray-800/50 hover:bg-gray-700/50 rounded-lg py-3 px-4 transition-colors duration-200"
-              >
-                <Settings className="h-4 w-4 text-electric-400" />
-                <span className="text-sm font-medium text-gray-300">Dashboard</span>
-              </Link>
-              <Link
-                to="/profile"
-                onClick={() => handleLinkClick('/profile')}
-                className="flex items-center justify-center space-x-2 bg-gray-800/50 hover:bg-gray-700/50 rounded-lg py-3 px-4 transition-colors duration-200"
-              >
-                <User className="h-4 w-4 text-electric-400" />
-                <span className="text-sm font-medium text-gray-300">Profile</span>
-              </Link>
-            </div>
-          </div>
-        )}
-
-        {/* Search Section */}
-        <div className="border-b border-gray-700/50 p-4">
-          <GlobalSearch 
-            className="w-full"
-            placeholder="Search events, businesses, users..."
-          />
-        </div>
-
-        {/* Navigation Items */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="py-2">
-            {/* DEBUG BANNER - SHOW EXACT STATE */}
-            <div className="bg-red-500 text-white text-center py-2 text-sm font-bold">
-              🚨 DEBUG: loading={loading ? 'true' : 'false'} | isAuth={isAuthenticated ? 'true' : 'false'} | navItems={navigationItems.length}
-            </div>
-            
-            {loading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="text-gray-400">Loading navigation...</div>
-              </div>
-            ) : !isAuthenticated ? (
-              // HARDCODED NAVIGATION FOR NON-AUTHENTICATED USERS
-              <div className="space-y-2">
-                <div className="bg-green-500 text-black text-center py-1 text-xs">
-                  ✅ HARDCODED NAV SECTION ACTIVE
-                </div>
-                <Link to="/" onClick={() => handleLinkClick('/')} className="flex items-center px-6 py-4 text-gray-300 hover:text-white hover:bg-gray-700/30 transition-colors duration-200 border-b border-gray-700/20">
-                  <Home className="h-5 w-5 mr-3 text-electric-400" />
-                  <span className="font-medium">Home</span>
-                </Link>
-                <Link to="/events" onClick={() => handleLinkClick('/events')} className="flex items-center px-6 py-4 text-gray-300 hover:text-white hover:bg-gray-700/30 transition-colors duration-200 border-b border-gray-700/20">
-                  <Calendar className="h-5 w-5 mr-3 text-electric-400" />
-                  <span className="font-medium">Events</span>
-                </Link>
-                <Link to="/directory" onClick={() => handleLinkClick('/directory')} className="flex items-center px-6 py-4 text-gray-300 hover:text-white hover:bg-gray-700/30 transition-colors duration-200 border-b border-gray-700/20">
-                  <MapPin className="h-5 w-5 mr-3 text-electric-400" />
-                  <span className="font-medium">Directory</span>
-                </Link>
-                <div className="border-b border-gray-700/20">
-                  <button className="w-full flex items-center justify-between px-6 py-4 text-gray-300 hover:text-white hover:bg-gray-700/30 transition-colors duration-200">
-                    <div className="flex items-center">
-                      <BookOpen className="h-5 w-5 mr-3 text-electric-400" />
-                      <span className="font-medium">Resources</span>
-                    </div>
-                    <ChevronRight className="h-5 w-5" />
-                  </button>
-                </div>
-              </div>
-            ) : (
-              renderNavigationItems(navigationItems)
-            )}
-          </div>
-        </div>
-
-        {/* Bottom Actions */}
-        <div className="border-t border-gray-700/50 p-6 bg-gray-800/30">
-          {!isAuthenticated ? (
-            <div className="space-y-3">
-              <Link
-                to="/login"
-                onClick={() => handleLinkClick('/login')}
-                className="block w-full text-center bg-electric-500 hover:bg-electric-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200"
-              >
-                Sign In
-              </Link>
-              <Link
-                to="/register"
-                onClick={() => handleLinkClick('/register')}
-                className="block w-full text-center border border-gray-600 hover:border-gray-500 text-gray-300 hover:text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200"
-              >
-                Join Free
-              </Link>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {user?.membershipType !== 'admin' && (
-                <Link
-                  to="/pricing"
-                  onClick={() => handleLinkClick('/pricing')}
-                  className="flex items-center justify-center space-x-2 w-full bg-gradient-to-r from-purple-500 to-electric-500 hover:from-purple-600 hover:to-electric-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200"
-                >
-                  <Crown className="h-4 w-4" />
-                  <span>Upgrade to Pro</span>
-                </Link>
-              )}
-              <button
-                onClick={() => {
-                  handleLinkClick('/logout');
-                }}
-                className="w-full text-center border border-gray-600 hover:border-gray-500 text-gray-300 hover:text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200"
-              >
-                Sign Out
-              </button>
-            </div>
-          )}
-        </div>
+    <div className="bg-gradient-to-b from-black/90 to-purple-900/90 backdrop-blur-lg border-t border-electric-500/20 px-4 py-4 space-y-4">
+      {/* Search Bar */}
+      <div className="px-2">
+        <GlobalSearch 
+          className="w-full"
+          placeholder="Search..."
+          onSearch={() => onLinkClick && onLinkClick()}
+        />
       </div>
+
+      {/* Main Navigation */}
+      {loading ? (
+        <div className="text-center text-gray-400 p-4">Loading Navigation...</div>
+      ) : (
+        renderNavigationItems(navigationItems)
+      )}
+
+      {/* Auth buttons */}
+      {!isAuthenticated && (
+        <div className="pt-4 mt-4 border-t border-gray-700 space-y-2">
+          <Link 
+            to="/login"
+            onClick={onLinkClick}
+            className="block w-full text-center bg-gray-700/50 hover:bg-gray-600/50 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200"
+          >
+            Login
+          </Link>
+          <Link 
+            to="/register"
+            onClick={onLinkClick}
+            className="block w-full text-center bg-electric-600 hover:bg-electric-500 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200"
+          >
+            Register
+          </Link>
+        </div>
+      )}
+      
+      {/* Logout button */}
+      {isAuthenticated && onLogout && (
+         <div className="pt-4 mt-4 border-t border-gray-700">
+          <button
+            onClick={onLogout}
+            className="w-full flex items-center justify-center p-3 text-base font-normal text-gray-300 rounded-lg hover:bg-red-500/20 hover:text-red-400 group transition-colors duration-200"
+          >
+            <Users className="w-5 h-5 mr-3" />
+            Logout
+          </button>
+        </div>
+      )}
     </div>
   );
-} 
+}

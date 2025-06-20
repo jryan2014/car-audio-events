@@ -23,10 +23,10 @@ export default function Header() {
   return (
     <header className="bg-gradient-to-r from-black/90 to-purple-900/90 backdrop-blur-lg border-b border-electric-500/20 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center py-3">
+        <div className="flex items-center justify-between py-3">
           {/* Logo - Positioned with proper spacing */}
           <div className="flex-shrink-0 mr-8">
-            <Link to="/" className="flex items-center">
+            <Link to="/" className="flex items-center" onClick={() => setIsMenuOpen(false)}>
               <img 
                 src="/assets/logos/cae-logo-main.png" 
                 alt="Car Audio Events" 
@@ -35,7 +35,7 @@ export default function Header() {
             </Link>
           </div>
 
-          {/* Desktop Navigation - Mega Menu - Centered */}
+          {/* Centered Desktop Navigation */}
           <div className="hidden md:flex flex-1 justify-center">
             <MegaMenu 
               isAuthenticated={isAuthenticated} 
@@ -43,23 +43,21 @@ export default function Header() {
               onLinkClick={() => {}} 
             />
           </div>
+          
+          <div className="flex items-center ml-auto">
+            {/* Global Search - Desktop */}
+            <div className="hidden md:block flex-shrink-0 mx-6">
+              <GlobalSearch 
+                className="w-80"
+                placeholder="Search events, businesses, users..."
+              />
+            </div>
 
-          {/* Global Search - Desktop */}
-          <div className="hidden md:block flex-shrink-0 mx-6">
-            <GlobalSearch 
-              className="w-80"
-              placeholder="Search events, businesses, users..."
-            />
-          </div>
-
-          {/* User Menu - Right aligned */}
-          <div className="flex items-center space-x-4 flex-shrink-0 ml-auto">
-            {/* Notification Center */}
-            {isAuthenticated && <NotificationCenter />}
-            
-            {isAuthenticated ? (
-              <div className="flex items-center space-x-4">
-                {/* User Dropdown */}
+            {/* User & Auth Controls */}
+            <div className="flex items-center space-x-4">
+              {isAuthenticated && <NotificationCenter />}
+              
+              {isAuthenticated ? (
                 <div className="relative">
                   <button
                     onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
@@ -76,17 +74,14 @@ export default function Header() {
                       <User className="h-8 w-8 p-1 bg-electric-500 rounded-full text-white" />
                     )}
                     <span className="hidden sm:block font-medium">{user?.name}</span>
-                    <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${
-                      isUserDropdownOpen ? 'rotate-180' : ''
-                    }`} />
+                    <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isUserDropdownOpen ? 'rotate-180' : ''}`} />
                   </button>
-
-                  {/* User Dropdown Menu */}
                   {isUserDropdownOpen && (
                     <div 
                       className="absolute right-0 top-full mt-2 w-64 max-w-[90vw] bg-gray-800/95 backdrop-blur-sm border border-gray-700/50 rounded-xl shadow-2xl z-50"
                       onMouseLeave={() => setIsUserDropdownOpen(false)}
                     >
+                      {/* Dropdown content remains the same */}
                       <div className="p-2">
                         <Link
                           to={user?.membershipType === 'admin' ? '/admin/dashboard' : '/dashboard'}
@@ -203,12 +198,12 @@ export default function Header() {
                               <div className="text-xs text-gray-500 font-medium mb-2">Business Tools</div>
                               
                               <Link
-                                to="/admin/ad-management"
+                                to="/my-ads"
                                 onClick={() => setIsUserDropdownOpen(false)}
                                 className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
                               >
                                 <Target className="h-3 w-3" />
-                                <span>Ads</span>
+                                <span>My Ads</span>
                               </Link>
                               
                               {user.membershipType === 'organization' && (
@@ -237,61 +232,48 @@ export default function Header() {
                     </div>
                   )}
                 </div>
-              </div>
-            ) : (
-              /* Desktop Auth Buttons Only */
-              <div className="hidden md:flex items-center space-x-4">
-                <Link 
-                  to="/login"
-                  className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium"
-                >
-                  Login
-                </Link>
-                <Link 
-                  to="/register"
-                  className="bg-electric-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-electric-600 transition-all duration-200 shadow-lg"
-                >
-                  Register
-                </Link>
-              </div>
-            )}
-
-            {/* Mobile menu button - shows hamburger for guests, user name for logged in */}
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden text-gray-300 hover:text-white transition-colors duration-200 flex items-center space-x-2"
-            >
-              {isAuthenticated && user ? (
-                <>
-                  {user.profileImage ? (
-                    <img 
-                      src={user.profileImage} 
-                      alt={user.name}
-                      className="w-6 h-6 rounded-full border border-electric-500"
-                    />
-                  ) : (
-                    <User className="h-5 w-5 p-1 bg-electric-500 rounded-full text-white" />
-                  )}
-                  <span className="font-medium text-sm">{user.name}</span>
-                  {isMenuOpen ? <X className="h-5 w-5" /> : <ChevronDown className="h-4 w-4" />}
-                </>
               ) : (
-                <>
-                  {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-                </>
+                <div className="hidden md:flex items-center space-x-4">
+                  <Link 
+                    to="/login"
+                    className="text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium"
+                  >
+                    Login
+                  </Link>
+                  <Link 
+                    to="/register"
+                    className="bg-electric-600 hover:bg-electric-500 text-white font-bold py-2 px-4 rounded-full transition-all duration-300 shadow-lg hover:shadow-electric-500/50"
+                  >
+                    Register
+                  </Link>
+                </div>
               )}
-            </button>
+
+              {/* Hamburger Menu Button */}
+              <div className="md:hidden">
+                <button
+                  onClick={() => setIsMenuOpen(!isMenuOpen)}
+                  className="text-gray-300 hover:text-electric-400"
+                >
+                  {isMenuOpen ? <X className="h-8 w-8" /> : <Menu className="h-8 w-8" />}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-
-        {/* Mobile Navigation - Mega Menu */}
-        <MobileMegaMenu 
-          isAuthenticated={isAuthenticated} 
-          user={user || undefined} 
-          onLinkClick={() => setIsMenuOpen(false)}
-          isOpen={isMenuOpen}
-        />
       </div>
+
+      {/* Mobile Menu */}
+      {isMenuOpen && (
+        <div className="md:hidden">
+          <MobileMegaMenu 
+            isAuthenticated={isAuthenticated} 
+            user={user || undefined} 
+            onLinkClick={() => setIsMenuOpen(false)} 
+            onLogout={handleLogout}
+          />
+        </div>
+      )}
     </header>
   );
 }
