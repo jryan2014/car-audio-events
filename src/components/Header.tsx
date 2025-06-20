@@ -266,7 +266,7 @@ export default function Header() {
 
       {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="md:hidden absolute top-full left-0 w-full bg-black/90 backdrop-blur-md z-40">
+        <div className="lg:hidden absolute top-full left-0 w-full bg-black/90 backdrop-blur-md z-40">
           <MobileMegaMenu
             isAuthenticated={isAuthenticated}
             user={user || undefined}
