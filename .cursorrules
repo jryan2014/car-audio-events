@@ -474,6 +474,7 @@ Before beginning ANY deployment phase, you MUST perform and confirm the followin
 - ✅ **Acknowledge Protocols**: Confirm understanding of all production rules.
 - ✅ **RULE CONFIRMATION**: For each step, you MUST explicitly state the primary rule from `.cursorrules` that governs the action before requesting user approval.
 - ✅ **STEP-BY-STEP CONFIRMATION**: Confirm that user approval ("proceed" or "continue") is required between EACH individual command in all phases.
+- ✅ **VERSION SYNC**: ALWAYS run `npm run version:generate` before committing to ensure `src/utils/version.ts` is up-to-date.
 
 ### Mandatory 5-Phase Deployment Process
 
@@ -490,6 +491,11 @@ dir dist\assets                  # ✅ Check asset organization
 `
 
 **Phase 3: Git Operations**
+**Step 0: Synchronize Version File (MANDATORY)**
+`bash
+npm run version:generate         # ✅ ALWAYS sync version file first
+`
+
 `bash
 git status                       # ✅ Review all changes
 git add [specific-files]         # ✅ NEVER use git add .
