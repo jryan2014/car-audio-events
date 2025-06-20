@@ -302,7 +302,7 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, onL
 
   const ParentItem = ({ item, depth }: { item: NavigationItem; depth: number }) => (
     <div
-      className={`flex items-center justify-between w-full text-left text-lg font-semibold ${depth > 0 ? 'pl-4' : ''}`}
+      className={`flex items-center justify-between w-full text-left text-lg font-semibold text-gray-300 hover:text-white transition-colors ${depth > 0 ? 'pl-4' : ''}`}
       onClick={() => toggleExpanded(item.id)}
     >
       <span className="flex items-center">
@@ -333,7 +333,7 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, onL
             target={item.target_blank ? '_blank' : '_self'}
             rel={item.target_blank ? 'noopener noreferrer' : ''}
             onClick={() => handleLinkClick(item.href)}
-            className={`flex items-center text-lg ${depth > 0 ? 'pl-4' : ''}`}
+            className={`flex items-center text-lg text-gray-300 hover:text-white transition-colors ${depth > 0 ? 'pl-4' : ''}`}
           >
             {item.icon && React.createElement(getIcon(item.icon), { className: "w-6 h-6 mr-3" })}
             {item.title}
