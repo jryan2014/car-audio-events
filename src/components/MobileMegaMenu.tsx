@@ -356,13 +356,13 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, onL
         />
       </div>
 
-      <div className="flex-grow overflow-y-auto">
+      <nav className="flex-grow overflow-y-auto p-4">
         {loading ? (
-          <div className="p-4 text-center text-gray-400">Loading navigation...</div>
+          <div className="text-center text-gray-400">Loading navigation...</div>
         ) : (
           renderNavigationItems(navigationItems)
         )}
-      </div>
+      </nav>
       
       {/* Auth buttons */}
       <div className="p-4 border-t border-gray-700/50">
