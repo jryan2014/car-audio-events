@@ -36,7 +36,7 @@ export default function Header() {
           </div>
 
           {/* Centered Desktop Navigation */}
-          <div className="hidden md:flex flex-1 justify-center">
+          <div className="hidden lg:flex flex-1 justify-center">
             <MegaMenu 
               isAuthenticated={isAuthenticated} 
               user={user || undefined} 
@@ -46,7 +46,7 @@ export default function Header() {
           
           <div className="flex items-center ml-auto">
             {/* Global Search - Desktop */}
-            <div className="hidden md:block flex-shrink-0 mx-6">
+            <div className="hidden lg:block flex-shrink-0 mx-6">
               <GlobalSearch 
                 className="w-80"
                 placeholder="Search events, businesses, users..."
@@ -249,11 +249,11 @@ export default function Header() {
                 </div>
               )}
 
-              {/* Mobile Menu Button - Right-most on mobile */}
-              <div className="flex md:hidden">
+              {/* Hamburger Menu - Mobile */}
+              <div className="flex lg:hidden items-center">
                 <button
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
-                  className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
+                  className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
                 >
                   <span className="sr-only">Open main menu</span>
                   {isMenuOpen ? <X className="block h-6 w-6" aria-hidden="true" /> : <Menu className="block h-6 w-6" aria-hidden="true" />}
