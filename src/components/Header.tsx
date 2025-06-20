@@ -264,14 +264,14 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Mobile Menu - Full-screen overlay */}
+      {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="md:hidden absolute top-full inset-x-0 min-h-screen bg-black/95 z-50">
-          <MobileMegaMenu 
-            isAuthenticated={isAuthenticated} 
-            user={user || undefined} 
+        <div className="md:hidden absolute top-full left-0 w-full bg-black/90 backdrop-blur-md z-40">
+          <MobileMegaMenu
+            isAuthenticated={isAuthenticated}
+            user={user || undefined}
             onLinkClick={() => setIsMenuOpen(false)}
-            onLogout={handleLogout} 
+            onLogout={handleLogout}
           />
         </div>
       )}

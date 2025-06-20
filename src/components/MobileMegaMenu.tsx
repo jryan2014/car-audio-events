@@ -282,7 +282,7 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, onL
     ];
   };
 
-  const handleLinkClick = (href: string) => {
+  const handleLinkClick = (href?: string) => {
     if (onLinkClick) {
       onLinkClick();
     }
@@ -300,57 +300,50 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, onL
     });
   };
 
-  const renderNavigationItems = (items: NavigationItem[], depth: number = 0): React.ReactNode => {
-    return items.map((item) => {
-      const Icon = getIcon(item.icon);
-      const isExpanded = expandedItems.has(item.id);
-      const hasChildren = item.children && item.children.length > 0;
+  const ParentItem = ({ item, depth }: { item: NavigationItem; depth: number }) => (
+    <div
+      className={`flex items-center justify-between w-full text-left text-lg font-semibold ${depth > 0 ? 'pl-4' : ''}`}
+      onClick={() => toggleExpanded(item.id)}
+    >
+      <span className="flex items-center">
+        {item.icon && React.createElement(getIcon(item.icon), { className: "w-6 h-6 mr-3" })}
+        {item.title}
+      </span>
+      <ChevronRight
+        className={`w-6 h-6 transform transition-transform ${expandedItems.has(item.id) ? 'rotate-90' : ''}`}
+      />
+    </div>
+  );
 
-      if (hasChildren) {
-        return (
-          <div key={item.id}>
-            <button
-              onClick={() => toggleExpanded(item.id)}
-              className="w-full flex items-center justify-between p-3 rounded-lg text-gray-300 hover:text-white hover:bg-gray-700/50 transition-colors duration-200"
-              style={{ paddingLeft: `${1 + depth * 1.5}rem` }}
-            >
-              <div className="flex items-center">
-                {Icon && <Icon className="mr-3 h-5 w-5" />}
-                <span className="font-semibold">{item.title}</span>
-              </div>
-              <ChevronRight className={`h-5 w-5 transform transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
-            </button>
-            {isExpanded && (
-              <div className="mt-1">
-                {renderNavigationItems(item.children!, depth + 1)}
+  const renderNavigationItems = (items: NavigationItem[], depth: number = 0): React.ReactNode => {
+    return items.map(item => (
+      <div key={item.id} className="py-2 border-b border-gray-700">
+        {item.children && item.children.length > 0 ? (
+          <>
+            <ParentItem item={item} depth={depth} />
+            {expandedItems.has(item.id) && (
+              <div className="mt-2 pl-6">
+                {renderNavigationItems(item.children, depth + 1)}
               </div>
             )}
-          </div>
-        );
-      }
-      
-      if (item.href) {
-        return (
+          </>
+        ) : (
           <Link
-            key={item.id}
-            to={item.href}
+            to={item.href || '#'}
             target={item.target_blank ? '_blank' : '_self'}
             rel={item.target_blank ? 'noopener noreferrer' : ''}
-            onClick={() => handleLinkClick(item.href!)}
-            className="flex items-center p-3 rounded-lg text-gray-300 hover:text-white hover:bg-gray-700/50 transition-colors duration-200"
-            style={{ paddingLeft: `${1 + depth * 1.5}rem` }}
+            onClick={() => handleLinkClick(item.href)}
+            className={`flex items-center text-lg ${depth > 0 ? 'pl-4' : ''}`}
           >
-            {Icon && <Icon className="mr-3 h-5 w-5" />}
-            <span className="flex-1 font-semibold">{item.title}</span>
-            {item.badge_text && item.badge_color && (
-              <Badge text={item.badge_text} color={item.badge_color} />
+            {item.icon && React.createElement(getIcon(item.icon), { className: "w-6 h-6 mr-3" })}
+            {item.title}
+            {item.badge_text && (
+              <Badge text={item.badge_text} color={item.badge_color || 'blue'} className="ml-2" />
             )}
           </Link>
-        );
-      }
-
-      return null;
-    });
+        )}
+      </div>
+    ));
   };
 
   return (
