@@ -12,7 +12,7 @@
     "build:analyze": "npm run build && npm run analyze",
     "deploy:stripe": "node scripts/deploy-stripe-integration.js",
     "version:generate": "node scripts/generate-version.js",
-    "version:check": "echo 'Version check temporarily disabled. Build proceeding.'",
+    "version:check": "node scripts/generate-version.js && echo 'Version sync complete!'",
     "version:bump": "node scripts/bump-version.js",
     "version:bump:patch": "node scripts/bump-version.js patch",
     "version:bump:minor": "node scripts/bump-version.js minor",
