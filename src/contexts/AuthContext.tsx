@@ -42,24 +42,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchUserProfile = async (userId: string): Promise<User | null> => {
-    console.log('🔍 Creating temporary admin user to bypass profile fetch issues');
-    // Bypass database fetch and create working admin user
-    return {
-      id: userId,
-      name: 'Admin User',
-      email: 'admin@caraudioevents.com',
-      membershipType: 'admin',
-      status: 'active',
-      verificationStatus: 'verified',
-      location: '',
-      phone: '',
-      website: '',
-      bio: '',
-      companyName: '',
-      subscriptionPlan: '',
-      requiresPasswordChange: false,
-      passwordChangedAt: new Date().toISOString()
-    };
+    try {
+      console.log('🔍 Fetching user profile for:', userId);
+      
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching user profile:', error);
+        return null;
+      }
+
+      if (!data) {
+        console.error('No user profile found for ID:', userId);
+        return null;
+      }
+
+      console.log('✅ User profile fetched:', data.email, 'Type:', data.membership_type);
+
+      return {
+        id: data.id,
+        name: data.name || data.email,
+        email: data.email,
+        membershipType: data.membership_type,
+        status: data.status,
+        verificationStatus: data.verification_status,
+        location: data.location,
+        phone: data.phone,
+        website: data.website,
+        bio: data.bio,
+        companyName: data.company_name,
+        subscriptionPlan: data.subscription_plan,
+        requiresPasswordChange: data.require_password_change || false,
+        passwordChangedAt: data.password_changed_at
+      };
+    } catch (error) {
+      console.error('Error in fetchUserProfile:', error);
+      return null;
+    }
   };
 
   // Initialize auth state
@@ -127,7 +150,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
+      console.log('🔑 Starting login process for:', email);
       setLoading(true);
+      
+      // Clear any existing state first
+      setSession(null);
+      setUser(null);
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
@@ -135,16 +163,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (error) {
+        console.error('Supabase auth error:', error);
         throw error;
       }
 
-      if (data.user) {
+      if (data.user && data.session) {
+        console.log('✅ Auth successful, fetching profile...');
         setSession(data.session);
+        
         const userProfile = await fetchUserProfile(data.user.id);
-        setUser(userProfile);
+        if (userProfile) {
+          setUser(userProfile);
+          console.log('✅ Login complete for:', userProfile.email, 'Type:', userProfile.membershipType);
+        } else {
+          throw new Error('Failed to fetch user profile');
+        }
+      } else {
+        throw new Error('No user data returned from login');
       }
     } catch (error) {
       console.error('Login error:', error);
+      // Clear state on error
+      setSession(null);
+      setUser(null);
       throw error;
     } finally {
       setLoading(false);
@@ -227,15 +268,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('Logout error:', error);
-      }
+      console.log('🚪 Starting logout process...');
+      setLoading(true);
       
+      // Clear local state immediately
       setSession(null);
       setUser(null);
+      
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Supabase logout error:', error);
+        // Don't throw error - we've already cleared local state
+      } else {
+        console.log('✅ Logout successful');
+      }
+      
+      // Force page reload to clear any cached state
+      window.location.href = '/';
     } catch (error) {
       console.error('Logout error:', error);
+      // Even if logout fails, clear local state and redirect
+      setSession(null);
+      setUser(null);
+      window.location.href = '/';
+    } finally {
+      setLoading(false);
     }
   };
 
