@@ -277,7 +277,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Try to sign out from Supabase, but don't fail if session is already gone
       try {
-        const { error } = await supabase.auth.signOut();
+        const { error } = await supabase.auth.signOut({ scope: 'global' });
         if (error) {
           console.warn('Supabase logout warning:', error.message);
           // If session is missing, that's actually what we want
@@ -285,19 +285,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             console.log('✅ Session was already cleared - logout successful');
           }
         } else {
-          console.log('✅ Logout successful');
+          console.log('✅ Supabase logout successful');
         }
       } catch (authError) {
         console.warn('Auth logout failed, but continuing with local cleanup:', authError);
       }
       
-      // Clear any stored auth data
-      localStorage.removeItem('supabase.auth.token');
+      // Clear ALL possible stored auth data
+      console.log('🧹 Clearing all stored data...');
+      
+      // Clear specific Supabase keys
+      const keysToRemove = [
+        'supabase.auth.token',
+        'sb-nqvisvranvjaghvrdaaz-auth-token',
+        'sb-auth-token'
+      ];
+      
+      keysToRemove.forEach(key => {
+        localStorage.removeItem(key);
+        sessionStorage.removeItem(key);
+      });
+      
+      // Clear all localStorage and sessionStorage for good measure
+      localStorage.clear();
       sessionStorage.clear();
       
+      console.log('✅ All data cleared');
       console.log('🔄 Redirecting to home page...');
-      // Force page reload to clear any cached state
-      window.location.href = '/';
+      
+      // Small delay to ensure clearing is complete
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 100);
+      
     } catch (error) {
       console.error('Logout error:', error);
       // Even if everything fails, force clear and redirect
