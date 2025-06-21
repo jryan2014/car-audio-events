@@ -43,31 +43,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchUserProfile = async (userId: string): Promise<User | null> => {
     try {
-      console.log('🔍 Fetching user profile for:', userId);
+      console.log('⚡ Fast fetching user profile for:', userId);
       
       const { data, error } = await supabase
         .from('users')
-        .select('*')
+        .select('id,name,email,membership_type,status,verification_status,location,phone,website,bio,company_name,subscription_plan')
         .eq('id', userId)
         .single();
 
       if (error) {
-        console.error('Error fetching user profile:', error);
+        if (error.code === 'PGRST116') {
+          console.log('ℹ️ No profile found - user may need to complete registration');
+        } else {
+          console.error('Database error:', error.message);
+        }
         return null;
       }
 
-      if (!data) {
-        console.error('No user profile found for ID:', userId);
+      if (!data?.email) {
+        console.error('Invalid user profile - missing email');
         return null;
       }
 
-      console.log('✅ User profile fetched:', data.email, 'Type:', data.membership_type);
+      console.log('⚡ Profile fetched quickly:', data.email, 'Type:', data.membership_type);
 
       return {
         id: data.id,
         name: data.name || data.email,
         email: data.email,
-        membershipType: data.membership_type,
+        membershipType: data.membership_type || 'competitor',
         status: data.status,
         verificationStatus: data.verification_status,
         location: data.location,
@@ -76,11 +80,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         bio: data.bio,
         companyName: data.company_name,
         subscriptionPlan: data.subscription_plan,
-        requiresPasswordChange: data.require_password_change || false,
-        passwordChangedAt: data.password_changed_at
+        requiresPasswordChange: false, // Default value since column doesn't exist
+        passwordChangedAt: undefined // Default value since column doesn't exist
       };
     } catch (error) {
-      console.error('Error in fetchUserProfile:', error);
+      console.error('Profile fetch error:', error);
       return null;
     }
   };
@@ -120,10 +124,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (event === 'SIGNED_IN' && session?.user) {
           console.log('🔑 SIGNED_IN event - user ID:', session.user.id);
           setSession(session);
-          const userProfile = await fetchUserProfile(session.user.id);
-          console.log('👤 User profile result:', userProfile ? 'SUCCESS' : 'FAILED');
-          setUser(userProfile);
-          setLoading(false); // Force loading to false after profile fetch
+          
+          // Skip profile fetch here - login function handles it
+          console.log('⚡ Skipping profile fetch in auth state change - handled by login function');
+          setLoading(false);
         } else if (event === 'SIGNED_OUT') {
           setSession(null);
           setUser(null);
@@ -153,10 +157,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('🔑 Starting login process for:', email);
       setLoading(true);
       
-      // Clear any existing state first
-      setSession(null);
-      setUser(null);
-      
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password
@@ -168,7 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (data.user && data.session) {
-        console.log('✅ Auth successful, fetching profile...');
+        console.log('✅ Auth successful, setting session and fetching profile...');
         setSession(data.session);
         
         const userProfile = await fetchUserProfile(data.user.id);
@@ -176,19 +176,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(userProfile);
           console.log('✅ Login complete for:', userProfile.email, 'Type:', userProfile.membershipType);
         } else {
-          throw new Error('Failed to fetch user profile');
+          console.warn('⚠️ No profile found, but auth successful');
+          setUser(null);
         }
       } else {
         throw new Error('No user data returned from login');
       }
     } catch (error) {
       console.error('Login error:', error);
-      // Clear state on error
       setSession(null);
       setUser(null);
       throw error;
     } finally {
-      setLoading(false);
+      setLoading(false); // ALWAYS set loading to false
     }
   };
 
