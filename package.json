@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@googlemaps/markerclusterer": "^2.5.3",
+    "@hcaptcha/react-hcaptcha": "^1.12.0",
     "@stripe/stripe-js": "^2.4.0",
     "@supabase/supabase-js": "^2.39.0",
     "@types/jszip": "^3.4.0",

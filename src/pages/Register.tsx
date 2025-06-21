@@ -2,7 +2,8 @@ import React, { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, MapPin, Eye, EyeOff, Volume2, Building, Wrench, Users, AlertTriangle, Loader, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import ReCaptcha, { ReCaptchaRef } from '../components/ReCaptcha';
+import HCaptcha from '@hcaptcha/react-hcaptcha';
+import { supabase } from '../lib/supabase';
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -24,7 +25,7 @@ export default function Register() {
   
   const { register } = useAuth();
   const navigate = useNavigate();
-  const captchaRef = useRef<ReCaptchaRef>(null);
+  const captchaRef = useRef<HCaptcha>(null);
 
   const membershipTypes = [
     {
@@ -67,11 +68,13 @@ export default function Register() {
   const handleCaptchaVerify = (token: string) => {
     setCaptchaToken(token);
     setCaptchaError('');
+    setDebugInfo('✅ Captcha completed successfully.');
   };
 
-  const handleCaptchaError = () => {
+  const handleCaptchaError = (err: any) => {
     setCaptchaError('Captcha verification failed. Please try again.');
     setCaptchaToken(null);
+    setDebugInfo(`❌ Captcha error: ${err}`);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -94,16 +97,29 @@ export default function Register() {
     // Check if captcha is completed
     if (!captchaToken) {
       setCaptchaError('Please complete the captcha verification.');
+      setDebugInfo('❌ Captcha not completed.');
       return;
     }
     
     setIsLoading(true);
-    setDebugInfo('🔄 Creating user account...');
+    setDebugInfo('🔄 Verifying captcha...');
     setCaptchaError('');
-    
+
     try {
+      // Step 1: Verify hCaptcha token with our backend
+      const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-captcha', {
+        body: { token: captchaToken },
+      });
+
+      if (verifyError || !verifyData?.success) {
+        throw new Error(verifyData?.error || verifyError?.message || 'hCaptcha verification failed.');
+      }
+      
+      setDebugInfo('✅ Captcha verified. Creating user account...');
+
+      // Step 2: Proceed with user registration
       await register(formData);
-      setDebugInfo('✅ Registration successful, navigating to home');
+      setDebugInfo('✅ Registration successful, navigating to dashboard');
       setRegistrationSuccess(true);
       setTimeout(() => {
         navigate('/dashboard');
@@ -116,7 +132,10 @@ export default function Register() {
       
       // More detailed error messages
       if (error?.message) {
-        if (error.message.includes('already registered') || error.message.includes('already exists')) {
+        if (error.message.includes('hCaptcha')) {
+            errorMessage = 'Bot verification failed. Please try the captcha again.';
+            debugMessage += '\n\n💡 hCaptcha verification failed at server.';
+        } else if (error.message.includes('already registered') || error.message.includes('already exists')) {
           errorMessage = 'An account with this email already exists. Please try logging in instead.';
           debugMessage += '\n\n💡 User already exists - try logging in';
         } else if (error.message.includes('timeout') || error.message.includes('aborted')) {
@@ -144,7 +163,7 @@ export default function Register() {
       
       // Reset captcha on failed registration
       if (captchaRef.current) {
-        captchaRef.current.reset();
+        captchaRef.current.resetCaptcha();
       }
       setCaptchaToken(null);
     } finally {
@@ -367,36 +386,28 @@ export default function Register() {
               </div>
             </div>
 
-            {/* Google reCAPTCHA Enterprise */}
-            <div>
-              <ReCaptcha
-                ref={captchaRef}
-                onVerify={handleCaptchaVerify}
-                onError={handleCaptchaError}
-                onExpire={() => {
-                  setCaptchaToken(null);
-                  setCaptchaError('Security verification expired. Please try again.');
-                }}
-                action="REGISTER"
-              />
+            {/* Captcha */}
+            <div className="mt-6 flex flex-col items-center">
+               <HCaptcha
+                  sitekey={import.meta.env.VITE_HCAPTCHA_SITE_KEY}
+                  onVerify={handleCaptchaVerify}
+                  onError={handleCaptchaError}
+                  onExpire={() => setCaptchaToken(null)}
+                  ref={captchaRef}
+                  theme="dark"
+                />
               {captchaError && (
-                <p className="text-red-400 text-sm mt-2">{captchaError}</p>
+                <p className="mt-2 text-sm text-red-400">{captchaError}</p>
               )}
             </div>
 
             <button
               type="submit"
-              disabled={isLoading || !captchaToken}
-              className="w-full bg-electric-500 text-white py-3 px-4 rounded-lg font-bold text-lg hover:bg-electric-600 transition-all duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-electric-600 hover:bg-electric-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-electric-500 focus:ring-offset-gray-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isLoading}
             >
-              {isLoading ? (
-                <>
-                  <Loader className="h-5 w-5 animate-spin" />
-                  <span>Creating Account...</span>
-                </>
-              ) : (
-                <span>Create Account</span>
-              )}
+              {isLoading && <Loader className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />}
+              Create Account
             </button>
 
             <div className="relative">

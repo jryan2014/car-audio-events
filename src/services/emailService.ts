@@ -27,7 +27,8 @@ export type EmailType =
   | 'event_approval_notification'
   | 'competition_results'
   | 'newsletter'
-  | 'system_notification';
+  | 'system_notification'
+  | 'membership_upsell';
 
 class EmailService {
   private client: Client | null = null;
@@ -241,6 +242,7 @@ class EmailService {
     to: string,
     emailType: EmailType,
     templateData: Record<string, any>,
+    fromName?: string,
     options?: {
       cc?: string[];
       bcc?: string[];
@@ -248,22 +250,42 @@ class EmailService {
     }
   ): Promise<{ success: boolean; messageId?: string; error?: string }> {
     const template = this.getEmailTemplate(emailType, templateData);
-    
-    return this.sendEmail(
-      to,
-      template.subject,
-      template.htmlBody,
-      template.textBody,
-      {
-        ...options,
-        tag: options?.tag || emailType,
-        metadata: {
+
+    if (!this.isReady()) {
+      console.warn(`📧 Email service not configured, simulating '${emailType}' email send`);
+      return this.simulateEmailSend(to, template.subject);
+    }
+
+    try {
+      const result = await this.client!.sendEmail({
+        From: `${fromName || this.config!.fromName} <${this.config!.fromEmail}>`,
+        To: to,
+        Subject: template.subject,
+        HtmlBody: template.htmlBody,
+        TextBody: template.textBody,
+        ReplyTo: this.config!.replyToEmail,
+        Cc: options?.cc?.join(', '),
+        Bcc: options?.bcc?.join(', '),
+        Tag: options?.tag,
+        Metadata: {
           emailType,
           timestamp: new Date().toISOString(),
           ...templateData
         }
-      }
-    );
+      });
+
+      console.log(`✅ Email sent successfully to ${to} (MessageID: ${result.MessageID})`);
+      return {
+        success: true,
+        messageId: result.MessageID
+      };
+    } catch (error: any) {
+      console.error('❌ Failed to send templated email:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to send templated email'
+      };
+    }
   }
 
   /**
@@ -329,6 +351,12 @@ class EmailService {
         subject: data.subject || `System Notification - Car Audio Events Platform`,
         htmlBody: this.generateSystemNotificationHTML(data),
         textBody: this.generateSystemNotificationText(data)
+      }),
+      
+      membership_upsell: (data) => ({
+        subject: `Join Us Today and Unlock Exclusive Benefits! 🎉`,
+        htmlBody: this.generateMembershipUpsellHTML(data),
+        textBody: this.generateMembershipUpsellText(data)
       })
     };
 
@@ -587,6 +615,87 @@ The Car Audio Events Team
 
   private generateSystemNotificationText(data: Record<string, any>): string {
     return `System Notification\n\n${data.message}`;
+  }
+
+  private generateMembershipUpsellHTML(data: Record<string, any>): string {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Join Us Today and Unlock Exclusive Benefits!</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
+          .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+          .header { background: linear-gradient(135deg, #0ea5e9 0%, #3b82f6 100%); color: white; padding: 30px; text-align: center; }
+          .content { padding: 30px; }
+          .footer { background-color: #1f2937; color: #9ca3af; padding: 20px; text-align: center; font-size: 14px; }
+          .button { display: inline-block; background-color: #0ea5e9; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 20px 0; }
+          .highlight { background-color: #f0f9ff; padding: 15px; border-left: 4px solid #0ea5e9; margin: 20px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🎉 Join Us Today and Unlock Exclusive Benefits!</h1>
+            <p>Unlock the full potential of your car audio passion</p>
+          </div>
+          <div class="content">
+            <h2>Hello ${data.firstName || 'Car Audio Enthusiast'}!</h2>
+            <p>We're thrilled to have you join our community of sound enthusiasts!</p>
+            
+            <div class="highlight">
+              <h3>🚀 Get Started:</h3>
+              <ul>
+                <li>Complete your profile to showcase your sound system</li>
+                <li>Browse upcoming competitions and events</li>
+                <li>Connect with other car audio enthusiasts</li>
+                <li>Track your competition scores and achievements</li>
+              </ul>
+            </div>
+            
+            <p>Ready to dive in? Click the button below to explore events in your area:</p>
+            <a href="${data.dashboardUrl || '#'}" class="button">Explore Events</a>
+            
+            <p>If you have any questions, our support team is here to help. Just reply to this email!</p>
+            
+            <p>Turn it up loud!<br>The Car Audio Events Team</p>
+          </div>
+          <div class="footer">
+            <p>&copy; 2025 Car Audio Events Platform. All rights reserved.</p>
+            <p>You're receiving this email because you signed up for our platform.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  private generateMembershipUpsellText(data: Record<string, any>): string {
+    return `
+Join Us Today and Unlock Exclusive Benefits!
+
+Hello ${data.firstName || 'Car Audio Enthusiast'}!
+
+We're thrilled to have you join our community of sound enthusiasts!
+
+Get Started:
+- Complete your profile to showcase your sound system
+- Browse upcoming competitions and events  
+- Connect with other car audio enthusiasts
+- Track your competition scores and achievements
+
+Ready to dive in? Visit your dashboard: ${data.dashboardUrl || 'https://caraudioevents.com/dashboard'}
+
+If you have any questions, our support team is here to help. Just reply to this email!
+
+Turn it up loud!
+The Car Audio Events Team
+
+© 2025 Car Audio Events Platform. All rights reserved.
+You're receiving this email because you signed up for our platform.
+    `;
   }
 
   /**
