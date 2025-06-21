@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 *This changelog was established on June 19, 2025.*
 
-## [1.5.23] - 2025-01-17 - "Blood Brothers"
+## [1.5.23] - 2025-06-06 - "Blood Brothers"
 
 ### 🚀 Features & Fixes
 - **Mobile Responsiveness Overhaul**: Fixed broken mobile layout, cleaned mobile header, and moved search into the mobile menu for a cleaner UX.

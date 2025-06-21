@@ -46,10 +46,10 @@ export default function Header() {
           
           <div className="flex items-center ml-auto">
             {/* Global Search - Desktop */}
-            <div className="hidden lg:block flex-shrink-0 mx-6">
+            <div className="hidden lg:block flex-shrink-0 mx-4">
               <GlobalSearch 
-                className="w-80"
-                placeholder="Search events, businesses, users..."
+                className="w-64"
+                placeholder="Search events, businesses..."
               />
             </div>
 
@@ -62,23 +62,23 @@ export default function Header() {
                   <button
                     onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
                     onMouseEnter={() => setIsUserDropdownOpen(true)}
-                    className="flex items-center space-x-2 text-gray-300 hover:text-electric-400 transition-colors duration-200"
+                    className="flex items-center space-x-2 text-gray-300 hover:text-electric-400 transition-colors duration-200 max-w-[200px] min-w-0"
                   >
                     {user?.profileImage ? (
                       <img 
                         src={user.profileImage} 
                         alt={user.name}
-                        className="w-8 h-8 rounded-full border-2 border-electric-500"
+                        className="w-8 h-8 rounded-full border-2 border-electric-500 flex-shrink-0"
                       />
                     ) : (
-                      <User className="h-8 w-8 p-1 bg-electric-500 rounded-full text-white" />
+                      <User className="h-8 w-8 p-1 bg-electric-500 rounded-full text-white flex-shrink-0" />
                     )}
-                    <span className="hidden sm:block font-medium">{user?.name}</span>
-                    <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isUserDropdownOpen ? 'rotate-180' : ''}`} />
+                    <span className="hidden sm:block font-medium truncate min-w-0 whitespace-nowrap">{user?.name}</span>
+                    <ChevronDown className={`h-4 w-4 transition-transform duration-200 flex-shrink-0 ${isUserDropdownOpen ? 'rotate-180' : ''}`} />
                   </button>
                   {isUserDropdownOpen && (
                     <div 
-                      className="absolute right-0 top-full mt-2 w-64 max-w-[90vw] bg-gray-800/95 backdrop-blur-sm border border-gray-700/50 rounded-xl shadow-2xl z-50"
+                      className="absolute right-0 top-full mt-2 w-72 max-w-[95vw] sm:max-w-[90vw] bg-gray-800/95 backdrop-blur-sm border border-gray-700/50 rounded-xl shadow-2xl z-50"
                       onMouseLeave={() => setIsUserDropdownOpen(false)}
                     >
                       {/* Dropdown content remains the same */}

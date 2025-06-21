@@ -35,7 +35,7 @@ export const VERSION = {
   PATCH: ${patch},
   VERSION_STRING: '${version}',
   BUILD: ${Date.now()}, // Build timestamp
-  RELEASE_DATE: '2025-01-17',
+  RELEASE_DATE: '2025-06-06',
   CODENAME: 'Blood Brothers'
 } as const;
 
