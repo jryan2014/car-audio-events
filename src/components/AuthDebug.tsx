@@ -12,8 +12,8 @@ export function AuthDebug() {
       <div>User ID: {user?.id || 'None'}</div>
       <div>User Name: {user?.name || 'None'}</div>
       <div>User Email: {user?.email || 'None'}</div>
-      <div>First Name: {user?.first_name || 'None'}</div>
-      <div>Last Name: {user?.last_name || 'None'}</div>
+      <div>First Name: {user?.name?.split(' ')[0] || 'None'}</div>
+      <div>Last Name: {user?.name?.split(' ').slice(1).join(' ') || 'None'}</div>
       {user ? (
         <details className="mt-2">
           <summary className="cursor-pointer">Full User Object</summary>

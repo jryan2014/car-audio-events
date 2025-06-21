@@ -632,7 +632,11 @@ export default function AdminEvents() {
       <AddCoordinatesModal
         isOpen={showCoordinatesModal}
         onClose={() => setShowCoordinatesModal(false)}
-        onCoordinatesUpdated={loadEvents}
+        onSuccess={loadEvents}
+        eventId=""
+        eventTitle="Bulk Coordinates Update"
+        eventCity=""
+        eventState=""
       />
 
       {/* Web Scraper Modal */}

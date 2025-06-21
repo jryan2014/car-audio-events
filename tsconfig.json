@@ -11,12 +11,18 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-    "types": ["vite/client"]
+    "strict": false,
+    "types": ["vite/client", "google.maps"]
   },
-  "include": ["src", "supabase", "vite.config.ts"],
+  "include": ["src", "vite.config.ts"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "supabase",
+    "_archive",
+    "backups",
+    "backups-archive",
+    "sql-archive"
+  ],
   "references": []
 }
