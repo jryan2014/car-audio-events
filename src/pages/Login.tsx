@@ -56,9 +56,8 @@ export default function Login() {
     
     try {
       await login(email, password);
-      // Login successful - force navigation as backup
-      console.log('Login completed, forcing navigation...');
-      navigate('/admin/dashboard', { replace: true });
+      // Login successful - navigation will be handled by useEffect based on user type
+      console.log('Login completed, navigation will be handled by useEffect...');
     } catch (error: any) {
       console.error('Login failed:', error);
       
@@ -209,8 +208,6 @@ export default function Login() {
                 </button>
               </div>
             </div>
-
-
 
             <div className="flex items-center justify-between">
               <label className="flex items-center">
