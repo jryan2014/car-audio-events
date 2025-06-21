@@ -275,22 +275,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(null);
       setUser(null);
       
-      // Sign out from Supabase
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('Supabase logout error:', error);
-        // Don't throw error - we've already cleared local state
-      } else {
-        console.log('✅ Logout successful');
+      // Try to sign out from Supabase, but don't fail if session is already gone
+      try {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+          console.warn('Supabase logout warning:', error.message);
+          // If session is missing, that's actually what we want
+          if (error.message.includes('Auth session missing')) {
+            console.log('✅ Session was already cleared - logout successful');
+          }
+        } else {
+          console.log('✅ Logout successful');
+        }
+      } catch (authError) {
+        console.warn('Auth logout failed, but continuing with local cleanup:', authError);
       }
       
+      // Clear any stored auth data
+      localStorage.removeItem('supabase.auth.token');
+      sessionStorage.clear();
+      
+      console.log('🔄 Redirecting to home page...');
       // Force page reload to clear any cached state
       window.location.href = '/';
     } catch (error) {
       console.error('Logout error:', error);
-      // Even if logout fails, clear local state and redirect
+      // Even if everything fails, force clear and redirect
       setSession(null);
       setUser(null);
+      localStorage.clear();
+      sessionStorage.clear();
       window.location.href = '/';
     } finally {
       setLoading(false);
