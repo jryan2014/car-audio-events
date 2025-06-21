@@ -11,7 +11,7 @@ interface MobileMegaMenuProps {
     id: string;
     name: string;
     email: string;
-    membershipType: 'competitor' | 'manufacturer' | 'retailer' | 'organization' | 'admin';
+    membershipType: 'competitor' | 'pro_competitor' | 'retailer' | 'manufacturer' | 'organization' | 'admin';
     subscriptionLevel?: 'free' | 'pro' | 'business' | 'enterprise';
     profileImage?: string;
   };
@@ -209,7 +209,8 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, onL
     // Map membership types to contexts
     switch (user.membershipType) {
       case 'admin': return 'admin';
-      case 'competitor': return 'competitor';
+      case 'competitor': return 'free_competitor';
+      case 'pro_competitor': return 'pro_competitor';
       case 'manufacturer': return 'manufacturer';
       case 'retailer': return 'retailer';
       case 'organization': return 'organization';

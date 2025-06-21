@@ -7,7 +7,7 @@ interface User {
   id: string;
   name: string;
   email: string;
-  membershipType: 'competitor' | 'manufacturer' | 'retailer' | 'organization' | 'admin';
+  membershipType: 'competitor' | 'pro_competitor' | 'retailer' | 'manufacturer' | 'organization' | 'admin';
   profileImage?: string;
   status?: string;
   verificationStatus?: string;

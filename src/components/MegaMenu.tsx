@@ -27,7 +27,7 @@ interface MegaMenuProps {
     id: string;
     name: string;
     email: string;
-    membershipType: 'competitor' | 'manufacturer' | 'retailer' | 'organization' | 'admin';
+    membershipType: 'competitor' | 'pro_competitor' | 'retailer' | 'manufacturer' | 'organization' | 'admin';
     subscriptionLevel?: 'free' | 'pro' | 'business' | 'enterprise';
     profileImage?: string;
   };
@@ -215,8 +215,8 @@ export default function MegaMenu({ isAuthenticated, user, onLinkClick }: MegaMen
     
     switch (user?.membershipType) {
       case 'admin': return 'admin';
-      case 'competitor': 
-        return user?.subscriptionLevel === 'pro' ? 'pro_competitor' : 'free_competitor';
+      case 'competitor': return 'free_competitor';
+      case 'pro_competitor': return 'pro_competitor';
       case 'retailer': return 'retailer';
       case 'manufacturer': return 'manufacturer';
       case 'organization': return 'organization';

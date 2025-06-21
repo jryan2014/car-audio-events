@@ -10,7 +10,7 @@ interface User {
   id: string;
   email: string;
   name?: string;
-  membership_type: 'competitor' | 'pro_competitor' | 'retailer' | 'manufacturer' | 'organization' | 'support_member' | 'admin';
+  membership_type: 'competitor' | 'pro_competitor' | 'retailer' | 'manufacturer' | 'organization' | 'admin';
   status: 'active' | 'inactive' | 'suspended' | 'pending' | 'banned';
   phone?: string;
   company_name?: string;
@@ -33,7 +33,7 @@ interface NewUserFormData {
   last_name: string;
   name: string; // Combined first + last name for database
   password: string;
-  membership_type: 'competitor' | 'pro_competitor' | 'retailer' | 'manufacturer' | 'organization' | 'support_member' | 'admin';
+  membership_type: 'competitor' | 'pro_competitor' | 'retailer' | 'manufacturer' | 'organization' | 'admin';
   address?: string;
   city?: string;
   state?: string;
@@ -888,7 +888,6 @@ export default function AdminUsers() {
                       <option value="retailer">Retailer - Retail Business</option>
                       <option value="manufacturer">Manufacturer - Manufacturing Company</option>
                       <option value="organization">Organization - Organizations/Clubs</option>
-                      <option value="support_member">Support Member - Event Staff</option>
                       <option value="admin">Admin - System Administrator</option>
                     </select>
                   </div>
