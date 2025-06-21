@@ -39,4 +39,14 @@ Thumbs.db
 .DS_Store
 
 # Backup directories
-backups/
+# backups/ - This directory is deleted, rule is kept for safety
+_archive/
+sql-archive/
+backups-archive/
+backup-*
+
+# Root directory files
+*.sql
+*.zip
+*.js
+*.cjs
