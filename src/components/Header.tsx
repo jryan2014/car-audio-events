@@ -251,23 +251,25 @@ export default function Header() {
                 </div>
               )}
 
-              {/* Hamburger Menu - Mobile Only (no conflict with user dropdown) */}
-              <div className="flex lg:hidden items-center">
-                <button
-                  onClick={() => setIsMenuOpen(!isMenuOpen)}
-                  className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
-                >
-                  <span className="sr-only">Open main menu</span>
-                  {isMenuOpen ? <X className="block h-6 w-6" aria-hidden="true" /> : <Menu className="block h-6 w-6" aria-hidden="true" />}
-                </button>
-              </div>
+              {/* Hamburger Menu - Mobile Only (hidden for all logged-in users) */}
+              {!isAuthenticated && (
+                <div className="flex lg:hidden items-center">
+                  <button
+                    onClick={() => setIsMenuOpen(!isMenuOpen)}
+                    className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700/50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
+                  >
+                    <span className="sr-only">Open main menu</span>
+                    {isMenuOpen ? <X className="block h-6 w-6" aria-hidden="true" /> : <Menu className="block h-6 w-6" aria-hidden="true" />}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Mobile Menu */}
-      {isMenuOpen && (
+      {/* Mobile Menu - Hidden for all logged-in users */}
+      {isMenuOpen && !isAuthenticated && (
         <div className="lg:hidden absolute top-full left-0 w-full bg-black/90 backdrop-blur-md z-40">
           <MobileMegaMenu
             isAuthenticated={isAuthenticated}

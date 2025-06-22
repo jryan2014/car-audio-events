@@ -46,7 +46,7 @@ interface NewUserFormData {
   payment_method?: 'credit_card' | 'paypal' | 'bank_transfer' | 'cashiers_check';
   website?: string;
   bio?: string;
-  // Consent tracking
+  // Consent tracking (for display purposes only - not required for admin creation)
   terms_accepted: boolean;
   terms_accepted_at?: string;
   privacy_accepted: boolean;
@@ -92,7 +92,7 @@ export default function AdminUsers() {
     last_name: '',
     name: '',
     password: '',
-    membership_type: 'competitor',
+    membership_type: '' as any, // Force selection instead of defaulting to competitor
     address: '',
     city: '',
     state: '',
@@ -105,8 +105,8 @@ export default function AdminUsers() {
     payment_method: 'credit_card',
     website: '',
     bio: '',
-    terms_accepted: false,
-    privacy_accepted: false,
+    terms_accepted: true, // Default to true for admin-created accounts
+    privacy_accepted: true, // Default to true for admin-created accounts  
     newsletter_subscribed: false
   });
 
@@ -288,9 +288,12 @@ export default function AdminUsers() {
         throw new Error('Email, name, and password are required');
       }
       
-      if (!newUserData.terms_accepted || !newUserData.privacy_accepted) {
-        throw new Error('User must accept Terms of Service and Privacy Policy');
+      if (!newUserData.membership_type) {
+        throw new Error('Please select a membership type');
       }
+      
+      // Consent validation removed - admins create accounts on behalf of users
+      // Users will need to accept terms when they first log in
 
       // All fields exist in the database based on schema analysis
       const hasNewFields = true;
@@ -298,15 +301,14 @@ export default function AdminUsers() {
       // Email is the only truly required field in the database
       // Name is optional but we'll keep it as required for UX
       
-      // Create user in Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      // Create user in Supabase Auth using admin API to auto-confirm email
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
         email: newUserData.email,
         password: newUserData.password,
-        options: {
-          data: {
-            name: newUserData.name,
-            membership_type: newUserData.membership_type
-          }
+        email_confirm: true, // Auto-confirm email for admin-created users
+        user_metadata: {
+          name: newUserData.name,
+          membership_type: newUserData.membership_type
         }
       });
 
@@ -342,10 +344,10 @@ export default function AdminUsers() {
         updated_at: new Date().toISOString()
       };
 
-      // Create user profile in the users table
+      // Create or update user profile in the users table (use upsert to handle existing profiles)
       const { error: profileError } = await supabase
         .from('users')
-        .insert(profileData);
+        .upsert(profileData, { onConflict: 'id' });
 
       if (profileError) {
         console.error('Profile creation error:', profileError);
@@ -359,7 +361,7 @@ export default function AdminUsers() {
         last_name: '',
         name: '',
         password: '',
-        membership_type: 'competitor',
+        membership_type: '' as any, // Force selection instead of defaulting to competitor
         address: '',
         city: '',
         state: '',
@@ -372,8 +374,8 @@ export default function AdminUsers() {
         payment_method: 'credit_card',
         website: '',
         bio: '',
-        terms_accepted: false,
-        privacy_accepted: false,
+        terms_accepted: true, // Default to true for admin-created accounts
+        privacy_accepted: true, // Default to true for admin-created accounts
         newsletter_subscribed: false
       });
       
@@ -439,15 +441,25 @@ export default function AdminUsers() {
   const getMembershipTypeBadge = (type: string) => {
     const styles = {
       competitor: 'bg-blue-500/20 text-blue-400',
+      pro_competitor: 'bg-blue-600/20 text-blue-300',
       retailer: 'bg-purple-500/20 text-purple-400',
       manufacturer: 'bg-orange-500/20 text-orange-400',
       organization: 'bg-green-500/20 text-green-400',
       admin: 'bg-red-500/20 text-red-400'
     };
 
+    const displayNames = {
+      competitor: 'Competitor',
+      pro_competitor: 'Pro Competitor',
+      retailer: 'Retailer',
+      manufacturer: 'Manufacturer',
+      organization: 'Organization',
+      admin: 'Admin'
+    };
+
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[type as keyof typeof styles]}`}>
-        {type.charAt(0).toUpperCase() + type.slice(1)}
+        {displayNames[type as keyof typeof displayNames] || type}
       </span>
     );
   };
@@ -460,6 +472,18 @@ export default function AdminUsers() {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const formatSubscriptionPlan = (plan: string) => {
+    const planMappings = {
+      'monthly': 'Monthly',
+      'yearly': 'Yearly',
+      'pro': 'Monthly', // Legacy mapping
+      'basic': 'Basic',
+      'free': 'Free'
+    };
+    
+    return planMappings[plan as keyof typeof planMappings] || plan.charAt(0).toUpperCase() + plan.slice(1);
   };
 
   return (
@@ -554,6 +578,7 @@ export default function AdminUsers() {
               >
                 <option value="all">All Types</option>
                 <option value="competitor">Competitor</option>
+                <option value="pro_competitor">Pro Competitor</option>
                 <option value="retailer">Retailer</option>
                 <option value="manufacturer">Manufacturer</option>
                 <option value="organization">Organization</option>
@@ -641,7 +666,7 @@ export default function AdminUsers() {
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">User</th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Type</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Account Status</th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Verification</th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Plan</th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Last Login</th>
@@ -686,7 +711,9 @@ export default function AdminUsers() {
                         {getVerificationBadge(user.verification_status)}
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-gray-300 capitalize">{user.subscription_plan}</span>
+                        <span className="text-gray-300">
+                          {formatSubscriptionPlan(user.subscription_plan)}
+                        </span>
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-gray-300 text-sm">
@@ -883,6 +910,7 @@ export default function AdminUsers() {
                       onChange={(e) => setNewUserData({...newUserData, membership_type: e.target.value as any})}
                       className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
                     >
+                      <option value="">-- Select Membership Type --</option>
                       <option value="competitor">Competitor - Basic Free</option>
                       <option value="pro_competitor">Pro Competitor - Pro Membership</option>
                       <option value="retailer">Retailer - Retail Business</option>
@@ -890,6 +918,12 @@ export default function AdminUsers() {
                       <option value="organization">Organization - Organizations/Clubs</option>
                       <option value="admin">Admin - System Administrator</option>
                     </select>
+                    {newUserData.membership_type && (
+                      <p className="text-xs text-electric-400 mt-1">
+                        Selected: {newUserData.membership_type === 'pro_competitor' ? 'Pro Competitor' : 
+                                  newUserData.membership_type.charAt(0).toUpperCase() + newUserData.membership_type.slice(1)}
+                      </p>
+                    )}
                   </div>
                   
                   <div className="md:col-span-2">
@@ -1086,88 +1120,13 @@ export default function AdminUsers() {
                   </div>
                 </div>
                 
-                {/* Consent Section */}
+                {/* Admin Note */}
                 <div className="border-t border-gray-600 pt-6 mt-6">
-                  <h3 className="text-lg font-semibold text-white mb-4">User Agreements & Consents</h3>
-                  <div className="space-y-4">
-                    <div className="flex items-start space-x-3">
-                      <input
-                        type="checkbox"
-                        id="terms_accepted"
-                        checked={newUserData.terms_accepted}
-                        onChange={(e) => setNewUserData({
-                          ...newUserData, 
-                          terms_accepted: e.target.checked,
-                          terms_accepted_at: e.target.checked ? new Date().toISOString() : undefined
-                        })}
-                        className="mt-1 h-4 w-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500"
-                      />
-                      <label htmlFor="terms_accepted" className="text-sm text-gray-300">
-                        <span className="text-red-400">*</span> User agrees to the{' '}
-                        <a href="/terms" target="_blank" className="text-electric-400 hover:text-electric-300 underline">
-                          Terms of Service
-                        </a>
-                        {newUserData.terms_accepted_at && (
-                          <span className="block text-xs text-gray-500 mt-1">
-                            Accepted: {new Date(newUserData.terms_accepted_at).toLocaleString()}
-                          </span>
-                        )}
-                      </label>
-                    </div>
-                    
-                    <div className="flex items-start space-x-3">
-                      <input
-                        type="checkbox"
-                        id="privacy_accepted"
-                        checked={newUserData.privacy_accepted}
-                        onChange={(e) => setNewUserData({
-                          ...newUserData, 
-                          privacy_accepted: e.target.checked,
-                          privacy_accepted_at: e.target.checked ? new Date().toISOString() : undefined
-                        })}
-                        className="mt-1 h-4 w-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500"
-                      />
-                      <label htmlFor="privacy_accepted" className="text-sm text-gray-300">
-                        <span className="text-red-400">*</span> User agrees to the{' '}
-                        <a href="/privacy" target="_blank" className="text-electric-400 hover:text-electric-300 underline">
-                          Privacy Policy
-                        </a>
-                        {newUserData.privacy_accepted_at && (
-                          <span className="block text-xs text-gray-500 mt-1">
-                            Accepted: {new Date(newUserData.privacy_accepted_at).toLocaleString()}
-                          </span>
-                        )}
-                      </label>
-                    </div>
-                    
-                    <div className="flex items-start space-x-3">
-                      <input
-                        type="checkbox"
-                        id="newsletter_subscribed"
-                        checked={newUserData.newsletter_subscribed}
-                        onChange={(e) => setNewUserData({
-                          ...newUserData, 
-                          newsletter_subscribed: e.target.checked,
-                          newsletter_subscribed_at: e.target.checked ? new Date().toISOString() : undefined
-                        })}
-                        className="mt-1 h-4 w-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500"
-                      />
-                      <label htmlFor="newsletter_subscribed" className="text-sm text-gray-300">
-                        User wants to receive newsletters and promotional emails
-                        {newUserData.newsletter_subscribed_at && (
-                          <span className="block text-xs text-gray-500 mt-1">
-                            Subscribed: {new Date(newUserData.newsletter_subscribed_at).toLocaleString()}
-                          </span>
-                        )}
-                      </label>
-                    </div>
-                    
-                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mt-4">
-                      <p className="text-sm text-blue-300">
-                        <strong>Important:</strong> Users will always receive billing, payment, and account-related emails 
-                        for as long as they maintain an active account, regardless of newsletter subscription preferences.
-                      </p>
-                    </div>
+                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+                    <h3 className="text-lg font-semibold text-blue-300 mb-2">Admin User Creation</h3>
+                    <p className="text-sm text-blue-200">
+                      <strong>Note:</strong> You are creating an account on behalf of the user. The user will be prompted to accept the Terms of Service and Privacy Policy when they first log in. Newsletter subscription will default to opt-out.
+                    </p>
                   </div>
                 </div>
                 

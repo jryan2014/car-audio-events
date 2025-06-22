@@ -171,6 +171,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('✅ Auth successful, setting session and fetching profile...');
         setSession(data.session);
         
+        // Update login tracking
+        try {
+          // First get current login count
+          const { data: userData } = await supabase
+            .from('users')
+            .select('login_count')
+            .eq('id', data.user.id)
+            .single();
+          
+          const currentCount = userData?.login_count || 0;
+          
+          await supabase
+            .from('users')
+            .update({
+              last_login_at: new Date().toISOString(),
+              login_count: currentCount + 1
+            })
+            .eq('id', data.user.id);
+          console.log('✅ Login tracking updated');
+        } catch (trackingError) {
+          console.warn('⚠️ Failed to update login tracking:', trackingError);
+        }
+        
         const userProfile = await fetchUserProfile(data.user.id);
         if (userProfile) {
           setUser(userProfile);
