@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
-import { emailService } from '../services/emailService';
 
 interface User {
   id: string;
@@ -215,7 +214,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (userData: any) => {
+  const register = async (userData: any): Promise<void> => {
     try {
       setLoading(true);
       
@@ -227,7 +226,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           data: {
             name: userData.name,
             membership_type: userData.membershipType,
-            location: userData.location
+            location: userData.location,
+            phone: userData.phone,
+            company_name: userData.companyName
           }
         }
       });
@@ -249,38 +250,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           name: userData.name,
           membership_type: userData.membershipType,
           location: userData.location,
-          status: 'pending',
-          verification_status: 'pending',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          phone: userData.phone,
+          company_name: userData.companyName,
+          status: 'active',
+          verification_status: 'pending'
         }]);
 
       if (profileError) {
-        console.error('Profile creation error:', profileError);
-        throw new Error('Profile creation failed');
-      }
-
-      // Set user data
-      if (authData.session) {
-        setSession(authData.session);
-        const userProfile = await fetchUserProfile(authData.user.id);
-        setUser(userProfile);
-      }
-
-      // Send welcome email
-      try {
-        await emailService.sendTemplatedEmail(
-          userData.email,
-          'welcome',
-          {
-            firstName: userData.name.split(' ')[0] || userData.name,
-            dashboardUrl: `${window.location.origin}/dashboard`
-          }
-        );
-      } catch (emailError) {
-        console.warn('Welcome email failed:', emailError);
+        throw profileError;
       }
       
+      console.log('✅ Registration successful for:', userData.email);
+
+      // Queue the welcome email using the new system
+      try {
+        await supabase.functions.invoke('queue-email', {
+          body: {
+            recipient: userData.email,
+            template_name: 'welcome-email',
+            variables: {
+              name: userData.name,
+              email: userData.email
+            }
+          }
+        });
+        console.log('✅ Welcome email queued successfully.');
+      } catch (emailError) {
+        console.error('⚠️ Failed to queue welcome email:', emailError);
+        // Do not block registration if email queueing fails
+      }
+
+      // Don't return the user, just complete successfully
     } catch (error) {
       console.error('Registration error:', error);
       throw error;

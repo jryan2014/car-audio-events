@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   FileText, 
   Plus, 
@@ -18,7 +18,8 @@ import {
   CheckCircle,
   Copy,
   X,
-  HelpCircle
+  HelpCircle,
+  BookOpen
 } from 'lucide-react';
 import { Editor } from '@tinymce/tinymce-react';
 import { supabase } from '../lib/supabase';
@@ -72,6 +73,8 @@ export default function EmailTemplateManager({ onClose }: EmailTemplateManagerPr
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate | null>(null);
 
   const [newTemplate, setNewTemplate] = useState<Partial<EmailTemplate>>({
     template_name: '',
@@ -336,6 +339,39 @@ export default function EmailTemplateManager({ onClose }: EmailTemplateManagerPr
     return colors[category as keyof typeof colors] || 'text-gray-400';
   };
 
+  const handleAddNew = () => {
+    setSelectedTemplate(null);
+    setIsModalOpen(true);
+  };
+
+  const handleEdit = (template: EmailTemplate) => {
+    setSelectedTemplate(template);
+    setIsModalOpen(true);
+  };
+
+  const handleDelete = async (templateId: string) => {
+    if (window.confirm('Are you sure you want to delete this template? This action cannot be undone.')) {
+      try {
+        const { error } = await supabase.functions.invoke(`delete-email-template/${templateId}`, {
+          method: 'DELETE',
+        });
+        if (error) throw error;
+        // Refresh the list after deleting
+        loadTemplates(); 
+      } catch (err) {
+        setMessage('Failed to delete template. Please try again.');
+        console.error(err);
+      }
+    }
+  };
+  
+  const handleModalClose = (wasUpdated: boolean) => {
+    setIsModalOpen(false);
+    if (wasUpdated) {
+      loadTemplates();
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-6">
@@ -510,7 +546,7 @@ export default function EmailTemplateManager({ onClose }: EmailTemplateManagerPr
 
                   <div className="flex items-center space-x-2">
                     <button
-                      onClick={() => setEditingTemplate(template)}
+                      onClick={() => handleEdit(template)}
                       className="flex items-center space-x-2 px-3 py-2 bg-electric-500/20 text-electric-400 rounded-lg hover:bg-electric-500/30 transition-all duration-200"
                     >
                       <Edit2 className="h-4 w-4" />
@@ -527,7 +563,7 @@ export default function EmailTemplateManager({ onClose }: EmailTemplateManagerPr
                       {template.is_active ? 'Disable' : 'Enable'}
                     </button>
                     <button
-                      onClick={() => deleteTemplate(template.id)}
+                      onClick={() => handleDelete(template.id)}
                       className="p-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-all duration-200"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -1088,4 +1124,107 @@ function TemplatePreview({
       </div>
     </div>
   );
-} 
+}
+
+// Modal Component defined in the same file
+const EmailTemplateModal = ({ template, onClose }: { template: Partial<EmailTemplate> | null, onClose: (wasUpdated: boolean) => void }) => {
+  const [formData, setFormData] = useState<Partial<EmailTemplate>>({ 
+    template_name: '', 
+    subject: '', 
+    html_body: '' 
+  });
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const editorRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (template) {
+      setFormData({
+        template_name: template.template_name || '',
+        subject: template.subject || '',
+        html_body: template.html_body || ''
+      });
+    } else {
+      setFormData({ template_name: '', subject: '', html_body: '' });
+    }
+  }, [template]);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    setError(null);
+
+    const content = editorRef.current ? editorRef.current.getContent() : '';
+    const finalData = { ...formData, html_body: content };
+
+    try {
+      const endpoint = finalData.id 
+        ? `update-email-template/${finalData.id}` 
+        : 'create-email-template';
+      
+      const method = finalData.id ? 'POST' : 'POST';
+
+      const { error: rpcError } = await supabase.functions.invoke(endpoint, {
+        method,
+        body: finalData
+      });
+
+      if (rpcError) throw rpcError;
+      
+      onClose(true);
+    } catch (err: any) {
+      setError(err.message || 'Failed to save template.');
+      console.error(err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50 p-4">
+      <div className="bg-gray-800 rounded-xl p-8 w-full max-w-3xl border border-gray-700">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-white">{formData.id ? 'Edit' : 'Create'} Email Template</h2>
+          <button onClick={() => onClose(false)} className="text-gray-400 hover:text-white"><X /></button>
+        </div>
+        {error && <div className="mb-4 p-3 bg-red-900/50 text-red-300 rounded-lg">{error}</div>}
+        <div className="space-y-4">
+          <input
+            type="text"
+            placeholder="Template Name (e.g., welcome-email)"
+            value={formData.template_name || ''}
+            onChange={e => setFormData({ ...formData, template_name: e.target.value })}
+            disabled={!!formData.id}
+            className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white disabled:opacity-50"
+          />
+          <input
+            type="text"
+            placeholder="Email Subject"
+            value={formData.subject || ''}
+            onChange={e => setFormData({ ...formData, subject: e.target.value })}
+            className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white"
+          />
+          <Editor
+            apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
+            onInit={(evt, editor) => editorRef.current = editor}
+            initialValue={formData.html_body || ''}
+            init={{
+              height: 400,
+              menubar: false,
+              plugins: 'lists link image charmap preview anchor searchreplace visualblocks code fullscreen insertdatetime media table help wordcount',
+              toolbar: 'undo redo | blocks | bold italic | alignleft aligncenter alignright | bullist numlist outdent indent | removeformat | help',
+              content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px; background-color: #374151; color: #fff; }',
+              skin: 'oxide-dark',
+              content_css: 'dark'
+            }}
+          />
+        </div>
+        <div className="flex justify-end space-x-4 mt-6">
+          <button onClick={() => onClose(false)} className="px-4 py-2 text-gray-300 rounded-lg">Cancel</button>
+          <button onClick={handleSave} disabled={isSaving} className="px-6 py-2 bg-electric-500 text-white rounded-lg disabled:opacity-50">
+            {isSaving ? 'Saving...' : 'Save Template'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}; 
