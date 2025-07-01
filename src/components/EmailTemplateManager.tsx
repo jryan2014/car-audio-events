@@ -29,15 +29,16 @@ import { EMAIL_VARIABLES, getVariablesByCategory, getAllCategories, replaceVaria
 
 interface EmailTemplate {
   id: string;
-  template_name: string;
+  name: string;
   subject: string;
-  html_body: string;
-  text_body: string;
+  body: string;
   email_type: string;
   membership_level: 'all' | 'free' | 'pro' | 'admin';
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  variables?: string[];
+  from_name?: string;
 }
 
 interface EmailTemplateManagerProps {
@@ -77,10 +78,9 @@ export default function EmailTemplateManager({ onClose }: EmailTemplateManagerPr
   const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate | null>(null);
 
   const [newTemplate, setNewTemplate] = useState<Partial<EmailTemplate>>({
-    template_name: '',
+    name: '',
     subject: '',
-    html_body: '',
-    text_body: '',
+    body: '',
     email_type: 'welcome',
     membership_level: 'all',
     is_active: true
@@ -221,10 +221,9 @@ export default function EmailTemplateManager({ onClose }: EmailTemplateManagerPr
         const { error } = await supabase
           .from('email_templates')
           .update({
-            template_name: template.template_name,
+            name: template.name,
             subject: template.subject,
-            html_body: template.html_body,
-            text_body: template.text_body,
+            body: template.body,
             email_type: template.email_type,
             membership_level: template.membership_level,
             is_active: template.is_active,
@@ -239,10 +238,9 @@ export default function EmailTemplateManager({ onClose }: EmailTemplateManagerPr
         const { error } = await supabase
           .from('email_templates')
           .insert({
-            template_name: template.template_name,
+            name: template.name,
             subject: template.subject,
-            html_body: template.html_body,
-            text_body: template.text_body,
+            body: template.body,
             email_type: template.email_type,
             membership_level: template.membership_level,
             is_active: template.is_active
@@ -526,7 +524,7 @@ export default function EmailTemplateManager({ onClose }: EmailTemplateManagerPr
                       <Mail className={`h-6 w-6 ${template.is_active ? 'text-green-400' : 'text-gray-400'}`} />
                     </div>
                     <div>
-                      <h3 className="text-white font-bold text-lg">{template.template_name}</h3>
+                      <h3 className="text-white font-bold text-lg">{template.name}</h3>
                       <p className="text-gray-300">{template.subject}</p>
                       <div className="flex items-center space-x-4 mt-1">
                         <span className={`text-xs px-2 py-1 rounded ${
@@ -677,8 +675,8 @@ function TemplateEditor({
           </label>
           <input
             type="text"
-            value={template.template_name || ''}
-            onChange={(e) => setTemplate({ ...template, template_name: e.target.value })}
+            value={template.name || ''}
+            onChange={(e) => setTemplate({ ...template, name: e.target.value })}
             placeholder="e.g., Welcome Email - Pro Members"
             className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
           />
@@ -760,8 +758,8 @@ function TemplateEditor({
         <div className="border border-gray-600 rounded-lg overflow-hidden">
           <Editor
             tinymceScriptSrc="/tinymce/tinymce.min.js"
-            value={template.html_body || ''}
-            onEditorChange={(content) => setTemplate({ ...template, html_body: content })}
+            value={template.body || ''}
+            onEditorChange={(content) => setTemplate({ ...template, body: content })}
             init={{
               height: 500,
               base_url: '/tinymce',
@@ -872,23 +870,6 @@ function TemplateEditor({
         </div>
       </div>
 
-      {/* Text Content */}
-      <div>
-        <label className="block text-gray-300 text-sm font-medium mb-2">
-          Plain Text Content (Fallback)
-          <HelpIcon tooltip="Plain text version for email clients that don't support HTML" />
-        </label>
-        <textarea
-          value={template.text_body || ''}
-          onChange={(e) => setTemplate({ ...template, text_body: e.target.value })}
-          placeholder="Enter plain text version of your email..."
-          className="w-full h-32 p-4 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-        />
-        <p className="text-gray-400 text-xs mt-1">
-          Plain text version for email clients that don't support HTML
-        </p>
-      </div>
-
       {/* Variable Quick Reference */}
       <div className="bg-gray-700/30 rounded-lg p-4">
         <div className="flex items-center justify-between mb-3">
@@ -970,7 +951,7 @@ function TemplateEditor({
       <div className="flex justify-end">
         <button
           onClick={onSave}
-          disabled={saving || !template.template_name || !template.subject}
+          disabled={saving || !template.name || !template.subject}
           className="flex items-center space-x-2 px-6 py-3 bg-electric-500 text-white rounded-lg hover:bg-electric-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {saving ? (
@@ -1022,8 +1003,7 @@ function TemplatePreview({
   previewData: Record<string, any>;
 }) {
   const previewSubject = replaceVariables(template.subject || '', previewData);
-  const previewHtml = replaceVariables(template.html_body || '', previewData);
-  const previewText = replaceVariables(template.text_body || '', previewData);
+  const previewHtml = replaceVariables(template.body || '', previewData);
 
   return (
     <div className="space-y-6">
@@ -1063,30 +1043,13 @@ function TemplatePreview({
         </div>
       </div>
 
-      {/* Text Preview */}
-      {previewText && (
-        <div className="bg-gray-700/30 border border-gray-600 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h4 className="text-white font-medium">Plain Text Version</h4>
-            <span className="text-xs text-gray-400 bg-gray-600/50 px-2 py-1 rounded">
-              Fallback Format
-            </span>
-          </div>
-          <div className="bg-gray-800 rounded-lg p-4 min-h-[200px]">
-            <pre className="text-gray-300 whitespace-pre-wrap font-mono text-sm">
-              {previewText}
-            </pre>
-          </div>
-        </div>
-      )}
-
       {/* Template Info */}
       <div className="bg-gray-700/30 border border-gray-600 rounded-lg p-4">
         <h4 className="text-white font-medium mb-3">Template Information</h4>
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <span className="text-gray-400">Template Name:</span>
-            <div className="text-white">{template.template_name || 'Untitled Template'}</div>
+            <div className="text-white">{template.name || 'Untitled Template'}</div>
           </div>
           <div>
             <span className="text-gray-400">Email Type:</span>
@@ -1129,9 +1092,9 @@ function TemplatePreview({
 // Modal Component defined in the same file
 const EmailTemplateModal = ({ template, onClose }: { template: Partial<EmailTemplate> | null, onClose: (wasUpdated: boolean) => void }) => {
   const [formData, setFormData] = useState<Partial<EmailTemplate>>({ 
-    template_name: '', 
+    name: '', 
     subject: '', 
-    html_body: '' 
+    body: '' 
   });
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1140,12 +1103,12 @@ const EmailTemplateModal = ({ template, onClose }: { template: Partial<EmailTemp
   useEffect(() => {
     if (template) {
       setFormData({
-        template_name: template.template_name || '',
+        name: template.name || '',
         subject: template.subject || '',
-        html_body: template.html_body || ''
+        body: template.body || ''
       });
     } else {
-      setFormData({ template_name: '', subject: '', html_body: '' });
+      setFormData({ name: '', subject: '', body: '' });
     }
   }, [template]);
 
@@ -1154,7 +1117,7 @@ const EmailTemplateModal = ({ template, onClose }: { template: Partial<EmailTemp
     setError(null);
 
     const content = editorRef.current ? editorRef.current.getContent() : '';
-    const finalData = { ...formData, html_body: content };
+    const finalData = { ...formData, body: content };
 
     try {
       const endpoint = finalData.id 
@@ -1191,8 +1154,8 @@ const EmailTemplateModal = ({ template, onClose }: { template: Partial<EmailTemp
           <input
             type="text"
             placeholder="Template Name (e.g., welcome-email)"
-            value={formData.template_name || ''}
-            onChange={e => setFormData({ ...formData, template_name: e.target.value })}
+            value={formData.name || ''}
+            onChange={e => setFormData({ ...formData, name: e.target.value })}
             disabled={!!formData.id}
             className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white disabled:opacity-50"
           />
@@ -1204,11 +1167,15 @@ const EmailTemplateModal = ({ template, onClose }: { template: Partial<EmailTemp
             className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white"
           />
           <Editor
-            apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
+            tinymceScriptSrc="/tinymce/tinymce.min.js"
             onInit={(evt, editor) => editorRef.current = editor}
-            initialValue={formData.html_body || ''}
+            initialValue={formData.body || ''}
             init={{
               height: 400,
+              base_url: '/tinymce',
+              suffix: '.min',
+              branding: false,
+              promotion: false,
               menubar: false,
               plugins: 'lists link image charmap preview anchor searchreplace visualblocks code fullscreen insertdatetime media table help wordcount',
               toolbar: 'undo redo | blocks | bold italic | alignleft aligncenter alignright | bullist numlist outdent indent | removeformat | help',
