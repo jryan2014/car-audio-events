@@ -757,12 +757,11 @@ function TemplateEditor({
         </label>
         <div className="border border-gray-600 rounded-lg overflow-hidden">
           <Editor
-            tinymceScriptSrc="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js"
+            tinymceScriptSrc="https://cdn.tiny.cloud/1/2l8fxsmp22j75yhpuwrv2rbm6ygm83mk72jr7per4x4j77hl/tinymce/6/tinymce.min.js"
             value={template.body || ''}
             onEditorChange={(content) => setTemplate({ ...template, body: content })}
             init={{
               height: 500,
-              base_url: '/tinymce',
               suffix: '.min',
               branding: false,
               promotion: false,

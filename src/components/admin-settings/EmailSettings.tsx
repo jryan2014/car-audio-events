@@ -1218,14 +1218,13 @@ export const EmailSettings: React.FC = () => {
                         </button>
                       </div>
                       <Editor
-                        tinymceScriptSrc="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js"
+                        tinymceScriptSrc="https://cdn.tiny.cloud/1/2l8fxsmp22j75yhpuwrv2rbm6ygm83mk72jr7per4x4j77hl/tinymce/6/tinymce.min.js"
                         onInit={(evt, editor) => editorRef.current = editor}
                         value={selectedTemplate.body}
                         onEditorChange={handleEditorChange}
                         init={{
                           height: 500,
                           menubar: true,
-                          base_url: '/tinymce',
                           suffix: '.min',
                           plugins: [
                             'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
