@@ -1,5 +1,596 @@
 ---
-description:
-globs:
-alwaysApply: false
+description: 
+globs: 
+alwaysApply: true
 ---
+# .cursorrules
+
+# Car Audio Competition Platform - Cursor Rules
+
+## Project Overview
+This is a React/TypeScript car audio competition platform using Supabase as BaaS, with Stripe payments, AI integration, and comprehensive admin features.
+
+## Tech Stack
+- **Frontend**: React 18.3.1, TypeScript 5.5.3, Vite 6.3.5
+- **Styling**: Tailwind CSS 3.4.1, Lucide React icons
+- **Backend**: Supabase (PostgreSQL, Auth, Edge Functions)
+- **Payments**: Stripe integration
+- **AI**: OpenAI GPT integration
+- **Email**: Postmark service
+
+## 📋 CODE GENERATION PROTOCOL
+
+Before creating any new file (e.g., `.tsx`, `.ts`), you MUST follow this workflow:
+1. **Identify File Type**: State the purpose of the file (e.g., "This is a new React component," "This is a utility function").
+2. **Determine Correct Path**: Based on the `File Structure` rules under `Coding Standards`, determine and state the full, correct path for the new file (e.g., "The component will be created at `src/components/new/NewComponent.tsx`").
+3. **Request Approval**: Ask for permission to proceed before creating the file.
+
+## Coding Standards
+
+### TypeScript
+- Always use TypeScript for new files
+- Define interfaces for all props and data structures
+- Use strict type checking
+- Prefer `interface` over `type` for object definitions
+- Use proper generic types for reusable components
+
+### React
+- Use functional components with hooks
+- Prefer named exports over default exports
+- Use React.memo() for performance optimization when needed
+- Custom hooks should start with `use` prefix
+- Keep components under 200 lines when possible
+
+### File Structure
+- Components in `src/components/`
+- Pages in `src/pages/`
+- Utilities in `src/utils/`
+- Types in `src/types/`
+- Hooks in `src/hooks/`
+- Services in `src/services/`
+
+### Naming Conventions
+- **Components**: PascalCase (e.g., `UserProfile.tsx`)
+- **Files**: kebab-case for utilities (e.g., `user-utils.ts`)
+- **Variables**: camelCase
+- **Constants**: UPPER_SNAKE_CASE
+- **CSS Classes**: Tailwind utility classes
+
+### Supabase Integration
+- Use the existing `supabase` client from `src/lib/supabase`
+- Always handle errors from Supabase operations
+- Use Row Level Security (RLS) policies
+- Prefer real-time subscriptions for live data
+- Use TypeScript types for database schemas
+
+### Security
+- Never expose API keys in frontend code
+- Use environment variables for sensitive data
+- Implement proper authentication checks
+- **Explicit Check Requirement**: When implementing or modifying any feature that touches authentication or user permissions, you MUST explicitly state the check being performed and the reasoning for it (e.g., "Adding a check to ensure only the profile owner can edit their profile.").
+- Follow RLS policies for database access
+- Sanitize user inputs
+
+### Performance
+- Use lazy loading for routes
+- Implement proper loading states
+- Use React.memo() for expensive components
+- Optimize images and assets
+- Use Vite's code splitting features
+
+## Code Style
+
+### Imports
+`
+// External libraries first
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+
+// Internal imports
+import { supabase } from '../lib/supabase';
+import { UserProfile } from '../types/user';
+import { formatDate } from '../utils/date-utils';
+`
+
+### Component Structure
+`
+interface ComponentProps {
+  title: string;
+  isVisible: boolean;
+  onClose: () => void;
+}
+
+export const Component: React.FC<ComponentProps> = ({ 
+  title, 
+  isVisible, 
+  onClose 
+}) => {
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // Effect logic here
+  }, []);
+
+  const handleAction = async () => {
+    try {
+      setLoading(true);
+      // Async logic here
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-center">
+      {/* Component JSX */}
+    </div>
+  );
+};
+`
+
+### Error Handling
+- Always wrap async operations in try-catch
+- Provide meaningful error messages
+- **Error Message Specificity**: Error messages MUST identify the source of the error and, if possible, suggest a solution (e.g., "Database Error: Failed to fetch user profile. Please check your connection or try again later.").
+- Use loading states for async operations
+- Handle edge cases gracefully
+
+### CSS/Styling
+- Use Tailwind CSS utility classes
+- Follow mobile-first responsive design
+- Use consistent spacing scale
+- Prefer Tailwind over custom CSS
+- Use semantic color names from theme
+
+## Database Conventions
+- Table names: snake_case
+- Column names: snake_case
+- Use UUIDs for primary keys
+- Include created_at and updated_at timestamps
+- Implement proper RLS policies
+
+## API Integration
+- Use proper TypeScript types for API responses
+- Handle loading and error states
+- Implement retry logic for critical operations
+- **Definition of Critical Operations**: Critical operations that MAY require retry logic include, but are not limited to: payment processing, user registration, event submission, and final data-saving actions. When implementing such a feature, you MUST state whether you are including retry logic and why.
+- Use proper HTTP status codes
+
+## Testing
+- Write unit tests for utility functions
+- Test components with user interactions
+- Mock external services in tests
+- Use meaningful test descriptions
+- **Test Description Format**: Test descriptions SHOULD follow a "should do X when Y" format (e.g., `it('should disable the submit button when the form is invalid')`).
+
+## Version Control
+- Use the automatic version control system
+- Never edit `src/utils/version.ts` manually
+- Use semantic versioning for releases
+- Write clear commit messages
+
+## AI Assistant Guidelines
+- Provide complete, working code examples
+- Include proper TypeScript types
+- Follow the established patterns in the codebase
+- Consider performance implications
+- Suggest improvements when relevant
+
+## Common Patterns
+
+### Supabase Queries
+`
+const { data, error } = await supabase
+  .from('table_name')
+  .select('*')
+  .eq('column', value);
+
+if (error) {
+  console.error('Database error:', error);
+  return;
+}
+`
+
+### Form Handling
+`
+const [formData, setFormData] = useState<FormData>({});
+const [loading, setLoading] = useState(false);
+
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
+  
+  try {
+    // Form submission logic
+  } catch (error) {
+    console.error('Form error:', error);
+  } finally {
+    setLoading(false);
+  }
+};
+`
+
+## Avoid
+- Using `any` type
+- Direct DOM manipulation
+- Inline styles (use Tailwind)
+- Hardcoded strings (use constants)
+- Unhandled promises
+- Memory leaks in useEffect
+
+## Project-Specific Notes
+- Mobile menu has been simplified to prevent memory leaks
+- Version system is automated - don't manually edit version files
+- Use the existing notification system instead of browser alerts
+- Follow the established admin dashboard patterns
+- Maintain consistency with existing UI components
+
+## Performance Considerations
+- The project has had memory issues with complex components
+- Prefer simple, direct implementations over complex abstractions
+- Use React.memo() judiciously
+- Clean up subscriptions and event listeners
+
+Remember: This is a production platform handling real users and payments. Prioritize security, performance, and user experience in all implementations.
+
+## 🚨 CRITICAL PRODUCTION PROTOCOLS
+
+### 🔴 ABSOLUTE PROHIBITIONS (NEVER DO)
+- ❌ **NEVER reset or drop the database** - This is a production environment with real user data
+- ❌ **NEVER disable RLS as a "quick fix"** - Security is non-negotiable
+- ❌ **NEVER work without creating a backup first** - Always backup before significant changes
+- ❌ **NEVER modify database security settings without explicit approval**
+- ❌ **NEVER make changes that could break authentication**
+- ❌ **NEVER work on multiple unrelated features simultaneously**
+- ❌ **NEVER skip the mandatory QA process**
+- ❌ **NEVER give multiple instructions at once** - User is new to development
+- ❌ **NEVER continue without explicit user confirmation between steps**
+- ❌ **NEVER use local database** - Always use remote Supabase database
+- ❌ **NEVER provide multiple SQL files** - Only ONE SQL file per task
+
+### ✅ MANDATORY REQUIREMENTS (ALWAYS DO)
+- **Before executing ANY multi-step task (e.g., deployment, feature implementation, refactoring), you MUST copy this entire checklist into your response and confirm each point.**
+- ✅ **ALWAYS create backup** before any significant changes (backup-[feature-name]-YYYY-MM-DD_HH-mm-ss)
+- ✅ **ALWAYS use step-by-step approach** with user confirmation at each stage
+- ✅ **ALWAYS provide only ONE SQL file** to be run in Supabase editor
+- ✅ **ALWAYS use remote database only** - Never suggest local database work
+- ✅ **ALWAYS explain what each step does and why it's needed**
+- ✅ **ALWAYS wait for "proceed" or "continue" before next step**
+- ✅ **ALWAYS test all changes thoroughly before presenting**
+- ✅ **ALWAYS consider impact on existing functionality**
+- ✅ **ALWAYS follow the automatic version control system**
+- ✅ **ALWAYS use the existing Supabase client from src/lib/supabase**
+
+### 🛡️ DATABASE SAFETY PROTOCOLS
+- **Before executing ANY database operation (SQL file, schema change), you MUST reference the MANDATORY REQUIREMENTS checklist and receive user confirmation.**
+- **Remote Database Only**: All database work must be done on the remote Supabase instance
+- **Single SQL File Rule**: Provide exactly ONE .sql file per task to run in Supabase editor
+- **No Database Resets**: Never suggest dropping, truncating, or resetting database tables
+- **RLS Protection**: Row Level Security policies must remain enabled and functional
+- **Backup First**: Always create backup before any database schema changes
+- **Step-by-Step Verification**: Each database change must be verified before proceeding
+
+### 🔄 PRODUCTION WORKFLOW
+1. **ACKNOWLEDGE PROTOCOLS**: Confirm understanding of all production rules
+2. **EXECUTE BACKUP**: State that you are performing a backup as per the `MANDATORY REQUIREMENTS` and get approval before proceeding.
+3. **PLAN APPROACH**: Outline implementation strategy and get approval
+4. **SINGLE SQL FILE**: Provide only ONE SQL file for database changes
+5. **STEP-BY-STEP**: Execute with user confirmation at each stage
+6. **TEST THOROUGHLY**: Complete QA before presenting results
+7. **DOCUMENT CHANGES**: Update relevant documentation
+
+### 📞 COMMUNICATION PROTOCOL
+`
+STANDARD RESPONSE FORMAT:
+1. Acknowledge the request
+2. Confirm understanding of production constraints
+3. Outline step-by-step plan
+4. Request approval before proceeding
+5. Provide only ONE SQL file if database changes needed
+6. Wait for user confirmation before each step
+7. Explain what each step does and why
+`
+
+### 🚨 EMERGENCY PROCEDURES
+If something goes wrong:
+1. **STOP** all work immediately
+2. **ASSESS** the scope of the issue
+3. **NOTIFY** the user of the problem
+4. **RESTORE** from backup if necessary
+5. **DOCUMENT** what went wrong and why
+
+This is a production environment with real users and data. Every action must be deliberate, safe, and approved.
+
+### 📝 PROTOCOL MANAGEMENT & .cursorrules MAINTENANCE
+
+#### 🔄 UPDATING .cursorrules FILE
+- **Protocol Revision Authority**: AI agents MAY suggest updates to .cursorrules but ONLY with explicit user approval
+- **No Autonomous Changes**: NEVER modify .cursorrules without user permission
+- **Approval Required**: All protocol changes must be reviewed and approved before implementation
+- **Documentation**: Explain WHY each protocol change is needed and what problem it solves
+
+#### 🚨 WHEN TO RECOMMEND NEW RULES
+AI agents SHOULD recommend new .cursorrules additions when they encounter:
+
+1. **Recurring Issues**: Same problems happening multiple times across different tasks
+2. **Security Gaps**: New security vulnerabilities or attack vectors discovered
+3. **Performance Problems**: Patterns that consistently cause memory leaks or performance issues
+4. **User Safety**: Situations that could lead to data loss or system instability
+5. **Workflow Inefficiencies**: Processes that could be standardized for better consistency
+6. **New Technology Integration**: When adding new tools or services that need specific protocols
+7. **Production Incidents**: After any system failures or emergency situations
+
+#### 📋 PROTOCOL RECOMMENDATION FORMAT
+`
+🔧 PROTOCOL RECOMMENDATION
+
+Issue Identified: [DESCRIBE THE PROBLEM]
+Frequency: [HOW OFTEN THIS OCCURS]
+Risk Level: [CRITICAL/HIGH/MEDIUM/LOW]
+Current Impact: [WHAT HAPPENS NOW]
+
+Proposed Rule Addition:
+❌/✅ [SPECIFIC RULE TEXT]
+
+Rationale: [WHY THIS RULE IS NEEDED]
+Benefits: [HOW THIS IMPROVES SAFETY/EFFICIENCY]
+Implementation: [HOW TO ENFORCE THIS RULE]
+
+Examples of when this would apply:
+- [SCENARIO 1]
+- [SCENARIO 2]
+
+Request: May I add this rule to .cursorrules with your approval?
+`
+
+#### 🎯 PROTOCOL REVIEW TRIGGERS
+AI agents should proactively suggest protocol reviews when:
+- **After Major Incidents**: Any system failure or data issues
+- **New Feature Rollouts**: When adding significant new functionality
+- **Security Updates**: After implementing security patches or fixes
+- **Performance Optimizations**: When memory or speed issues are resolved
+- **User Feedback**: When users report confusion or workflow problems
+- **Technology Changes**: When upgrading major dependencies or tools
+
+#### ✅ APPROVED PROTOCOL CHANGES PROCESS
+1. **Identify Need**: Recognize pattern requiring new rule
+2. **Document Issue**: Provide clear examples and impact assessment
+3. **Propose Solution**: Draft specific rule text and rationale
+4. **Request Approval**: Get explicit user permission before changes
+5. **Update File**: Modify .cursorrules with approved changes
+6. **Communicate**: Notify about the update and why it was needed
+7. **Monitor**: Watch for effectiveness of new rule
+
+This ensures .cursorrules evolves safely while maintaining production stability.
+
+## 🧪 TESTING & DATA PROTOCOLS
+
+### Mock Data Management
+- **Testing Only**: Mock data is permitted ONLY during development and testing phases
+- **QA Completion**: ALL mock data MUST be removed once QA is finalized
+- **Production Clean**: Only real data and genuine statistics allowed on production server
+- **Data Verification**: Always verify data authenticity before production deployment
+- **Mock Data Markers**: Clearly mark all mock data with comments for easy identification
+
+## 📋 .cursorrules FILE GOVERNANCE
+
+### Rule Modification Protocol
+- **Approval Required**: ALL rule removals must be explicitly approved by James before implementation
+- **No Autonomous Deletions**: NEVER remove rules without explicit permission
+- **Presentation First**: The complete updated .cursorrules file MUST be presented and approved before being saved and activated
+- **Change Documentation**: All rule changes must be logged in the version history
+
+### File Management Standards
+- **Always Present Before Save**: Show complete file content and get approval before activation
+- **Mandatory Version Control**: ALWAYS update version log at bottom of file for ANY changes
+- **Change Tracking**: Document what changed, when, and why
+- **Line Count Accuracy**: Verify actual line count matches version history
+- **Incremental Versioning**: Use semantic versioning for all .cursorrules updates
+
+## 🗂️ PROJECT ORGANIZATION & MAINTENANCE PROTOCOLS
+
+### File & Folder Structure Management
+- **Clean Organization**: Maintain clean, logical folder structure at all times.
+- **File Categorization**: Ensure all files are in appropriate directories as defined by the `Coding Standards` and `IMAGE & ASSET ORGANIZATION PROTOCOLS`.
+- **Clean Main Directory**: Keep only active, current files in the main project directory. Temporary files, scripts, and archives must be placed in designated subdirectories.
+- **Archive After QA**: After QA completion, move implementation files to appropriate archive locations (e.g., `_archive/implemented-features/`).
+- **Catalog Maintenance**: When files are moved, update `_archive/BACKUP_CATALOG.md` and `_archive/SQL_CATALOG.md`.
+
+### Backup Management
+- **Backup Location**: All new backups MUST be placed in a dedicated `_archive/backups/` directory. NEVER create backups in the project root.
+- **Backup Retention Policy**: The `_archive/backups/` folder should contain ONLY the last 3 days of backups.
+- **Backup Archiving**: Daily, any backups in `_archive/backups/` older than 3 days MUST be moved to `_archive/backups-archive/`.
+- **Remove Obsolete**: Delete outdated temporary scripts and unused files.
+
+### Daily Maintenance Tasks
+- Run folder cleanup operations daily to remove temporary files and scripts.
+- Verify backup retention policies are being followed.
+- Organize any loose files into their appropriate directories.
+- Update documentation as needed.
+
+## 👥 COMMUNICATION PROTOCOLS
+
+### Personal Address Standards
+- **James**: Erik will address the user as "James" in all communications
+- **Erik**: James will address the AI assistant as "Erik"
+- **Professional Courtesy**: Maintain respectful, professional communication tone
+- **Clear Identification**: Always use names when beginning conversations or major task sections
+
+## 🖼️ IMAGE & ASSET ORGANIZATION PROTOCOLS
+
+### Mandatory Asset Structure
+- **ALWAYS use organized asset paths**: `/assets/category/filename`
+- **NEVER place images in root directories**: All images must be in `/public/assets/`
+- **Required Categories**: Use only these three organized directories:
+  - `/public/assets/logos/` - Brand logos and variants
+  - `/public/assets/icons/` - PWA icons, mobile icons, app icons
+  - `/public/assets/images/` - General images, credit card logos, photos
+
+### File Naming Conventions
+- **Logos**: `cae-logo-[variant].png` (e.g., `cae-logo-main.png`, `cae-logo-no-bg.png`)
+- **Icons**: `[purpose]-[size].png` (e.g., `pwa-192x192.png`, `apple-touch-icon.png`)
+- **Images**: `[descriptive-name].png` (e.g., `stripe-cc-logos.png`, `hero-banner.jpg`)
+- **NO version numbers**: Use descriptive names instead of v1, v2, etc.
+- **Use lowercase**: kebab-case naming (hyphens, not underscores or spaces)
+
+### Asset Management Rules
+- ✅ **ALWAYS place new images** in appropriate `/public/assets/` subdirectory
+- ✅ **ALWAYS use descriptive filenames** that explain the image purpose
+- ✅ **ALWAYS reference organized paths** in components: `src="/assets/category/filename"`
+- ❌ **NEVER place images** in root `public/` directory (except favicon.ico)
+- ❌ **NEVER use scattered directories** like root `images/` folder
+- ❌ **NEVER create custom image directories** outside the organized structure
+
+### ✅ Mandatory Asset Management Workflow
+Before adding or modifying any image or asset, you MUST:
+1. **State the Asset's Purpose**: (e.g., "This is the new primary logo").
+2. **Confirm the Destination Path**: State the exact, full path where the file will be placed, referencing the categories above (e.g., "As per the rules, it will be placed at `/public/assets/logos/cae-logo-new.png`").
+3. **Request Approval**: Ask for permission to proceed before creating or moving the file.
+
+### Production Asset Guidelines
+- **Test new assets**: Verify images load correctly in both development and production
+- **Optimize file sizes**: Compress images appropriately for web use
+- **Use appropriate formats**: PNG for logos/icons, JPG for photos, SVG for vectors
+- **Maintain backwards compatibility**: When updating assets, ensure all references are updated
+- **Clean up duplicates**: Remove old/unused image files after successful migration
+
+### Component Integration
+- **Import organized paths**: Always reference `/assets/category/filename` in React components
+- **Update all references**: When adding new images, update any related components
+- **Test thoroughly**: Verify image loading in Header, Footer, and any custom components
+- **Document changes**: Note any new assets in commit messages and documentation
+
+## 🚀 PRODUCTION DEPLOYMENT PROTOCOLS
+
+### Tech Stack Integration
+- **Source Control**: GitHub repository (`car-audio-events`)
+- **Hosting Platform**: Netlify with auto-deployment
+- **Build System**: Vite (React/TypeScript)
+- **Database**: Supabase (separate deployment process)
+
+### Deployment Command Recognition
+When users say these phrases, AI agents MUST execute the full deployment workflow:
+- **Primary Commands**: `"Deploy to production"`, `"Push to production"`
+- **Alternative Commands**: `"Deploy the changes"`, `"Initiate deployment process"`
+- **Context Commands**: `"Push to GitHub and deploy to Netlify"`
+
+### 🚨 Mandatory Pre-Deployment Checklist
+Before beginning ANY deployment phase, you MUST perform and confirm the following pre-checks:
+- ✅ **Acknowledge Protocols**: Confirm understanding of all production rules.
+- ✅ **RULE CONFIRMATION**: For each step, you MUST explicitly state the primary rule from `.cursorrules` that governs the action before requesting user approval.
+- ✅ **STEP-BY-STEP CONFIRMATION**: Confirm that user approval ("proceed" or "continue") is required between EACH individual command in all phases.
+- ✅ **VERSION SYNC**: ALWAYS run `npm run version:generate` before committing to ensure `src/utils/version.ts` is up-to-date.
+
+### Mandatory 5-Phase Deployment Process
+
+**Phase 1: Mandatory Backup**
+- The first step MUST be to create a backup.
+- This is governed by the rule: ✅ **ALWAYS create backup** before any significant changes.
+- The backup MUST follow the naming convention: `backup-[feature-name]-YYYY-MM-DD_HH-mm-ss`.
+- The backup MUST be placed in the `_archive/backups/` directory as per the `PROJECT ORGANIZATION & MAINTENANCE PROTOCOLS`.
+
+**Phase 2: Pre-Deployment Verification**
+`bash
+npm run build                    # ✅ ALWAYS verify build first
+dir dist\assets                  # ✅ Check asset organization
+`
+
+**Phase 3: Git Operations**
+**Step 0: Synchronize Version File (MANDATORY)**
+`bash
+npm run version:generate         # ✅ ALWAYS sync version file first
+`
+
+`bash
+git status                       # ✅ Review all changes
+git add [specific-files]         # ✅ NEVER use git add .
+git commit -m "feat: [desc]"     # ✅ Semantic commit messages
+git push origin main             # ✅ Triggers auto-deployment
+`
+
+**Phase 4: Deployment Monitoring**
+- Guide user to Netlify dashboard
+- Monitor build logs for errors
+- Verify deployment completion
+
+**Phase 5: Production Verification**
+- Test production site functionality
+- Verify asset loading
+- Confirm zero broken links
+
+### Critical Deployment Safety Rules
+- ✅ **ALWAYS run `npm run build` first** - catches issues before deployment
+- ✅ **NEVER push without build verification** - prevents production failures
+- ✅ **Use specific `git add` commands** - avoid committing unwanted files
+- ✅ **Monitor Netlify build logs** - ensure successful deployment
+- ✅ **Verify production functionality** - confirm deployment success
+- ❌ **NEVER skip any phase** - all 5 phases are mandatory
+- ❌ **NEVER use `git add .`** - too risky for production
+
+### GitHub → Netlify Integration Flow
+1. **Code Push**: Changes pushed to `main` branch
+2. **Webhook Trigger**: Netlify receives automatic notification
+3. **Cloud Build**: Netlify runs `npm run build` remotely
+4. **Asset Processing**: All organized assets copied to CDN
+5. **Live Deployment**: New version goes live automatically
+6. **Rollback Available**: Previous versions maintained for instant rollback
+
+### Deployment Documentation Reference
+Full deployment guide available at: `documentation/deployment/PRODUCTION_DEPLOYMENT_GUIDE.md`
+
+### Emergency Procedures
+- **Build Fails**: Check TypeScript errors, verify `npm run build` locally
+- **Missing Assets**: Verify organized asset paths and build output
+- **Rollback**: Use Netlify dashboard to revert to previous deployment
+- **Environment Issues**: Check Netlify environment variables
+
+This process ensures zero-downtime deployments with full rollback capability.
+
+## 📋 .CURSORRULES VERSIONING PROTOCOLS
+
+### Mandatory Versioning Requirements
+- ✅ **Version Increment**: ALWAYS increment version number for any .cursorrules modifications (Desending order) 
+- ✅ **Mandatory Changelog**: ALL rule changes must be logged in the version history at bottom of file
+- ✅ **Line Count Verification**: Verify actual file line count matches version history entry
+- ✅ **Complete Documentation**: Document what changed, why it changed, and what problem it solves
+- ✅ **Date Accuracy**: Use actual dates, never fabricate or use placeholder dates
+- ✅ **Minimal Changes**: When fixing errors, change ONLY what was requested, nothing else
+
+### AI Agent Compliance Rules
+- ❌ **NEVER remove existing rules** without explicit user approval
+- ❌ **NEVER exceed requested scope** - when asked to fix one thing, change ONLY that thing
+- ❌ **NEVER modify .cursorrules** without explicit permission first
+- ✅ **ALWAYS ask permission** before any .cursorrules modifications
+- ✅ **ALWAYS follow protocols exactly** to maintain user trust
+- ✅ **ALWAYS verify line counts** match version history entries
+
+### Version History Standards
+- **Accurate Dates**: All version entries must use real dates when changes occurred
+- **Complete Change Log**: Document every addition, modification, or enhancement
+- **Line Count Tracking**: Verify and update actual file line count for each version
+- **Rationale Required**: Explain why each change was necessary and what problem it solved
+
+---
+## 📊 .CURSORRULES FILE CHANGELOG
+
+This section tracks changes **only to the .cursorrules file itself**. The official project changelog is in `CHANGELOG.md`.
+
+### Protocol Updates
+
+*   **January 30, 2025**:
+    *   Added `Production Deployment Protocols`.
+    *   Strengthened governance with mandatory version control and line count accuracy.
+
+*   **June 18, 2025**:
+    *   Added `Image & Asset Organization Protocols`.
+    *   Added `Mock Data Management` protocols.
+    *   Added `.cursorrules File Governance` protocols.
+    *   Added `Project Organization Protocols`.
+    *   Added `Communication Protocols` (James/Erik).
+    *   Added this version history tracking system.
+
+*   **Initial Version**:
+    *   Established the first comprehensive version of all production protocols.
+

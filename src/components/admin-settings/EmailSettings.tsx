@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { Mail, Save, CheckCircle, AlertCircle, FileText, Code, HelpCircle, Settings, Eye, EyeOff, Plus, Trash2, Copy, Search, Send, Clock, RefreshCw, Play, Pause, Eye as EyeIcon, Users, Calendar, DollarSign, Building, Shield, Zap, X } from 'lucide-react';
 import { Editor } from '@tinymce/tinymce-react';
 import { useNotifications } from '../NotificationSystem';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface EmailSettingsState {
   from_email: string;
@@ -71,6 +72,7 @@ interface EmailTemplateCategory {
 
 export const EmailSettings: React.FC = () => {
   const { showSuccess, showError, showWarning, showInfo } = useNotifications();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'smtp' | 'templates' | 'queue' | 'preview' | 'categories'>('smtp');
   const [settings, setSettings] = useState<EmailSettingsState>({
     from_email: '',
@@ -697,9 +699,18 @@ export const EmailSettings: React.FC = () => {
   const processEmailQueue = async () => {
     setQueueLoading(true);
     try {
-      // Call the process-email-queue Edge Function
+      // Get the user's JWT token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('No authentication token available');
+      }
+
+      // Call the process-email-queue Edge Function with JWT
       const { data, error } = await supabase.functions.invoke('process-email-queue', {
-        body: { process_all: true }
+        body: { process_all: true },
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
       });
 
       if (error) {
@@ -730,11 +741,20 @@ export const EmailSettings: React.FC = () => {
   const flushEmailQueue = async () => {
     setQueueLoading(true);
     try {
+      // Get the user's JWT token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('No authentication token available');
+      }
+
       // Send all pending emails in the queue
       const { data, error } = await supabase.functions.invoke('process-email-queue', {
         body: { 
           process_all: true,
           force_send: true // Force send all pending emails
+        },
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
         }
       });
 
@@ -766,11 +786,20 @@ export const EmailSettings: React.FC = () => {
   const sendPendingEmails = async () => {
     setQueueLoading(true);
     try {
+      // Get the user's JWT token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('No authentication token available');
+      }
+
       // Send only pending emails
       const { data, error } = await supabase.functions.invoke('process-email-queue', {
         body: { 
           process_all: false,
           status_filter: 'pending'
+        },
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
         }
       });
 

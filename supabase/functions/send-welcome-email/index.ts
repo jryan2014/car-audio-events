@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { corsHeaders } from '../_shared/cors.ts';
-import { sendEmail } from '../_shared/zoho-email-service.ts';
+import { sendEmail } from '../_shared/mailgun-email-service.ts';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {

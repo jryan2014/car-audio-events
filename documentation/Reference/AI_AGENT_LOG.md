@@ -1,0 +1,3 @@
+# 📘 AI AGENT LOG
+
+This file is used to track all AI-generated actions including schema updates, terminal errors, and hotfixes...

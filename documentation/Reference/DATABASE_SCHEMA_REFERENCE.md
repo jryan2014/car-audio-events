@@ -1,0 +1,3 @@
+# 🧩 DATABASE SCHEMA REFERENCE
+
+Enforced naming, update flow, and safety protocols for any database change on the Car Audio Events platform...
