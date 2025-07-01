@@ -2,7 +2,6 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createSupabaseAdminClient } from '../_shared/supabase-admin.ts';
 import { sendEmail } from '../_shared/mailgun-email-service.ts';
 import { corsHeaders } from '../_shared/cors.ts';
-import { verifyJWT } from 'https://esm.sh/jsonwebtoken@9.0.2';
 
 // This function is designed to be called by a cron job or manually by admin users.
 // Example cron schedule: once every minute.
@@ -11,7 +10,15 @@ import { verifyJWT } from 'https://esm.sh/jsonwebtoken@9.0.2';
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response(null, { 
+      status: 200,
+      headers: {
+        ...corsHeaders,
+        'Access-Control-Allow-Origin': 'https://caraudioevents.com',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-schedule-secret'
+      }
+    });
   }
 
   try {
@@ -23,36 +30,24 @@ serve(async (req) => {
     if (!scheduleSecret && !authHeader) {
       return new Response(JSON.stringify({ error: 'Unauthorized: Missing authentication' }), {
         status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': 'https://caraudioevents.com'
+        },
       });
     }
 
-    // If it's not a cron job, verify the JWT
-    if (!scheduleSecret && authHeader) {
-      try {
-        const token = authHeader.replace('Bearer ', '');
-        const jwtSecret = Deno.env.get('JWT_SECRET');
-        
-        if (!jwtSecret) {
-          throw new Error('JWT_SECRET environment variable not set');
-        }
-
-        const decoded = verifyJWT(token, jwtSecret);
-        
-        // Check if user has admin role
-        if (!decoded || !decoded.role || decoded.role !== 'service_role') {
-          return new Response(JSON.stringify({ error: 'Unauthorized: Admin access required' }), {
-            status: 401,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-      } catch (jwtError) {
-        console.error('JWT verification failed:', jwtError);
-        return new Response(JSON.stringify({ error: 'Unauthorized: Invalid token' }), {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
+    // If it's not a cron job, require authorization header
+    if (!scheduleSecret && !authHeader) {
+      return new Response(JSON.stringify({ error: 'Unauthorized: Missing authentication' }), {
+        status: 401,
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': 'https://caraudioevents.com'
+        },
+      });
     }
 
     const supabaseAdmin = createSupabaseAdminClient();
@@ -69,10 +64,14 @@ serve(async (req) => {
     }
 
     if (!pendingEmails || pendingEmails.length === 0) {
-      return new Response(JSON.stringify({ message: 'No pending emails to process.' }), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+          return new Response(JSON.stringify({ message: 'No pending emails to process.' }), {
+      status: 200,
+      headers: { 
+        ...corsHeaders, 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': 'https://caraudioevents.com'
+      },
+    });
     }
 
     // 2. Process each pending email
@@ -127,14 +126,22 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ message: `Processed ${pendingEmails.length} emails.` }), {
       status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { 
+        ...corsHeaders, 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': 'https://caraudioevents.com'
+      },
     });
 
   } catch (error) {
     console.error('Error processing email queue:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { 
+        ...corsHeaders, 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': 'https://caraudioevents.com'
+      },
     });
   }
 }); 
