@@ -18,9 +18,12 @@ const csp = `
     https://js.stripe.com 
     https://maps.googleapis.com 
     https://www.google.com
-    https://maps.gstatic.com;
+    https://maps.gstatic.com
+    https://cdn.tiny.cloud
+    https://*.tinymce.com;
   style-src 'self' 'unsafe-inline' 
-    https://fonts.googleapis.com;
+    https://fonts.googleapis.com
+    https://cdn.tiny.cloud;
   font-src 'self' 
     https://fonts.gstatic.com 
     https://fonts.googleapis.com;
@@ -33,7 +36,8 @@ const csp = `
     https://maps.gstatic.com
     https://fonts.googleapis.com
     https://fonts.gstatic.com
-    https://api.openai.com;
+    https://api.openai.com
+    https://cdn.tiny.cloud;
   frame-src 'self' 
     https://www.google.com 
     https://maps.google.com

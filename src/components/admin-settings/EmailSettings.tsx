@@ -22,6 +22,7 @@ interface EmailTemplate {
   from_name?: string;
   created_at: string;
   updated_at: string;
+  category_id?: string;
 }
 
 interface EmailVariable {
@@ -57,9 +58,20 @@ interface EmailPreviewData {
   competition_score: string;
 }
 
+// 1. Add category type and state
+interface EmailTemplateCategory {
+  id: string;
+  name: string;
+  description: string;
+  display_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export const EmailSettings: React.FC = () => {
   const { showSuccess, showError, showWarning, showInfo } = useNotifications();
-  const [activeTab, setActiveTab] = useState<'smtp' | 'templates' | 'queue' | 'preview'>('smtp');
+  const [activeTab, setActiveTab] = useState<'smtp' | 'templates' | 'queue' | 'preview' | 'categories'>('smtp');
   const [settings, setSettings] = useState<EmailSettingsState>({
     from_email: '',
     from_name: '',
@@ -95,24 +107,52 @@ export const EmailSettings: React.FC = () => {
   const [testEmail, setTestEmail] = useState('');
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const notificationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [categories, setCategories] = useState<EmailTemplateCategory[]>([]);
+
+  // Add modal state
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [categoryToEdit, setCategoryToEdit] = useState<EmailTemplateCategory | null>(null);
+  const [categoryDeleteConfirm, setCategoryDeleteConfirm] = useState<EmailTemplateCategory | null>(null);
+  const [categoryForm, setCategoryForm] = useState({
+    name: '',
+    description: '',
+    display_order: 1,
+    is_active: true
+  });
+  const [categoryModalLoading, setCategoryModalLoading] = useState(false);
+
+  // Add filter state
+  const [templateCategoryFilter, setTemplateCategoryFilter] = useState<string>('all');
+
+  // Add debug toggle state
+  const [showCategoryDebug, setShowCategoryDebug] = useState(false);
 
   // Bulletproof email header and footer templates
   const defaultEmailHeader = `
-    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#1a1a2e; padding:20px 0;">
+    <!--[if mso]>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#1a1a2e; padding:0;">
+      <tr><td align="center">
+    <![endif]-->
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#1a1a2e; padding:0;">
       <tr>
-        <td align="center">
-          <img src="https://caraudioevents.com/assets/logos/cae-logo-email.png" alt="Car Audio Events" width="120" height="46" style="width:120px; height:46px; display:block; margin:0 auto 10px auto; border:0; outline:none; text-decoration:none;" border="0" />
-          <h1 style="color:#60a5fa; margin:0; font-size:24px; font-weight:600; font-family:Arial,sans-serif;">Car Audio Events</h1>
-          <p style="color:#9ca3af; margin:5px 0 0 0; font-size:14px; font-family:Arial,sans-serif;">Professional Car Audio Competition Platform</p>
+        <td align="center" style="padding:24px 0 12px 0;">
+          <img src="https://caraudioevents.com/assets/logos/CAE_Logo_V2-email-logo.png" alt="Car Audio Events" width="120" height="46" style="width:120px; height:46px; display:block; margin:0 auto 10px auto; border:0; outline:none; text-decoration:none;" border="0" />
+          <h1 style="color:#60a5fa; margin:0; font-size:24px; font-weight:600; font-family:Arial,Helvetica,sans-serif;">Car Audio Events</h1>
+          <p style="color:#9ca3af; margin:5px 0 0 0; font-size:14px; font-family:Arial,Helvetica,sans-serif;">Professional Car Audio Competition Platform</p>
         </td>
       </tr>
     </table>
+    <!--[if mso]></td></tr></table><![endif]-->
   `;
   
   const defaultEmailFooter = `
-    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#1f2937; padding:20px 0;">
+    <!--[if mso]>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#1f2937; padding:0;">
+      <tr><td align="center">
+    <![endif]-->
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#1f2937; padding:0;">
       <tr>
-        <td align="center" style="color:#9ca3af; font-size:12px; font-family:Arial,sans-serif;">
+        <td align="center" style="color:#9ca3af; font-size:12px; font-family:Arial,Helvetica,sans-serif; padding:20px 0;">
           <p style="margin:5px 0;">© 2025 Car Audio Events. All rights reserved.</p>
           <p style="margin:5px 0;">Professional car audio competition platform</p>
           <a href="https://caraudioevents.com" style="color:#60a5fa; text-decoration:none; margin:0 10px;">Website</a>
@@ -121,6 +161,7 @@ export const EmailSettings: React.FC = () => {
         </td>
       </tr>
     </table>
+    <!--[if mso]></td></tr></table><![endif]-->
   `;
 
   // Comprehensive email variables - 60+ variables covering all scenarios
@@ -252,6 +293,19 @@ export const EmailSettings: React.FC = () => {
     loadEmailSettings();
     loadEmailTemplates();
     loadEmailQueue();
+  }, []);
+
+  // 2. Fetch categories from Supabase
+  useEffect(() => {
+    const loadCategories = async () => {
+      const { data, error } = await supabase
+        .from('email_template_categories')
+        .select('*')
+        .eq('is_active', true)
+        .order('display_order', { ascending: true });
+      if (!error && data) setCategories(data);
+    };
+    loadCategories();
   }, []);
 
   const loadEmailSettings = async () => {
@@ -893,6 +947,74 @@ export const EmailSettings: React.FC = () => {
     setNotification(null);
   }, [activeTab]);
 
+  // Open modal for new or edit
+  const openCategoryModal = (cat: EmailTemplateCategory | null = null) => {
+    setCategoryToEdit(cat);
+    setCategoryForm(cat ? {
+      name: cat.name,
+      description: cat.description,
+      display_order: cat.display_order,
+      is_active: cat.is_active
+    } : {
+      name: '',
+      description: '',
+      display_order: 1,
+      is_active: true
+    });
+    setCategoryModalOpen(true);
+  };
+
+  // Save category (create or update)
+  const saveCategory = async () => {
+    setCategoryModalLoading(true);
+    if (categoryToEdit) {
+      // Update
+      const { error } = await supabase
+        .from('email_template_categories')
+        .update({
+          name: categoryForm.name,
+          description: categoryForm.description,
+          display_order: categoryForm.display_order,
+          is_active: categoryForm.is_active,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', categoryToEdit.id);
+      if (!error) {
+        setCategories(categories.map(cat => cat.id === categoryToEdit.id ? { ...cat, ...categoryForm } : cat));
+        setCategoryModalOpen(false);
+      }
+    } else {
+      // Create
+      const { data, error } = await supabase
+        .from('email_template_categories')
+        .insert({
+          name: categoryForm.name,
+          description: categoryForm.description,
+          display_order: categoryForm.display_order,
+          is_active: categoryForm.is_active
+        })
+        .select();
+      if (!error && data && data[0]) {
+        setCategories([...categories, data[0]]);
+        setCategoryModalOpen(false);
+      }
+    }
+    setCategoryModalLoading(false);
+  };
+
+  // Delete category
+  const deleteCategory = async () => {
+    if (!categoryDeleteConfirm) return;
+    const { error } = await supabase
+      .from('email_template_categories')
+      .delete()
+      .eq('id', categoryDeleteConfirm.id);
+    if (!error) {
+      setCategories(categories.filter(cat => cat.id !== categoryDeleteConfirm.id));
+      setCategoryDeleteConfirm(null);
+    }
+  };
+
   const renderSMTPTab = () => (
     <div className="space-y-6">
       <div className="bg-gray-800/50 rounded-lg p-4">
@@ -1070,8 +1192,32 @@ export const EmailSettings: React.FC = () => {
           </button>
         </div>
 
+        {/* Add filter dropdown above the template list */}
+        <div className="flex items-center space-x-4 mb-4">
+          <label className="text-gray-300 text-sm font-medium">Filter by Category:</label>
+          <select
+            value={templateCategoryFilter}
+            onChange={e => setTemplateCategoryFilter(e.target.value)}
+            className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+          >
+            <option value="all">All Categories</option>
+            {categories.map(category => (
+              <option key={category.id} value={category.id}>{category.name}</option>
+            ))}
+          </select>
+          <label className="flex items-center space-x-2 ml-6">
+            <input
+              type="checkbox"
+              checked={showCategoryDebug}
+              onChange={e => setShowCategoryDebug(e.target.checked)}
+              className="rounded border-gray-600 bg-gray-700 text-electric-500"
+            />
+            <span className="text-sm text-gray-300">Show Debug: Loaded Categories</span>
+          </label>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {templates.map((template) => (
+          {templates.filter(template => templateCategoryFilter === 'all' || template.category_id === templateCategoryFilter).map((template) => (
             <div
               key={template.id}
               className="bg-gray-700/50 rounded-lg p-4 border border-gray-600 hover:border-electric-500/50 transition-colors cursor-pointer"
@@ -1082,6 +1228,47 @@ export const EmailSettings: React.FC = () => {
               <p className="text-gray-500 text-xs">
                 Updated: {new Date(template.updated_at).toLocaleDateString()}
               </p>
+              {template.category_id && (
+                <span className="text-xs px-2 py-1 rounded bg-orange-500/20 text-orange-400 ml-2">
+                  {categories.find(cat => cat.id === template.category_id)?.name}
+                </span>
+              )}
+              <div className="flex items-center space-x-2 mt-2">
+                <span className={`text-xs px-2 py-1 rounded ${template.is_active ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}`}>{template.is_active ? 'Active' : 'Inactive'}</span>
+                <label className="flex items-center space-x-1 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={template.is_active}
+                    onChange={async (e) => {
+                      if (e.target.checked) {
+                        // Deactivate all other templates with same name/category
+                        const { data, error } = await supabase
+                          .from('email_templates')
+                          .update({ is_active: false })
+                          .eq('name', template.name)
+                          .eq('category_id', template.category_id)
+                          .neq('id', template.id);
+                        // Activate this template
+                        await supabase
+                          .from('email_templates')
+                          .update({ is_active: true })
+                          .eq('id', template.id);
+                        // Update local state
+                        setTemplates(templates.map(t => t.id === template.id ? { ...t, is_active: true } : (t.name === template.name && t.category_id === template.category_id ? { ...t, is_active: false } : t)));
+                      } else {
+                        // Just deactivate this template
+                        await supabase
+                          .from('email_templates')
+                          .update({ is_active: false })
+                          .eq('id', template.id);
+                        setTemplates(templates.map(t => t.id === template.id ? { ...t, is_active: false } : t));
+                      }
+                    }}
+                    className="w-4 h-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500"
+                  />
+                  <span>{template.is_active ? 'On' : 'Off'}</span>
+                </label>
+              </div>
             </div>
           ))}
         </div>
@@ -1143,6 +1330,20 @@ export const EmailSettings: React.FC = () => {
                   className="w-full p-3 bg-gray-700/50 border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 border-gray-600 focus:border-electric-500 focus:ring-electric-500/20"
                   placeholder="Welcome to {{site_name}}!"
                 />
+              </div>
+              {/* Category Dropdown */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Category</label>
+                <select
+                  value={selectedTemplate.category_id || ''}
+                  onChange={e => setSelectedTemplate({ ...selectedTemplate, category_id: e.target.value })}
+                  className="w-full p-3 bg-gray-700/50 border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 border-gray-600 focus:border-electric-500 focus:ring-electric-500/20"
+                >
+                  <option value="">Select a category...</option>
+                  {categories.map(category => (
+                    <option key={category.id} value={category.id}>{category.name} - {category.description}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">Email Body</label>
@@ -1218,7 +1419,7 @@ export const EmailSettings: React.FC = () => {
                         </button>
                       </div>
                       <Editor
-                        tinymceScriptSrc="https://cdn.tiny.cloud/1/2l8fxsmp22j75yhpuwrv2rbm6ygm83mk72jr7per4x4j77hl/tinymce/6/tinymce.min.js"
+                        tinymceScriptSrc={`https://cdn.tiny.cloud/1/${import.meta.env.VITE_TINYMCE_API_KEY}/tinymce/6/tinymce.min.js`}
                         onInit={(evt, editor) => editorRef.current = editor}
                         value={selectedTemplate.body}
                         onEditorChange={handleEditorChange}
@@ -1401,6 +1602,15 @@ The {{organization_name}} Team"
                   />
                 )}
               </div>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={selectedTemplate.is_active}
+                  onChange={e => setSelectedTemplate({ ...selectedTemplate, is_active: e.target.checked })}
+                  className="w-4 h-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500"
+                />
+                <span className="text-gray-300">Template is active</span>
+              </div>
             </div>
 
             {/* Variables Panel */}
@@ -1494,6 +1704,24 @@ The {{organization_name}} Team"
               </div>
             </div>
           </div>
+        </div>
+      )}
+      {showCategoryDebug && (
+        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 my-4">
+          <h4 className="text-yellow-400 font-medium mb-2">Debug: Loaded Categories ({categories.length})</h4>
+          {categories.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+              {categories.map(category => (
+                <div key={category.id} className="bg-gray-700/30 p-2 rounded">
+                  <div className="text-white font-medium">{category.name}</div>
+                  <div className="text-gray-400">{category.description}</div>
+                  <div className="text-gray-500 text-xs">ID: {category.id}</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-300">No categories loaded. Check database connection.</p>
+          )}
         </div>
       )}
     </div>
@@ -1816,6 +2044,80 @@ The {{organization_name}} Team"
     </div>
   );
 
+  const renderCategoriesTab = () => (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold text-white mb-4">Manage Email Template Categories</h2>
+      <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-medium text-white">Categories</h3>
+          <button className="px-4 py-2 bg-electric-500 text-white rounded-lg hover:bg-electric-600" onClick={() => openCategoryModal(null)}>+ New Category</button>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {categories.length === 0 ? (
+            <div className="text-gray-400">No categories found.</div>
+          ) : (
+            categories.map(category => (
+              <div key={category.id} className="bg-gray-700/50 rounded-lg p-4 border border-gray-600 flex flex-col space-y-2">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <div className="text-white font-bold">{category.name}</div>
+                    <div className="text-gray-400 text-sm">{category.description}</div>
+                  </div>
+                  <div className="flex space-x-2">
+                    <button className="px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-xs" onClick={() => openCategoryModal(category)}>Edit</button>
+                    <button className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-xs" onClick={() => setCategoryDeleteConfirm(category)}>Delete</button>
+                  </div>
+                </div>
+                <div className="text-xs text-gray-400">Order: {category.display_order} | Active: {category.is_active ? 'Yes' : 'No'}</div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+      {categoryModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-8 w-full max-w-md border border-gray-700">
+            <h3 className="text-xl font-bold text-white mb-4">{categoryToEdit ? 'Edit Category' : 'New Category'}</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Name</label>
+                <input type="text" value={categoryForm.name} onChange={e => setCategoryForm({ ...categoryForm, name: e.target.value })} className="w-full p-3 bg-gray-700/50 border rounded-lg text-white" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Description</label>
+                <input type="text" value={categoryForm.description} onChange={e => setCategoryForm({ ...categoryForm, description: e.target.value })} className="w-full p-3 bg-gray-700/50 border rounded-lg text-white" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Display Order</label>
+                <input type="number" value={categoryForm.display_order} onChange={e => setCategoryForm({ ...categoryForm, display_order: Number(e.target.value) })} className="w-full p-3 bg-gray-700/50 border rounded-lg text-white" />
+              </div>
+              <div className="flex items-center space-x-2">
+                <input type="checkbox" checked={categoryForm.is_active} onChange={e => setCategoryForm({ ...categoryForm, is_active: e.target.checked })} className="rounded border-gray-600 bg-gray-700 text-electric-500" />
+                <span className="text-sm text-gray-300">Active</span>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-3 mt-6">
+              <button onClick={() => setCategoryModalOpen(false)} className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">Cancel</button>
+              <button onClick={saveCategory} disabled={categoryModalLoading} className="px-4 py-2 bg-electric-500 text-white rounded hover:bg-electric-600 disabled:opacity-50">{categoryModalLoading ? 'Saving...' : 'Save'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {categoryDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-8 w-full max-w-md border border-gray-700">
+            <h3 className="text-xl font-bold text-white mb-4">Delete Category</h3>
+            <p className="text-gray-300 mb-6">Are you sure you want to delete the category <span className="text-orange-400 font-bold">{categoryDeleteConfirm.name}</span>? This cannot be undone.</p>
+            <div className="flex justify-end space-x-3">
+              <button onClick={() => setCategoryDeleteConfirm(null)} className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">Cancel</button>
+              <button onClick={deleteCategory} className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       {/* Tab Navigation */}
@@ -1829,7 +2131,7 @@ The {{organization_name}} Team"
                 : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300'
             }`}
           >
-            SMTP Configuration
+            Mailgun Email Configuration
           </button>
           <button
             onClick={() => setActiveTab('templates')}
@@ -1861,6 +2163,16 @@ The {{organization_name}} Team"
           >
             Email Preview
           </button>
+          <button
+            onClick={() => setActiveTab('categories')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'categories'
+                ? 'border-electric-500 text-electric-500'
+                : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300'
+            }`}
+          >
+            Categories
+          </button>
         </nav>
       </div>
 
@@ -1869,6 +2181,7 @@ The {{organization_name}} Team"
       {activeTab === 'templates' && renderTemplatesTab()}
       {activeTab === 'queue' && renderQueueTab()}
       {activeTab === 'preview' && renderPreviewTab()}
+      {activeTab === 'categories' && renderCategoriesTab()}
     </div>
   );
 }; 

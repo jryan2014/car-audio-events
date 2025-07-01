@@ -39,6 +39,17 @@ interface EmailTemplate {
   updated_at: string;
   variables?: string[];
   from_name?: string;
+  category_id?: string;
+}
+
+interface EmailTemplateCategory {
+  id: string;
+  name: string;
+  description: string;
+  display_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 interface EmailTemplateManagerProps {
@@ -65,10 +76,12 @@ const MEMBERSHIP_LEVELS = [
 
 export default function EmailTemplateManager({ onClose }: EmailTemplateManagerProps) {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [categories, setCategories] = useState<EmailTemplateCategory[]>([]);
   const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
   const [showAddTemplate, setShowAddTemplate] = useState(false);
   const [showVariables, setShowVariables] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('user');
+  const [selectedFilterCategory, setSelectedFilterCategory] = useState<string>('all');
   const [previewMode, setPreviewMode] = useState<'edit' | 'preview'>('edit');
   const [previewData, setPreviewData] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
@@ -88,6 +101,7 @@ export default function EmailTemplateManager({ onClose }: EmailTemplateManagerPr
 
   useEffect(() => {
     loadTemplates();
+    loadCategories();
     generatePreviewData();
   }, []);
 
@@ -199,7 +213,16 @@ export default function EmailTemplateManager({ onClose }: EmailTemplateManagerPr
     try {
       const { data, error } = await supabase
         .from('email_templates')
-        .select('*')
+        .select(`
+          *,
+          email_template_categories (
+            id,
+            name,
+            description,
+            display_order,
+            is_active
+          )
+        `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -210,6 +233,23 @@ export default function EmailTemplateManager({ onClose }: EmailTemplateManagerPr
       setTimeout(() => setMessage(''), 3000);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('email_template_categories')
+        .select('*')
+        .eq('is_active', true)
+        .order('display_order', { ascending: true });
+
+      if (error) throw error;
+      setCategories(data || []);
+    } catch (error) {
+      console.error('Error loading categories:', error);
+      setMessage('Failed to load email template categories');
+      setTimeout(() => setMessage(''), 3000);
     }
   };
 
@@ -227,6 +267,7 @@ export default function EmailTemplateManager({ onClose }: EmailTemplateManagerPr
             email_type: template.email_type,
             membership_level: template.membership_level,
             is_active: template.is_active,
+            category_id: template.category_id,
             updated_at: new Date().toISOString()
           })
           .eq('id', template.id);
@@ -243,7 +284,8 @@ export default function EmailTemplateManager({ onClose }: EmailTemplateManagerPr
             body: template.body,
             email_type: template.email_type,
             membership_level: template.membership_level,
-            is_active: template.is_active
+            is_active: template.is_active,
+            category_id: template.category_id
           });
 
         if (error) throw error;
@@ -441,6 +483,24 @@ export default function EmailTemplateManager({ onClose }: EmailTemplateManagerPr
           </div>
         )}
 
+        {/* Debug Categories Section */}
+        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
+          <h4 className="text-yellow-400 font-medium mb-2">Debug: Loaded Categories ({categories.length})</h4>
+          {categories.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+              {categories.map(category => (
+                <div key={category.id} className="bg-gray-700/30 p-2 rounded">
+                  <div className="text-white font-medium">{category.name}</div>
+                  <div className="text-gray-400">{category.description}</div>
+                  <div className="text-gray-500 text-xs">ID: {category.id}</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-300">No categories loaded. Check database connection.</p>
+          )}
+        </div>
+
         {/* Variables Panel */}
         {showVariables && (
           <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-6">
@@ -503,73 +563,116 @@ export default function EmailTemplateManager({ onClose }: EmailTemplateManagerPr
 
         {/* Templates List */}
         <div className="space-y-4">
-          {templates.length === 0 ? (
+          {/* Category Filter */}
+          <div className="flex items-center justify-between bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-4">
+            <div className="flex items-center space-x-4">
+              <label className="text-gray-300 text-sm font-medium">Filter by Category:</label>
+              <select
+                value={selectedFilterCategory}
+                onChange={(e) => setSelectedFilterCategory(e.target.value)}
+                className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+              >
+                <option value="all">All Categories</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="text-sm text-gray-400">
+              {templates.filter(template => 
+                selectedFilterCategory === 'all' || template.category_id === selectedFilterCategory
+              ).length} templates
+            </div>
+          </div>
+
+          {templates.filter(template => 
+            selectedFilterCategory === 'all' || template.category_id === selectedFilterCategory
+          ).length === 0 ? (
             <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-8 text-center">
               <FileText className="h-12 w-12 text-gray-500 mx-auto mb-4" />
-              <h3 className="text-white font-medium mb-2">No Email Templates Found</h3>
-              <p className="text-gray-400 mb-4">Create your first email template to get started</p>
+              <h3 className="text-white font-medium mb-2">
+                {selectedFilterCategory === 'all' ? 'No Email Templates Found' : 'No Templates in Selected Category'}
+              </h3>
+              <p className="text-gray-400 mb-4">
+                {selectedFilterCategory === 'all' 
+                  ? 'Create your first email template to get started' 
+                  : 'No templates found in this category'
+                }
+              </p>
               <button
                 onClick={() => setShowAddTemplate(true)}
                 className="px-4 py-2 bg-electric-500 text-white rounded-lg hover:bg-electric-600 transition-all duration-200"
               >
-                Create First Template
+                Create New Template
               </button>
             </div>
           ) : (
-            templates.map((template) => (
-              <div key={template.id} className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-4">
-                    <div className={`p-3 rounded-lg ${template.is_active ? 'bg-green-500/20' : 'bg-gray-500/20'}`}>
-                      <Mail className={`h-6 w-6 ${template.is_active ? 'text-green-400' : 'text-gray-400'}`} />
-                    </div>
-                    <div>
-                      <h3 className="text-white font-bold text-lg">{template.name}</h3>
-                      <p className="text-gray-300">{template.subject}</p>
-                      <div className="flex items-center space-x-4 mt-1">
-                        <span className={`text-xs px-2 py-1 rounded ${
-                          template.is_active ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
-                        }`}>
-                          {template.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                        <span className="text-xs px-2 py-1 rounded bg-blue-500/20 text-blue-400">
-                          {EMAIL_TYPES.find(t => t.value === template.email_type)?.label || template.email_type}
-                        </span>
-                        <span className="text-xs px-2 py-1 rounded bg-purple-500/20 text-purple-400">
-                          {MEMBERSHIP_LEVELS.find(m => m.value === template.membership_level)?.label || template.membership_level}
-                        </span>
+            templates.filter(template => 
+              selectedFilterCategory === 'all' || template.category_id === selectedFilterCategory
+            ).map((template) => {
+              const category = categories.find(cat => cat.id === template.category_id);
+              return (
+                <div key={template.id} className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-4">
+                      <div className={`p-3 rounded-lg ${template.is_active ? 'bg-green-500/20' : 'bg-gray-500/20'}`}>
+                        <Mail className={`h-6 w-6 ${template.is_active ? 'text-green-400' : 'text-gray-400'}`} />
+                      </div>
+                      <div>
+                        <h3 className="text-white font-bold text-lg">{template.name}</h3>
+                        <p className="text-gray-300">{template.subject}</p>
+                        <div className="flex items-center space-x-4 mt-1">
+                          <span className={`text-xs px-2 py-1 rounded ${
+                            template.is_active ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
+                          }`}>
+                            {template.is_active ? 'Active' : 'Inactive'}
+                          </span>
+                          <span className="text-xs px-2 py-1 rounded bg-blue-500/20 text-blue-400">
+                            {EMAIL_TYPES.find(t => t.value === template.email_type)?.label || template.email_type}
+                          </span>
+                          <span className="text-xs px-2 py-1 rounded bg-purple-500/20 text-purple-400">
+                            {MEMBERSHIP_LEVELS.find(m => m.value === template.membership_level)?.label || template.membership_level}
+                          </span>
+                          {category && (
+                            <span className="text-xs px-2 py-1 rounded bg-orange-500/20 text-orange-400">
+                              {category.name}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => handleEdit(template)}
-                      className="flex items-center space-x-2 px-3 py-2 bg-electric-500/20 text-electric-400 rounded-lg hover:bg-electric-500/30 transition-all duration-200"
-                    >
-                      <Edit2 className="h-4 w-4" />
-                      <span>Edit</span>
-                    </button>
-                    <button
-                      onClick={() => toggleTemplateStatus(template.id, template.is_active)}
-                      className={`px-3 py-2 rounded-lg transition-all duration-200 ${
-                        template.is_active 
-                          ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' 
-                          : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
-                      }`}
-                    >
-                      {template.is_active ? 'Disable' : 'Enable'}
-                    </button>
-                    <button
-                      onClick={() => handleDelete(template.id)}
-                      className="p-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-all duration-200"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => handleEdit(template)}
+                        className="flex items-center space-x-2 px-3 py-2 bg-electric-500/20 text-electric-400 rounded-lg hover:bg-electric-500/30 transition-all duration-200"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                        <span>Edit</span>
+                      </button>
+                      <button
+                        onClick={() => toggleTemplateStatus(template.id, template.is_active)}
+                        className={`px-3 py-2 rounded-lg transition-all duration-200 ${
+                          template.is_active 
+                            ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' 
+                            : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                        }`}
+                      >
+                        {template.is_active ? 'Disable' : 'Enable'}
+                      </button>
+                      <button
+                        onClick={() => handleDelete(template.id)}
+                        className="p-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-all duration-200"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
@@ -628,11 +731,13 @@ export default function EmailTemplateManager({ onClose }: EmailTemplateManagerPr
                     setTemplate={editingTemplate ? (template) => setEditingTemplate({...editingTemplate, ...template}) : (template) => setNewTemplate({...newTemplate, ...template})}
                     onSave={() => saveTemplate(editingTemplate || newTemplate)}
                     saving={saving}
+                    categories={categories}
                   />
                 ) : (
                   <TemplatePreview
                     template={editingTemplate || newTemplate}
                     previewData={previewData}
+                    categories={categories}
                   />
                 )}
               </div>
@@ -649,12 +754,14 @@ function TemplateEditor({
   template, 
   setTemplate, 
   onSave, 
-  saving 
+  saving,
+  categories
 }: {
   template: Partial<EmailTemplate>;
   setTemplate: (template: Partial<EmailTemplate>) => void;
   onSave: () => void;
   saving: boolean;
+  categories: EmailTemplateCategory[];
 }) {
   const [showVariables, setShowVariables] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('user');
@@ -720,6 +827,32 @@ function TemplateEditor({
           </p>
         </div>
 
+        <div>
+          <label className="block text-gray-300 text-sm font-medium mb-2">
+            System Section (Category) *
+            <HelpIcon tooltip="The system section this template belongs to for organization" />
+          </label>
+          <select
+            value={template.category_id || ''}
+            onChange={(e) => setTemplate({ ...template, category_id: e.target.value })}
+            className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+          >
+            <option value="">Select a category...</option>
+            {categories.map(category => (
+              <option key={category.id} value={category.id}>
+                {category.name} - {category.description}
+              </option>
+            ))}
+          </select>
+          <p className="text-gray-400 text-xs mt-1">
+            Choose the system section that best describes this template's purpose
+          </p>
+          {/* Debug info */}
+          <div className="text-xs text-yellow-400 mt-1">
+            Current: {template.category_id || 'none'} | Available: {categories.length} categories
+          </div>
+        </div>
+
         <div className="flex items-center">
           <label className="flex items-center space-x-3">
             <input
@@ -751,13 +884,26 @@ function TemplateEditor({
 
       {/* TinyMCE HTML Content Editor */}
       <div>
-        <label className="block text-gray-300 text-sm font-medium mb-2">
-          HTML Email Content *
-          <HelpIcon tooltip="Rich HTML content for your email - use the toolbar to format text" />
-        </label>
+        <div className="flex items-center justify-between mb-2">
+          <label className="block text-gray-300 text-sm font-medium">
+            HTML Email Content *
+            <HelpIcon tooltip="Rich HTML content for your email - use the toolbar to format text" />
+          </label>
+          <button
+            type="button"
+            onClick={() => {
+              const logoHtml = '<img src="/assets/logos/cae-logo-main.png" alt="Car Audio Events" style="max-width: 200px; height: auto; margin: 20px 0;" />';
+              setTemplate({ ...template, body: (template.body || '') + logoHtml });
+            }}
+            className="flex items-center space-x-2 px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
+          >
+            <span>📷</span>
+            <span>Insert Logo</span>
+          </button>
+        </div>
         <div className="border border-gray-600 rounded-lg overflow-hidden">
           <Editor
-            tinymceScriptSrc="https://cdn.tiny.cloud/1/2l8fxsmp22j75yhpuwrv2rbm6ygm83mk72jr7per4x4j77hl/tinymce/6/tinymce.min.js"
+            tinymceScriptSrc="https://cdn.tiny.cloud/1/import.meta.env.VITE_TINYMCE_API_KEY/tinymce/6/tinymce.min.js"
             value={template.body || ''}
             onEditorChange={(content) => setTemplate({ ...template, body: content })}
             init={{
@@ -782,9 +928,9 @@ function TemplateEditor({
               image_advtab: true,
               image_caption: true,
               image_list: [
-                {title: 'CAE Logo Main', value: 'https://caraudioevents.com/assets/logos/cae-logo-main.png'},
-                {title: 'CAE Logo No Background', value: 'https://caraudioevents.com/assets/logos/cae-logo-no-bg.png'},
-                {title: 'CAE Logo V2', value: 'https://caraudioevents.com/assets/logos/cae-logo-v2.png'}
+                {title: 'CAE Logo Main', value: '/assets/logos/cae-logo-main.png'},
+                {title: 'CAE Logo No Background', value: '/assets/logos/cae-logo-no-bg.png'},
+                {title: 'CAE Logo V2', value: '/assets/logos/cae-logo-v2.png'}
               ],
               link_list: [
                 {title: 'Car Audio Events Website', value: 'https://caraudioevents.com'},
@@ -996,13 +1142,16 @@ function HelpIcon({ tooltip }: { tooltip: string }) {
 // Template Preview Component
 function TemplatePreview({ 
   template, 
-  previewData 
+  previewData,
+  categories
 }: {
   template: Partial<EmailTemplate>;
   previewData: Record<string, any>;
+  categories: EmailTemplateCategory[];
 }) {
   const previewSubject = replaceVariables(template.subject || '', previewData);
   const previewHtml = replaceVariables(template.body || '', previewData);
+  const category = categories.find(cat => cat.id === template.category_id);
 
   return (
     <div className="space-y-6">
@@ -1060,6 +1209,12 @@ function TemplatePreview({
             <span className="text-gray-400">Membership Level:</span>
             <div className="text-white">
               {MEMBERSHIP_LEVELS.find(m => m.value === template.membership_level)?.label || 'All Users'}
+            </div>
+          </div>
+          <div>
+            <span className="text-gray-400">System Section:</span>
+            <div className="text-white">
+              {category ? `${category.name} - ${category.description}` : 'Not assigned'}
             </div>
           </div>
           <div>
@@ -1166,7 +1321,7 @@ const EmailTemplateModal = ({ template, onClose }: { template: Partial<EmailTemp
             className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white"
           />
           <Editor
-            tinymceScriptSrc="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js"
+            tinymceScriptSrc="https://cdn.tiny.cloud/1/import.meta.env.VITE_TINYMCE_API_KEY/tinymce/6/tinymce.min.js"
             onInit={(evt, editor) => editorRef.current = editor}
             initialValue={formData.body || ''}
             init={{
