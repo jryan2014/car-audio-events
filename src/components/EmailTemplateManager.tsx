@@ -757,7 +757,7 @@ function TemplateEditor({
         </label>
         <div className="border border-gray-600 rounded-lg overflow-hidden">
           <Editor
-            tinymceScriptSrc="/tinymce/tinymce.min.js"
+            tinymceScriptSrc="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js"
             value={template.body || ''}
             onEditorChange={(content) => setTemplate({ ...template, body: content })}
             init={{
@@ -1167,7 +1167,7 @@ const EmailTemplateModal = ({ template, onClose }: { template: Partial<EmailTemp
             className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white"
           />
           <Editor
-            tinymceScriptSrc="/tinymce/tinymce.min.js"
+            tinymceScriptSrc="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js"
             onInit={(evt, editor) => editorRef.current = editor}
             initialValue={formData.body || ''}
             init={{
