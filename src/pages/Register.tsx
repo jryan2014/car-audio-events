@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, MapPin, Eye, EyeOff, Volume2, Building, Wrench, Users, AlertTriangle, Loader, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import HCaptcha from '@hcaptcha/react-hcaptcha';
+import HCaptcha, { HCaptchaRef } from '../components/HCaptcha';
 import { supabase } from '../lib/supabase';
 
 export default function Register() {
@@ -25,7 +25,7 @@ export default function Register() {
   
   const { register } = useAuth();
   const navigate = useNavigate();
-  const captchaRef = useRef<HCaptcha>(null);
+  const captchaRef = useRef<HCaptchaRef>(null);
 
   const membershipTypes = [
     {
@@ -165,7 +165,7 @@ export default function Register() {
       // Reset captcha on failed registration
       if (captchaRef.current) {
         try {
-          captchaRef.current.resetCaptcha();
+          captchaRef.current.reset();
         } catch (resetError) {
           console.error('Error resetting captcha:', resetError);
         }
@@ -394,15 +394,11 @@ export default function Register() {
             {/* Captcha */}
             <div className="mt-6 flex flex-col items-center">
               <HCaptcha
-                sitekey={import.meta.env.VITE_HCAPTCHA_SITE_KEY || 'acc27e90-e7ae-451e-bbfa-c738c53420fe'}
                 onVerify={handleCaptchaVerify}
-                onError={handleCaptchaError}
+                onError={() => handleCaptchaError('script-error')}
                 onExpire={() => {
                   setCaptchaToken(null);
                   setDebugInfo('⏰ Captcha expired. Please complete it again.');
-                }}
-                onLoad={() => {
-                  setDebugInfo('✅ hCaptcha loaded successfully.');
                 }}
                 ref={captchaRef}
                 theme="dark"

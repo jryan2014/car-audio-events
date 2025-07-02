@@ -75,7 +75,7 @@ const HCaptcha = forwardRef<HCaptchaRef, HCaptchaProps>(({
   const renderCaptcha = async () => {
     if (!captchaRef.current) return;
 
-    const siteKey = import.meta.env.VITE_HCAPTCHA_SITE_KEY;
+    const siteKey = import.meta.env.VITE_HCAPTCHA_SITE_KEY || 'acc27e90-e7ae-451e-bbfa-c738c53420fe';
     if (!siteKey) {
       console.warn('hCaptcha site key not found. Please add VITE_HCAPTCHA_SITE_KEY to your environment variables.');
       return;
