@@ -1,9 +1,19 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, MapPin, Eye, EyeOff, Volume2, Building, Wrench, Users, AlertTriangle, Loader, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import HCaptcha, { HCaptchaRef } from '../components/HCaptcha';
 import { supabase } from '../lib/supabase';
+
+interface MembershipPlan {
+  id: string;
+  name: string;
+  type: 'competitor' | 'retailer' | 'manufacturer' | 'organization';
+  description: string;
+  features: string[];
+  is_active: boolean;
+  hidden_on_frontend: boolean;
+}
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -22,41 +32,89 @@ export default function Register() {
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaError, setCaptchaError] = useState('');
+  const [membershipPlans, setMembershipPlans] = useState<MembershipPlan[]>([]);
+  const [plansLoading, setPlansLoading] = useState(true);
   
   const { register } = useAuth();
   const navigate = useNavigate();
   const captchaRef = useRef<HCaptchaRef>(null);
 
-  const membershipTypes = [
-    {
-      id: 'competitor',
-      title: 'Competitor',
-      description: 'Free membership for car audio enthusiasts',
-      icon: User,
-      features: ['Event browsing', 'Score tracking', 'Profile creation', 'Team participation']
-    },
-    {
-      id: 'retailer',
-      title: 'Retailer',
-      description: 'For car audio retailers and installers',
-      icon: Building,
-      features: ['Directory listing', 'Event submissions', 'Customer analytics', 'Advertising options']
-    },
-    {
-      id: 'manufacturer',
-      title: 'Manufacturer',
-      description: 'For car audio equipment manufacturers',
-      icon: Wrench,
-      features: ['Product listings', 'Brand promotion', 'Event sponsorship', 'Market insights']
-    },
-    {
-      id: 'organization',
-      title: 'Organization',
-      description: 'For car audio organizations and clubs',
-      icon: Users,
-      features: ['Event hosting', 'Member management', 'Community building', 'Sponsorship opportunities']
+  // Load membership plans from database
+  useEffect(() => {
+    loadMembershipPlans();
+  }, []);
+
+  const loadMembershipPlans = async () => {
+    try {
+      setPlansLoading(true);
+      const { data, error } = await supabase
+        .from('membership_plans')
+        .select('id, name, type, description, features, is_active, hidden_on_frontend')
+        .eq('is_active', true)
+        .eq('hidden_on_frontend', false)
+        .order('display_order', { ascending: true });
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        const plans: MembershipPlan[] = data.map(plan => ({
+          id: plan.id,
+          name: plan.name,
+          type: plan.type,
+          description: plan.description,
+          features: Array.isArray(plan.features) ? plan.features : [],
+          is_active: plan.is_active,
+          hidden_on_frontend: plan.hidden_on_frontend || false
+        }));
+        
+        setMembershipPlans(plans);
+        
+        // Set default selection to first available plan
+        if (plans.length > 0) {
+          setFormData(prev => ({ ...prev, membershipType: plans[0].type }));
+        }
+      } else {
+        // Fallback to hardcoded plans if none in database
+        setMembershipPlans([
+          {
+            id: 'competitor-default',
+            name: 'Competitor',
+            type: 'competitor',
+            description: 'Free membership for car audio enthusiasts',
+            features: ['Event browsing', 'Score tracking', 'Profile creation', 'Team participation'],
+            is_active: true,
+            hidden_on_frontend: false
+          }
+        ]);
+      }
+    } catch (error) {
+      console.error('Failed to load membership plans:', error);
+      // Fallback to hardcoded plans on error
+      setMembershipPlans([
+        {
+          id: 'competitor-default',
+          name: 'Competitor',
+          type: 'competitor',
+          description: 'Free membership for car audio enthusiasts',
+          features: ['Event browsing', 'Score tracking', 'Profile creation', 'Team participation'],
+          is_active: true,
+          hidden_on_frontend: false
+        }
+      ]);
+    } finally {
+      setPlansLoading(false);
     }
-  ];
+  };
+
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'competitor': return User;
+      case 'retailer': return Building;
+      case 'manufacturer': return Wrench;
+      case 'organization': return Users;
+      default: return User;
+    }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -238,24 +296,35 @@ export default function Register() {
 
         {/* Membership Type Selection */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {membershipTypes.map((type) => (
+          {plansLoading ? (
+            <div className="col-span-full flex items-center justify-center py-8">
+              <Loader className="animate-spin h-8 w-8 text-electric-500" />
+              <span className="ml-2 text-gray-400">Loading membership plans...</span>
+            </div>
+          ) : membershipPlans.length === 0 ? (
+            <div className="col-span-full text-center py-8">
+              <AlertTriangle className="h-8 w-8 text-yellow-500 mx-auto mb-2" />
+              <p className="text-gray-400">No membership plans available at this time.</p>
+            </div>
+          ) : (
+            membershipPlans.map((type) => (
             <div
               key={type.id}
-              onClick={() => setFormData({ ...formData, membershipType: type.id })}
+              onClick={() => setFormData({ ...formData, membershipType: type.type })}
               className={`relative cursor-pointer rounded-xl p-6 transition-all duration-200 border-2 ${
-                formData.membershipType === type.id
+                formData.membershipType === type.type
                   ? 'border-electric-500 bg-electric-500/10 shadow-lg shadow-electric-500/20'
                   : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
               }`}
             >
               <div className="flex items-center space-x-3 mb-4">
                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                  formData.membershipType === type.id ? 'bg-electric-500' : 'bg-gray-700'
+                  formData.membershipType === type.type ? 'bg-electric-500' : 'bg-gray-700'
                 }`}>
-                  <type.icon className="h-5 w-5 text-white" />
+                                      {React.createElement(getTypeIcon(type.type), { className: "h-5 w-5 text-white" })}
                 </div>
                 <div>
-                  <h3 className="font-bold text-white">{type.title}</h3>
+                  <h3 className="font-bold text-white">{type.name}</h3>
                   <p className="text-xs text-gray-400">{type.description}</p>
                 </div>
               </div>
@@ -267,13 +336,14 @@ export default function Register() {
                   </li>
                 ))}
               </ul>
-              {formData.membershipType === type.id && (
+              {formData.membershipType === type.type && (
                 <div className="absolute top-2 right-2">
                   <CheckCircle className="h-5 w-5 text-electric-500" />
                 </div>
               )}
-            </div>
-          ))}
+                          </div>
+            ))
+          )}
         </div>
 
         <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-8">
