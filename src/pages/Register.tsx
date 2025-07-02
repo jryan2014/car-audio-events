@@ -74,7 +74,8 @@ export default function Register() {
   const handleCaptchaError = (err: any) => {
     setCaptchaError('Captcha verification failed. Please try again.');
     setCaptchaToken(null);
-    setDebugInfo(`❌ Captcha error: ${err}`);
+    setDebugInfo(`❌ Captcha error: Error: ${err || 'script-error'}`);
+    console.error('hCaptcha error:', err);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -163,7 +164,11 @@ export default function Register() {
       
       // Reset captcha on failed registration
       if (captchaRef.current) {
-        captchaRef.current.resetCaptcha();
+        try {
+          captchaRef.current.resetCaptcha();
+        } catch (resetError) {
+          console.error('Error resetting captcha:', resetError);
+        }
       }
       setCaptchaToken(null);
     } finally {
@@ -388,14 +393,27 @@ export default function Register() {
 
             {/* Captcha */}
             <div className="mt-6 flex flex-col items-center">
-               <HCaptcha
+              {!import.meta.env.VITE_HCAPTCHA_SITE_KEY ? (
+                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 text-center">
+                  <p className="text-red-400 text-sm">❌ hCaptcha site key not configured</p>
+                  <p className="text-red-300 text-xs mt-1">Please add VITE_HCAPTCHA_SITE_KEY to environment variables</p>
+                </div>
+              ) : (
+                <HCaptcha
                   sitekey={import.meta.env.VITE_HCAPTCHA_SITE_KEY}
                   onVerify={handleCaptchaVerify}
                   onError={handleCaptchaError}
-                  onExpire={() => setCaptchaToken(null)}
+                  onExpire={() => {
+                    setCaptchaToken(null);
+                    setDebugInfo('⏰ Captcha expired. Please complete it again.');
+                  }}
+                  onLoad={() => {
+                    setDebugInfo('✅ hCaptcha loaded successfully.');
+                  }}
                   ref={captchaRef}
                   theme="dark"
                 />
+              )}
               {captchaError && (
                 <p className="mt-2 text-sm text-red-400">{captchaError}</p>
               )}
