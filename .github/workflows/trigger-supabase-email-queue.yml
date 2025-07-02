@@ -1,0 +1,15 @@
+name: Trigger Supabase Email Queue
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'  # Every 5 minutes
+  workflow_dispatch:       # Allow manual runs
+
+jobs:
+  trigger-email-queue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Supabase Edge Function
+        run: |
+          curl -X POST "https://nqvisvranvjaghvrdaaz.supabase.co/functions/v1/process-email-queue?cron_secret=n%267i%25HgGqyx86MWx%40Kgrid5JsL9XAtrzKWEkAYv%21%5Et%25SCnEHJD8Q5C2bT%21GC" \
+            -H "Content-Type: application/json" 
