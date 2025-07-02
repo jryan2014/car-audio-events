@@ -314,56 +314,62 @@ export default function Register() {
           </div>
         )}
 
-                {/* Plan Selection Section */}
+        {/* Plan Selection Section */}
         {preSelectedPlan && selectedPlanDetails ? (
-          /* Pre-selected Plan Display */
+          /* Single Selected Plan Display - Centered */
           <div className="mb-8">
-            <div className="bg-gradient-to-r from-electric-500/10 to-accent-500/10 border border-electric-500/20 rounded-xl p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-3">
-                  {React.createElement(getTypeIcon(selectedPlanDetails.type), { className: "h-8 w-8 text-electric-500" })}
-                  <div>
-                    <h3 className="text-xl font-bold text-white">{selectedPlanDetails.name}</h3>
-                    <p className="text-gray-400">{selectedPlanDetails.description}</p>
+            <div className="text-center mb-6">
+              <h3 className="text-xl font-bold text-white mb-2">Your Selected Plan</h3>
+              <p className="text-gray-400">Complete your registration to get started</p>
+            </div>
+            
+            {/* Single Centered Plan Card */}
+            <div className="max-w-md mx-auto">
+              <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-6 border-2 border-electric-500 shadow-lg shadow-electric-500/20">
+                <div className="text-center mb-6">
+                  <div className="inline-flex items-center justify-center w-16 h-16 bg-electric-500 rounded-full mb-4">
+                    {React.createElement(getTypeIcon(selectedPlanDetails.type), { className: "h-8 w-8 text-white" })}
                   </div>
-                </div>
-                <div className="flex items-center space-x-4">
-                  {selectedPlanDetails.price !== undefined && (
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-white">
-                        {selectedPlanDetails.price === 0 ? 'Free' : `$${selectedPlanDetails.price}`}
+                  <h3 className="text-2xl font-bold text-white mb-2">{selectedPlanDetails.name}</h3>
+                  <p className="text-gray-400 mb-4">{selectedPlanDetails.description}</p>
+                  
+                  <div className="mb-4">
+                    {selectedPlanDetails.price === 0 ? (
+                      <div className="text-3xl font-black text-white">Free</div>
+                    ) : (
+                      <div className="flex items-baseline justify-center">
+                        <span className="text-3xl font-black text-white">${selectedPlanDetails.price}</span>
+                        {selectedPlanDetails.billing_period && (
+                          <span className="text-gray-400 ml-2">/{selectedPlanDetails.billing_period}</span>
+                        )}
                       </div>
-                      {selectedPlanDetails.billing_period && selectedPlanDetails.price > 0 && (
-                        <div className="text-sm text-gray-400">/{selectedPlanDetails.billing_period}</div>
-                      )}
-                    </div>
-                  )}
-                  <Link 
-                    to="/pricing" 
-                    className="flex items-center space-x-2 text-electric-400 hover:text-electric-300 font-medium transition-colors"
-                  >
-                    <Edit className="h-4 w-4" />
-                    <span>Change Plan</span>
-                  </Link>
+                    )}
+                  </div>
                 </div>
+
+                <ul className="space-y-3 mb-6">
+                  {selectedPlanDetails.features.map((feature, index) => (
+                    <li key={index} className="flex items-center space-x-3">
+                      <CheckCircle className="h-5 w-5 text-electric-500 flex-shrink-0" />
+                      <span className="text-gray-300">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {selectedPlanDetails.features.slice(0, 6).map((feature, index) => (
-                  <div key={index} className="flex items-center space-x-2 text-sm text-gray-300">
-                    <CheckCircle className="h-3 w-3 text-electric-500 flex-shrink-0" />
-                    <span>{feature}</span>
-                  </div>
-                ))}
-                {selectedPlanDetails.features.length > 6 && (
-                  <div className="text-sm text-gray-400">
-                    +{selectedPlanDetails.features.length - 6} more features
-                  </div>
-                )}
+              
+              {/* Change Plan Link - Centered Below Card */}
+              <div className="text-center mt-4">
+                <Link 
+                  to="/pricing" 
+                  className="text-electric-400 hover:text-electric-300 font-medium transition-colors"
+                >
+                  View All Plans & Pricing
+                </Link>
               </div>
             </div>
           </div>
         ) : (
-          /* Full Plan Selection Grid */
+          /* Full Plan Selection Grid - Only when no plan selected */
           <div className="mb-8">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-white">Choose Your Membership</h3>
