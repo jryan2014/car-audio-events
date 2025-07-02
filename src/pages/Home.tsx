@@ -200,7 +200,7 @@ export default function Home() {
                 showcase your system, and compete with the best sound enthusiasts worldwide.
               </p>
               <div className="flex space-x-3">
-                <Link to="/register" className="flex-1 bg-electric-500 text-white px-4 py-3 rounded-lg text-sm font-bold hover:bg-electric-600 transition-all duration-200 shadow-lg flex items-center justify-center">Join</Link>
+                <Link to="/pricing" className="flex-1 bg-electric-500 text-white px-4 py-3 rounded-lg text-sm font-bold hover:bg-electric-600 transition-all duration-200 shadow-lg flex items-center justify-center">Join</Link>
                 <Link to="/events" className="flex-1 bg-white/10 text-white px-4 py-3 rounded-lg text-sm font-bold hover:bg-white/20 transition-all duration-200 border border-white/20 flex items-center justify-center">Events</Link>
               </div>
               </div>
@@ -345,7 +345,7 @@ export default function Home() {
             Create your competitor profile, showcase your sound system, and start tracking your competition scores today.
           </p>
           <Link 
-            to="/register"
+            to="/pricing"
             className="inline-flex items-center space-x-2 bg-electric-500 text-white px-8 py-4 rounded-lg font-bold text-lg hover:bg-electric-600 transition-all duration-200 shadow-lg"
           >
             <span>Get Started Now</span>

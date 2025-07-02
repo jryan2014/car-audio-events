@@ -25,6 +25,11 @@ Before creating any new file (e.g., `.tsx`, `.ts`), you MUST follow this workflo
 2. **Determine Correct Path**: Based on the `File Structure` rules under `Coding Standards`, determine and state the full, correct path for the new file (e.g., "The component will be created at `src/components/new/NewComponent.tsx`").
 3. **Request Approval**: Ask for permission to proceed before creating the file.
 
+### Date & Time Protocols
+- **Always Get Current Date**: AI agents MUST use `new Date().toISOString()` or equivalent to get the actual current date/time
+- **Never Use Placeholder Dates**: NEVER use example dates like "2025-01-02" - always get real current date
+- **Verify Date Format**: Always use YYYY-MM-DD_HH-mm-ss format for backups and timestamps
+
 ## Coding Standards
 
 ### TypeScript

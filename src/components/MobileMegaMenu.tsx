@@ -385,7 +385,7 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, onL
               Login
             </Link>
             <Link
-              to="/register"
+              to="/pricing"
               onClick={onLinkClick}
               className="block w-full text-center px-4 py-2 rounded-lg bg-electric-600 hover:bg-electric-500 text-white font-bold transition-colors duration-200"
             >

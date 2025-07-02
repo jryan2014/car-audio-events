@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, User, MapPin, Eye, EyeOff, Volume2, Building, Wrench, Users, AlertTriangle, Loader, CheckCircle } from 'lucide-react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Mail, Lock, User, MapPin, Eye, EyeOff, Volume2, Building, Wrench, Users, AlertTriangle, Loader, CheckCircle, ArrowLeft, Edit } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import HCaptcha, { HCaptchaRef } from '../components/HCaptcha';
 import { supabase } from '../lib/supabase';
@@ -13,16 +13,21 @@ interface MembershipPlan {
   features: string[];
   is_active: boolean;
   hidden_on_frontend: boolean;
+  price?: number;
+  billing_period?: string;
 }
 
 export default function Register() {
+  const [searchParams] = useSearchParams();
+  const preSelectedPlan = searchParams.get('plan');
+  
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
     confirmPassword: '',
     location: '',
-    membershipType: 'competitor'
+    membershipType: preSelectedPlan || 'competitor'
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -34,6 +39,7 @@ export default function Register() {
   const [captchaError, setCaptchaError] = useState('');
   const [membershipPlans, setMembershipPlans] = useState<MembershipPlan[]>([]);
   const [plansLoading, setPlansLoading] = useState(true);
+  const [selectedPlanDetails, setSelectedPlanDetails] = useState<MembershipPlan | null>(null);
   
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -44,12 +50,20 @@ export default function Register() {
     loadMembershipPlans();
   }, []);
 
+  // Update selected plan details when membership type changes
+  useEffect(() => {
+    if (membershipPlans.length > 0) {
+      const selected = membershipPlans.find(plan => plan.type === formData.membershipType);
+      setSelectedPlanDetails(selected || null);
+    }
+  }, [formData.membershipType, membershipPlans]);
+
   const loadMembershipPlans = async () => {
     try {
       setPlansLoading(true);
       const { data, error } = await supabase
         .from('membership_plans')
-        .select('id, name, type, description, features, is_active, hidden_on_frontend')
+        .select('id, name, type, description, features, is_active, hidden_on_frontend, price, billing_period')
         .eq('is_active', true)
         .eq('hidden_on_frontend', false)
         .order('display_order', { ascending: true });
@@ -64,13 +78,15 @@ export default function Register() {
           description: plan.description,
           features: Array.isArray(plan.features) ? plan.features : [],
           is_active: plan.is_active,
-          hidden_on_frontend: plan.hidden_on_frontend || false
+          hidden_on_frontend: plan.hidden_on_frontend || false,
+          price: plan.price,
+          billing_period: plan.billing_period
         }));
         
         setMembershipPlans(plans);
         
-        // Set default selection to first available plan
-        if (plans.length > 0) {
+        // If no pre-selected plan, set default to first available plan
+        if (!preSelectedPlan && plans.length > 0) {
           setFormData(prev => ({ ...prev, membershipType: plans[0].type }));
         }
       } else {
@@ -83,7 +99,9 @@ export default function Register() {
             description: 'Free membership for car audio enthusiasts',
             features: ['Event browsing', 'Score tracking', 'Profile creation', 'Team participation'],
             is_active: true,
-            hidden_on_frontend: false
+            hidden_on_frontend: false,
+            price: 0,
+            billing_period: 'free'
           }
         ]);
       }
@@ -98,7 +116,9 @@ export default function Register() {
           description: 'Free membership for car audio enthusiasts',
           features: ['Event browsing', 'Score tracking', 'Profile creation', 'Team participation'],
           is_active: true,
-          hidden_on_frontend: false
+          hidden_on_frontend: false,
+          price: 0,
+          billing_period: 'free'
         }
       ]);
     } finally {
@@ -294,57 +314,118 @@ export default function Register() {
           </div>
         )}
 
-        {/* Membership Type Selection */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {plansLoading ? (
-            <div className="col-span-full flex items-center justify-center py-8">
-              <Loader className="animate-spin h-8 w-8 text-electric-500" />
-              <span className="ml-2 text-gray-400">Loading membership plans...</span>
-            </div>
-          ) : membershipPlans.length === 0 ? (
-            <div className="col-span-full text-center py-8">
-              <AlertTriangle className="h-8 w-8 text-yellow-500 mx-auto mb-2" />
-              <p className="text-gray-400">No membership plans available at this time.</p>
-            </div>
-          ) : (
-            membershipPlans.map((type) => (
-            <div
-              key={type.id}
-              onClick={() => setFormData({ ...formData, membershipType: type.type })}
-              className={`relative cursor-pointer rounded-xl p-6 transition-all duration-200 border-2 ${
-                formData.membershipType === type.type
-                  ? 'border-electric-500 bg-electric-500/10 shadow-lg shadow-electric-500/20'
-                  : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
-              }`}
-            >
-              <div className="flex items-center space-x-3 mb-4">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                  formData.membershipType === type.type ? 'bg-electric-500' : 'bg-gray-700'
-                }`}>
-                                      {React.createElement(getTypeIcon(type.type), { className: "h-5 w-5 text-white" })}
+                {/* Plan Selection Section */}
+        {preSelectedPlan && selectedPlanDetails ? (
+          /* Pre-selected Plan Display */
+          <div className="mb-8">
+            <div className="bg-gradient-to-r from-electric-500/10 to-accent-500/10 border border-electric-500/20 rounded-xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-3">
+                  {React.createElement(getTypeIcon(selectedPlanDetails.type), { className: "h-8 w-8 text-electric-500" })}
+                  <div>
+                    <h3 className="text-xl font-bold text-white">{selectedPlanDetails.name}</h3>
+                    <p className="text-gray-400">{selectedPlanDetails.description}</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-bold text-white">{type.name}</h3>
-                  <p className="text-xs text-gray-400">{type.description}</p>
+                <div className="flex items-center space-x-4">
+                  {selectedPlanDetails.price !== undefined && (
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-white">
+                        {selectedPlanDetails.price === 0 ? 'Free' : `$${selectedPlanDetails.price}`}
+                      </div>
+                      {selectedPlanDetails.billing_period && selectedPlanDetails.price > 0 && (
+                        <div className="text-sm text-gray-400">/{selectedPlanDetails.billing_period}</div>
+                      )}
+                    </div>
+                  )}
+                  <Link 
+                    to="/pricing" 
+                    className="flex items-center space-x-2 text-electric-400 hover:text-electric-300 font-medium transition-colors"
+                  >
+                    <Edit className="h-4 w-4" />
+                    <span>Change Plan</span>
+                  </Link>
                 </div>
               </div>
-              <ul className="space-y-1">
-                {type.features.map((feature, index) => (
-                  <li key={index} className="text-xs text-gray-300 flex items-center space-x-2">
-                    <div className="w-1 h-1 bg-electric-400 rounded-full"></div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                {selectedPlanDetails.features.slice(0, 6).map((feature, index) => (
+                  <div key={index} className="flex items-center space-x-2 text-sm text-gray-300">
+                    <CheckCircle className="h-3 w-3 text-electric-500 flex-shrink-0" />
                     <span>{feature}</span>
-                  </li>
+                  </div>
                 ))}
-              </ul>
-              {formData.membershipType === type.type && (
-                <div className="absolute top-2 right-2">
-                  <CheckCircle className="h-5 w-5 text-electric-500" />
+                {selectedPlanDetails.features.length > 6 && (
+                  <div className="text-sm text-gray-400">
+                    +{selectedPlanDetails.features.length - 6} more features
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* Full Plan Selection Grid */
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-white">Choose Your Membership</h3>
+              <Link 
+                to="/pricing" 
+                className="text-electric-400 hover:text-electric-300 font-medium transition-colors"
+              >
+                View All Plans & Pricing
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {plansLoading ? (
+                <div className="col-span-full flex items-center justify-center py-8">
+                  <Loader className="animate-spin h-8 w-8 text-electric-500" />
+                  <span className="ml-2 text-gray-400">Loading membership plans...</span>
                 </div>
+              ) : membershipPlans.length === 0 ? (
+                <div className="col-span-full text-center py-8">
+                  <AlertTriangle className="h-8 w-8 text-yellow-500 mx-auto mb-2" />
+                  <p className="text-gray-400">No membership plans available at this time.</p>
+                </div>
+              ) : (
+                membershipPlans.map((type) => (
+                  <div
+                    key={type.id}
+                    onClick={() => setFormData({ ...formData, membershipType: type.type })}
+                    className={`relative cursor-pointer rounded-xl p-6 transition-all duration-200 border-2 ${
+                      formData.membershipType === type.type
+                        ? 'border-electric-500 bg-electric-500/10 shadow-lg shadow-electric-500/20'
+                        : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3 mb-4">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                        formData.membershipType === type.type ? 'bg-electric-500' : 'bg-gray-700'
+                      }`}>
+                        {React.createElement(getTypeIcon(type.type), { className: "h-5 w-5 text-white" })}
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-white">{type.name}</h3>
+                        <p className="text-xs text-gray-400">{type.description}</p>
+                      </div>
+                    </div>
+                    <ul className="space-y-1">
+                      {type.features.map((feature, index) => (
+                        <li key={index} className="text-xs text-gray-300 flex items-center space-x-2">
+                          <div className="w-1 h-1 bg-electric-400 rounded-full"></div>
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    {formData.membershipType === type.type && (
+                      <div className="absolute top-2 right-2">
+                        <CheckCircle className="h-5 w-5 text-electric-500" />
+                      </div>
+                    )}
+                  </div>
+                ))
               )}
-                          </div>
-            ))
-          )}
-        </div>
+            </div>
+          </div>
+        )}
 
         <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-8">
           <form className="space-y-6" onSubmit={handleSubmit}>

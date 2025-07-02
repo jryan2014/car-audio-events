@@ -243,7 +243,7 @@ export default function Header() {
                     Login
                   </Link>
                   <Link 
-                    to="/register"
+                    to="/pricing"
                     className="bg-electric-600 hover:bg-electric-500 text-white font-bold py-2 px-4 rounded-full transition-all duration-300 shadow-lg hover:shadow-electric-500/50"
                   >
                     Register
