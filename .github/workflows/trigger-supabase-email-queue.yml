@@ -12,4 +12,5 @@ jobs:
       - name: Call Supabase Edge Function
         run: |
           curl -X POST "https://nqvisvranvjaghvrdaaz.supabase.co/functions/v1/process-email-queue?cron_secret=n%267i%25HgGqyx86MWx%40Kgrid5JsL9XAtrzKWEkAYv%21%5Et%25SCnEHJD8Q5C2bT%21GC" \
-            -H "Content-Type: application/json" 
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xdmlzdnJhbnZqYWdodnJkYWF6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0OTYwNjY3NywiZXhwIjoyMDY1MTgyNjc3fQ.QflFYxMtYzmsveSkjIOKNqSeQhxQBglJcfRgvpNF7qg"
