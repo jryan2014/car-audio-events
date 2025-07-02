@@ -301,6 +301,23 @@ export const EmailSettings: React.FC = () => {
     loadEmailQueue();
   }, []);
 
+  // Auto-refresh email queue every 10 seconds when on queue tab
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    
+    if (activeTab === 'queue') {
+      interval = setInterval(() => {
+        loadEmailQueue();
+      }, 10000); // Refresh every 10 seconds
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [activeTab]);
+
   // 2. Fetch categories from Supabase
   useEffect(() => {
     const loadCategories = async () => {
@@ -1971,6 +1988,21 @@ The {{organization_name}} Team"
           </h3>
           <div className="flex space-x-2">
             <select
+              value={selectedTemplate?.id || ''}
+              onChange={e => {
+                const template = templates.find(t => t.id === e.target.value);
+                setSelectedTemplate(template || null);
+              }}
+              className="px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:border-electric-500 focus:ring-electric-500/20"
+            >
+              <option value="">Select Template...</option>
+              {templates.map(template => (
+                <option key={template.id} value={template.id}>
+                  {template.name}
+                </option>
+              ))}
+            </select>
+            <select
               value={previewMode}
               onChange={e => setPreviewMode(e.target.value as any)}
               className="px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:border-electric-500 focus:ring-electric-500/20"
@@ -1989,7 +2021,7 @@ The {{organization_name}} Team"
               />
               <button
                 onClick={() => handleSendTestEmail()}
-                disabled={loading || !testEmail}
+                disabled={loading || !testEmail || !selectedTemplate}
                 className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-gray-900 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? (
@@ -2321,7 +2353,7 @@ The {{organization_name}} Team"
                 : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300'
             }`}
           >
-            Email Preview
+            Email Test
           </button>
           <button
             onClick={() => setActiveTab('categories')}
