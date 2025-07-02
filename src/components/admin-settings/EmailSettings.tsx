@@ -423,11 +423,19 @@ export const EmailSettings: React.FC = () => {
 
   const handleSaveTemplate = async (template: EmailTemplate) => {
     try {
+      // Get the latest content from TinyMCE editor if it's being used
+      let currentBody = template.body;
+      if (useRichEditor && useTinyMCE && editorRef.current) {
+        currentBody = editorRef.current.getContent();
+        // Update the template state with latest content
+        setSelectedTemplate({ ...template, body: currentBody });
+      }
+
       // Prepare the template data to match the database schema exactly
       const templateData: any = {
         name: template.name,
         subject: template.subject,
-        body: template.body,
+        body: currentBody, // Use the latest content from editor
         email_type: template.email_type,
         membership_level: template.membership_level,
         is_active: template.is_active,
