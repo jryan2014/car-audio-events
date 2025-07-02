@@ -24,17 +24,14 @@ export default function PricingPlans({ onPlanSelected, type }: PricingPlansProps
   ];
 
   useEffect(() => {
-    // Always start with default plans for demo purposes
-    // This ensures the pricing page always shows content
-    setPlans(getDefaultPlans());
-    setIsLoading(false);
-    
-    // Optionally try to load from database in background
+    // Load plans from database first, respecting visibility settings
     loadPlansFromDatabase();
   }, [type]);
 
   const loadPlansFromDatabase = async () => {
     try {
+      setIsLoading(true);
+      
       // Try to fetch using the edge function first
       try {
         const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-membership-plans${type ? `?type=${type}` : ''}`;
@@ -49,9 +46,16 @@ export default function PricingPlans({ onPlanSelected, type }: PricingPlansProps
         if (response.ok) {
           const data = await response.json();
           if (data.plans && data.plans.length > 0) {
-            const formattedPlans = formatPlans(data.plans);
-            setPlans(formattedPlans);
-            return;
+            // Filter out hidden plans
+            const visiblePlans = data.plans.filter((plan: any) => 
+              plan.is_active && !plan.hidden_on_frontend
+            );
+            if (visiblePlans.length > 0) {
+              const formattedPlans = formatPlans(visiblePlans);
+              setPlans(formattedPlans);
+              setIsLoading(false);
+              return;
+            }
           }
         }
       } catch (edgeFunctionError) {
@@ -63,6 +67,7 @@ export default function PricingPlans({ onPlanSelected, type }: PricingPlansProps
         .from('membership_plans')
         .select('*')
         .eq('is_active', true)
+        .eq('hidden_on_frontend', false)
         .order('display_order', { ascending: true });
 
       if (type) {
@@ -76,10 +81,23 @@ export default function PricingPlans({ onPlanSelected, type }: PricingPlansProps
       if (data && data.length > 0) {
         const formattedPlans = formatPlans(data);
         setPlans(formattedPlans);
+      } else {
+        // Only show default plans if no database plans exist
+        // Filter default plans to show basic options only
+        const defaultPlans = getDefaultPlans().filter(plan => 
+          plan.id === 'competitor' || plan.id === 'pro'
+        );
+        setPlans(defaultPlans);
       }
     } catch (error) {
-      console.warn('Could not load plans from database, using defaults:', error);
-      // Default plans are already set, so we don't need to do anything
+      console.warn('Could not load plans from database, using filtered defaults:', error);
+      // Show only basic default plans (no business/organization)
+      const defaultPlans = getDefaultPlans().filter(plan => 
+        plan.id === 'competitor' || plan.id === 'pro'
+      );
+      setPlans(defaultPlans);
+    } finally {
+      setIsLoading(false);
     }
   };
 
