@@ -692,7 +692,7 @@ export const EmailSettings: React.FC = () => {
                   <!-- Header -->
                   <tr>
                     <td style="padding: 30px 40px 20px 40px; text-align: center; background-color: #1a1a2e; border-radius: 8px 8px 0 0;">
-                      <img src="https://caraudioevents.com/assets/logos/CAE_Logo_V2-email-logo.png" alt="Car Audio Events" width="150" height="58" style="display: block; margin: 0 auto 10px auto; border: 0;" />
+                      <img src="https://caraudioevents.com/assets/logos/CAE_Logo_V2-email-logo.png" alt="Car Audio Events" width="150" height="58" style="display: block; margin: 0 auto 10px auto; border: 0; max-width: 150px; max-height: 58px; width: 150px !important; height: 58px !important;" />
                       <h1 style="margin: 0; color: #3b82f6; font-size: 24px; font-weight: bold;">Car Audio Events</h1>
                       <p style="margin: 5px 0 0 0; color: #9ca3af; font-size: 14px;">Professional Car Audio Competition Platform</p>
                     </td>
