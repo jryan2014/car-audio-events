@@ -264,6 +264,7 @@ export default function EmailQueueManager({ onClose }: { onClose: () => void }) 
       setQueueItems(prev => prev.map(i => i.id === item.id ? updatedItem : i));
       setMessage(`Email queued for resending to ${item.to_email}`);
       setTimeout(() => setMessage(''), 3000);
+      await loadQueueData(); // <-- Refresh queue after action
     } catch (error) {
       setMessage('Failed to resend email');
       setTimeout(() => setMessage(''), 3000);
@@ -278,6 +279,7 @@ export default function EmailQueueManager({ onClose }: { onClose: () => void }) 
     setQueueItems(prev => prev.filter(i => i.id !== item.id));
     setMessage('Email deleted from queue');
     setTimeout(() => setMessage(''), 3000);
+    await loadQueueData(); // <-- Refresh queue after action
   };
 
   const purgeQueue = async (status?: string) => {
@@ -299,6 +301,7 @@ export default function EmailQueueManager({ onClose }: { onClose: () => void }) 
         setMessage('Email queue purged');
       }
       setTimeout(() => setMessage(''), 3000);
+      await loadQueueData(); // <-- Refresh queue after action
     } catch (error) {
       setMessage('Failed to purge queue');
       setTimeout(() => setMessage(''), 3000);
@@ -319,6 +322,7 @@ export default function EmailQueueManager({ onClose }: { onClose: () => void }) 
       ));
       setMessage('Failed emails queued for retry');
       setTimeout(() => setMessage(''), 3000);
+      await loadQueueData(); // <-- Refresh queue after action
     } catch (error) {
       setMessage('Failed to retry emails');
       setTimeout(() => setMessage(''), 3000);

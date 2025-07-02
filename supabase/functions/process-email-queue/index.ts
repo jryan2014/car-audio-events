@@ -3,55 +3,64 @@ import { createSupabaseAdminClient } from '../_shared/supabase-admin.ts';
 import { sendEmail } from '../_shared/mailgun-email-service.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 
+// Set your secure cron secret here (must match the one in the cron job URL)
+const CRON_SECRET = 'n&7i%HgGqyx86MWx@Kgrid5JsL9XAtrzKWEkAYv!^t%SCnEHJD8Q5C2bT!GC';
+
 // This function is designed to be called by a cron job or manually by admin users.
 // Example cron schedule: once every minute.
 // 0 * * * * *
 
 serve(async (req) => {
+  const url = new URL(req.url);
+  const cronSecret = url.searchParams.get('cron_secret');
+  const authHeader = req.headers.get('authorization');
+
+  // Log all headers for debugging
+  console.log('--- Edge Function Triggered ---');
+  console.log('Request method:', req.method);
+  console.log('Request headers:', JSON.stringify(Object.fromEntries(req.headers.entries())));
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('Handling OPTIONS request');
+    const origin = req.headers.get('origin');
+    const isLocalhost = origin && origin.startsWith('http://localhost:');
+    const corsOrigin = (origin === 'https://caraudioevents.com' || isLocalhost) ? origin : 'https://caraudioevents.com';
+    
     return new Response(null, { 
       status: 200,
       headers: {
         ...corsHeaders,
-        'Access-Control-Allow-Origin': 'https://caraudioevents.com',
+        'Access-Control-Allow-Origin': corsOrigin,
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-schedule-secret'
       }
     });
   }
 
-  try {
-    // Verify authentication
-    const authHeader = req.headers.get('authorization');
-    const scheduleSecret = req.headers.get('x-supabase-schedule-secret');
+  // --- AUTH LOGIC: allow if JWT or correct cron_secret ---
+  if (!(authHeader || cronSecret === CRON_SECRET)) {
+    const origin = req.headers.get('origin');
+    const isLocalhost = origin && origin.startsWith('http://localhost:');
+    const corsOrigin = (origin === 'https://caraudioevents.com' || isLocalhost) ? origin : 'https://caraudioevents.com';
     
-    // Allow if it's a cron job (has schedule secret) or if it's an admin user with valid JWT
-    if (!scheduleSecret && !authHeader) {
-      return new Response(JSON.stringify({ error: 'Unauthorized: Missing authentication' }), {
-        status: 401,
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': 'https://caraudioevents.com'
-        },
-      });
-    }
+    return new Response(JSON.stringify({
+      error: 'Unauthorized: Missing or invalid authentication'
+    }), {
+      status: 401,
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': corsOrigin
+      }
+    });
+  }
 
-    // If it's not a cron job, require authorization header
-    if (!scheduleSecret && !authHeader) {
-      return new Response(JSON.stringify({ error: 'Unauthorized: Missing authentication' }), {
-        status: 401,
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': 'https://caraudioevents.com'
-        },
-      });
-    }
-
+  try {
+    console.log('Creating Supabase admin client...');
     const supabaseAdmin = createSupabaseAdminClient();
 
+    console.log('Fetching pending emails...');
     // 1. Fetch pending emails from the queue, with a reasonable limit
     const { data: pendingEmails, error: fetchError } = await supabaseAdmin
       .from('email_queue')
@@ -60,22 +69,32 @@ serve(async (req) => {
       .limit(50); // Process up to 50 emails per run
 
     if (fetchError) {
+      console.error('Database fetch error:', fetchError);
       throw fetchError;
     }
 
+    console.log(`Found ${pendingEmails?.length || 0} pending emails`);
+
     if (!pendingEmails || pendingEmails.length === 0) {
-          return new Response(JSON.stringify({ message: 'No pending emails to process.' }), {
-      status: 200,
-      headers: { 
-        ...corsHeaders, 
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': 'https://caraudioevents.com'
-      },
-    });
+      console.log('No pending emails to process');
+      const origin = req.headers.get('origin');
+      const isLocalhost = origin && origin.startsWith('http://localhost:');
+      const corsOrigin = (origin === 'https://caraudioevents.com' || isLocalhost) ? origin : 'https://caraudioevents.com';
+      
+      return new Response(JSON.stringify({ message: 'No pending emails to process.' }), {
+        status: 200,
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': corsOrigin
+        },
+      });
     }
 
+    console.log('Starting to process emails...');
     // 2. Process each pending email
-    const processingPromises = pendingEmails.map(async (email) => {
+    const processingPromises = pendingEmails.map(async (email, index) => {
+      console.log(`Processing email ${index + 1}/${pendingEmails.length}: ${email.id}`);
       try {
         const result = await sendEmail({
           recipient: email.recipient,
@@ -122,25 +141,35 @@ serve(async (req) => {
       }
     });
 
+    console.log('Waiting for all emails to process...');
     await Promise.all(processingPromises);
 
+    console.log('Function completed successfully');
+    const origin = req.headers.get('origin');
+    const isLocalhost = origin && origin.startsWith('http://localhost:');
+    const corsOrigin = (origin === 'https://caraudioevents.com' || isLocalhost) ? origin : 'https://caraudioevents.com';
+    
     return new Response(JSON.stringify({ message: `Processed ${pendingEmails.length} emails.` }), {
       status: 200,
       headers: { 
         ...corsHeaders, 
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': 'https://caraudioevents.com'
+        'Access-Control-Allow-Origin': corsOrigin
       },
     });
 
   } catch (error) {
     console.error('Error processing email queue:', error);
+    const origin = req.headers.get('origin');
+    const isLocalhost = origin && origin.startsWith('http://localhost:');
+    const corsOrigin = (origin === 'https://caraudioevents.com' || isLocalhost) ? origin : 'https://caraudioevents.com';
+    
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { 
         ...corsHeaders, 
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': 'https://caraudioevents.com'
+        'Access-Control-Allow-Origin': corsOrigin
       },
     });
   }

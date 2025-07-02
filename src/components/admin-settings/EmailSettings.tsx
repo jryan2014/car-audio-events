@@ -5,6 +5,7 @@ import { Editor } from '@tinymce/tinymce-react';
 import { useNotifications } from '../NotificationSystem';
 import { useAuth } from '../../contexts/AuthContext';
 
+
 interface EmailSettingsState {
   from_email: string;
   from_name: string;
@@ -138,28 +139,31 @@ export const EmailSettings: React.FC = () => {
     <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#1a1a2e; padding:0;">
       <tr>
         <td align="center" style="padding:24px 0 12px 0;">
-          <img src="https://caraudioevents.com/assets/logos/CAE_Logo_V2-email-logo.png" alt="Car Audio Events" width="120" height="46" style="width:120px; height:46px; display:block; margin:0 auto 10px auto; border:0; outline:none; text-decoration:none;" border="0" />
-          <h1 style="color:#60a5fa; margin:0; font-size:24px; font-weight:600; font-family:Arial,Helvetica,sans-serif;">Car Audio Events</h1>
-          <p style="color:#9ca3af; margin:5px 0 0 0; font-size:14px; font-family:Arial,Helvetica,sans-serif;">Professional Car Audio Competition Platform</p>
-        </td>
-      </tr>
-    </table>
-    <!--[if mso]></td></tr></table><![endif]-->
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px; margin:0 auto; background:#1a1a2e; border-radius:8px;">
+            <tr>
+              <td align="center" style="padding:32px 24px 16px 44px;"> <!-- 24px + 20px left padding -->
+                <img src="https://caraudioevents.com/assets/logos/CAE_Logo_V2-email-logo.png" alt="Car Audio Events" width="120" height="46" style="width:120px; height:46px; display:block; margin:0 auto 10px auto; border:0; outline:none; text-decoration:none;" border="0" />
+                <h1 style="color:#3b82f6; margin:0; font-size:24px; font-weight:600; font-family:Arial,Helvetica,sans-serif; padding-left:20px; text-align:left;">Car Audio Events</h1>
+                <p style="color:#9ca3af; margin:5px 0 0 0; font-size:14px; font-family:Arial,Helvetica,sans-serif; padding-left:20px; text-align:left;">Professional Car Audio Competition Platform</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="background:#ffffff; padding:32px 44px 32px 44px; border-radius:8px; color:#333333; font-family:Arial,Helvetica,sans-serif; font-size:16px; line-height:1.6; text-align:left;" align="left"> <!-- 32px top/bottom, 44px left/right (24px+20px) -->
   `;
   
   const defaultEmailFooter = `
-    <!--[if mso]>
-    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#1f2937; padding:0;">
-      <tr><td align="center">
-    <![endif]-->
-    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#1f2937; padding:0;">
-      <tr>
-        <td align="center" style="color:#9ca3af; font-size:12px; font-family:Arial,Helvetica,sans-serif; padding:20px 0;">
-          <p style="margin:5px 0;">© 2025 Car Audio Events. All rights reserved.</p>
-          <p style="margin:5px 0;">Professional car audio competition platform</p>
-          <a href="https://caraudioevents.com" style="color:#60a5fa; text-decoration:none; margin:0 10px;">Website</a>
-          <a href="mailto:support@caraudioevents.com" style="color:#60a5fa; text-decoration:none; margin:0 10px;">Support</a>
-          <a href="https://caraudioevents.com/privacy" style="color:#60a5fa; text-decoration:none; margin:0 10px;">Privacy</a>
+              </td>
+            </tr>
+            <tr>
+              <td align="center" style="background:#1f2937; color:#ffffff; font-size:12px; font-family:Arial,Helvetica,sans-serif; padding:20px 0 20px 20px; border-radius:0 0 8px 8px; text-align:left;">
+                <p style="margin:5px 0; color:#ffffff;">© 2025 Car Audio Events. All rights reserved.</p>
+                <p style="margin:5px 0; color:#ffffff;">Professional car audio competition platform</p>
+                <a href="https://caraudioevents.com" style="color:#3b82f6; text-decoration:none; margin:0 10px;">Website</a>
+                <a href="mailto:support@caraudioevents.com" style="color:#3b82f6; text-decoration:none; margin:0 10px;">Support</a>
+                <a href="https://caraudioevents.com/privacy" style="color:#3b82f6; text-decoration:none; margin:0 10px;">Privacy</a>
+              </td>
+            </tr>
+          </table>
         </td>
       </tr>
     </table>
@@ -496,8 +500,7 @@ export const EmailSettings: React.FC = () => {
       const { error } = await supabase
         .from('email_queue')
         .update({ 
-          status: 'cancelled',
-          updated_at: new Date().toISOString()
+          status: 'cancelled'
         })
         .eq('id', emailId);
       if (error) throw error;
@@ -651,23 +654,21 @@ export const EmailSettings: React.FC = () => {
     }
     setLoading(true);
     try {
-      // Render the template with previewData and emailVariables
-      let subject = selectedTemplate.subject;
-      let body = selectedTemplate.body;
-      // Replace all variables in subject and body
-      [...emailVariables, ...Object.entries(previewData).map(([k, v]) => ({ name: `{{${k}}}`, example: v, description: '', category: 'system' }))].forEach(variable => {
-        const varPattern = new RegExp(variable.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
-        subject = subject.replace(varPattern, variable.example || '');
-        body = body.replace(varPattern, variable.example || '');
-      });
+      // Replace variables in subject and body using the comprehensive function
+      let subject = replaceAllEmailVariables(selectedTemplate.subject, previewData);
+      let bodyContent = replaceAllEmailVariables(selectedTemplate.body, previewData);
+      
+      // Wrap body content with header and footer (checks for duplication)
+      let fullEmailBody = createFullEmailTemplate(bodyContent);
+      
       // Insert test email into queue with html_content
       const { error } = await supabase
         .from('email_queue')
         .insert({
           recipient: testEmail,
           subject,
-          body,
-          html_content: body, // ensure HTML is available for sending
+          body: fullEmailBody,
+          html_content: fullEmailBody,
           status: 'pending',
           attempts: 0
         });
@@ -1467,20 +1468,7 @@ export const EmailSettings: React.FC = () => {
                             'forecolor backcolor | alignleft aligncenter alignright alignjustify | ' +
                             'bullist numlist outdent indent | link image media table | ' +
                             'removeformat | fullscreen preview | help',
-                          content_style: `
-                            body { 
-                              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-                              font-size: 14px; 
-                              line-height: 1.6; 
-                              color: #333; 
-                              max-width: 600px; 
-                              margin: 0 auto; 
-                            }
-                            img { max-width: 100%; height: auto; }
-                            table { border-collapse: collapse; width: 100%; }
-                            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                            th { background-color: #f2f2f2; }
-                          `,
+                          content_style: `body { font-family:Helvetica,Arial,sans-serif; font-size:14px; background-color: #374151; color: #fff; } h1, .email-header-title { color: #3b82f6 !important; }`,
                           images_upload_url: '/api/upload-image',
                           images_upload_handler: (blobInfo, progress) => {
                             return new Promise((resolve, reject) => {
@@ -2049,14 +2037,14 @@ The {{organization_name}} Team"
                 <div className="bg-gray-100 p-3 border-b">
                   <div className="text-sm text-gray-600">
                     <strong>To:</strong> {previewData.user_email}<br />
-                    <strong>Subject:</strong> {generatePreview(selectedTemplate, previewData).subject}
+                    <strong>Subject:</strong> {replaceAllEmailVariables(selectedTemplate.subject, previewData)}
                   </div>
                 </div>
                 <div className="p-4">
                   <div 
                     className="prose max-w-none"
                     dangerouslySetInnerHTML={{ 
-                      __html: generatePreview(selectedTemplate, previewData).body 
+                      __html: createFullEmailTemplate(replaceAllEmailVariables(selectedTemplate.body, previewData))
                     }}
                   />
                 </div>
@@ -2146,6 +2134,112 @@ The {{organization_name}} Team"
       )}
     </div>
   );
+
+  // Enhanced variable replacement function that handles all email variables
+  const replaceAllEmailVariables = (content: string, previewData: EmailPreviewData): string => {
+    let result = content;
+    
+    // Create comprehensive variable mapping
+    const variableMap: Record<string, string> = {
+      // System variables
+      '{{site_name}}': previewData.organization_name || 'Car Audio Events',
+      '{{site_url}}': 'https://caraudioevents.com',
+      '{{admin_email}}': 'admin@caraudioevents.com',
+      '{{support_email}}': 'support@caraudioevents.com',
+      '{{current_date}}': new Date().toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      }),
+      
+      // User variables - map all variations
+      '{{user_name}}': previewData.user_name || 'User',
+      '{{user_first_name}}': previewData.user_name?.split(' ')[0] || 'User',
+      '{{user_last_name}}': previewData.user_name?.split(' ')[1] || '',
+      '{{user_email}}': previewData.user_email || 'user@example.com',
+      '{{firstName}}': previewData.user_name?.split(' ')[0] || 'User',
+      '{{lastName}}': previewData.user_name?.split(' ')[1] || '',
+      '{{fullName}}': previewData.user_name || 'User',
+      '{{email}}': previewData.user_email || 'user@example.com',
+      
+      // Event variables
+      '{{event_name}}': previewData.event_name || 'Car Audio Event',
+      '{{event_date}}': previewData.event_date || new Date().toLocaleDateString(),
+      '{{event_location}}': previewData.event_location || 'Event Location',
+      '{{eventName}}': previewData.event_name || 'Car Audio Event',
+      '{{eventDate}}': previewData.event_date || new Date().toLocaleDateString(),
+      '{{eventLocation}}': previewData.event_location || 'Event Location',
+      
+      // Organization variables
+      '{{organization_name}}': previewData.organization_name || 'Car Audio Events',
+      '{{companyName}}': previewData.organization_name || 'Car Audio Events',
+      '{{companyEmail}}': 'info@caraudioevents.com',
+      '{{companyWebsite}}': 'https://caraudioevents.com',
+      
+      // Payment variables
+      '{{payment_amount}}': previewData.payment_amount || '$99.99',
+      '{{paymentAmount}}': previewData.payment_amount || '$99.99',
+      '{{invoice_id}}': previewData.invoice_id || 'INV-2025-001',
+      '{{invoiceNumber}}': previewData.invoice_id || 'INV-2025-001',
+      
+      // Competition variables
+      '{{competition_name}}': previewData.competition_name || 'Bass Battle 2024',
+      '{{competition_score}}': previewData.competition_score || '145.2 dB',
+      
+      // System URLs
+      '{{login_url}}': 'https://caraudioevents.com/login',
+      '{{login_link}}': 'https://caraudioevents.com/login',
+      '{{dashboard_url}}': 'https://caraudioevents.com/dashboard',
+      '{{support_url}}': 'https://caraudioevents.com/support',
+      '{{loginUrl}}': 'https://caraudioevents.com/login',
+      '{{dashboardUrl}}': 'https://caraudioevents.com/dashboard',
+      '{{supportUrl}}': 'https://caraudioevents.com/support',
+      '{{websiteUrl}}': 'https://caraudioevents.com',
+      
+      // Date variables
+      '{{currentDate}}': new Date().toLocaleDateString(),
+      '{{currentYear}}': new Date().getFullYear().toString(),
+      '{{year}}': new Date().getFullYear().toString(),
+      '{{today}}': new Date().toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      })
+    };
+    
+    // Replace all variables
+    Object.entries(variableMap).forEach(([variable, value]) => {
+      const regex = new RegExp(variable.replace(/[{}]/g, '\\\\{\\\\}'), 'g');
+      result = result.replace(regex, value);
+    });
+    
+    return result;
+  };
+
+  // Email template wrapper function - prevents duplication
+  const createFullEmailTemplate = (bodyContent: string): string => {
+    // Check if content already has header/footer to prevent duplication
+    const hasHeader = bodyContent.includes('Car Audio Events</h1>') || bodyContent.includes('CAE_Logo_V2-email-logo.png');
+    const hasFooter = bodyContent.includes('© 2025 Car Audio Events. All rights reserved.');
+    
+    // If already has both header and footer, return as-is
+    if (hasHeader && hasFooter) {
+      return bodyContent;
+    }
+    
+    // If has header but no footer, just add footer
+    if (hasHeader && !hasFooter) {
+      return bodyContent + defaultEmailFooter;
+    }
+    
+    // If has footer but no header, just add header
+    if (!hasHeader && hasFooter) {
+      return defaultEmailHeader + bodyContent;
+    }
+    
+    // If has neither, add both
+    return defaultEmailHeader + bodyContent + defaultEmailFooter;
+  };
 
   return (
     <div className="space-y-6">
