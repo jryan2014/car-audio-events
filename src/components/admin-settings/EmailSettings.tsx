@@ -1592,7 +1592,7 @@ export const EmailSettings: React.FC = () => {
                             'forecolor backcolor | alignleft aligncenter alignright alignjustify | ' +
                             'bullist numlist outdent indent | link image media table | ' +
                             'removeformat | fullscreen preview | help',
-                          content_style: `body { font-family:Helvetica,Arial,sans-serif; font-size:14px; background-color: #374151; color: #fff; } h1, .email-header-title { color: #3b82f6 !important; }`,
+                          content_style: `body { font-family:Helvetica,Arial,sans-serif; font-size:14px; background-color: #ffffff; color: #333333; line-height: 1.6; } h1, .email-header-title { color: #3b82f6 !important; } p { margin: 0 0 16px 0; } strong { font-weight: bold; } em { font-style: italic; }`,
                           images_upload_url: '/api/upload-image',
                           images_upload_handler: (blobInfo, progress) => {
                             return new Promise((resolve, reject) => {
