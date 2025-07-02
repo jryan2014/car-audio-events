@@ -433,6 +433,7 @@ export const EmailSettings: React.FC = () => {
         is_active: template.is_active,
         from_name: template.from_name,
         variables: template.variables || [],
+        category_id: template.category_id,
         updated_at: new Date().toISOString()
       };
 
@@ -471,19 +472,50 @@ export const EmailSettings: React.FC = () => {
 
   const insertVariable = (variableName: string) => {
     if (selectedTemplate) {
-      const textarea = document.getElementById('template-body') as HTMLTextAreaElement;
-      if (textarea) {
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const text = selectedTemplate.body;
-        const newText = text.substring(0, start) + variableName + text.substring(end);
-        setSelectedTemplate({ ...selectedTemplate, body: newText });
-        
-        // Set cursor position after the inserted variable
-        setTimeout(() => {
-          textarea.focus();
-          textarea.setSelectionRange(start + variableName.length, start + variableName.length);
-        }, 0);
+      if (useRichEditor && useTinyMCE && editorRef.current) {
+        // For TinyMCE editor
+        editorRef.current.insertContent(variableName);
+        // Update the template state immediately
+        const updatedContent = editorRef.current.getContent();
+        setSelectedTemplate({ ...selectedTemplate, body: updatedContent });
+      } else if (useRichEditor && !useTinyMCE) {
+        // For contentEditable rich editor
+        const editableDiv = document.querySelector('[contenteditable="true"]') as HTMLDivElement;
+        if (editableDiv) {
+          // Get current selection
+          const selection = window.getSelection();
+          if (selection && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            range.deleteContents();
+            const textNode = document.createTextNode(variableName);
+            range.insertNode(textNode);
+            range.setStartAfter(textNode);
+            range.setEndAfter(textNode);
+            selection.removeAllRanges();
+            selection.addRange(range);
+          } else {
+            // If no selection, append to the end
+            editableDiv.innerHTML += variableName;
+          }
+          // Update the template state
+          setSelectedTemplate({ ...selectedTemplate, body: editableDiv.innerHTML });
+        }
+      } else {
+        // For plain textarea
+        const textarea = document.getElementById('template-body') as HTMLTextAreaElement;
+        if (textarea) {
+          const start = textarea.selectionStart;
+          const end = textarea.selectionEnd;
+          const text = selectedTemplate.body;
+          const newText = text.substring(0, start) + variableName + text.substring(end);
+          setSelectedTemplate({ ...selectedTemplate, body: newText });
+          
+          // Set cursor position after the inserted variable
+          setTimeout(() => {
+            textarea.focus();
+            textarea.setSelectionRange(start + variableName.length, start + variableName.length);
+          }, 0);
+        }
       }
     }
   };
