@@ -393,27 +393,20 @@ export default function Register() {
 
             {/* Captcha */}
             <div className="mt-6 flex flex-col items-center">
-              {!import.meta.env.VITE_HCAPTCHA_SITE_KEY ? (
-                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 text-center">
-                  <p className="text-red-400 text-sm">❌ hCaptcha site key not configured</p>
-                  <p className="text-red-300 text-xs mt-1">Please add VITE_HCAPTCHA_SITE_KEY to environment variables</p>
-                </div>
-              ) : (
-                <HCaptcha
-                  sitekey={import.meta.env.VITE_HCAPTCHA_SITE_KEY}
-                  onVerify={handleCaptchaVerify}
-                  onError={handleCaptchaError}
-                  onExpire={() => {
-                    setCaptchaToken(null);
-                    setDebugInfo('⏰ Captcha expired. Please complete it again.');
-                  }}
-                  onLoad={() => {
-                    setDebugInfo('✅ hCaptcha loaded successfully.');
-                  }}
-                  ref={captchaRef}
-                  theme="dark"
-                />
-              )}
+              <HCaptcha
+                sitekey={import.meta.env.VITE_HCAPTCHA_SITE_KEY || 'acc27e90-e7ae-451e-bbfa-c738c53420fe'}
+                onVerify={handleCaptchaVerify}
+                onError={handleCaptchaError}
+                onExpire={() => {
+                  setCaptchaToken(null);
+                  setDebugInfo('⏰ Captcha expired. Please complete it again.');
+                }}
+                onLoad={() => {
+                  setDebugInfo('✅ hCaptcha loaded successfully.');
+                }}
+                ref={captchaRef}
+                theme="dark"
+              />
               {captchaError && (
                 <p className="mt-2 text-sm text-red-400">{captchaError}</p>
               )}
