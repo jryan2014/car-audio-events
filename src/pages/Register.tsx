@@ -50,13 +50,27 @@ export default function Register() {
     loadMembershipPlans();
   }, []);
 
-  // Update selected plan details when membership type changes
+  // Update selected plan details when membership type changes OR when plans load
   useEffect(() => {
-    if (membershipPlans.length > 0) {
+    if (membershipPlans.length > 0 && preSelectedPlan) {
+      // Try to find plan by ID first (UUID from pricing page)
+      let selected = membershipPlans.find(plan => plan.id === preSelectedPlan);
+      
+      // If not found by ID, try by type (fallback)
+      if (!selected) {
+        selected = membershipPlans.find(plan => plan.type === preSelectedPlan);
+      }
+      
+      if (selected) {
+        setSelectedPlanDetails(selected);
+        setFormData(prev => ({ ...prev, membershipType: selected.type }));
+      }
+    } else if (membershipPlans.length > 0) {
+      // Normal case - find by current membership type
       const selected = membershipPlans.find(plan => plan.type === formData.membershipType);
       setSelectedPlanDetails(selected || null);
     }
-  }, [formData.membershipType, membershipPlans]);
+  }, [formData.membershipType, membershipPlans, preSelectedPlan]);
 
   const loadMembershipPlans = async () => {
     try {
