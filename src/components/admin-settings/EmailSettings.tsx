@@ -1866,36 +1866,21 @@ The {{organization_name}} Team"
           <h4 className="text-white font-medium mb-3">Queue Actions</h4>
           <div className="flex flex-wrap gap-2">
             <button
-              onClick={sendPendingEmails}
-              disabled={queueLoading || emailQueue.filter(e => e.status === 'pending').length === 0}
+              onClick={() => loadEmailQueue()}
+              disabled={queueLoading}
               className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
             >
-              <Send className="h-4 w-4" />
-              <span>Send Pending ({emailQueue.filter(e => e.status === 'pending').length})</span>
+              <RefreshCw className="h-4 w-4" />
+              <span>Refresh</span>
             </button>
+            
             <button
-              onClick={flushEmailQueue}
+              onClick={processEmailQueue}
               disabled={queueLoading || emailQueue.filter(e => e.status === 'pending').length === 0}
               className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
             >
-              <Zap className="h-4 w-4" />
-              <span>Flush Queue ({emailQueue.filter(e => e.status === 'pending').length})</span>
-            </button>
-            <button
-              onClick={retryAllFailedEmails}
-              disabled={queueLoading || emailQueue.filter(e => e.status === 'failed').length === 0}
-              className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-            >
-              <RefreshCw className="h-4 w-4" />
-              <span>Retry All Failed ({emailQueue.filter(e => e.status === 'failed').length})</span>
-            </button>
-            <button
-              onClick={deleteEmailQueue}
-              disabled={queueLoading || emailQueue.filter(e => e.status === 'pending' || e.status === 'failed').length === 0}
-              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-            >
-              <Trash2 className="h-4 w-4" />
-              <span>Delete Queue ({emailQueue.filter(e => e.status === 'pending' || e.status === 'failed').length})</span>
+              <Send className="h-4 w-4" />
+              <span>Process Queue ({emailQueue.filter(e => e.status === 'pending').length})</span>
             </button>
           </div>
         </div>
