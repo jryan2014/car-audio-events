@@ -28,6 +28,8 @@ export async function sendEmail(payload: EmailPayload) {
     throw new Error('Mailgun API credentials are not configured in secrets.');
   }
 
+  console.log('Mailgun Config:', { domain, fromEmail, fromName, recipient });
+
   // Create form data for Mailgun API
   const formData = new FormData();
   formData.append('from', `${fromName} <${fromEmail}>`);
@@ -46,8 +48,15 @@ export async function sendEmail(payload: EmailPayload) {
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('Mailgun API error:', errorText);
-    throw new Error(`Email sending failed: ${response.status} ${errorText}`);
+    console.error('Mailgun API error details:', {
+      status: response.status,
+      statusText: response.statusText,
+      error: errorText,
+      domain: domain,
+      fromEmail: fromEmail,
+      recipient: recipient
+    });
+    throw new Error(`Email sending failed: ${response.status} ${errorText} - Domain: ${domain}`);
   }
 
   const result = await response.json();

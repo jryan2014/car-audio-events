@@ -95,38 +95,46 @@ serve(async (req) => {
     // 2. Process each pending email
     const processingPromises = pendingEmails.map(async (email, index) => {
       console.log(`Processing email ${index + 1}/${pendingEmails.length}: ${email.id}`);
+      console.log(`Email details:`, { 
+        recipient: email.recipient || email.to_email,
+        subject: email.subject,
+        hasBody: !!(email.body || email.html_content)
+      });
       try {
         const result = await sendEmail({
-          recipient: email.recipient,
+          recipient: email.recipient || email.to_email,
           subject: email.subject,
-          body: email.body,
+          body: email.body || email.html_content,
         });
 
-        if (result && result.success === false) {
-          // If send-mailgun-email returned an error, mark as failed
+        console.log(`Email send result for ${email.id}:`, result);
+        console.log(`Result type: ${typeof result}, Success property: ${result?.success}, Has messageId: ${!!result?.messageId}`);
+
+        // Check if email was sent successfully
+        if (result && result.success === true) {
+          // Email sent successfully, update status to 'sent'
+          await supabaseAdmin
+            .from('email_queue')
+            .update({
+              status: 'sent',
+              last_attempt_at: new Date().toISOString(),
+              error_message: null,
+            })
+            .eq('id', email.id);
+          console.log(`Email ${email.id} sent successfully with message ID: ${result.messageId}`);
+        } else {
+          // If send result doesn't indicate success, mark as failed
           await supabaseAdmin
             .from('email_queue')
             .update({
               status: 'failed',
               last_attempt_at: new Date().toISOString(),
-              error_message: 'Unknown error from send-mailgun-email',
+              error_message: 'Email service did not return success confirmation',
               attempts: (email.attempts || 0) + 1,
             })
             .eq('id', email.id);
-          console.error(`Email ${email.id} failed: Unknown error`);
-          return;
+          console.error(`Email ${email.id} failed: No success confirmation`);
         }
-
-        // If sending is successful, update status to 'sent'
-        await supabaseAdmin
-          .from('email_queue')
-          .update({
-            status: 'sent',
-            last_attempt_at: new Date().toISOString(),
-            error_message: null,
-          })
-          .eq('id', email.id);
-        console.log(`Email ${email.id} sent successfully`);
       } catch (error) {
         console.error(`Error sending email ${email.id}:`, error);
         await supabaseAdmin

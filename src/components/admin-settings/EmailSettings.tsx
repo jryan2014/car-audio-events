@@ -500,14 +500,22 @@ export const EmailSettings: React.FC = () => {
       const { error } = await supabase
         .from('email_queue')
         .update({ 
-          status: 'cancelled'
+          status: 'failed',
+          error_message: 'Cancelled by admin',
+          last_attempt_at: new Date().toISOString()
         })
         .eq('id', emailId);
       if (error) throw error;
-      showSuccess('Email cancelled');
+      setNotification({
+        type: 'success',
+        message: 'Email cancelled successfully!'
+      });
       await loadEmailQueue();
     } catch (err: any) {
-      showError('Failed to cancel email', err.message);
+      setNotification({
+        type: 'error',
+        message: `Failed to cancel email: ${err.message}`
+      });
     }
   };
 
@@ -658,17 +666,69 @@ export const EmailSettings: React.FC = () => {
       let subject = replaceAllEmailVariables(selectedTemplate.subject, previewData);
       let bodyContent = replaceAllEmailVariables(selectedTemplate.body, previewData);
       
-      // Wrap body content with header and footer (checks for duplication)
-      let fullEmailBody = createFullEmailTemplate(bodyContent);
+      // Clean up any existing template headers/footers to avoid duplication
+      bodyContent = bodyContent
+        .replace(/<img[^>]*CAE_Logo[^>]*>/gi, '') // Remove any logo images
+        .replace(/<h1[^>]*>Car Audio Events<\/h1>/gi, '') // Remove duplicate headers
+        .replace(/Professional Car Audio Competition Platform/gi, '') // Remove taglines
+        .replace(/<table[^>]*>[\s\S]*?Professional car audio competition platform[\s\S]*?<\/table>/gi, '') // Remove complex table headers
+        .replace(/©.*Car Audio Events.*All rights reserved\./gi, '') // Remove duplicate footers
+        .trim();
       
-      // Insert test email into queue with html_content
+      // Create clean, simple email format (no complex headers)
+      const cleanEmailFormat = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Car Audio Events</title>
+        </head>
+        <body style="margin: 0; padding: 0; background-color: #f5f5f5; font-family: Arial, sans-serif;">
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f5f5f5; padding: 20px 0;">
+            <tr>
+              <td align="center">
+                <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                  <!-- Header -->
+                  <tr>
+                    <td style="padding: 30px 40px 20px 40px; text-align: center; background-color: #1a1a2e; border-radius: 8px 8px 0 0;">
+                      <img src="https://caraudioevents.com/assets/logos/cae-logo-main.png" alt="Car Audio Events" style="max-width: 150px; height: auto; margin-bottom: 10px;" />
+                      <h1 style="margin: 0; color: #3b82f6; font-size: 24px; font-weight: bold;">Car Audio Events</h1>
+                      <p style="margin: 5px 0 0 0; color: #9ca3af; font-size: 14px;">Professional Car Audio Competition Platform</p>
+                    </td>
+                  </tr>
+                  <!-- Content -->
+                  <tr>
+                    <td style="padding: 40px; color: #333333; font-size: 16px; line-height: 1.6;">
+                      ${bodyContent}
+                    </td>
+                  </tr>
+                  <!-- Footer -->
+                  <tr>
+                    <td style="padding: 20px 40px; background-color: #f8f9fa; border-radius: 0 0 8px 8px; text-align: center; border-top: 1px solid #e9ecef;">
+                      <p style="margin: 0; font-size: 12px; color: #666;">
+                        © 2025 Car Audio Events. All rights reserved.<br/>
+                        <a href="https://caraudioevents.com" style="color: #3b82f6; text-decoration: none;">Visit our website</a> | 
+                        <a href="mailto:support@caraudioevents.com" style="color: #3b82f6; text-decoration: none;">Contact Support</a>
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </body>
+        </html>
+      `;
+      
+      // Insert test email into queue with clean HTML format
       const { error } = await supabase
         .from('email_queue')
         .insert({
           recipient: testEmail,
           subject,
-          body: fullEmailBody,
-          html_content: fullEmailBody,
+          body: cleanEmailFormat,
+          html_content: cleanEmailFormat,
           status: 'pending',
           attempts: 0
         });
@@ -700,39 +760,54 @@ export const EmailSettings: React.FC = () => {
   const processEmailQueue = async () => {
     setQueueLoading(true);
     try {
-      // Get the user's JWT token
-      const { data: { session } } = await supabase.auth.getSession();
+      console.log('Starting manual email queue processing...');
+      
+      // Get the user's JWT token with better error handling
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('Session error:', sessionError);
+        throw new Error(`Authentication error: ${sessionError.message}`);
+      }
+      
       if (!session?.access_token) {
-        throw new Error('No authentication token available');
+        console.error('No session or access token available');
+        throw new Error('No authentication token available. Please try logging out and back in.');
       }
 
-      // Call the process-email-queue Edge Function with JWT
+      console.log('JWT token available, calling edge function...');
+
+      // Call the process-email-queue Edge Function with JWT and detailed logging
       const { data, error } = await supabase.functions.invoke('process-email-queue', {
-        body: { process_all: true },
+        body: { 
+          process_all: true,
+          manual_trigger: true // Add flag to distinguish from cron
+        },
         headers: {
-          'Authorization': `Bearer ${session.access_token}`
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
         }
       });
 
+      console.log('Edge function response:', { data, error });
+
       if (error) {
-        console.error('Error processing email queue:', error);
-        setNotification({
-          type: 'error',
-          message: `Failed to process queue: ${error.message}`
-        });
-      } else {
-        setNotification({
-          type: 'success',
-          message: 'Email queue processed successfully! Check the queue tab for results.'
-        });
-        // Refresh the queue to show updated status
-        await loadEmailQueue();
+        console.error('Edge function error:', error);
+        throw new Error(`Edge function error: ${error.message}`);
       }
+
+      setNotification({
+        type: 'success',
+        message: `Email queue processed successfully! ${data?.message || 'Check the queue tab for results.'}`
+      });
+      
+      // Refresh the queue to show updated status
+      await loadEmailQueue();
     } catch (error: any) {
       console.error('Error processing email queue:', error);
       setNotification({
         type: 'error',
-        message: 'Failed to process email queue. Please try again.'
+        message: `Failed to process email queue: ${error.message}`
       });
     } finally {
       setQueueLoading(false);
@@ -2207,10 +2282,9 @@ The {{organization_name}} Team"
       })
     };
     
-    // Replace all variables
+    // Use simple string replacement instead of regex - much more reliable
     Object.entries(variableMap).forEach(([variable, value]) => {
-      const regex = new RegExp(variable.replace(/[{}]/g, '\\\\{\\\\}'), 'g');
-      result = result.replace(regex, value);
+      result = result.split(variable).join(value);
     });
     
     return result;
