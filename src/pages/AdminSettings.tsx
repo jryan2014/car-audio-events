@@ -8,7 +8,7 @@ import { ServiceWorkerManager } from '../components/ServiceWorkerManager';
 import { StripeSettings } from '../components/admin-settings/StripeSettings';
 import { SupabaseSettings } from '../components/admin-settings/SupabaseSettings';
 import { GoogleMapsSettings } from '../components/admin-settings/GoogleMapsSettings';
-import { RecaptchaSettings } from '../components/admin-settings/RecaptchaSettings';
+import { HCaptchaSettings } from '../components/admin-settings/HCaptchaSettings';
 import { SessionSettings } from '../components/admin-settings/SessionSettings';
 import { EmailSettings } from '../components/admin-settings/EmailSettings';
 import { CacheSettings } from '../components/admin-settings/CacheSettings';
@@ -24,10 +24,11 @@ interface IntegrationKeys {
   supabase_anon_key: string;
   supabase_service_role_key: string;
   google_maps_api_key: string;
-  recaptcha_site_key: string;
-  recaptcha_secret_key: string;
-  recaptcha_enabled: boolean;
-  recaptcha_score_threshold: string;
+  hcaptcha_site_key: string;
+  hcaptcha_secret_key: string;
+  hcaptcha_enabled: boolean;
+  hcaptcha_theme: string;
+  hcaptcha_size: string;
   session_timeout_hours: string;
   session_inactivity_timeout_hours: string;
   session_remember_me_days: string;
@@ -37,7 +38,7 @@ const sections = [
   { id: 'stripe', label: 'Stripe', icon: <CreditCard className="h-5 w-5" /> },
   { id: 'supabase', label: 'Supabase', icon: <Database className="h-5 w-5" /> },
   { id: 'google', label: 'Google Maps', icon: <Map className="h-5 w-5" /> },
-  { id: 'recaptcha', label: 'reCAPTCHA', icon: <Shield className="h-5 w-5" /> },
+      { id: 'hcaptcha', label: 'hCaptcha', icon: <Shield className="h-5 w-5" /> },
   { id: 'session', label: 'Session', icon: <Settings className="h-5 w-5" /> },
   { id: 'email', label: 'Email', icon: <Mail className="h-5 w-5" /> },
   { id: 'cache', label: 'Cache', icon: <HardDrive className="h-5 w-5" /> },
@@ -56,10 +57,11 @@ export default function AdminSettings() {
     supabase_anon_key: '',
     supabase_service_role_key: '',
     google_maps_api_key: '',
-    recaptcha_site_key: '',
-    recaptcha_secret_key: '',
-    recaptcha_enabled: false,
-    recaptcha_score_threshold: '',
+    hcaptcha_site_key: '',
+    hcaptcha_secret_key: '',
+    hcaptcha_enabled: false,
+    hcaptcha_theme: 'dark',
+    hcaptcha_size: 'normal',
     session_timeout_hours: '',
     session_inactivity_timeout_hours: '',
     session_remember_me_days: ''
@@ -97,10 +99,11 @@ export default function AdminSettings() {
           'supabase_anon_key',
           'supabase_service_role_key',
           'google_maps_api_key',
-          'recaptcha_site_key',
-          'recaptcha_secret_key',
-          'recaptcha_enabled',
-          'recaptcha_score_threshold',
+          'hcaptcha_site_key',
+          'hcaptcha_secret_key',
+          'hcaptcha_enabled',
+          'hcaptcha_theme',
+          'hcaptcha_size',
           'session_timeout_hours',
           'session_inactivity_timeout_hours',
           'session_remember_me_days'
@@ -128,10 +131,11 @@ export default function AdminSettings() {
           supabase_anon_key: keyMap.supabase_anon_key || import.meta.env.VITE_SUPABASE_ANON_KEY || '',
           supabase_service_role_key: keyMap.supabase_service_role_key || '',
           google_maps_api_key: keyMap.google_maps_api_key || import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
-          recaptcha_site_key: keyMap.recaptcha_site_key || import.meta.env.VITE_RECAPTCHA_SITE_KEY || '',
-          recaptcha_secret_key: keyMap.recaptcha_secret_key || '',
-          recaptcha_enabled: keyMap.recaptcha_enabled === 'true',
-          recaptcha_score_threshold: keyMap.recaptcha_score_threshold || '0.5',
+          hcaptcha_site_key: keyMap.hcaptcha_site_key || import.meta.env.VITE_HCAPTCHA_SITE_KEY || '',
+          hcaptcha_secret_key: keyMap.hcaptcha_secret_key || '',
+          hcaptcha_enabled: keyMap.hcaptcha_enabled === 'true',
+          hcaptcha_theme: keyMap.hcaptcha_theme || 'dark',
+          hcaptcha_size: keyMap.hcaptcha_size || 'normal',
           session_timeout_hours: keyMap.session_timeout_hours || '24',
           session_inactivity_timeout_hours: keyMap.session_inactivity_timeout_hours || '2',
           session_remember_me_days: keyMap.session_remember_me_days || '30'
@@ -303,8 +307,8 @@ export default function AdminSettings() {
       supabase_anon_key: 'Your Supabase anonymous key',
       supabase_service_role_key: 'Your Supabase service role key (keep secure)',
       google_maps_api_key: 'Your Google Maps API key',
-      recaptcha_site_key: 'Your reCAPTCHA site key',
-      recaptcha_secret_key: 'Your reCAPTCHA secret key (keep secure)'
+      hcaptcha_site_key: 'Your hCaptcha site key',
+      hcaptcha_secret_key: 'Your hCaptcha secret key (keep secure)'
     };
     return descriptions[key] || 'Configuration key';
   };
@@ -317,7 +321,7 @@ export default function AdminSettings() {
       stripe_secret_key: (val) => val.startsWith('sk_'),
       supabase_url: (val) => val.includes('supabase.co'),
       google_maps_api_key: (val) => val.length > 20,
-      recaptcha_site_key: (val) => val.length > 20
+              hcaptcha_site_key: (val) => val.length > 20
     };
 
     const validator = validations[key];
@@ -329,7 +333,7 @@ export default function AdminSettings() {
       case 'stripe': return <StripeSettings />;
       case 'supabase': return <SupabaseSettings />;
       case 'google': return <GoogleMapsSettings />;
-      case 'recaptcha': return <RecaptchaSettings />;
+              case 'hcaptcha': return <HCaptchaSettings />;
       case 'session': return <SessionSettings />;
       case 'email': return <EmailSettings />;
       case 'cache': return <CacheSettings />;
