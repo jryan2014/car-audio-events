@@ -46,11 +46,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log('🔍 EMERGENCY DEBUG: Fetching profile for:', userId);
       
-      const { data, error } = await supabase
+      // Try with timeout and minimal fields first
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Query timeout after 5 seconds')), 5000);
+      });
+      
+      const queryPromise = supabase
         .from('users')
-        .select('id,name,email,membership_type,status,verification_status,location,phone,website,bio,company_name,subscription_plan')
+        .select('id,name,email,membership_type,status,verification_status,subscription_plan')
         .eq('id', userId)
         .single();
+      
+      console.log('🔍 EMERGENCY DEBUG: Executing query with timeout...');
+      const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any;
       
       console.log('🔍 EMERGENCY DEBUG: Query result:', { data, error });
 
@@ -73,14 +81,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         name: data.name || data.email,
         email: data.email,
         membershipType: data.membership_type || 'competitor',
-        status: data.status,
-        verificationStatus: data.verification_status,
-        location: data.location,
-        phone: data.phone,
-        website: data.website,
-        bio: data.bio,
-        companyName: data.company_name,
-        subscriptionPlan: data.subscription_plan,
+        status: data.status || 'active',
+        verificationStatus: data.verification_status || 'verified',
+        location: data.location || '',
+        phone: data.phone || '',
+        website: data.website || '',
+        bio: data.bio || '',
+        companyName: data.company_name || '',
+        subscriptionPlan: data.subscription_plan || 'basic',
         requiresPasswordChange: false,
         passwordChangedAt: undefined
       };
