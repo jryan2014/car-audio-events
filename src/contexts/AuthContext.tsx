@@ -86,84 +86,121 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, resetTimer]);
 
     const fetchUserProfile = async (userId: string): Promise<User | null> => {
-    try {
-      console.log('🔍 FETCH DEBUG: Starting profile fetch for:', userId);
-      
+      // Skip connection test - it was causing timeout issues
+      console.log('🔍 FETCH DEBUG: Starting profile fetch for user ID:', userId);
+
       // Add timeout to prevent hanging (shorter timeout for faster recovery)
       const isDev = import.meta.env.DEV;
       const timeoutMs = isDev ? 2000 : 4000; // 2s for dev, 4s for production
-      
+
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error(`Profile fetch timeout after ${timeoutMs/1000} seconds`)), timeoutMs);
       });
-      
-      // Skip connection test - it was causing timeout issues
-      
-      // Use the same complete query as EditUser component for consistency
-      const queryPromise = supabase
-        .from('users')
-        .select(`
-          id,
-          email,
-          name,
-          membership_type,
-          status,
-          location,
-          phone,
-          company_name,
-          verification_status,
-          subscription_plan,
-          last_login_at,
-          created_at,
-          login_count,
-          failed_login_attempts
-        `)
-        .eq('id', userId)
-        .single();
-      
-      console.log('🔍 FETCH DEBUG: Executing query with timeout...');
-      const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any;
-        
-      console.log('🔍 FETCH DEBUG: Query completed:', { data, error });
 
-      if (error) {
-        if (error.code === 'PGRST116') {
-          console.log('ℹ️ No profile found - user may need to complete registration');
-        } else {
-          console.error('Database error:', error.message);
+      try {
+        // Use the same complete query as EditUser component for consistency
+        const queryPromise = supabase
+          .from('users')
+          .select(`
+            id,
+            email,
+            name,
+            membership_type,
+            status,
+            location,
+            phone,
+            company_name,
+            verification_status,
+            subscription_plan,
+            last_login_at,
+            created_at,
+            login_count,
+            failed_login_attempts
+          `)
+          .eq('id', userId)
+          .single();
+
+        console.log('🔍 FETCH DEBUG: Executing query with timeout...');
+        let { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any;
+
+        if (error) {
+          console.error('🔍 FETCH DEBUG: Query error:', error);
+          
+          // Try fallback query by email if ID lookup fails
+          console.log('🔍 FETCH DEBUG: Trying fallback query by email...');
+          const { data: session } = await supabase.auth.getSession();
+          if (session?.session?.user?.email) {
+            const fallbackQuery = supabase
+              .from('users')
+              .select(`
+                id,
+                email,
+                name,
+                membership_type,
+                status,
+                location,
+                phone,
+                company_name,
+                verification_status,
+                subscription_plan,
+                last_login_at,
+                created_at,
+                login_count,
+                failed_login_attempts
+              `)
+              .eq('email', session.session.user.email)
+              .single();
+            
+            const { data: fallbackData, error: fallbackError } = await Promise.race([fallbackQuery, timeoutPromise]) as any;
+            
+            if (fallbackError) {
+              console.error('🔍 FETCH DEBUG: Fallback query also failed:', fallbackError);
+              return null;
+            }
+            
+            console.log('🔍 FETCH DEBUG: Fallback query successful:', fallbackData);
+            data = fallbackData;
+          } else {
+            return null;
+          }
         }
+
+        console.log('🔍 FETCH DEBUG: Query completed:', { data, error });
+
+        if (!data) {
+          console.error('🔍 FETCH DEBUG: No data returned from query');
+          return null;
+        }
+
+        if (!data?.email) {
+          console.error('Invalid user profile - missing email');
+          return null;
+        }
+
+        const profile = {
+          id: data.id,
+          name: data.name || data.email, // Use name if available, fallback to email
+          email: data.email,
+          membershipType: data.membership_type || 'competitor',
+          status: data.status || 'active',
+          verificationStatus: data.verification_status || 'verified',
+          location: data.location || '',
+          phone: data.phone || '',
+          website: '', // Not available in current schema
+          bio: '', // Not available in current schema
+          companyName: data.company_name || '',
+          subscriptionPlan: data.subscription_plan || 'basic',
+          requiresPasswordChange: false,
+          passwordChangedAt: undefined
+        };
+        
+
+        return profile;
+      } catch (error) {
+        console.error('Profile fetch error:', error);
         return null;
       }
-
-      if (!data?.email) {
-        console.error('Invalid user profile - missing email');
-        return null;
-      }
-
-      const profile = {
-        id: data.id,
-        name: data.name || data.email, // Use name if available, fallback to email
-        email: data.email,
-        membershipType: data.membership_type || 'competitor',
-        status: data.status || 'active',
-        verificationStatus: data.verification_status || 'verified',
-        location: data.location || '',
-        phone: data.phone || '',
-        website: '', // Not available in current schema
-        bio: '', // Not available in current schema
-        companyName: data.company_name || '',
-        subscriptionPlan: data.subscription_plan || 'basic',
-        requiresPasswordChange: false,
-        passwordChangedAt: undefined
-      };
-      
-
-      return profile;
-    } catch (error) {
-      console.error('Profile fetch error:', error);
-      return null;
-    }
-  };
+    };
 
   // Initialize auth state
   useEffect(() => {
