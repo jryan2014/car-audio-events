@@ -44,23 +44,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchUserProfile = async (userId: string): Promise<User | null> => {
     try {
-      console.log('🔍 EMERGENCY DEBUG: Fetching profile for:', userId);
-      
-      // Try with timeout and minimal fields first
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Query timeout after 5 seconds')), 5000);
-      });
-      
-      const queryPromise = supabase
+      const { data, error } = await supabase
         .from('users')
-        .select('id,name,email,membership_type,status,verification_status,subscription_plan')
+        .select('id,name,email,membership_type,status,verification_status,location,phone,website,bio,company_name,subscription_plan')
         .eq('id', userId)
         .single();
-      
-      console.log('🔍 EMERGENCY DEBUG: Executing query with timeout...');
-      const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any;
-      
-      console.log('🔍 EMERGENCY DEBUG: Query result:', { data, error });
 
       if (error) {
         if (error.code === 'PGRST116') {
@@ -93,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         passwordChangedAt: undefined
       };
       
-      console.log('🔍 EMERGENCY DEBUG: Profile created:', profile);
+
       return profile;
     } catch (error) {
       console.error('Profile fetch error:', error);
