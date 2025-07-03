@@ -151,8 +151,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // Existing user - check verification and approval status
             console.log('👤 Existing user login:', userProfile.email, 'Status:', userProfile.status, 'Verification:', userProfile.verificationStatus);
             
-            // Check email verification status
-            if (userProfile.verificationStatus === 'pending') {
+            // Check email verification status (but allow existing verified users, admin, and users with null status)
+            if (userProfile.verificationStatus === 'pending' && 
+                userProfile.membershipType !== 'admin' && 
+                userProfile.verificationStatus !== null) {
               console.log('📧 User needs email verification');
               setSession(null);
               setUser(null);
@@ -164,9 +166,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               return;
             }
             
-            // Check manual approval status for business accounts
+            // Check manual approval status for business accounts (only block if explicitly pending)
             if (['retailer', 'manufacturer', 'organization'].includes(userProfile.membershipType) && 
-                userProfile.status === 'pending') {
+                userProfile.status === 'pending' && 
+                userProfile.verificationStatus !== 'pending') { // Only block if email is verified but account pending
               console.log('⏳ Business account pending manual approval');
               setSession(null);
               setUser(null);
