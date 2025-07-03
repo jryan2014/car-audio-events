@@ -154,6 +154,8 @@ export default function AdminMembership() {
     { id: 'track_scores', name: 'Track Scores', description: 'View and track competition scores', category: 'Competition' },
     { id: 'create_profile', name: 'Create Profile', description: 'Create and manage user profile', category: 'Profile' },
     { id: 'join_teams', name: 'Join Teams', description: 'Join and participate in teams', category: 'Teams' },
+    { id: 'create_team', name: 'Create Team', description: 'Create and manage new teams', category: 'Teams' },
+    { id: 'manage_team', name: 'Manage Team', description: 'Manage team settings and members', category: 'Teams' },
     { id: 'advanced_analytics', name: 'Advanced Analytics', description: 'Access detailed performance analytics', category: 'Analytics' },
     { id: 'priority_registration', name: 'Priority Registration', description: 'Early access to event registration', category: 'Events' },
     { id: 'custom_showcase', name: 'Custom System Showcase', description: 'Create custom audio system showcases', category: 'Profile' },
@@ -165,6 +167,7 @@ export default function AdminMembership() {
     { id: 'customer_analytics', name: 'Customer Analytics', description: 'Access customer insights and analytics', category: 'Analytics' },
     { id: 'advertising', name: 'Advertising Options', description: 'Access to advertising and promotion tools', category: 'Marketing' },
     { id: 'sponsorship_tools', name: 'Sponsorship Tools', description: 'Tools for event sponsorship management', category: 'Marketing' },
+    { id: 'ai_ad_creation', name: 'AI Ad Creation', description: 'Use AI tools to create and generate advertisements', category: 'Marketing' },
     { id: 'api_access', name: 'API Access', description: 'Access to platform APIs', category: 'Integration' },
     { id: 'priority_support', name: 'Priority Support', description: 'Priority customer support', category: 'Support' },
     { id: 'bulk_operations', name: 'Bulk Operations', description: 'Perform bulk data operations', category: 'Data' },
@@ -172,6 +175,8 @@ export default function AdminMembership() {
     
     // Organization permissions
     { id: 'member_management', name: 'Member Management', description: 'Manage organization members', category: 'Organization' },
+    { id: 'judge_management', name: 'Judge Management', description: 'Manage judges and scoring for competitions', category: 'Organization' },
+    { id: 'multiple_member_accounts', name: 'Multiple Member Accounts', description: 'Create and manage multiple member accounts for organization', category: 'Organization' },
     { id: 'event_hosting', name: 'Event Hosting', description: 'Host and organize events', category: 'Events' },
     { id: 'community_building', name: 'Community Building', description: 'Access community building tools', category: 'Community' },
     { id: 'custom_branding', name: 'Custom Branding', description: 'Custom branding and themes', category: 'Branding' }
@@ -215,17 +220,23 @@ export default function AdminMembership() {
         }
       });
       
-      // If we have permissions from the database, use them
-      if (permissionsMap.size > 0) {
-        setDefaultPermissions(Array.from(permissionsMap.values()));
-        setPermissions(Array.from(permissionsMap.values()));
-      } else {
-        // Otherwise keep using the default permissions
-        setPermissions(defaultPermissions);
-      }
+      // Always merge database permissions with default permissions
+      const dbPermissions = Array.from(permissionsMap.values());
+      
+      // Create a combined list, prioritizing default permissions for display
+      const combinedPermissions = [...defaultPermissions];
+      
+      // Add any database permissions that aren't in defaults
+      dbPermissions.forEach(dbPerm => {
+        if (!defaultPermissions.find(defPerm => defPerm.id === dbPerm.id)) {
+          combinedPermissions.push(dbPerm);
+        }
+      });
+      
+      setPermissions(combinedPermissions);
     } catch (error) {
       console.error('Failed to load permissions:', error);
-      // Keep using the default permissions
+      // Always fall back to default permissions
       setPermissions(defaultPermissions);
     }
   }, [defaultPermissions]);
@@ -528,6 +539,25 @@ export default function AdminMembership() {
     });
   };
 
+  const moveFeature = (fromIndex: number, toIndex: number) => {
+    const features = [...(formData.features || [])];
+    const [movedFeature] = features.splice(fromIndex, 1);
+    features.splice(toIndex, 0, movedFeature);
+    setFormData({
+      ...formData,
+      features
+    });
+  };
+
+  const updateFeature = (index: number, newValue: string) => {
+    const features = [...(formData.features || [])];
+    features[index] = newValue;
+    setFormData({
+      ...formData,
+      features
+    });
+  };
+
   const togglePermission = (permissionId: string) => {
     const currentPermissions = formData.permissions || [];
     const hasPermission = currentPermissions.includes(permissionId);
@@ -743,13 +773,15 @@ export default function AdminMembership() {
               <p className="text-gray-400">Manage membership plans, features, and permissions</p>
             </div>
           </div>
-          <button 
-            onClick={handleCreatePlan}
-            className="bg-electric-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-electric-600 transition-all duration-200 flex items-center space-x-2"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Create Plan</span>
-          </button>
+          {activeTab === 'plans' && (
+            <button 
+              onClick={handleCreatePlan}
+              className="bg-electric-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-electric-600 transition-all duration-200 flex items-center space-x-2"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Create Plan</span>
+            </button>
+          )}
         </div>
 
         {/* Tab Navigation */}
@@ -1366,11 +1398,42 @@ export default function AdminMembership() {
                   
                   <div className="space-y-2">
                     {(formData.features || []).map((feature, index) => (
-                      <div key={index} className="flex items-center space-x-2 bg-gray-700/30 p-2 rounded">
-                        <span className="flex-1 text-white text-sm">{feature}</span>
+                      <div 
+                        key={index} 
+                        className="flex items-center space-x-2 bg-gray-700/30 p-2 rounded group hover:bg-gray-700/50 transition-colors"
+                        draggable
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData('text/plain', index.toString());
+                          e.dataTransfer.effectAllowed = 'move';
+                        }}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = 'move';
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+                          const toIndex = index;
+                          if (fromIndex !== toIndex) {
+                            moveFeature(fromIndex, toIndex);
+                          }
+                        }}
+                      >
+                        <div className="cursor-move text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M7 2a2 2 0 1 1 .001 4.001A2 2 0 0 1 7 2zM7 8a2 2 0 1 1 .001 4.001A2 2 0 0 1 7 8zM7 14a2 2 0 1 1 .001 4.001A2 2 0 0 1 7 14zM13 2a2 2 0 1 1 .001 4.001A2 2 0 0 1 13 2zM13 8a2 2 0 1 1 .001 4.001A2 2 0 0 1 13 8zM13 14a2 2 0 1 1 .001 4.001A2 2 0 0 1 13 14z"></path>
+                          </svg>
+                        </div>
+                        <input
+                          type="text"
+                          value={feature}
+                          onChange={(e) => updateFeature(index, e.target.value)}
+                          className="flex-1 bg-transparent text-white text-sm border-none outline-none focus:bg-gray-600/30 px-2 py-1 rounded"
+                          placeholder="Feature description"
+                        />
                         <button
                           onClick={() => removeFeature(index)}
-                          className="text-red-400 hover:text-red-300"
+                          className="text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity"
                         >
                           <X className="h-4 w-4" />
                         </button>

@@ -7,6 +7,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { usePermissions } from '../hooks/usePermissions';
 
 interface DirectoryCategory {
   id: string;
@@ -103,9 +104,10 @@ export default function CreateDirectoryListing() {
     return <Navigate to="/login" replace />;
   }
 
-  // Check membership eligibility
-  const isEligibleForDirectory = ['retailer', 'manufacturer', 'organization', 'admin'].includes(user.membershipType);
-  const canCreateUsedListing = ['competitor', 'retailer', 'manufacturer', 'organization', 'admin'].includes(user.membershipType);
+  // Check permissions using the permission system
+  const { hasPermission } = usePermissions();
+  const isEligibleForDirectory = hasPermission('directory_listing');
+  const canCreateUsedListing = hasPermission('view_events'); // Basic permission for used equipment
 
   useEffect(() => {
     loadCategories();

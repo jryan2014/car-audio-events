@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import ConfigurableField from '../components/ConfigurableField';
 import { useSystemConfiguration } from '../hooks/useSystemConfiguration';
 import { geocodingService } from '../services/geocoding';
+import { usePermissions } from '../hooks/usePermissions';
 
 interface EventFormData {
   title: string;
@@ -216,13 +217,9 @@ export default function CreateEvent() {
     is_featured: false
   });
 
-  // Check if user can create events
-  const canCreateEvents = user && (
-    user.membershipType === 'admin' ||
-    user.membershipType === 'organization' ||
-    (user.membershipType === 'retailer' && user.subscriptionPlan !== 'free') ||
-    (user.membershipType === 'manufacturer' && user.subscriptionPlan !== 'free')
-  );
+  // Check if user can create events using the permission system
+  const { hasPermission } = usePermissions();
+  const canCreateEvents = hasPermission('create_events');
 
   useEffect(() => {
     if (!canCreateEvents) {
