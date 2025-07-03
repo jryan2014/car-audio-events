@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Mail, Lock, User, MapPin, Eye, EyeOff, Volume2, Building, Wrench, Users, AlertTriangle, Loader, CheckCircle, ArrowLeft, Edit } from 'lucide-react';
+import { Mail, Lock, User, MapPin, Eye, EyeOff, Volume2, Building, Wrench, Users, AlertTriangle, Loader, CheckCircle, ArrowLeft, Edit, Phone, CreditCard, Globe } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import HCaptcha, { HCaptchaRef } from '../components/HCaptcha';
 import { supabase } from '../lib/supabase';
@@ -23,13 +23,40 @@ export default function Register() {
   const preSelectedPlan = searchParams.get('plan');
   
   const [formData, setFormData] = useState({
+    // Basic Info
     name: '',
     email: '',
     password: '',
     confirmPassword: '',
+    phone: '',
     location: '',
-    membershipType: preSelectedPlan || 'competitor'
+    membershipType: preSelectedPlan || 'competitor',
+    
+    // Company Info (for business accounts)
+    companyName: '',
+    website: '',
+    
+    // Billing Address
+    billingAddress: '',
+    billingCity: '',
+    billingState: '',
+    billingZip: '',
+    billingCountry: 'US',
+    
+    // Shipping Address
+    shippingSameAsBilling: true,
+    shippingAddress: '',
+    shippingCity: '',
+    shippingState: '',
+    shippingZip: '',
+    shippingCountry: 'US',
+    
+    // Preferences
+    emailNotifications: true,
+    marketingEmails: false
   });
+
+  const [currentStep, setCurrentStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -42,7 +69,7 @@ export default function Register() {
   const [plansLoading, setPlansLoading] = useState(true);
   const [selectedPlanDetails, setSelectedPlanDetails] = useState<MembershipPlan | null>(null);
   
-  const { register } = useAuth();
+  const { register, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const captchaRef = useRef<HCaptchaRef>(null);
 
@@ -155,11 +182,73 @@ export default function Register() {
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
+    
+    if (type === 'checkbox') {
+      const checked = (e.target as HTMLInputElement).checked;
+      setFormData(prev => ({
+        ...prev,
+        [name]: checked
+      }));
+      
+      // Auto-copy billing to shipping if checkbox is checked
+      if (name === 'shippingSameAsBilling' && checked) {
+        setFormData(prev => ({
+          ...prev,
+          shippingAddress: prev.billingAddress,
+          shippingCity: prev.billingCity,
+          shippingState: prev.billingState,
+          shippingZip: prev.billingZip,
+          shippingCountry: prev.billingCountry
+        }));
+      }
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+      
+      // Auto-copy billing to shipping if same as billing is checked
+      if (formData.shippingSameAsBilling && name.startsWith('billing')) {
+        const shippingField = name.replace('billing', 'shipping');
+        setFormData(prev => ({
+          ...prev,
+          [shippingField]: value
+        }));
+      }
+    }
+  };
+
+  const validateStep = (step: number): boolean => {
+    switch (step) {
+      case 1:
+        return !!(formData.name && formData.email && formData.password && formData.confirmPassword);
+      case 2:
+        return !!(formData.phone && formData.location);
+      case 3:
+        return !!(formData.billingAddress && formData.billingCity && formData.billingState && formData.billingZip);
+      default:
+        return true;
+    }
+  };
+
+  const nextStep = () => {
+    if (validateStep(currentStep)) {
+      setCurrentStep(prev => Math.min(prev + 1, 4));
+      setError('');
+    } else {
+      setError('Please fill in all required fields before continuing.');
+    }
+  };
+
+  const prevStep = () => {
+    setCurrentStep(prev => Math.max(prev - 1, 1));
+    setError('');
+  };
+
+  const isBusinessAccount = () => {
+    return ['retailer', 'manufacturer', 'organization'].includes(formData.membershipType);
   };
 
   const handleCaptchaVerify = (token: string) => {
@@ -173,6 +262,23 @@ export default function Register() {
     setCaptchaToken(null);
     setDebugInfo(`❌ Captcha error: Error: ${err || 'script-error'}`);
     console.error('hCaptcha error:', err);
+  };
+
+  const handleGoogleSignUp = async () => {
+    try {
+      setIsLoading(true);
+      setError('');
+      setDebugInfo('🔄 Initiating Google OAuth...');
+      
+      await loginWithGoogle();
+      setDebugInfo('✅ Google OAuth initiated successfully');
+    } catch (error: any) {
+      console.error('Google signup error:', error);
+      setError('Google sign-up failed. Please try again.');
+      setDebugInfo(`❌ Google OAuth error: ${error.message || 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -215,8 +321,18 @@ export default function Register() {
       
       setDebugInfo('✅ Captcha verified. Creating user account...');
 
-      // Step 2: Proceed with user registration
-      await register(formData);
+      // Step 2: Proceed with user registration with enhanced data
+      const enhancedUserData = {
+        ...formData,
+        // Ensure shipping address is populated if same as billing
+        shippingAddress: formData.shippingSameAsBilling ? formData.billingAddress : formData.shippingAddress,
+        shippingCity: formData.shippingSameAsBilling ? formData.billingCity : formData.shippingCity,
+        shippingState: formData.shippingSameAsBilling ? formData.billingState : formData.shippingState,
+        shippingZip: formData.shippingSameAsBilling ? formData.billingZip : formData.shippingZip,
+        shippingCountry: formData.shippingSameAsBilling ? formData.billingCountry : formData.shippingCountry,
+      };
+
+      await register(enhancedUserData);
       setDebugInfo('✅ Registration successful, navigating to dashboard');
       setRegistrationSuccess(true);
       setTimeout(() => {
@@ -270,6 +386,482 @@ export default function Register() {
       setCaptchaToken(null);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case 1:
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-6">
+              <h3 className="text-xl font-bold text-white mb-2">Account Information</h3>
+              <p className="text-gray-400">Let's start with your basic account details</p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-2">
+                  Full Name *
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    id="name"
+                    name="name"
+                    type="text"
+                    required
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all duration-200"
+                    placeholder="Enter your full name"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
+                  Email Address *
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    required
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all duration-200"
+                    placeholder="Enter your email"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
+                  Password *
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    className="w-full pl-10 pr-12 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all duration-200"
+                    placeholder="Create a password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300 mb-2">
+                  Confirm Password *
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    required
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                    className="w-full pl-10 pr-12 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all duration-200"
+                    placeholder="Confirm your password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 2:
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-6">
+              <h3 className="text-xl font-bold text-white mb-2">Contact Information</h3>
+              <p className="text-gray-400">Help us connect with you</p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label htmlFor="phone" className="block text-sm font-medium text-gray-300 mb-2">
+                  Phone Number *
+                </label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    required
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all duration-200"
+                    placeholder="(555) 123-4567"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="location" className="block text-sm font-medium text-gray-300 mb-2">
+                  Location *
+                </label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    id="location"
+                    name="location"
+                    type="text"
+                    required
+                    value={formData.location}
+                    onChange={handleInputChange}
+                    className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all duration-200"
+                    placeholder="City, State"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {isBusinessAccount() && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="companyName" className="block text-sm font-medium text-gray-300 mb-2">
+                    Company Name {isBusinessAccount() ? '*' : ''}
+                  </label>
+                  <div className="relative">
+                    <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <input
+                      id="companyName"
+                      name="companyName"
+                      type="text"
+                      required={isBusinessAccount()}
+                      value={formData.companyName}
+                      onChange={handleInputChange}
+                      className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all duration-200"
+                      placeholder="Your company name"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="website" className="block text-sm font-medium text-gray-300 mb-2">
+                    Website
+                  </label>
+                  <div className="relative">
+                    <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <input
+                      id="website"
+                      name="website"
+                      type="url"
+                      value={formData.website}
+                      onChange={handleInputChange}
+                      className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all duration-200"
+                      placeholder="https://yourwebsite.com"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+
+      case 3:
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-6">
+              <h3 className="text-xl font-bold text-white mb-2">Billing Address</h3>
+              <p className="text-gray-400">Required for payment processing</p>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="billingAddress" className="block text-sm font-medium text-gray-300 mb-2">
+                  Street Address *
+                </label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    id="billingAddress"
+                    name="billingAddress"
+                    type="text"
+                    required
+                    value={formData.billingAddress}
+                    onChange={handleInputChange}
+                    className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all duration-200"
+                    placeholder="123 Main Street"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label htmlFor="billingCity" className="block text-sm font-medium text-gray-300 mb-2">
+                    City *
+                  </label>
+                  <input
+                    id="billingCity"
+                    name="billingCity"
+                    type="text"
+                    required
+                    value={formData.billingCity}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all duration-200"
+                    placeholder="City"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="billingState" className="block text-sm font-medium text-gray-300 mb-2">
+                    State *
+                  </label>
+                  <input
+                    id="billingState"
+                    name="billingState"
+                    type="text"
+                    required
+                    value={formData.billingState}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all duration-200"
+                    placeholder="State"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="billingZip" className="block text-sm font-medium text-gray-300 mb-2">
+                    ZIP Code *
+                  </label>
+                  <input
+                    id="billingZip"
+                    name="billingZip"
+                    type="text"
+                    required
+                    value={formData.billingZip}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all duration-200"
+                    placeholder="12345"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="billingCountry" className="block text-sm font-medium text-gray-300 mb-2">
+                  Country *
+                </label>
+                <select
+                  id="billingCountry"
+                  name="billingCountry"
+                  required
+                  value={formData.billingCountry}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all duration-200"
+                >
+                  <option value="US">United States</option>
+                  <option value="CA">Canada</option>
+                  <option value="MX">Mexico</option>
+                  <option value="GB">United Kingdom</option>
+                  <option value="AU">Australia</option>
+                </select>
+              </div>
+
+              <div className="border-t border-gray-600 pt-6">
+                <h4 className="text-lg font-semibold text-white mb-4">Shipping Address</h4>
+                
+                <div className="flex items-center space-x-3 mb-4">
+                  <input
+                    id="shippingSameAsBilling"
+                    name="shippingSameAsBilling"
+                    type="checkbox"
+                    checked={formData.shippingSameAsBilling}
+                    onChange={handleInputChange}
+                    className="w-4 h-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500 focus:ring-2"
+                  />
+                  <label htmlFor="shippingSameAsBilling" className="text-sm text-gray-300">
+                    Shipping address is the same as billing address
+                  </label>
+                </div>
+
+                {!formData.shippingSameAsBilling && (
+                  <div className="space-y-4">
+                    <div>
+                      <label htmlFor="shippingAddress" className="block text-sm font-medium text-gray-300 mb-2">
+                        Street Address *
+                      </label>
+                      <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <input
+                          id="shippingAddress"
+                          name="shippingAddress"
+                          type="text"
+                          required={!formData.shippingSameAsBilling}
+                          value={formData.shippingAddress}
+                          onChange={handleInputChange}
+                          className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all duration-200"
+                          placeholder="123 Main Street"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label htmlFor="shippingCity" className="block text-sm font-medium text-gray-300 mb-2">
+                          City *
+                        </label>
+                        <input
+                          id="shippingCity"
+                          name="shippingCity"
+                          type="text"
+                          required={!formData.shippingSameAsBilling}
+                          value={formData.shippingCity}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all duration-200"
+                          placeholder="City"
+                        />
+                      </div>
+
+                      <div>
+                        <label htmlFor="shippingState" className="block text-sm font-medium text-gray-300 mb-2">
+                          State *
+                        </label>
+                        <input
+                          id="shippingState"
+                          name="shippingState"
+                          type="text"
+                          required={!formData.shippingSameAsBilling}
+                          value={formData.shippingState}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all duration-200"
+                          placeholder="State"
+                        />
+                      </div>
+
+                      <div>
+                        <label htmlFor="shippingZip" className="block text-sm font-medium text-gray-300 mb-2">
+                          ZIP Code *
+                        </label>
+                        <input
+                          id="shippingZip"
+                          name="shippingZip"
+                          type="text"
+                          required={!formData.shippingSameAsBilling}
+                          value={formData.shippingZip}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all duration-200"
+                          placeholder="12345"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label htmlFor="shippingCountry" className="block text-sm font-medium text-gray-300 mb-2">
+                        Country *
+                      </label>
+                      <select
+                        id="shippingCountry"
+                        name="shippingCountry"
+                        required={!formData.shippingSameAsBilling}
+                        value={formData.shippingCountry}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all duration-200"
+                      >
+                        <option value="US">United States</option>
+                        <option value="CA">Canada</option>
+                        <option value="MX">Mexico</option>
+                        <option value="GB">United Kingdom</option>
+                        <option value="AU">Australia</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+
+      case 4:
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-6">
+              <h3 className="text-xl font-bold text-white mb-2">Preferences & Verification</h3>
+              <p className="text-gray-400">Almost done! Just a few final settings</p>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="bg-gray-700/30 rounded-lg p-4">
+                <h4 className="text-lg font-semibold text-white mb-3">Email Preferences</h4>
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-3">
+                    <input
+                      id="emailNotifications"
+                      name="emailNotifications"
+                      type="checkbox"
+                      checked={formData.emailNotifications}
+                      onChange={handleInputChange}
+                      className="w-4 h-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500 focus:ring-2"
+                    />
+                    <label htmlFor="emailNotifications" className="text-sm text-gray-300">
+                      Receive important account notifications (recommended)
+                    </label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-3">
+                    <input
+                      id="marketingEmails"
+                      name="marketingEmails"
+                      type="checkbox"
+                      checked={formData.marketingEmails}
+                      onChange={handleInputChange}
+                      className="w-4 h-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500 focus:ring-2"
+                    />
+                    <label htmlFor="marketingEmails" className="text-sm text-gray-300">
+                      Receive marketing emails and event announcements
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Captcha */}
+              <div className="flex flex-col items-center">
+                <HCaptcha
+                  onVerify={handleCaptchaVerify}
+                  onError={() => handleCaptchaError('script-error')}
+                  onExpire={() => {
+                    setCaptchaToken(null);
+                    setDebugInfo('⏰ Captcha expired. Please complete it again.');
+                  }}
+                  ref={captchaRef}
+                  theme="dark"
+                />
+                {captchaError && (
+                  <p className="mt-2 text-sm text-red-400">{captchaError}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
     }
   };
 
@@ -463,180 +1055,106 @@ export default function Register() {
         )}
 
         <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-8">
+          {/* Progress Indicator */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-sm font-medium text-gray-300">
+                Step {currentStep} of 4
+              </div>
+              <div className="text-sm text-gray-400">
+                {currentStep === 1 && 'Account Information'}
+                {currentStep === 2 && 'Contact Details'}
+                {currentStep === 3 && 'Billing & Shipping'}
+                {currentStep === 4 && 'Verification'}
+              </div>
+            </div>
+            <div className="w-full bg-gray-700 rounded-full h-2">
+              <div 
+                className="bg-electric-500 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${(currentStep / 4) * 100}%` }}
+              ></div>
+            </div>
+          </div>
+
           <form className="space-y-6" onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-2">
-                  Full Name
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <input
-                    id="name"
-                    name="name"
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all duration-200"
-                    placeholder="Enter your full name"
-                  />
-                </div>
-              </div>
+            {renderStepContent()}
 
-              <div>
-                <label htmlFor="location" className="block text-sm font-medium text-gray-300 mb-2">
-                  Location
-                </label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <input
-                    id="location"
-                    name="location"
-                    type="text"
-                    required
-                    value={formData.location}
-                    onChange={handleInputChange}
-                    className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all duration-200"
-                    placeholder="City, State"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
-                Email Address
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all duration-200"
-                  placeholder="Enter your email"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
-                  Password
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <input
-                    id="password"
-                    name="password"
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    className="w-full pl-10 pr-12 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all duration-200"
-                    placeholder="Create a password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300"
-                  >
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300 mb-2">
-                  Confirm Password
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    required
-                    value={formData.confirmPassword}
-                    onChange={handleInputChange}
-                    className="w-full pl-10 pr-12 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500 focus:ring-2 focus:ring-electric-500/20 transition-all duration-200"
-                    placeholder="Confirm your password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300"
-                  >
-                    {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Captcha */}
-            <div className="mt-6 flex flex-col items-center">
-              <HCaptcha
-                onVerify={handleCaptchaVerify}
-                onError={() => handleCaptchaError('script-error')}
-                onExpire={() => {
-                  setCaptchaToken(null);
-                  setDebugInfo('⏰ Captcha expired. Please complete it again.');
-                }}
-                ref={captchaRef}
-                theme="dark"
-              />
-              {captchaError && (
-                <p className="mt-2 text-sm text-red-400">{captchaError}</p>
+            <div className="flex items-center justify-between pt-6">
+              {currentStep > 1 && (
+                <button
+                  type="button"
+                  onClick={prevStep}
+                  className="flex items-center space-x-2 px-4 py-2 text-gray-400 hover:text-white transition-colors"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  <span>Previous</span>
+                </button>
+              )}
+              
+              <div className="flex-1"></div>
+              
+              {currentStep < 4 ? (
+                <button
+                  type="button"
+                  onClick={nextStep}
+                  className="bg-electric-600 hover:bg-electric-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={!validateStep(currentStep)}
+                >
+                  Next Step
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  className="group relative flex justify-center py-3 px-6 border border-transparent text-sm font-medium rounded-lg text-white bg-electric-600 hover:bg-electric-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-electric-500 focus:ring-offset-gray-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isLoading || !captchaToken}
+                >
+                  {isLoading && <Loader className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />}
+                  Complete Registration
+                </button>
               )}
             </div>
-
-            <button
-              type="submit"
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-electric-600 hover:bg-electric-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-electric-500 focus:ring-offset-gray-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isLoading}
-            >
-              {isLoading && <Loader className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />}
-              Create Account
-            </button>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-600"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-gray-800 text-gray-400">Or continue with</span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              className="w-full bg-white text-gray-900 py-3 px-4 rounded-lg font-semibold hover:bg-gray-100 transition-all duration-200 shadow-lg flex items-center justify-center space-x-2"
-            >
-              <svg className="h-5 w-5" viewBox="0 0 24 24">
-                <path
-                  fill="currentColor"
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                />
-                <path
-                  fill="currentColor"
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                />
-                <path
-                  fill="currentColor"
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                />
-                <path
-                  fill="currentColor"
-                  d="M12 1C7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                />
-              </svg>
-              <span>Sign up with Google</span>
-            </button>
           </form>
+
+          {/* Google OAuth - Only show on step 1 */}
+          {currentStep === 1 && (
+            <>
+              <div className="relative mt-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-600"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-gray-800 text-gray-400">Or continue with</span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleGoogleSignUp}
+                disabled={isLoading}
+                className="w-full bg-white text-gray-900 py-3 px-4 rounded-lg font-semibold hover:bg-gray-100 transition-all duration-200 shadow-lg flex items-center justify-center space-x-2 mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <svg className="h-5 w-5" viewBox="0 0 24 24">
+                  <path
+                    fill="currentColor"
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  />
+                  <path
+                    fill="currentColor"
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  />
+                  <path
+                    fill="currentColor"
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                  />
+                  <path
+                    fill="currentColor"
+                    d="M12 1C7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                  />
+                </svg>
+                <span>Sign up with Google</span>
+              </button>
+            </>
+          )}
         </div>
 
         <div className="text-center mt-8">

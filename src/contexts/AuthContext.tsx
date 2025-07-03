@@ -27,10 +27,12 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (userData: any) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
   refreshUser: () => Promise<void>;
+  resendVerificationEmail: (email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -124,8 +126,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log('🔑 SIGNED_IN event - user ID:', session.user.id);
           setSession(session);
           
-          // Skip profile fetch here - login function handles it
-          console.log('⚡ Skipping profile fetch in auth state change - handled by login function');
+          // Check if this is a Google OAuth user without a profile
+          const userProfile = await fetchUserProfile(session.user.id);
+          
+          if (!userProfile && session.user.app_metadata?.provider === 'google') {
+            console.log('🔄 Creating profile for Google OAuth user...');
+            
+            // Create profile for Google OAuth user
+            try {
+              const { error: profileError } = await supabase
+                .from('users')
+                .insert([{
+                  id: session.user.id,
+                  email: session.user.email,
+                  name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Google User',
+                  membership_type: 'competitor', // Default membership type
+                  status: 'active',
+                  verification_status: 'verified', // Google users are pre-verified
+                  email_notifications: true,
+                  marketing_emails: false
+                }]);
+
+              if (profileError) {
+                console.error('Failed to create Google user profile:', profileError);
+              } else {
+                console.log('✅ Google user profile created successfully');
+                // Fetch the newly created profile
+                const newProfile = await fetchUserProfile(session.user.id);
+                setUser(newProfile);
+              }
+            } catch (error) {
+              console.error('Error creating Google user profile:', error);
+            }
+          } else {
+            setUser(userProfile);
+          }
+          
           setLoading(false);
         } else if (event === 'SIGNED_OUT') {
           setSession(null);
@@ -241,7 +277,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error('User creation failed');
       }
 
-      // Create user profile
+      // Create user profile with enhanced data
       const { error: profileError } = await supabase
         .from('users')
         .insert([{
@@ -252,6 +288,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           location: userData.location,
           phone: userData.phone,
           company_name: userData.companyName,
+          website: userData.website,
+          billing_address: userData.billingAddress,
+          billing_city: userData.billingCity,
+          billing_state: userData.billingState,
+          billing_zip: userData.billingZip,
+          billing_country: userData.billingCountry,
+          shipping_address: userData.shippingAddress,
+          shipping_city: userData.shippingCity,
+          shipping_state: userData.shippingState,
+          shipping_zip: userData.shippingZip,
+          shipping_country: userData.shippingCountry,
+          email_notifications: userData.emailNotifications,
+          marketing_emails: userData.marketingEmails,
           status: 'active',
           verification_status: 'pending'
         }]);
@@ -392,6 +441,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const loginWithGoogle = async () => {
+    try {
+      setLoading(true);
+      console.log('🔑 Starting Google OAuth login...');
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent'
+          }
+        }
+      });
+
+      if (error) {
+        console.error('Google OAuth error:', error);
+        throw error;
+      }
+
+      console.log('✅ Google OAuth initiated successfully');
+      // The actual login will be handled by the auth state change
+    } catch (error) {
+      console.error('Google login error:', error);
+      setLoading(false);
+      throw error;
+    }
+  };
+
+  const resendVerificationEmail = async (email: string) => {
+    try {
+      console.log('📧 Resending verification email to:', email);
+      
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/dashboard`
+        }
+      });
+
+      if (error) {
+        console.error('Resend verification error:', error);
+        throw error;
+      }
+
+      console.log('✅ Verification email resent successfully');
+    } catch (error) {
+      console.error('Resend verification error:', error);
+      throw error;
+    }
+  };
+
   const value: AuthContextType = {
     user,
     session,
@@ -399,10 +502,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated: !!user,
     login,
     register,
+    loginWithGoogle,
     logout,
     resetPassword,
     updatePassword,
-    refreshUser
+    refreshUser,
+    resendVerificationEmail
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
