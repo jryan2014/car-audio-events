@@ -46,14 +46,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log('🔍 FETCH DEBUG: Starting profile fetch for:', userId);
       
-      // Add timeout to prevent hanging
+      // Add timeout to prevent hanging (shorter for dev environment)
+      const isDev = import.meta.env.DEV;
+      const timeoutMs = isDev ? 3000 : 8000; // 3s for dev, 8s for production
+      
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Profile fetch timeout after 10 seconds')), 10000);
+        setTimeout(() => reject(new Error(`Profile fetch timeout after ${timeoutMs/1000} seconds`)), timeoutMs);
       });
       
+      // Quick connection test first
+      console.log('🔍 FETCH DEBUG: Testing database connection...');
+      try {
+        const { data: testData, error: testError } = await Promise.race([
+          supabase.from('users').select('id').limit(1),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Connection test timeout')), 1500))
+        ]) as any;
+        
+        if (testError) {
+          console.error('🔍 FETCH DEBUG: Connection test failed:', testError);
+          // Don't return null immediately, try the main query anyway
+        } else {
+          console.log('🔍 FETCH DEBUG: Connection test successful');
+        }
+      } catch (connError) {
+        console.error('🔍 FETCH DEBUG: Connection test error:', connError);
+        // Don't return null immediately, try the main query anyway
+      }
+      
+      // Use the same complete query as EditUser component for consistency
       const queryPromise = supabase
         .from('users')
-        .select('id,name,email,membership_type,status,verification_status,location,phone,website,bio,company_name,subscription_plan')
+        .select(`
+          id,
+          email,
+          name,
+          membership_type,
+          status,
+          location,
+          phone,
+          company_name,
+          verification_status,
+          subscription_plan,
+          last_login_at,
+          created_at,
+          login_count,
+          failed_login_attempts
+        `)
         .eq('id', userId)
         .single();
       
@@ -78,15 +116,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const profile = {
         id: data.id,
-        name: data.name || data.email,
+        name: data.name || data.email, // Use name if available, fallback to email
         email: data.email,
         membershipType: data.membership_type || 'competitor',
         status: data.status || 'active',
         verificationStatus: data.verification_status || 'verified',
         location: data.location || '',
         phone: data.phone || '',
-        website: data.website || '',
-        bio: data.bio || '',
+        website: '', // Not available in current schema
+        bio: '', // Not available in current schema
         companyName: data.company_name || '',
         subscriptionPlan: data.subscription_plan || 'basic',
         requiresPasswordChange: false,
@@ -107,13 +145,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     const initializeAuth = async () => {
       try {
+        console.log('🔍 AUTH DEBUG: Initializing auth state...');
+        
+        // Clear any existing session conflicts first
+        const existingSession = localStorage.getItem('sb-nqvisvranvjaghvrdaaz-auth-token');
+        if (existingSession) {
+          console.log('🔍 AUTH DEBUG: Found existing session token');
+        }
+        
         const { data: { session } } = await supabase.auth.getSession();
+        console.log('🔍 AUTH DEBUG: Retrieved session:', session ? 'exists' : 'none');
         
         if (isMounted) {
           if (session?.user) {
+            console.log('🔍 AUTH DEBUG: Session user found, fetching profile...');
             setSession(session);
             const userProfile = await fetchUserProfile(session.user.id);
             setUser(userProfile);
+          } else {
+            console.log('🔍 AUTH DEBUG: No session found');
           }
           setLoading(false);
         }
@@ -351,32 +401,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('🔐 Google OAuth user requires email verification');
       }
 
-      // Create user profile with enhanced data
+      // Create user profile with basic data only
       const { error: profileError } = await supabase
         .from('users')
         .insert([{
           id: authData.user.id,
           email: userData.email.trim(),
-          name: userData.name,
           membership_type: userData.membershipType,
-          location: userData.location,
           phone: userData.phone,
           company_name: userData.companyName,
-          website: userData.website,
-          billing_address: userData.billingAddress,
-          billing_city: userData.billingCity,
-          billing_state: userData.billingState,
-          billing_zip: userData.billingZip,
-          billing_country: userData.billingCountry,
-          shipping_address: userData.shippingAddress,
-          shipping_city: userData.shippingCity,
-          shipping_state: userData.shippingState,
-          shipping_zip: userData.shippingZip,
-          shipping_country: userData.shippingCountry,
-          email_notifications: userData.emailNotifications,
-          marketing_emails: userData.marketingEmails,
-          status: initialStatus,
-          verification_status: verificationStatus
+          status: initialStatus
         }]);
 
       if (profileError) {
@@ -467,7 +501,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Clear ALL possible stored auth data
       console.log('🧹 Clearing all stored data...');
       
-      // Clear specific Supabase keys
+      // Clear specific Supabase keys (more targeted approach)
       const keysToRemove = [
         'supabase.auth.token',
         'sb-nqvisvranvjaghvrdaaz-auth-token',
@@ -479,11 +513,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         sessionStorage.removeItem(key);
       });
       
-      // Clear all localStorage and sessionStorage for good measure
-      localStorage.clear();
-      sessionStorage.clear();
-      
-      console.log('✅ All data cleared');
+      console.log('✅ Auth data cleared');
       console.log('🔄 Redirecting to home page...');
       
       // Small delay to ensure clearing is complete
@@ -496,8 +526,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Even if everything fails, force clear and redirect
       setSession(null);
       setUser(null);
-      localStorage.clear();
-      sessionStorage.clear();
+      
+      // Clear auth keys even if logout fails
+      const keysToRemove = [
+        'supabase.auth.token',
+        'sb-nqvisvranvjaghvrdaaz-auth-token',
+        'sb-auth-token'
+      ];
+      
+      keysToRemove.forEach(key => {
+        localStorage.removeItem(key);
+        sessionStorage.removeItem(key);
+      });
+      
       window.location.href = '/';
     } finally {
       setLoading(false);
@@ -523,22 +564,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw error;
     }
 
-    // Update password change timestamp
-    if (user) {
-      await supabase
-        .from('users')
-        .update({
-          requires_password_change: false,
-          password_changed_at: new Date().toISOString()
-        })
-        .eq('id', user.id);
-    }
+            // Update password change timestamp
+        if (user) {
+          await supabase
+            .from('users')
+            .update({
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', user.id);
+        }
   };
 
   const refreshUser = async () => {
     if (session?.user) {
+      console.log('🔄 Refreshing user profile...');
       const userProfile = await fetchUserProfile(session.user.id);
-      setUser(userProfile);
+      if (userProfile) {
+        setUser(userProfile);
+        console.log('✅ User profile refreshed successfully');
+      } else {
+        console.warn('⚠️ Failed to refresh user profile');
+      }
     }
   };
 

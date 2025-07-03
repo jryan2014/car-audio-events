@@ -1,11 +1,11 @@
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
 import JSZip from 'jszip';
 import { isDevelopment } from './version';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseServiceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+// Remove the separate client creation - use the main one
+// const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+// const supabaseServiceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;
+// const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 export interface BackupMetadata {
   id: string;
@@ -93,7 +93,7 @@ export async function createDatabaseBackup(type: 'manual' | 'automatic' = 'manua
       total_rows: totalRows,
       backup_version: '1.0',
       platform: 'Car Audio Competition Platform',
-      supabase_url: supabaseUrl
+      supabase_url: import.meta.env.VITE_SUPABASE_URL
     };
 
     zip.file('backup-manifest.json', JSON.stringify(manifest, null, 2));
