@@ -44,8 +44,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchUserProfile = async (userId: string): Promise<User | null> => {
     try {
-      console.log('⚡ Fast fetching user profile for:', userId);
-      
       const { data, error } = await supabase
         .from('users')
         .select('id,name,email,membership_type,status,verification_status,location,phone,website,bio,company_name,subscription_plan')
@@ -66,8 +64,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return null;
       }
 
-      console.log('⚡ Profile fetched quickly:', data.email, 'Type:', data.membership_type);
-
       return {
         id: data.id,
         name: data.name || data.email,
@@ -81,8 +77,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         bio: data.bio,
         companyName: data.company_name,
         subscriptionPlan: data.subscription_plan,
-        requiresPasswordChange: false, // Default value since column doesn't exist
-        passwordChangedAt: undefined // Default value since column doesn't exist
+        requiresPasswordChange: false,
+        passwordChangedAt: undefined
       };
     } catch (error) {
       console.error('Profile fetch error:', error);
