@@ -125,40 +125,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log('🔑 SIGNED_IN event - user ID:', session.user.id);
           setSession(session);
           
-          // Check if this is a Google OAuth user without a profile
+          // Check user profile and handle Google OAuth properly
           const userProfile = await fetchUserProfile(session.user.id);
           
           if (!userProfile && session.user.app_metadata?.provider === 'google') {
-            console.log('🔄 Creating profile for Google OAuth user...');
+            console.log('🔒 Google OAuth user without account - redirecting to registration');
             
-            // Create profile for Google OAuth user
-            try {
-              const { error: profileError } = await supabase
-                .from('users')
-                .insert([{
-                  id: session.user.id,
-                  email: session.user.email,
-                  name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Google User',
-                  membership_type: 'competitor', // Default membership type
-                  status: 'active',
-                  verification_status: 'verified', // Google users are pre-verified
-                  email_notifications: true,
-                  marketing_emails: false
-                }]);
-
-              if (profileError) {
-                console.error('Failed to create Google user profile:', profileError);
-              } else {
-                console.log('✅ Google user profile created successfully');
-                // Fetch the newly created profile
-                const newProfile = await fetchUserProfile(session.user.id);
-                setUser(newProfile);
-              }
-            } catch (error) {
-              console.error('Error creating Google user profile:', error);
+            // Google user without existing account - redirect to registration
+            setSession(null);
+            setUser(null);
+            setLoading(false);
+            
+            // Store Google user data for registration flow
+            localStorage.setItem('google_oauth_user', JSON.stringify({
+              email: session.user.email,
+              name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0],
+              provider: 'google'
+            }));
+            
+            // Sign out and redirect to registration
+            await supabase.auth.signOut();
+            window.location.href = '/pricing';
+            return;
+          } else if (userProfile) {
+            // Existing user - check verification and approval status
+            console.log('👤 Existing user login:', userProfile.email, 'Status:', userProfile.status, 'Verification:', userProfile.verificationStatus);
+            
+            // Check email verification status
+            if (userProfile.verificationStatus === 'pending') {
+              console.log('📧 User needs email verification');
+              setSession(null);
+              setUser(null);
+              setLoading(false);
+              
+              // Store user info for verification flow
+              localStorage.setItem('pending_verification_email', userProfile.email);
+              window.location.href = '/verify-email';
+              return;
             }
-          } else {
+            
+            // Check manual approval status for business accounts
+            if (['retailer', 'manufacturer', 'organization'].includes(userProfile.membershipType) && 
+                userProfile.status === 'pending') {
+              console.log('⏳ Business account pending manual approval');
+              setSession(null);
+              setUser(null);
+              setLoading(false);
+              
+              localStorage.setItem('pending_approval_email', userProfile.email);
+              window.location.href = '/pending-approval';
+              return;
+            }
+            
+            // User is verified and approved - allow access
             setUser(userProfile);
+          } else {
+            // No profile found for existing auth user - this shouldn't happen
+            console.error('❌ Auth user exists but no profile found');
+            setUser(null);
           }
           
           setLoading(false);
@@ -253,27 +277,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
       
-      // Create auth user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: userData.email.trim(),
-        password: userData.password,
-        options: {
-          data: {
-            name: userData.name,
-            membership_type: userData.membershipType,
-            location: userData.location,
-            phone: userData.phone,
-            company_name: userData.companyName
-          }
+      // Check if this is a Google OAuth user completing registration
+      const googleUserData = localStorage.getItem('google_oauth_user');
+      let authData: any;
+      
+      if (googleUserData && userData.isGoogleOAuth) {
+        // Google OAuth user - they're already authenticated, just need to create profile
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          throw new Error('Google OAuth session expired. Please try again.');
         }
-      });
+        authData = { user };
+        console.log('📝 Creating profile for Google OAuth user:', user.email);
+      } else {
+        // Regular email/password registration
+        const { data, error: authError } = await supabase.auth.signUp({
+          email: userData.email.trim(),
+          password: userData.password,
+          options: {
+            data: {
+              name: userData.name,
+              membership_type: userData.membershipType,
+              location: userData.location,
+              phone: userData.phone,
+              company_name: userData.companyName
+            }
+          }
+        });
 
-      if (authError) {
-        throw authError;
+        if (authError) {
+          throw authError;
+        }
+
+        if (!data.user) {
+          throw new Error('User creation failed');
+        }
+        
+        authData = data;
       }
 
-      if (!authData.user) {
-        throw new Error('User creation failed');
+      // Determine proper status based on membership type and registration method
+      let initialStatus = 'active';
+      let verificationStatus = 'pending';
+      
+      // Business accounts need manual approval after email verification
+      if (['retailer', 'manufacturer', 'organization'].includes(userData.membershipType)) {
+        initialStatus = 'pending'; // Will be pending until manual approval
+        verificationStatus = 'pending'; // Must verify email first
+      }
+      
+      // Google OAuth users still need email verification
+      if (googleUserData && userData.isGoogleOAuth) {
+        verificationStatus = 'pending';
+        console.log('🔐 Google OAuth user requires email verification');
       }
 
       // Create user profile with enhanced data
@@ -300,8 +356,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           shipping_country: userData.shippingCountry,
           email_notifications: userData.emailNotifications,
           marketing_emails: userData.marketingEmails,
-          status: 'active',
-          verification_status: 'pending'
+          status: initialStatus,
+          verification_status: verificationStatus
         }]);
 
       if (profileError) {
@@ -309,6 +365,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       console.log('✅ Registration successful for:', userData.email);
+
+      // Clean up Google OAuth data if this was a Google registration
+      if (googleUserData && userData.isGoogleOAuth) {
+        localStorage.removeItem('google_oauth_user');
+        console.log('🧹 Cleaned up Google OAuth registration data');
+      }
 
       // Queue the welcome email using the new system
       try {
@@ -326,6 +388,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (emailError) {
         console.error('⚠️ Failed to queue welcome email:', emailError);
         // Do not block registration if email queueing fails
+      }
+
+      // Send verification email for all new users (including Google OAuth)
+      if (verificationStatus === 'pending') {
+        try {
+          const { error: verificationError } = await supabase.auth.resend({
+            type: 'signup',
+            email: userData.email,
+            options: {
+              emailRedirectTo: `${window.location.origin}/dashboard`
+            }
+          });
+          
+          if (verificationError) {
+            console.warn('⚠️ Failed to send verification email:', verificationError);
+          } else {
+            console.log('📧 Verification email sent to:', userData.email);
+          }
+        } catch (verificationError) {
+          console.warn('⚠️ Verification email error:', verificationError);
+        }
       }
 
       // Don't return the user, just complete successfully
