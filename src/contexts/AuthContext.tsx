@@ -44,11 +44,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchUserProfile = async (userId: string): Promise<User | null> => {
     try {
+      console.log('🔍 FETCH DEBUG: Starting profile fetch for:', userId);
+      
       const { data, error } = await supabase
         .from('users')
         .select('id,name,email,membership_type,status,verification_status,location,phone,website,bio,company_name,subscription_plan')
         .eq('id', userId)
         .single();
+      
+      console.log('🔍 FETCH DEBUG: Query completed:', { data, error });
 
       if (error) {
         if (error.code === 'PGRST116') {
@@ -123,10 +127,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         if (event === 'SIGNED_IN' && session?.user) {
           console.log('🔑 SIGNED_IN event - user ID:', session.user.id);
+          console.log('🔍 AUTH DEBUG: About to call fetchUserProfile');
           setSession(session);
           
           // Check user profile and handle Google OAuth properly
           const userProfile = await fetchUserProfile(session.user.id);
+          console.log('🔍 AUTH DEBUG: fetchUserProfile returned:', userProfile);
           
           if (!userProfile && session.user.app_metadata?.provider === 'google') {
             console.log('🔒 Google OAuth user without account - redirecting to registration');
@@ -181,6 +187,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
             
             // User is verified and approved - allow access
+            console.log('✅ AUTH DEBUG: Setting user and completing login');
             setUser(userProfile);
           } else {
             // No profile found for existing auth user - this shouldn't happen
@@ -188,6 +195,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(null);
           }
           
+          console.log('🔍 AUTH DEBUG: SIGNED_IN handler completing, setting loading false');
           setLoading(false);
         } else if (event === 'SIGNED_OUT') {
           setSession(null);
