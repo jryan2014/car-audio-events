@@ -6,6 +6,41 @@ import { supabase } from '../lib/supabase';
 import DashboardWidgets, { Widget } from '../components/DashboardWidgets';
 import { ServiceWorkerManager } from '../components/ServiceWorkerManager';
 
+// Resend Verification Email Component
+const ResendVerificationEmailButton: React.FC<{ userEmail: string }> = ({ userEmail }) => {
+  const { resendVerificationEmail } = useAuth();
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  const handleResend = async () => {
+    try {
+      setSending(true);
+      await resendVerificationEmail(userEmail);
+      setSent(true);
+      setTimeout(() => setSent(false), 3000);
+    } catch (error) {
+      console.error('Failed to resend verification email:', error);
+      alert('Failed to send verification email. Please try again.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleResend}
+      disabled={sending || sent}
+      className={`px-6 py-3 rounded-lg transition-colors ${
+        sent 
+          ? 'bg-green-500 text-white' 
+          : 'bg-electric-500 text-white hover:bg-electric-600'
+      } ${(sending || sent) ? 'opacity-75 cursor-not-allowed' : ''}`}
+    >
+      {sending ? 'Sending...' : sent ? 'Email Sent!' : 'Resend Verification Email'}
+    </button>
+  );
+};
+
 interface DashboardStats {
   totalCompetitions: number;
   totalPoints: number;
@@ -294,6 +329,59 @@ export default function Dashboard() {
           >
             Go to Login
           </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if user needs email verification
+  if (user.verificationStatus === 'pending' && user.membershipType !== 'admin') {
+    return (
+      <div className="min-h-screen py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-8 text-center">
+            <div className="w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <User className="h-8 w-8 text-yellow-400" />
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-4">Email Verification Required</h2>
+            <p className="text-gray-400 mb-6">
+              Please verify your email address to access all dashboard features. Check your inbox for a verification email.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <ResendVerificationEmailButton userEmail={user.email} />
+              <Link
+                to="/profile"
+                className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-500 transition-colors"
+              >
+                View Profile
+              </Link>
+            </div>
+          </div>
+          
+          {/* Limited Profile Access */}
+          <div className="mt-8 bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+            <h3 className="text-xl font-bold text-white mb-4">Your Profile</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Name</label>
+                <p className="text-white">{user.name}</p>
+              </div>
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Email</label>
+                <p className="text-white">{user.email}</p>
+              </div>
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Membership Type</label>
+                <p className="text-white capitalize">{user.membershipType}</p>
+              </div>
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Status</label>
+                <span className="bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-full text-sm">
+                  Pending Verification
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );

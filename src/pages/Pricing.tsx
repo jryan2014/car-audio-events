@@ -10,9 +10,21 @@ export default function Pricing() {
   const { user } = useAuth();
   const [plans, setPlans] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [googleBlockedMessage, setGoogleBlockedMessage] = useState<string | null>(null);
 
   useEffect(() => {
     loadCompetitorPlans();
+    
+    // Check for Google OAuth block message
+    const urlParams = new URLSearchParams(window.location.search);
+    const googleBlocked = urlParams.get('google_blocked');
+    const blockedData = localStorage.getItem('google_oauth_blocked');
+    
+    if (googleBlocked === 'true' && blockedData) {
+      const data = JSON.parse(blockedData);
+      setGoogleBlockedMessage(data.message);
+      localStorage.removeItem('google_oauth_blocked');
+    }
   }, []);
 
   const loadCompetitorPlans = async () => {
@@ -62,6 +74,24 @@ export default function Pricing() {
           <ArrowLeft className="h-5 w-5" />
           <span>Back to Home</span>
         </Link>
+
+        {/* Google OAuth Block Message */}
+        {googleBlockedMessage && (
+          <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6 mb-8">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-red-500/20 rounded-full flex items-center justify-center">
+                <span className="text-red-400 text-lg">!</span>
+              </div>
+              <div>
+                <h3 className="text-red-400 font-semibold">Google Sign-In Blocked</h3>
+                <p className="text-gray-400">{googleBlockedMessage}</p>
+                <p className="text-gray-400 text-sm mt-1">
+                  Please select a membership plan below to register for an account.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Header */}
         <div className="text-center mb-16">

@@ -193,23 +193,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log('🔍 AUTH DEBUG: fetchUserProfile returned:', userProfile);
           
           if (!userProfile && session.user.app_metadata?.provider === 'google') {
-            console.log('🔒 Google OAuth user without account - redirecting to registration');
+            console.log('🔒 Google OAuth user without existing account - blocking access');
             
-            // Google user without existing account - redirect to registration
+            // Google user without existing account - sign them out and redirect
             setSession(null);
             setUser(null);
             setLoading(false);
             
-            // Store Google user data for registration flow
-            localStorage.setItem('google_oauth_user', JSON.stringify({
+            // Sign out immediately to prevent account creation
+            await supabase.auth.signOut();
+            
+            // Redirect to pricing page with message
+            localStorage.setItem('google_oauth_blocked', JSON.stringify({
               email: session.user.email,
-              name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0],
-              provider: 'google'
+              message: 'You must register for an account before using Google sign-in.'
             }));
             
-            // Sign out and redirect to registration
-            await supabase.auth.signOut();
-            window.location.href = '/pricing';
+            window.location.href = '/pricing?google_blocked=true';
             return;
           } else if (userProfile) {
             // Existing user - check verification and approval status
