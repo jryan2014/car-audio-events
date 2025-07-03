@@ -6,9 +6,10 @@ import { supabase } from '../lib/supabase';
 interface PricingPlansProps {
   onPlanSelected?: (planId: string, paymentIntentId: string) => void;
   type?: string;
+  preLoadedPlans?: any[];
 }
 
-export default function PricingPlans({ onPlanSelected, type }: PricingPlansProps) {
+export default function PricingPlans({ onPlanSelected, type, preLoadedPlans }: PricingPlansProps) {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [showPayment, setShowPayment] = useState(false);
   const [plans, setPlans] = useState<any[]>([]);
@@ -24,9 +25,17 @@ export default function PricingPlans({ onPlanSelected, type }: PricingPlansProps
   ];
 
   useEffect(() => {
-    // Load plans from database first, respecting visibility settings
+    // If pre-loaded plans are provided, use them directly
+    if (preLoadedPlans && preLoadedPlans.length > 0) {
+      const formattedPlans = formatPlans(preLoadedPlans);
+      setPlans(formattedPlans);
+      setIsLoading(false);
+      return;
+    }
+    
+    // Otherwise load plans from database, respecting visibility settings
     loadPlansFromDatabase();
-  }, [type]);
+  }, [type, preLoadedPlans]);
 
   const loadPlansFromDatabase = async () => {
     try {
@@ -302,7 +311,13 @@ export default function PricingPlans({ onPlanSelected, type }: PricingPlansProps
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        <div className={`grid gap-8 max-w-6xl mx-auto ${
+          plans.length === 1
+            ? 'grid-cols-1 justify-items-center max-w-md' 
+            : plans.length === 2
+            ? 'grid-cols-1 md:grid-cols-2 justify-items-center max-w-4xl'
+            : 'grid-cols-1 md:grid-cols-3'
+        }`}>
           {plans.map((plan) => (
             <div
               key={plan.id}
@@ -310,7 +325,7 @@ export default function PricingPlans({ onPlanSelected, type }: PricingPlansProps
                 plan.popular
                   ? 'border-electric-500 shadow-electric-500/20 shadow-2xl'
                   : 'border-gray-700/50 hover:border-gray-600'
-              }`}
+              } ${plans.length <= 2 ? 'max-w-md w-full' : ''}`}
             >
               {plan.popular && (
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">

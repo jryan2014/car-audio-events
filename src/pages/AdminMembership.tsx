@@ -16,6 +16,9 @@ interface MembershipPlan {
   is_active: boolean;
   is_featured: boolean;
   hidden_on_frontend?: boolean;
+  show_on_competitor_page?: boolean;
+  show_on_business_page?: boolean;
+  show_on_organization_page?: boolean;
   auto_renewal_enabled?: boolean;
   trial_period_days?: number;
   stripe_price_id_monthly?: string;
@@ -105,6 +108,9 @@ export default function AdminMembership() {
     is_active: true,
     is_featured: false,
     hidden_on_frontend: false,
+    show_on_competitor_page: true,
+    show_on_business_page: false,
+    show_on_organization_page: false,
     auto_renewal_enabled: true,
     trial_period_days: 0,
     stripe_price_id_monthly: '',
@@ -248,6 +254,9 @@ export default function AdminMembership() {
         is_active: plan.is_active,
         is_featured: plan.is_featured,
         hidden_on_frontend: plan.hidden_on_frontend || false,
+        show_on_competitor_page: plan.show_on_competitor_page || false,
+        show_on_business_page: plan.show_on_business_page || false,
+        show_on_organization_page: plan.show_on_organization_page || false,
         auto_renewal_enabled: plan.auto_renewal_enabled || false,
         trial_period_days: plan.trial_period_days,
         stripe_price_id_monthly: plan.stripe_price_id_monthly,
@@ -355,6 +364,9 @@ export default function AdminMembership() {
       is_active: true,
       is_featured: false,
       hidden_on_frontend: false,
+      show_on_competitor_page: true,
+      show_on_business_page: false,
+      show_on_organization_page: false,
       auto_renewal_enabled: true,
       trial_period_days: 0,
       stripe_price_id_monthly: '',
@@ -399,6 +411,9 @@ export default function AdminMembership() {
             is_active: formData.is_active,
             is_featured: formData.is_featured,
             hidden_on_frontend: formData.hidden_on_frontend,
+            show_on_competitor_page: formData.show_on_competitor_page,
+            show_on_business_page: formData.show_on_business_page,
+            show_on_organization_page: formData.show_on_organization_page,
             auto_renewal_enabled: formData.auto_renewal_enabled,
             trial_period_days: formData.trial_period_days,
             stripe_price_id_monthly: formData.stripe_price_id_monthly,
@@ -442,6 +457,9 @@ export default function AdminMembership() {
             is_active: formData.is_active,
             is_featured: formData.is_featured,
             hidden_on_frontend: formData.hidden_on_frontend,
+            show_on_competitor_page: formData.show_on_competitor_page,
+            show_on_business_page: formData.show_on_business_page,
+            show_on_organization_page: formData.show_on_organization_page,
             auto_renewal_enabled: formData.auto_renewal_enabled,
             trial_period_days: formData.trial_period_days,
             stripe_price_id_monthly: formData.stripe_price_id_monthly,
@@ -1421,6 +1439,48 @@ export default function AdminMembership() {
                     <span className="text-gray-300">Hidden on Frontend</span>
                     <FieldHelper text="When checked, this plan won't be shown to users on the pricing page, but can still be assigned manually." />
                   </label>
+                </div>
+
+                <div>
+                  <h4 className="text-white font-medium mb-3 flex items-center">
+                    Pricing Page Display
+                    <FieldHelper text="Control which pricing pages this plan appears on. You can show the same plan on multiple pages if needed." />
+                  </h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.show_on_competitor_page || false}
+                        onChange={(e) => setFormData({ ...formData, show_on_competitor_page: e.target.checked })}
+                        className="w-4 h-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500"
+                      />
+                      <span className="text-gray-300">Show on Competitor Page</span>
+                      <FieldHelper text="Display this plan on the /pricing page (competitor-focused)" />
+                    </label>
+                    
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.show_on_business_page || false}
+                        onChange={(e) => setFormData({ ...formData, show_on_business_page: e.target.checked })}
+                        className="w-4 h-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500"
+                      />
+                      <span className="text-gray-300">Show on Business Page</span>
+                      <FieldHelper text="Display this plan on the /business page (retailer/manufacturer-focused)" />
+                    </label>
+                    
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.show_on_organization_page || false}
+                        onChange={(e) => setFormData({ ...formData, show_on_organization_page: e.target.checked })}
+                        className="w-4 h-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500"
+                      />
+                      <span className="text-gray-300">Show on Organization Page</span>
+                      <FieldHelper text="Display this plan on the /organizations page (organization-focused)" />
+                    </label>
+                  </div>
                 </div>
               </div>
               

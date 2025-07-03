@@ -16,6 +16,8 @@ const Resources = React.lazy(() => import('./pages/Resources'));
 const Login = React.lazy(() => import('./pages/Login'));
 const Register = React.lazy(() => import('./pages/Register'));
 const Pricing = React.lazy(() => import('./pages/Pricing'));
+const BusinessPricing = React.lazy(() => import('./pages/BusinessPricing'));
+const OrganizationPricing = React.lazy(() => import('./pages/OrganizationPricing'));
 const ForgotPassword = React.lazy(() => import('./pages/ForgotPassword'));
 const ResetPassword = React.lazy(() => import('./pages/ResetPassword'));
 const AdminSettings = React.lazy(() => import('./pages/AdminSettings'));
@@ -105,6 +107,8 @@ function App() {
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/pricing" element={<Pricing />} />
+              <Route path="/business" element={<BusinessPricing />} />
+              <Route path="/organizations" element={<OrganizationPricing />} />
               <Route path="/admin" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminDashboard /></Suspense></AdminLayout>} />
               <Route path="/admin/dashboard" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminDashboard /></Suspense></AdminLayout>} />
               <Route path="/admin/settings" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminSettings /></Suspense></AdminLayout>} />

@@ -1,12 +1,39 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import PricingPlans from '../components/PricingPlans';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 
 export default function Pricing() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [plans, setPlans] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    loadCompetitorPlans();
+  }, []);
+
+  const loadCompetitorPlans = async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('membership_plans')
+        .select('*')
+        .eq('is_active', true)
+        .eq('hidden_on_frontend', false)
+        .eq('show_on_competitor_page', true)
+        .order('display_order', { ascending: true });
+
+      if (error) throw error;
+      setPlans(data || []);
+    } catch (error) {
+      console.error('Failed to load competitor plans:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handlePlanSelected = (planId: string, paymentIntentId: string) => {
     // Here you would typically update the user's subscription in your database
@@ -48,7 +75,13 @@ export default function Pricing() {
         </div>
 
         {/* Membership Plans */}
-        <PricingPlans onPlanSelected={handlePlanSelected} />
+        {isLoading ? (
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-electric-500"></div>
+          </div>
+        ) : (
+          <PricingPlans onPlanSelected={handlePlanSelected} preLoadedPlans={plans} />
+        )}
 
         {/* FAQ Section */}
         <div className="mt-20">

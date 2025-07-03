@@ -13,6 +13,7 @@ interface MembershipPlan {
   features: string[];
   is_active: boolean;
   hidden_on_frontend: boolean;
+  is_featured?: boolean;
   price?: number;
   billing_period?: string;
 }
@@ -77,9 +78,10 @@ export default function Register() {
       setPlansLoading(true);
       const { data, error } = await supabase
         .from('membership_plans')
-        .select('id, name, type, description, features, is_active, hidden_on_frontend, price, billing_period')
+        .select('id, name, type, description, features, is_active, hidden_on_frontend, is_featured, price, billing_period')
         .eq('is_active', true)
         .eq('hidden_on_frontend', false)
+        .eq('show_on_competitor_page', true)
         .order('display_order', { ascending: true });
 
       if (error) throw error;
@@ -93,6 +95,7 @@ export default function Register() {
           features: Array.isArray(plan.features) ? plan.features : [],
           is_active: plan.is_active,
           hidden_on_frontend: plan.hidden_on_frontend || false,
+          is_featured: plan.is_featured || false,
           price: plan.price,
           billing_period: plan.billing_period
         }));
@@ -114,6 +117,7 @@ export default function Register() {
             features: ['Event browsing', 'Score tracking', 'Profile creation', 'Team participation'],
             is_active: true,
             hidden_on_frontend: false,
+            is_featured: false,
             price: 0,
             billing_period: 'free'
           }
@@ -131,6 +135,7 @@ export default function Register() {
           features: ['Event browsing', 'Score tracking', 'Profile creation', 'Team participation'],
           is_active: true,
           hidden_on_frontend: false,
+          is_featured: false,
           price: 0,
           billing_period: 'free'
         }
@@ -410,15 +415,25 @@ export default function Register() {
                   <div
                     key={type.id}
                     onClick={() => setFormData({ ...formData, membershipType: type.type })}
-                    className={`relative cursor-pointer rounded-xl p-6 transition-all duration-200 border-2 ${
+                    className={`relative cursor-pointer rounded-xl p-6 transition-all duration-300 hover:scale-105 border-2 ${
                       formData.membershipType === type.type
                         ? 'border-electric-500 bg-electric-500/10 shadow-lg shadow-electric-500/20'
+                        : type.is_featured
+                        ? 'border-electric-500 bg-gradient-to-br from-gray-800 to-gray-900 shadow-electric-500/20 shadow-lg hover:border-electric-400'
                         : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
                     }`}
                   >
+                    {type.is_featured && (
+                      <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                        <div className="bg-electric-500 text-white px-3 py-1 rounded-full text-xs font-bold">
+                          Most Popular
+                        </div>
+                      </div>
+                    )}
+                    
                     <div className="flex items-center space-x-3 mb-4">
                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                        formData.membershipType === type.type ? 'bg-electric-500' : 'bg-gray-700'
+                        formData.membershipType === type.type || type.is_featured ? 'bg-electric-500' : 'bg-gray-700'
                       }`}>
                         {React.createElement(getTypeIcon(type.type), { className: "h-5 w-5 text-white" })}
                       </div>

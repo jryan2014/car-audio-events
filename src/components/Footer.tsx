@@ -177,6 +177,20 @@ export default function Footer() {
           </Link>
         );
       }
+      if (!existingSlugs.some(slug => slug.includes('business'))) {
+        fallbackLinks.push(
+          <Link key="business" to="/business" className="block text-gray-400 hover:text-electric-500 transition-colors text-sm">
+            Business Plans
+          </Link>
+        );
+      }
+      if (!existingSlugs.some(slug => slug.includes('organization'))) {
+        fallbackLinks.push(
+          <Link key="organizations" to="/organizations" className="block text-gray-400 hover:text-electric-500 transition-colors text-sm">
+            Organization Plans
+          </Link>
+        );
+      }
       if (!existingSlugs.some(slug => slug.includes('register') || slug.includes('join'))) {
         fallbackLinks.push(
           <Link key="register" to="/register" className="block text-gray-400 hover:text-electric-500 transition-colors text-sm">
