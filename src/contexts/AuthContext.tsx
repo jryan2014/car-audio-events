@@ -86,7 +86,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, resetTimer]);
 
     const fetchUserProfile = async (userId: string): Promise<User | null> => {
-      // Skip connection test - it was causing timeout issues
       console.log('🔍 FETCH DEBUG: Starting profile fetch for user ID:', userId);
 
       // Add timeout to prevent hanging (shorter timeout for faster recovery)
@@ -98,38 +97,75 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       try {
-        // Use the same complete query as EditUser component for consistency
-        const queryPromise = supabase
-          .from('users')
-          .select(`
-            id,
-            email,
-            name,
-            membership_type,
-            status,
-            location,
-            phone,
-            company_name,
-            verification_status,
-            subscription_plan,
-            last_login_at,
-            created_at,
-            login_count,
-            failed_login_attempts
-          `)
-          .eq('id', userId)
-          .single();
+        // Get the current auth session to check email
+        const { data: session } = await supabase.auth.getSession();
+        let data = null;
+        let error = null;
 
-        console.log('🔍 FETCH DEBUG: Executing query with timeout...');
-        let { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any;
-
-        if (error) {
-          console.error('🔍 FETCH DEBUG: Query error:', error);
+        // For admin@caraudioevents.com, try email lookup first (more reliable)
+        if (session?.session?.user?.email === 'admin@caraudioevents.com') {
+          console.log('🔍 FETCH DEBUG: Admin user detected, using email lookup...');
+          const emailQuery = supabase
+            .from('users')
+            .select(`
+              id,
+              email,
+              name,
+              membership_type,
+              status,
+              location,
+              phone,
+              company_name,
+              verification_status,
+              subscription_plan,
+              last_login_at,
+              created_at,
+              login_count,
+              failed_login_attempts
+            `)
+            .eq('email', 'admin@caraudioevents.com')
+            .single();
           
-          // Try fallback query by email if ID lookup fails
-          console.log('🔍 FETCH DEBUG: Trying fallback query by email...');
-          const { data: session } = await supabase.auth.getSession();
-          if (session?.session?.user?.email) {
+          const emailResult = await Promise.race([emailQuery, timeoutPromise]) as any;
+          data = emailResult.data;
+          error = emailResult.error;
+          
+          if (data) {
+            console.log('✅ FETCH DEBUG: Admin email lookup successful:', data);
+          } else {
+            console.error('❌ FETCH DEBUG: Admin email lookup failed:', error);
+          }
+        } else {
+          // For other users, use ID lookup first
+          console.log('🔍 FETCH DEBUG: Regular user, using ID lookup...');
+          const queryPromise = supabase
+            .from('users')
+            .select(`
+              id,
+              email,
+              name,
+              membership_type,
+              status,
+              location,
+              phone,
+              company_name,
+              verification_status,
+              subscription_plan,
+              last_login_at,
+              created_at,
+              login_count,
+              failed_login_attempts
+            `)
+            .eq('id', userId)
+            .single();
+
+          const result = await Promise.race([queryPromise, timeoutPromise]) as any;
+          data = result.data;
+          error = result.error;
+
+          // If ID lookup fails, try email fallback
+          if (error && session?.session?.user?.email) {
+            console.log('🔍 FETCH DEBUG: ID lookup failed, trying email fallback...');
             const fallbackQuery = supabase
               .from('users')
               .select(`
@@ -151,17 +187,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               .eq('email', session.session.user.email)
               .single();
             
-            const { data: fallbackData, error: fallbackError } = await Promise.race([fallbackQuery, timeoutPromise]) as any;
+            const fallbackResult = await Promise.race([fallbackQuery, timeoutPromise]) as any;
+            data = fallbackResult.data;
+            error = fallbackResult.error;
             
-            if (fallbackError) {
-              console.error('🔍 FETCH DEBUG: Fallback query also failed:', fallbackError);
-              return null;
+            if (data) {
+              console.log('✅ FETCH DEBUG: Email fallback successful:', data);
+            } else {
+              console.error('❌ FETCH DEBUG: Email fallback also failed:', error);
             }
-            
-            console.log('🔍 FETCH DEBUG: Fallback query successful:', fallbackData);
-            data = fallbackData;
-          } else {
-            return null;
           }
         }
 
