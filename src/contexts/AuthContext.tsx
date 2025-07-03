@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
+import { useInactivityTimer } from '../hooks/useInactivityTimer';
 
 interface User {
   id: string;
@@ -42,6 +43,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sessionTimeout, setSessionTimeout] = useState<number>(30); // Default 30 minutes
+
+  // Load session timeout settings from admin configuration
+  const loadSessionTimeout = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('admin_settings')
+        .select('value')
+        .eq('key', 'session_timeout_minutes')
+        .single();
+
+      if (!error && data) {
+        const timeoutMinutes = parseInt(data.value) || 30;
+        setSessionTimeout(timeoutMinutes);
+        console.log('📅 Session timeout loaded:', timeoutMinutes, 'minutes');
+      }
+    } catch (error) {
+      console.log('Using default session timeout of 30 minutes');
+    }
+  };
+
+  useEffect(() => {
+    loadSessionTimeout();
+  }, []);
+
+  // Auto-logout based on inactivity
+  const { resetTimer } = useInactivityTimer({
+    timeout: sessionTimeout * 60 * 1000, // Convert minutes to milliseconds
+    onTimeout: async () => {
+      console.log('⏰ Session timeout - logging out user');
+      await logout();
+    },
+    isActive: !!user // Only active when user is logged in
+  });
+
+  // Reset timer on user activity (handled by useInactivityTimer)
+  useEffect(() => {
+    if (user) {
+      resetTimer();
+    }
+  }, [user, resetTimer]);
 
     const fetchUserProfile = async (userId: string): Promise<User | null> => {
     try {

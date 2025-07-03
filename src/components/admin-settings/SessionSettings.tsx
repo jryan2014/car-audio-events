@@ -120,6 +120,9 @@ export const SessionSettings: React.FC = () => {
                 placeholder="30"
               />
               <p className="text-xs text-gray-400">How long before inactive sessions expire (5-1440 minutes)</p>
+              <div className="mt-2 p-2 bg-blue-500/10 border border-blue-500/20 rounded text-xs">
+                <p className="text-blue-300">💡 <strong>Recommended:</strong> 30-60 min for users, 240-480 min for admins</p>
+              </div>
             </div>
             <div className="flex items-center space-x-2">
               <input
