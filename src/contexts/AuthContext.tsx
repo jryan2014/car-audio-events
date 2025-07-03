@@ -33,6 +33,7 @@ interface AuthContextType {
   updatePassword: (password: string) => Promise<void>;
   refreshUser: () => Promise<void>;
   resendVerificationEmail: (email: string) => Promise<void>;
+  forceCleanupOrphanedSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -46,9 +47,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log('🔍 FETCH DEBUG: Starting profile fetch for:', userId);
       
-      // Add timeout to prevent hanging (shorter for dev environment)
+      // Add timeout to prevent hanging (shorter timeout for faster recovery)
       const isDev = import.meta.env.DEV;
-      const timeoutMs = isDev ? 3000 : 8000; // 3s for dev, 8s for production
+      const timeoutMs = isDev ? 2000 : 4000; // 2s for dev, 4s for production
       
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error(`Profile fetch timeout after ${timeoutMs/1000} seconds`)), timeoutMs);
@@ -231,9 +232,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             console.log('✅ AUTH DEBUG: Setting user and completing login');
             setUser(userProfile);
           } else {
-            // No profile found for existing auth user - this shouldn't happen
-            console.error('❌ Auth user exists but no profile found');
+            // No profile found for existing auth user - clean up orphaned session
+            console.error('❌ Auth user exists but no profile found - cleaning up orphaned session');
+            console.log('🧹 Signing out orphaned auth session...');
+            await supabase.auth.signOut();
+            setSession(null);
             setUser(null);
+            
+            // Clear any stored auth data
+            const keysToRemove = [
+              'supabase.auth.token',
+              'sb-nqvisvranvjaghvrdaaz-auth-token',
+              'sb-auth-token'
+            ];
+            
+            keysToRemove.forEach(key => {
+              localStorage.removeItem(key);
+              sessionStorage.removeItem(key);
+            });
+            
+            console.log('✅ Orphaned session cleaned up');
           }
           
           console.log('🔍 AUTH DEBUG: SIGNED_IN handler completing, setting loading false');
@@ -625,6 +643,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const forceCleanupOrphanedSession = async () => {
+    console.log('🧹 Force cleaning up any orphaned sessions...');
+    
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.warn('Signout warning:', error);
+    }
+    
+    setSession(null);
+    setUser(null);
+    
+    // Clear all possible auth storage
+    const keysToRemove = [
+      'supabase.auth.token',
+      'sb-nqvisvranvjaghvrdaaz-auth-token', 
+      'sb-auth-token'
+    ];
+    
+    keysToRemove.forEach(key => {
+      localStorage.removeItem(key);
+      sessionStorage.removeItem(key);
+    });
+    
+    console.log('✅ Force cleanup completed');
+    window.location.reload();
+  };
+
   const value: AuthContextType = {
     user,
     session,
@@ -637,7 +683,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     resetPassword,
     updatePassword,
     refreshUser,
-    resendVerificationEmail
+    resendVerificationEmail,
+    forceCleanupOrphanedSession
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
