@@ -111,8 +111,20 @@ export default function UserDetails() {
           updateData.status = 'banned';
           break;
         case 'delete':
-          updateData.status = 'banned';
-          break;
+          // For testing purposes, actually delete the user record
+          // In production, this would normally just ban the user
+          const { error: deleteError } = await supabase
+            .from('users')
+            .delete()
+            .eq('id', user.id);
+
+          if (deleteError) throw deleteError;
+
+          setSuccessMessage('User deleted successfully');
+          setTimeout(() => {
+            navigate('/admin/users');
+          }, 1500);
+          return;
         default:
           throw new Error('Invalid action');
       }

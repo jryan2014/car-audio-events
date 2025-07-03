@@ -54,24 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setTimeout(() => reject(new Error(`Profile fetch timeout after ${timeoutMs/1000} seconds`)), timeoutMs);
       });
       
-      // Quick connection test first
-      console.log('🔍 FETCH DEBUG: Testing database connection...');
-      try {
-        const { data: testData, error: testError } = await Promise.race([
-          supabase.from('users').select('id').limit(1),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Connection test timeout')), 1500))
-        ]) as any;
-        
-        if (testError) {
-          console.error('🔍 FETCH DEBUG: Connection test failed:', testError);
-          // Don't return null immediately, try the main query anyway
-        } else {
-          console.log('🔍 FETCH DEBUG: Connection test successful');
-        }
-      } catch (connError) {
-        console.error('🔍 FETCH DEBUG: Connection test error:', connError);
-        // Don't return null immediately, try the main query anyway
-      }
+      // Skip connection test - it was causing timeout issues
       
       // Use the same complete query as EditUser component for consistency
       const queryPromise = supabase
