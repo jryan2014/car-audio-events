@@ -44,11 +44,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchUserProfile = async (userId: string): Promise<User | null> => {
     try {
+      console.log('🔍 EMERGENCY DEBUG: Fetching profile for:', userId);
+      
       const { data, error } = await supabase
         .from('users')
         .select('id,name,email,membership_type,status,verification_status,location,phone,website,bio,company_name,subscription_plan')
         .eq('id', userId)
         .single();
+      
+      console.log('🔍 EMERGENCY DEBUG: Query result:', { data, error });
 
       if (error) {
         if (error.code === 'PGRST116') {
@@ -64,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return null;
       }
 
-      return {
+      const profile = {
         id: data.id,
         name: data.name || data.email,
         email: data.email,
@@ -80,6 +84,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         requiresPasswordChange: false,
         passwordChangedAt: undefined
       };
+      
+      console.log('🔍 EMERGENCY DEBUG: Profile created:', profile);
+      return profile;
     } catch (error) {
       console.error('Profile fetch error:', error);
       return null;
