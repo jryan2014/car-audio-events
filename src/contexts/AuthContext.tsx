@@ -42,16 +42,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchUserProfile = async (userId: string): Promise<User | null> => {
+    const fetchUserProfile = async (userId: string): Promise<User | null> => {
     try {
       console.log('🔍 FETCH DEBUG: Starting profile fetch for:', userId);
       
-      const { data, error } = await supabase
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Profile fetch timeout after 10 seconds')), 10000);
+      });
+      
+      const queryPromise = supabase
         .from('users')
         .select('id,name,email,membership_type,status,verification_status,location,phone,website,bio,company_name,subscription_plan')
         .eq('id', userId)
         .single();
       
+      console.log('🔍 FETCH DEBUG: Executing query with timeout...');
+      const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any;
+        
       console.log('🔍 FETCH DEBUG: Query completed:', { data, error });
 
       if (error) {
