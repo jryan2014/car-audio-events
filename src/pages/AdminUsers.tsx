@@ -229,9 +229,9 @@ export default function AdminUsers() {
 
   const handleUserAction = async (userId: string, action: string) => {
     try {
-      // Check if we have a valid session
-      if (!session?.access_token) {
-        throw new Error('No valid session token available');
+      // Check if we have a valid session and user is authenticated
+      if (!session || !user) {
+        throw new Error('No authorization token was found. Please log in again.');
       }
 
       // Prepare update data based on action
