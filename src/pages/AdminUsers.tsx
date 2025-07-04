@@ -110,10 +110,25 @@ export default function AdminUsers() {
     newsletter_subscribed: false
   });
 
-  // Check if user is admin
+  // Check if user is admin with detailed debugging
+  console.log('🔍 ADMIN ACCESS DEBUG:', {
+    user: user ? 'exists' : 'null',
+    membershipType: user?.membershipType,
+    email: user?.email,
+    status: user?.status,
+    verificationStatus: user?.verificationStatus
+  });
+  
   if (!user || user.membershipType !== 'admin') {
+    console.log('❌ ADMIN ACCESS DENIED:', {
+      reason: !user ? 'No user object' : 'Not admin',
+      membershipType: user?.membershipType,
+      expected: 'admin'
+    });
     return <Navigate to="/\" replace />;
   }
+  
+  console.log('✅ ADMIN ACCESS GRANTED for:', user.email);
 
   useEffect(() => {
     loadUsers();

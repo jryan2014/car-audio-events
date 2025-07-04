@@ -43,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sessionConflictDetected, setSessionConflictDetected] = useState(false);
   const [sessionTimeout, setSessionTimeout] = useState<number>(30); // Default 30 minutes
 
   // Load session timeout settings from admin configuration
@@ -347,22 +348,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // No profile found for existing auth user - clean up orphaned session
             console.error('❌ Auth user exists but no profile found - cleaning up orphaned session');
             console.log('🧹 Signing out orphaned auth session...');
-            await supabase.auth.signOut();
+            await supabase.auth.signOut({ scope: 'global' });
             setSession(null);
             setUser(null);
-            
-            // Clear any stored auth data
-            const keysToRemove = [
-              'supabase.auth.token',
-              'sb-nqvisvranvjaghvrdaaz-auth-token',
-              'sb-auth-token'
-            ];
-            
-            keysToRemove.forEach(key => {
-              localStorage.removeItem(key);
-              sessionStorage.removeItem(key);
-            });
-            
             console.log('✅ Orphaned session cleaned up');
           }
           
@@ -447,6 +435,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       console.error('Login error:', error);
+      
+      // Check for session conflicts or 406 errors
+      if (error instanceof Error) {
+        if (error.message.includes('406') || error.message.includes('Not Acceptable')) {
+          console.log('🔄 Session conflict detected (406 error) - attempting recovery...');
+          setSessionConflictDetected(true);
+          
+          // Force cleanup and retry
+          try {
+            await supabase.auth.signOut({ scope: 'global' });
+            setSession(null);
+            setUser(null);
+            
+            // Small delay before retry
+            setTimeout(() => {
+              console.log('🔄 Retrying login after session cleanup...');
+              setSessionConflictDetected(false);
+            }, 1000);
+          } catch (cleanupError) {
+            console.error('Failed to cleanup session conflict:', cleanupError);
+          }
+        }
+      }
+      
       setSession(null);
       setUser(null);
       throw error;
@@ -611,22 +623,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.warn('Auth logout failed, but continuing with local cleanup:', authError);
       }
       
-      // Clear ALL possible stored auth data
-      console.log('🧹 Clearing all stored data...');
-      
-      // Clear specific Supabase keys (more targeted approach)
-      const keysToRemove = [
-        'supabase.auth.token',
-        'sb-nqvisvranvjaghvrdaaz-auth-token',
-        'sb-auth-token'
-      ];
-      
-      keysToRemove.forEach(key => {
-        localStorage.removeItem(key);
-        sessionStorage.removeItem(key);
-      });
-      
-      console.log('✅ Auth data cleared');
+      console.log('✅ Auth data cleared by Supabase');
       console.log('🔄 Redirecting to home page...');
       
       // Small delay to ensure clearing is complete
@@ -639,19 +636,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Even if everything fails, force clear and redirect
       setSession(null);
       setUser(null);
-      
-      // Clear auth keys even if logout fails
-      const keysToRemove = [
-        'supabase.auth.token',
-        'sb-nqvisvranvjaghvrdaaz-auth-token',
-        'sb-auth-token'
-      ];
-      
-      keysToRemove.forEach(key => {
-        localStorage.removeItem(key);
-        sessionStorage.removeItem(key);
-      });
-      
       window.location.href = '/';
     } finally {
       setLoading(false);
@@ -759,26 +743,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     console.log('🧹 Force cleaning up any orphaned sessions...');
     
     try {
-      await supabase.auth.signOut();
+      await supabase.auth.signOut({ scope: 'global' });
     } catch (error) {
       console.warn('Signout warning:', error);
     }
     
     setSession(null);
     setUser(null);
-    
-    // Clear all possible auth storage
-    const keysToRemove = [
-      'supabase.auth.token',
-      'sb-nqvisvranvjaghvrdaaz-auth-token', 
-      'sb-auth-token'
-    ];
-    
-    keysToRemove.forEach(key => {
-      localStorage.removeItem(key);
-      sessionStorage.removeItem(key);
-    });
-    
     console.log('✅ Force cleanup completed');
     window.location.reload();
   };
