@@ -251,6 +251,9 @@ export default function AdminUsers() {
         case 'ban':
           updateData.status = 'banned';
           break;
+        case 'verify_email':
+          updateData.verification_status = 'verified';
+          break;
         case 'delete':
           // For delete, we'll actually just ban the user to preserve data integrity
           updateData.status = 'banned';
@@ -764,7 +767,25 @@ export default function AdminUsers() {
                             </button>
                           )}
                           
-                          {user.status === 'suspended' || user.status === 'banned' ? (
+                          {user.verification_status === 'pending' && user.status !== 'pending' && (
+                            <button
+                              onClick={() => handleUserAction(user.id, 'verify_email')}
+                              className="text-blue-400 hover:text-blue-300 transition-colors"
+                              title="Verify Email"
+                            >
+                              <Mail className="h-4 w-4" />
+                            </button>
+                          )}
+                          
+                          {user.status === 'banned' ? (
+                            <button
+                              onClick={() => handleUserAction(user.id, 'activate')}
+                              className="text-green-400 hover:text-green-300 transition-colors"
+                              title="Unban User"
+                            >
+                              <UserCheck className="h-4 w-4" />
+                            </button>
+                          ) : user.status === 'suspended' ? (
                             <button
                               onClick={() => handleUserAction(user.id, 'activate')}
                               className="text-green-400 hover:text-green-300 transition-colors"
