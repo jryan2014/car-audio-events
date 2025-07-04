@@ -91,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Add timeout to prevent hanging (increased for better reliability)
       const isDev = import.meta.env.DEV;
-      const timeoutMs = isDev ? 10000 : 15000; // 10s for dev, 15s for production
+      const timeoutMs = isDev ? 20000 : 15000; // 20s for dev, 15s for production
 
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error(`Profile fetch timeout after ${timeoutMs/1000} seconds`)), timeoutMs);
@@ -258,16 +258,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (session?.user) {
             console.log('🔍 AUTH DEBUG: Session user found, fetching profile...');
             setSession(session);
-            const userProfile = await fetchUserProfile(session.user.id);
-            setUser(userProfile);
+            try {
+              const userProfile = await fetchUserProfile(session.user.id);
+              if (userProfile) {
+                setUser(userProfile);
+                console.log('✅ AUTH DEBUG: Profile loaded successfully during init');
+              } else {
+                console.warn('⚠️ AUTH DEBUG: No profile found during init');
+                // Keep session but set user to null for now
+                setUser(null);
+              }
+            } catch (profileError) {
+              console.error('❌ AUTH DEBUG: Profile fetch failed during init:', profileError);
+              // Don't clear session on profile fetch failure
+              // This prevents logout loops on page refresh
+              setUser(null);
+            }
           } else {
             console.log('🔍 AUTH DEBUG: No session found');
+            setSession(null);
+            setUser(null);
           }
           setLoading(false);
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
         if (isMounted) {
+          // Don't clear session on initialization errors
           setLoading(false);
         }
       }
@@ -362,11 +379,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else if (event === 'TOKEN_REFRESHED' && session) {
           setSession(session);
         } else if (event === 'INITIAL_SESSION') {
-          // Handle initial session load
+          // Handle initial session load with better error handling
+          console.log('🔄 INITIAL_SESSION event - handling page refresh...');
           if (session?.user) {
+            console.log('🔍 INITIAL_SESSION: User found, fetching profile...');
             setSession(session);
-            const userProfile = await fetchUserProfile(session.user.id);
-            setUser(userProfile);
+            try {
+              const userProfile = await fetchUserProfile(session.user.id);
+              if (userProfile) {
+                setUser(userProfile);
+                console.log('✅ INITIAL_SESSION: Profile loaded successfully');
+              } else {
+                console.warn('⚠️ INITIAL_SESSION: No profile found');
+                setUser(null);
+              }
+            } catch (profileError) {
+              console.error('❌ INITIAL_SESSION: Profile fetch failed:', profileError);
+              // Don't logout on profile fetch failure during refresh
+              // Keep the session but set user to null
+              setUser(null);
+            }
+          } else {
+            console.log('🔍 INITIAL_SESSION: No user in session');
+            setSession(null);
+            setUser(null);
           }
         }
         
