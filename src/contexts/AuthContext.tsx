@@ -103,10 +103,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         let data = null;
         let error = null;
 
-        // For admin@caraudioevents.com, try email lookup first (more reliable)
-        if (session?.session?.user?.email === 'admin@caraudioevents.com') {
-          console.log('🔍 FETCH DEBUG: Admin user detected, using email lookup...');
-          const emailQuery = supabase
+        // FIX 3: Simplified admin profile lookup - remove special admin handling that causes timeouts
+        // Use standard ID lookup for ALL users (including admins) for consistency and reliability
+        console.log('🔍 FETCH DEBUG: Using standard ID lookup for user...');
+        const queryPromise = supabase
+          .from('users')
+          .select(`
+            id,
+            email,
+            name,
+            membership_type,
+            status,
+            location,
+            phone,
+            company_name,
+            verification_status,
+            subscription_plan,
+            last_login_at,
+            created_at,
+            login_count,
+            failed_login_attempts
+          `)
+          .eq('id', userId)
+          .single();
+
+        const result = await Promise.race([queryPromise, timeoutPromise]) as any;
+        data = result.data;
+        error = result.error;
+
+        // If ID lookup fails, try email fallback
+        if (error && session?.session?.user?.email) {
+          console.log('🔍 FETCH DEBUG: ID lookup failed, trying email fallback...');
+          const fallbackQuery = supabase
             .from('users')
             .select(`
               id,
@@ -124,79 +152,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               login_count,
               failed_login_attempts
             `)
-            .eq('email', 'admin@caraudioevents.com')
+            .eq('email', session.session.user.email)
             .single();
           
-          const emailResult = await Promise.race([emailQuery, timeoutPromise]) as any;
-          data = emailResult.data;
-          error = emailResult.error;
+          const fallbackResult = await Promise.race([fallbackQuery, timeoutPromise]) as any;
+          data = fallbackResult.data;
+          error = fallbackResult.error;
           
           if (data) {
-            console.log('✅ FETCH DEBUG: Admin email lookup successful:', data);
+            console.log('✅ FETCH DEBUG: Email fallback successful:', data);
           } else {
-            console.error('❌ FETCH DEBUG: Admin email lookup failed:', error);
-          }
-        } else {
-          // For other users, use ID lookup first
-          console.log('🔍 FETCH DEBUG: Regular user, using ID lookup...');
-          const queryPromise = supabase
-            .from('users')
-            .select(`
-              id,
-              email,
-              name,
-              membership_type,
-              status,
-              location,
-              phone,
-              company_name,
-              verification_status,
-              subscription_plan,
-              last_login_at,
-              created_at,
-              login_count,
-              failed_login_attempts
-            `)
-            .eq('id', userId)
-            .single();
-
-          const result = await Promise.race([queryPromise, timeoutPromise]) as any;
-          data = result.data;
-          error = result.error;
-
-          // If ID lookup fails, try email fallback
-          if (error && session?.session?.user?.email) {
-            console.log('🔍 FETCH DEBUG: ID lookup failed, trying email fallback...');
-            const fallbackQuery = supabase
-              .from('users')
-              .select(`
-                id,
-                email,
-                name,
-                membership_type,
-                status,
-                location,
-                phone,
-                company_name,
-                verification_status,
-                subscription_plan,
-                last_login_at,
-                created_at,
-                login_count,
-                failed_login_attempts
-              `)
-              .eq('email', session.session.user.email)
-              .single();
-            
-            const fallbackResult = await Promise.race([fallbackQuery, timeoutPromise]) as any;
-            data = fallbackResult.data;
-            error = fallbackResult.error;
-            
-            if (data) {
-              console.log('✅ FETCH DEBUG: Email fallback successful:', data);
-            } else {
-              console.error('❌ FETCH DEBUG: Email fallback also failed:', error);
-            }
+            console.error('❌ FETCH DEBUG: Email fallback also failed:', error);
           }
         }
 
@@ -236,6 +202,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return null;
       }
     };
+
+  // Helper function for login tracking (shared between email/password and OAuth)
+  const updateLoginTracking = async (userId: string) => {
+    try {
+      // First get current login count
+      const { data: userData } = await supabase
+        .from('users')
+        .select('login_count')
+        .eq('id', userId)
+        .single();
+      
+      const currentCount = userData?.login_count || 0;
+      
+      await supabase
+        .from('users')
+        .update({
+          last_login_at: new Date().toISOString(),
+          login_count: currentCount + 1
+        })
+        .eq('id', userId);
+      console.log('✅ Login tracking updated for user:', userId);
+    } catch (trackingError) {
+      console.warn('⚠️ Failed to update login tracking:', trackingError);
+    }
+  };
 
   // Initialize auth state
   useEffect(() => {
@@ -292,121 +283,128 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     initializeAuth();
 
+    // FIX 1: Remove async callbacks - Supabase best practice to prevent deadlocks
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         if (!isMounted) return;
         
         console.log('Auth state changed:', event);
         
-        if (event === 'SIGNED_IN' && session?.user) {
-          console.log('🔑 SIGNED_IN event - user ID:', session.user.id);
-          console.log('🔍 AUTH DEBUG: About to call fetchUserProfile');
-          setSession(session);
-          
-          // Check user profile and handle Google OAuth properly
-          const userProfile = await fetchUserProfile(session.user.id);
-          console.log('🔍 AUTH DEBUG: fetchUserProfile returned:', userProfile);
-          
-          if (!userProfile && session.user.app_metadata?.provider === 'google') {
-            console.log('🔒 Google OAuth user without existing account - blocking access');
-            
-            // Google user without existing account - sign them out and redirect
-            setSession(null);
-            setUser(null);
-            setLoading(false);
-            
-            // Sign out immediately to prevent account creation
-            await supabase.auth.signOut();
-            
-            // Redirect to pricing page with message
-            localStorage.setItem('google_oauth_blocked', JSON.stringify({
-              email: session.user.email,
-              message: 'You must register for an account before using Google sign-in.'
-            }));
-            
-            window.location.href = '/pricing?google_blocked=true';
-            return;
-          } else if (userProfile) {
-            // Existing user - check verification and approval status
-            console.log('👤 Existing user login:', userProfile.email, 'Status:', userProfile.status, 'Verification:', userProfile.verificationStatus);
-            
-            // Check email verification status (FIXED LOGIC - removed redundant null check)
-            if (userProfile.verificationStatus === 'pending' && 
-                userProfile.membershipType !== 'admin') {
-              console.log('📧 User needs email verification');
-              setSession(null);
-              setUser(null);
-              setLoading(false);
-              
-              // Store user info for verification flow
-              localStorage.setItem('pending_verification_email', userProfile.email);
-              window.location.href = '/verify-email';
-              return;
-            }
-            
-            // Check manual approval status for business accounts (only block if explicitly pending)
-            if (['retailer', 'manufacturer', 'organization'].includes(userProfile.membershipType) && 
-                userProfile.status === 'pending' && 
-                userProfile.verificationStatus !== 'pending') { // Only block if email is verified but account pending
-              console.log('⏳ Business account pending manual approval');
-              setSession(null);
-              setUser(null);
-              setLoading(false);
-              
-              localStorage.setItem('pending_approval_email', userProfile.email);
-              window.location.href = '/pending-approval';
-              return;
-            }
-            
-            // User is verified and approved - allow access
-            console.log('✅ AUTH DEBUG: Setting user and completing login');
-            setUser(userProfile);
-          } else {
-            // No profile found for existing auth user - clean up orphaned session
-            console.error('❌ Auth user exists but no profile found - cleaning up orphaned session');
-            console.log('🧹 Signing out orphaned auth session...');
-            await supabase.auth.signOut({ scope: 'global' });
-            setSession(null);
-            setUser(null);
-            console.log('✅ Orphaned session cleaned up');
-          }
-          
-          console.log('🔍 AUTH DEBUG: SIGNED_IN handler completing, setting loading false');
-          setLoading(false);
-        } else if (event === 'SIGNED_OUT') {
-          setSession(null);
-          setUser(null);
-        } else if (event === 'TOKEN_REFRESHED' && session) {
-          setSession(session);
-        } else if (event === 'INITIAL_SESSION') {
-          // Handle initial session load with better error handling
-          console.log('🔄 INITIAL_SESSION event - handling page refresh...');
-          if (session?.user) {
-            console.log('🔍 INITIAL_SESSION: User found, fetching profile...');
+        // FIX 1: Use setTimeout to defer async operations (Supabase best practice)
+        setTimeout(async () => {
+          if (event === 'SIGNED_IN' && session?.user) {
+            console.log('🔑 SIGNED_IN event - user ID:', session.user.id);
+            console.log('🔍 AUTH DEBUG: About to call fetchUserProfile');
             setSession(session);
-            try {
-              const userProfile = await fetchUserProfile(session.user.id);
-              if (userProfile) {
-                setUser(userProfile);
-                console.log('✅ INITIAL_SESSION: Profile loaded successfully');
-              } else {
-                console.warn('⚠️ INITIAL_SESSION: No profile found');
+            
+            // FIX 2: Add login tracking for ALL login methods (email/password AND Google OAuth)
+            await updateLoginTracking(session.user.id);
+            
+            // Check user profile and handle Google OAuth properly
+            const userProfile = await fetchUserProfile(session.user.id);
+            console.log('🔍 AUTH DEBUG: fetchUserProfile returned:', userProfile);
+            
+            if (!userProfile && session.user.app_metadata?.provider === 'google') {
+              console.log('🔒 Google OAuth user without existing account - blocking access');
+              
+              // Google user without existing account - sign them out and redirect
+              setSession(null);
+              setUser(null);
+              setLoading(false);
+              
+              // Sign out immediately to prevent account creation
+              await supabase.auth.signOut();
+              
+              // Redirect to pricing page with message
+              localStorage.setItem('google_oauth_blocked', JSON.stringify({
+                email: session.user.email,
+                message: 'You must register for an account before using Google sign-in.'
+              }));
+              
+              window.location.href = '/pricing?google_blocked=true';
+              return;
+            } else if (userProfile) {
+              // Existing user - check verification and approval status
+              console.log('👤 Existing user login:', userProfile.email, 'Status:', userProfile.status, 'Verification:', userProfile.verificationStatus);
+              
+              // Check email verification status (FIXED LOGIC - removed redundant null check)
+              if (userProfile.verificationStatus === 'pending' && 
+                  userProfile.membershipType !== 'admin') {
+                console.log('📧 User needs email verification');
+                setSession(null);
+                setUser(null);
+                setLoading(false);
+                
+                // Store user info for verification flow
+                localStorage.setItem('pending_verification_email', userProfile.email);
+                window.location.href = '/verify-email';
+                return;
+              }
+              
+              // Check manual approval status for business accounts (only block if explicitly pending)
+              if (['retailer', 'manufacturer', 'organization'].includes(userProfile.membershipType) && 
+                  userProfile.status === 'pending' && 
+                  userProfile.verificationStatus !== 'pending') { // Only block if email is verified but account pending
+                console.log('⏳ Business account pending manual approval');
+                setSession(null);
+                setUser(null);
+                setLoading(false);
+                
+                localStorage.setItem('pending_approval_email', userProfile.email);
+                window.location.href = '/pending-approval';
+                return;
+              }
+              
+              // User is verified and approved - allow access
+              console.log('✅ AUTH DEBUG: Setting user and completing login');
+              setUser(userProfile);
+            } else {
+              // No profile found for existing auth user - clean up orphaned session
+              console.error('❌ Auth user exists but no profile found - cleaning up orphaned session');
+              console.log('🧹 Signing out orphaned auth session...');
+              await supabase.auth.signOut({ scope: 'global' });
+              setSession(null);
+              setUser(null);
+              console.log('✅ Orphaned session cleaned up');
+            }
+            
+            console.log('🔍 AUTH DEBUG: SIGNED_IN handler completing, setting loading false');
+            setLoading(false);
+          } else if (event === 'SIGNED_OUT') {
+            setSession(null);
+            setUser(null);
+          } else if (event === 'TOKEN_REFRESHED' && session) {
+            setSession(session);
+          } else if (event === 'INITIAL_SESSION') {
+            // Handle initial session load with better error handling
+            console.log('🔄 INITIAL_SESSION event - handling page refresh...');
+            if (session?.user) {
+              console.log('🔍 INITIAL_SESSION: User found, fetching profile...');
+              setSession(session);
+              try {
+                const userProfile = await fetchUserProfile(session.user.id);
+                if (userProfile) {
+                  setUser(userProfile);
+                  console.log('✅ INITIAL_SESSION: Profile loaded successfully');
+                } else {
+                  console.warn('⚠️ INITIAL_SESSION: No profile found');
+                  setUser(null);
+                }
+              } catch (profileError) {
+                console.error('❌ INITIAL_SESSION: Profile fetch failed:', profileError);
+                // Don't logout on profile fetch failure during refresh
+                // Keep the session but set user to null
                 setUser(null);
               }
-            } catch (profileError) {
-              console.error('❌ INITIAL_SESSION: Profile fetch failed:', profileError);
-              // Don't logout on profile fetch failure during refresh
-              // Keep the session but set user to null
+            } else {
+              console.log('🔍 INITIAL_SESSION: No user in session');
+              setSession(null);
               setUser(null);
             }
-          } else {
-            console.log('🔍 INITIAL_SESSION: No user in session');
-            setSession(null);
-            setUser(null);
           }
-        }
-        
-        setLoading(false);
+          
+          setLoading(false);
+        }, 0); // FIX 1: Defer async operations as recommended by Supabase docs
       }
     );
 
@@ -435,28 +433,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('✅ Auth successful, setting session and fetching profile...');
         setSession(data.session);
         
-        // Update login tracking
-        try {
-          // First get current login count
-          const { data: userData } = await supabase
-            .from('users')
-            .select('login_count')
-            .eq('id', data.user.id)
-            .single();
-          
-          const currentCount = userData?.login_count || 0;
-          
-          await supabase
-            .from('users')
-            .update({
-              last_login_at: new Date().toISOString(),
-              login_count: currentCount + 1
-            })
-            .eq('id', data.user.id);
-          console.log('✅ Login tracking updated');
-        } catch (trackingError) {
-          console.warn('⚠️ Failed to update login tracking:', trackingError);
-        }
+        // FIX 2: Login tracking now handled in onAuthStateChange for consistency
+        // This ensures both email/password AND Google OAuth get tracking
         
         const userProfile = await fetchUserProfile(data.user.id);
         if (userProfile) {
