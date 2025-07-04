@@ -764,7 +764,15 @@ export default function AdminUsers() {
                             </button>
                           )}
                           
-                          {user.status === 'active' ? (
+                          {user.status === 'suspended' || user.status === 'banned' ? (
+                            <button
+                              onClick={() => handleUserAction(user.id, 'activate')}
+                              className="text-green-400 hover:text-green-300 transition-colors"
+                              title="Activate User"
+                            >
+                              <UserCheck className="h-4 w-4" />
+                            </button>
+                          ) : user.status === 'active' ? (
                             <button
                               onClick={() => handleUserAction(user.id, 'suspend')}
                               className="text-yellow-400 hover:text-yellow-300 transition-colors"

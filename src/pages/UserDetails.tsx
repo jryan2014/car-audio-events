@@ -283,6 +283,14 @@ export default function UserDetails() {
                 <Ban className="h-4 w-4" />
                 <span>Suspend</span>
               </button>
+            ) : user.status === 'banned' ? (
+              <button
+                onClick={() => handleUserAction('activate')}
+                className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors flex items-center space-x-2"
+              >
+                <UserCheck className="h-4 w-4" />
+                <span>Unban</span>
+              </button>
             ) : (
               <button
                 onClick={() => handleUserAction('activate')}
@@ -522,6 +530,14 @@ export default function UserDetails() {
               >
                 <UserCheck className="h-4 w-4" />
                 <span>Activate User</span>
+              </button>
+            ) : user.status === 'banned' ? (
+              <button
+                onClick={() => handleUserAction('activate')}
+                className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center space-x-2"
+              >
+                <UserCheck className="h-4 w-4" />
+                <span>Unban User</span>
               </button>
             ) : null}
             
