@@ -1,0 +1,102 @@
+{
+  "mcpServers": {
+    "car-audio-events-db": {
+      "command": "npm",
+      "args": ["run", "mcp:start"],
+      "cwd": ".",
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "description": "Car Audio Events Database MCP Server - Safe database introspection and management",
+      "capabilities": {
+        "tools": true,
+        "resources": true,
+        "prompts": false
+      },
+      "settings": {
+        "autoStart": true,
+        "restartOnFailure": true,
+        "timeout": 30000,
+        "logLevel": "info"
+      },
+      "safety": {
+        "readOnlyDefault": true,
+        "requireApproval": true,
+        "prohibitedOperations": [
+          "DROP",
+          "TRUNCATE",
+          "DELETE FROM users",
+          "DELETE FROM events",
+          "RESET",
+          "FLUSH"
+        ]
+      }
+    }
+  },
+  "tools": {
+    "database": {
+      "enabled": true,
+      "server": "car-audio-events-db",
+      "description": "Database introspection and safe query tools",
+      "tools": [
+        {
+          "name": "inspect_database_schema",
+          "description": "Get complete database schema including tables, columns, and relationships",
+          "category": "read-only"
+        },
+        {
+          "name": "analyze_table_data",
+          "description": "Analyze table data patterns, row counts, and sample data",
+          "category": "read-only"
+        },
+        {
+          "name": "check_rls_policies",
+          "description": "Examine Row Level Security policies for tables",
+          "category": "read-only"
+        },
+        {
+          "name": "analyze_relationships",
+          "description": "Analyze foreign key relationships and table dependencies",
+          "category": "read-only"
+        },
+        {
+          "name": "query_database_safely",
+          "description": "Execute safe READ-ONLY queries with built-in protections",
+          "category": "read-only"
+        },
+        {
+          "name": "get_database_statistics",
+          "description": "Get database usage statistics and performance metrics",
+          "category": "read-only"
+        }
+      ]
+    }
+  },
+  "security": {
+    "requireApprovalForWrites": true,
+    "prohibitedOperations": [
+      "DROP DATABASE",
+      "DROP SCHEMA",
+      "DROP TABLE",
+      "TRUNCATE",
+      "DELETE FROM users",
+      "DELETE FROM events",
+      "ALTER TABLE.*DROP",
+      "RESET",
+      "FLUSH"
+    ],
+    "backupRequiredBefore": [
+      "ALTER TABLE",
+      "CREATE TABLE",
+      "INSERT",
+      "UPDATE",
+      "DELETE"
+    ]
+  },
+  "notifications": {
+    "onServerStart": "🚀 MCP Database Server connected - Safe database access enabled",
+    "onServerStop": "🛑 MCP Database Server disconnected",
+    "onError": "🚨 MCP Database Server error - Check logs for details",
+    "onProhibitedOperation": "🚫 Operation blocked by safety protocols"
+  }
+} 

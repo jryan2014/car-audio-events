@@ -254,7 +254,7 @@ Remember: This is a production platform handling real users and payments. Priori
 - **Before executing ANY multi-step task (e.g., deployment, feature implementation, refactoring), you MUST copy this entire checklist into your response and confirm each point.**
 - ✅ **ALWAYS create backup** before any significant changes (backup-[feature-name]-YYYY-MM-DD_HH-mm-ss)
 - ✅ **ALWAYS use step-by-step approach** with user confirmation at each stage
-- ✅ **ALWAYS provide only ONE SQL file** to be run in Supabase editor
+- ✅ **ALWAYS provide only ONE SQL file** to be run in Supabase editor OR execute directly via MCP server with approval
 - ✅ **ALWAYS use remote database only** - Never suggest local database work
 - ✅ **ALWAYS explain what each step does and why it's needed**
 - ✅ **ALWAYS wait for "proceed" or "continue" before next step**
@@ -262,6 +262,7 @@ Remember: This is a production platform handling real users and payments. Priori
 - ✅ **ALWAYS consider impact on existing functionality**
 - ✅ **ALWAYS follow the automatic version control system**
 - ✅ **ALWAYS use the existing Supabase client from src/lib/supabase**
+- ✅ **PREFER MCP server execution** for security fixes and database analysis - faster and safer than manual SQL files
 
 ### 🛡️ DATABASE SAFETY PROTOCOLS
 - **Before executing ANY database operation (SQL file, schema change), you MUST reference the MANDATORY REQUIREMENTS checklist and receive user confirmation.**
@@ -272,11 +273,22 @@ Remember: This is a production platform handling real users and payments. Priori
 - **Backup First**: Always create backup before any database schema changes
 - **Step-by-Step Verification**: Each database change must be verified before proceeding
 
+### 🚀 MCP SERVER EXECUTION PROTOCOLS
+- **Direct SQL Execution Allowed**: AI agents MAY execute SQL commands directly through the MCP server for security fixes and approved operations
+- **Built-in Safety**: MCP server has hard-coded prohibitions against DROP, TRUNCATE, DELETE FROM users/events, and database resets
+- **Approval Required**: Write operations still require explicit user approval before execution
+- **Full Audit Trail**: All MCP server operations are logged with timestamps and full SQL commands
+- **Read-Only Default**: SELECT queries can execute immediately for analysis and verification
+- **Backup Verification**: MCP server checks for recent backups before executing write operations
+- **SQL Injection Protection**: Built-in input validation and parameterized queries prevent injection attacks
+- **Emergency Stop**: User can halt any MCP operation immediately if needed
+- **Rollback Ready**: All operations can be reversed using standard SQL rollback procedures
+
 ### 🔄 PRODUCTION WORKFLOW
 1. **ACKNOWLEDGE PROTOCOLS**: Confirm understanding of all production rules
 2. **EXECUTE BACKUP**: State that you are performing a backup as per the `MANDATORY REQUIREMENTS` and get approval before proceeding.
 3. **PLAN APPROACH**: Outline implementation strategy and get approval
-4. **SINGLE SQL FILE**: Provide only ONE SQL file for database changes
+4. **EXECUTE CHANGES**: Use MCP server for direct execution OR provide ONE SQL file for database changes
 5. **STEP-BY-STEP**: Execute with user confirmation at each stage
 6. **TEST THOROUGHLY**: Complete QA before presenting results
 7. **DOCUMENT CHANGES**: Update relevant documentation
@@ -288,7 +300,7 @@ STANDARD RESPONSE FORMAT:
 2. Confirm understanding of production constraints
 3. Outline step-by-step plan
 4. Request approval before proceeding
-5. Provide only ONE SQL file if database changes needed
+5. Execute via MCP server OR provide ONE SQL file if database changes needed
 6. Wait for user confirmation before each step
 7. Explain what each step does and why
 `
@@ -579,6 +591,14 @@ This process ensures zero-downtime deployments with full rollback capability.
 This section tracks changes **only to the .cursorrules file itself**. The official project changelog is in `CHANGELOG.md`.
 
 ### Protocol Updates
+
+*   **July 4, 2025**:
+    *   Added `MCP Server Execution Protocols`.
+    *   Updated `MANDATORY REQUIREMENTS` to allow direct SQL execution through MCP server.
+    *   Modified `PRODUCTION WORKFLOW` to prefer MCP server execution for security fixes.
+    *   Updated `COMMUNICATION PROTOCOL` to include MCP server execution option.
+    *   **Rationale**: Enables faster, safer database security fixes while maintaining all safety protocols.
+    *   **Line Count**: 606 lines (was 597 lines).
 
 *   **January 30, 2025**:
     *   Added `Production Deployment Protocols`.
