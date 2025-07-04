@@ -88,9 +88,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const fetchUserProfile = async (userId: string): Promise<User | null> => {
       console.log('🔍 FETCH DEBUG: Starting profile fetch for user ID:', userId);
 
-      // Add timeout to prevent hanging (shorter timeout for faster recovery)
+      // Add timeout to prevent hanging (increased for better reliability)
       const isDev = import.meta.env.DEV;
-      const timeoutMs = isDev ? 2000 : 4000; // 2s for dev, 4s for production
+      const timeoutMs = isDev ? 10000 : 15000; // 10s for dev, 15s for production
 
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error(`Profile fetch timeout after ${timeoutMs/1000} seconds`)), timeoutMs);
@@ -312,10 +312,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // Existing user - check verification and approval status
             console.log('👤 Existing user login:', userProfile.email, 'Status:', userProfile.status, 'Verification:', userProfile.verificationStatus);
             
-            // Check email verification status (but allow existing verified users, admin, and users with null status)
+            // Check email verification status (FIXED LOGIC - removed redundant null check)
             if (userProfile.verificationStatus === 'pending' && 
-                userProfile.membershipType !== 'admin' && 
-                userProfile.verificationStatus !== null) {
+                userProfile.membershipType !== 'admin') {
               console.log('📧 User needs email verification');
               setSession(null);
               setUser(null);
