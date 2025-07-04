@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import AdDisplay from '../components/AdDisplay';
+import { ActivityLogger } from '../utils/activityLogger';
 
 interface Advertisement {
   id: string;
@@ -56,6 +57,10 @@ export default function MemberAdDashboard() {
 
   useEffect(() => {
     loadAdvertisements();
+    // Log advertising dashboard access
+    if (user) {
+      ActivityLogger.advertisingDashboardAccess(user.membershipType || 'unknown');
+    }
   }, [user, timeRange]);
 
   const loadAdvertisements = async () => {

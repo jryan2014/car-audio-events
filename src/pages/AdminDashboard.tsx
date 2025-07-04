@@ -7,6 +7,7 @@ import { ActivityLogger } from '../utils/activityLogger';
 import AdminNavigation from '../components/AdminNavigation';
 import { getFullVersionString } from '../utils/version';
 import { ServiceWorkerManager } from '../components/ServiceWorkerManager';
+import { EnhancedRecentActivity } from '../components/EnhancedRecentActivity';
 
 interface DashboardStats {
   totalUsers: number;
@@ -579,52 +580,8 @@ export default function AdminDashboard() {
           </Link>
         </div>
 
-        {/* Recent Activity */}
-        <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-white">Recent Activity</h2>
-            {/* System Status for Admins */}
-            <div className="bg-gray-700/30 rounded-lg p-2">
-              <ServiceWorkerManager showFullInterface={false} />
-            </div>
-          </div>
-          
-          {isLoading ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-electric-500 mx-auto mb-4"></div>
-              <p className="text-gray-400">Loading activity...</p>
-            </div>
-          ) : recentActivity.length > 0 ? (
-            <div className="space-y-4">
-              {recentActivity.map((activity) => (
-                <div key={activity.id} className="flex items-start space-x-3 p-4 bg-gray-700/30 rounded-lg">
-                  <div className={`${getActivityColor(activity.type)} mt-1`}>
-                    {getActivityIcon(activity.type)}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-white text-sm">{activity.description}</p>
-                    <div className="flex items-center space-x-4 mt-1">
-                      <span className="text-gray-400 text-xs">{formatDate(activity.timestamp)}</span>
-                      {activity.user && (
-                        <span className="text-gray-500 text-xs">{activity.user}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <Activity className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-400 mb-2">No recent activity</h3>
-              <p className="text-gray-500 text-sm">
-                Activity will appear here as users interact with your platform.
-                <br />
-                Start by creating some test events or inviting users to register.
-              </p>
-            </div>
-          )}
-        </div>
+        {/* Enhanced Recent Activity */}
+        <EnhancedRecentActivity limit={20} showControls={true} />
       </div>
     </div>
   );

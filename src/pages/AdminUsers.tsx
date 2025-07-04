@@ -3,6 +3,7 @@ import { Users, Search, Filter, Plus, Edit, Trash2, Shield, AlertTriangle, Check
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { ActivityLogger } from '../utils/activityLogger';
 
 const USERS_PER_PAGE = 25;
 
@@ -132,6 +133,8 @@ export default function AdminUsers() {
 
   useEffect(() => {
     loadUsers();
+    // Log access to User Management
+    ActivityLogger.userManagementAccess();
   }, []);
 
   useEffect(() => {
@@ -234,6 +237,11 @@ export default function AdminUsers() {
         throw new Error('No authorization token was found. Please log in again.');
       }
 
+      // Get the user being acted upon for logging
+      const targetUser = users.find(u => u.id === userId);
+      const userEmail = targetUser?.email || 'unknown@example.com';
+      const userName = targetUser?.name || undefined;
+
       // Prepare update data based on action
       let updateData: any = { updated_at: new Date().toISOString() };
 
@@ -271,6 +279,33 @@ export default function AdminUsers() {
       if (updateError) {
         console.error('Database update error:', updateError);
         throw new Error(`Failed to ${action} user: ${updateError.message}`);
+      }
+
+      // Log the specific user action with detailed information
+      try {
+        switch (action) {
+          case 'activate':
+            await ActivityLogger.userActivated(userEmail, userName);
+            break;
+          case 'approve':
+            await ActivityLogger.userApproved(userEmail, userName);
+            break;
+          case 'suspend':
+            await ActivityLogger.userSuspended(userEmail, userName);
+            break;
+          case 'ban':
+            await ActivityLogger.userBanned(userEmail, userName);
+            break;
+          case 'verify_email':
+            await ActivityLogger.userVerified(userEmail, userName);
+            break;
+          case 'delete':
+            await ActivityLogger.userDeleted(userEmail, userName);
+            break;
+        }
+      } catch (logError) {
+        console.warn('Failed to log user action:', logError);
+        // Don't fail the main operation if logging fails
       }
 
       // Reload users after action
@@ -370,6 +405,14 @@ export default function AdminUsers() {
       if (profileError) {
         console.error('Profile creation error:', profileError);
         throw new Error(`Failed to create user profile: ${profileError.message}`);
+      }
+
+      // Log the user creation activity
+      try {
+        await ActivityLogger.userEdited(newUserData.email, newUserData.name, ['account_created']);
+      } catch (logError) {
+        console.warn('Failed to log user creation:', logError);
+        // Don't fail the main operation if logging fails
       }
       
       // Reset form and close modal

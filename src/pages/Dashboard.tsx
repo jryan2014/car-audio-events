@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import DashboardWidgets, { Widget } from '../components/DashboardWidgets';
 import { ServiceWorkerManager } from '../components/ServiceWorkerManager';
+import { ActivityLogger } from '../utils/activityLogger';
 
 // Resend Verification Email Component
 const ResendVerificationEmailButton: React.FC<{ userEmail: string }> = ({ userEmail }) => {
@@ -148,6 +149,26 @@ export default function Dashboard() {
             loadUpcomingEvents(),
             loadUserStats()
           ]);
+          
+          // Log dashboard access based on user type
+          switch (user.membershipType) {
+            case 'competitor':
+            case 'pro_competitor':
+              await ActivityLogger.userDashboardAccess('competitor');
+              break;
+            case 'retailer':
+              await ActivityLogger.userDashboardAccess('retailer');
+              break;
+            case 'manufacturer':
+              await ActivityLogger.userDashboardAccess('manufacturer');
+              break;
+            case 'organization':
+              await ActivityLogger.userDashboardAccess('organization');
+              break;
+            default:
+              await ActivityLogger.userDashboardAccess('user');
+          }
+          
           // console.log('Dashboard data loaded successfully');
           setError(null);
         } catch (error) {

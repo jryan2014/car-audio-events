@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import AddCoordinatesModal from '../components/AddCoordinatesModal';
 import WebScraperModal from '../components/WebScraperModal';
 import { scrollToRef, useAutoScrollToForm, useAutoFocusFirstInput } from '../utils/focusUtils';
+import { ActivityLogger } from '../utils/activityLogger';
 
 interface Event {
   id: string;
@@ -51,6 +52,8 @@ export default function AdminEvents() {
 
   useEffect(() => {
     loadEvents();
+    // Log access to Event Management
+    ActivityLogger.eventManagementAccess();
   }, []);
 
   useEffect(() => {
@@ -121,6 +124,11 @@ export default function AdminEvents() {
     try {
       console.log('🚀 Attempting to approve event:', eventId);
       
+      // Get event details for logging
+      const event = events.find(e => e.id === eventId);
+      const eventTitle = event?.title || 'Unknown Event';
+      const organizerEmail = event?.organizer_email || 'unknown@example.com';
+      
       const { data, error } = await supabase
         .from('events')
         .update({ 
@@ -137,6 +145,14 @@ export default function AdminEvents() {
       }
 
       console.log('✅ Event approved successfully:', data);
+      
+      // Log the event approval
+      try {
+        await ActivityLogger.eventApproved(eventTitle, organizerEmail);
+      } catch (logError) {
+        console.warn('Failed to log event approval:', logError);
+      }
+      
       alert('Event approved and published successfully!');
       await loadEvents();
     } catch (error) {
@@ -167,6 +183,14 @@ export default function AdminEvents() {
       }
 
       console.log('✅ Event rejected successfully:', data);
+      
+      // Log the event rejection
+      try {
+        await ActivityLogger.eventRejected(selectedEvent.title, selectedEvent.organizer_email, rejectionReason);
+      } catch (logError) {
+        console.warn('Failed to log event rejection:', logError);
+      }
+      
       alert('Event rejected successfully!');
       await loadEvents();
       setShowRejectModal(false);
@@ -184,12 +208,24 @@ export default function AdminEvents() {
     }
 
     try {
+      // Get event details for logging
+      const event = events.find(e => e.id === eventId);
+      const eventTitle = event?.title || 'Unknown Event';
+      const organizerEmail = event?.organizer_email || 'unknown@example.com';
+      
       const { error } = await supabase
         .from('events')
         .delete()
         .eq('id', eventId);
 
       if (error) throw error;
+
+      // Log the event deletion
+      try {
+        await ActivityLogger.eventDeleted(eventTitle, organizerEmail);
+      } catch (logError) {
+        console.warn('Failed to log event deletion:', logError);
+      }
 
       await loadEvents();
     } catch (error) {

@@ -15,7 +15,7 @@ const logActivity = async (data: ActivityLogData): Promise<boolean> => {
     const { error } = await supabase.rpc('log_activity', {
       p_activity_type: data.activityType,
       p_description: data.description,
-      p_metadata: data.metadata ? JSON.stringify(data.metadata) : null
+      p_metadata: data.metadata || {}
     });
 
     if (error) {
@@ -170,6 +170,144 @@ export const ActivityLogger = {
     activityType: 'admin_action',
     description: 'Directory Management accessed',
     metadata: { module: 'directory' }
+  }),
+
+  // Enhanced User Management Actions
+  userApproved: (userEmail: string, userName?: string) => logActivity({
+    activityType: 'user_management',
+    description: `User approved: ${userEmail}${userName ? ` (${userName})` : ''}`,
+    metadata: { action: 'user_approved', user_email: userEmail, user_name: userName }
+  }),
+
+  userRejected: (userEmail: string, userName?: string, reason?: string) => logActivity({
+    activityType: 'user_management',
+    description: `User rejected: ${userEmail}${userName ? ` (${userName})` : ''}${reason ? ` - Reason: ${reason}` : ''}`,
+    metadata: { action: 'user_rejected', user_email: userEmail, user_name: userName, reason }
+  }),
+
+  userVerified: (userEmail: string, userName?: string) => logActivity({
+    activityType: 'user_management',
+    description: `User verified: ${userEmail}${userName ? ` (${userName})` : ''}`,
+    metadata: { action: 'user_verified', user_email: userEmail, user_name: userName }
+  }),
+
+  userSuspended: (userEmail: string, userName?: string, reason?: string) => logActivity({
+    activityType: 'user_management',
+    description: `User suspended: ${userEmail}${userName ? ` (${userName})` : ''}${reason ? ` - Reason: ${reason}` : ''}`,
+    metadata: { action: 'user_suspended', user_email: userEmail, user_name: userName, reason }
+  }),
+
+  userActivated: (userEmail: string, userName?: string) => logActivity({
+    activityType: 'user_management',
+    description: `User activated: ${userEmail}${userName ? ` (${userName})` : ''}`,
+    metadata: { action: 'user_activated', user_email: userEmail, user_name: userName }
+  }),
+
+  userBanned: (userEmail: string, userName?: string, reason?: string) => logActivity({
+    activityType: 'user_management',
+    description: `User banned: ${userEmail}${userName ? ` (${userName})` : ''}${reason ? ` - Reason: ${reason}` : ''}`,
+    metadata: { action: 'user_banned', user_email: userEmail, user_name: userName, reason }
+  }),
+
+  userUnbanned: (userEmail: string, userName?: string) => logActivity({
+    activityType: 'user_management',
+    description: `User unbanned: ${userEmail}${userName ? ` (${userName})` : ''}`,
+    metadata: { action: 'user_unbanned', user_email: userEmail, user_name: userName }
+  }),
+
+  userEdited: (userEmail: string, userName?: string, changedFields?: string[]) => logActivity({
+    activityType: 'user_management',
+    description: `User profile edited: ${userEmail}${userName ? ` (${userName})` : ''}${changedFields ? ` - Changed: ${changedFields.join(', ')}` : ''}`,
+    metadata: { action: 'user_edited', user_email: userEmail, user_name: userName, changed_fields: changedFields }
+  }),
+
+  userDeleted: (userEmail: string, userName?: string) => logActivity({
+    activityType: 'user_management',
+    description: `User deleted: ${userEmail}${userName ? ` (${userName})` : ''}`,
+    metadata: { action: 'user_deleted', user_email: userEmail, user_name: userName }
+  }),
+
+  userMembershipChanged: (userEmail: string, userName?: string, oldMembership?: string, newMembership?: string) => logActivity({
+    activityType: 'user_management',
+    description: `User membership changed: ${userEmail}${userName ? ` (${userName})` : ''} from ${oldMembership || 'unknown'} to ${newMembership || 'unknown'}`,
+    metadata: { action: 'membership_changed', user_email: userEmail, user_name: userName, old_membership: oldMembership, new_membership: newMembership }
+  }),
+
+  // Enhanced Event Management Actions
+  eventApproved: (eventTitle: string, eventId?: string) => logActivity({
+    activityType: 'event_management',
+    description: `Event approved: ${eventTitle}`,
+    metadata: { action: 'event_approved', event_title: eventTitle, event_id: eventId }
+  }),
+
+  eventRejected: (eventTitle: string, eventId?: string, reason?: string) => logActivity({
+    activityType: 'event_management',
+    description: `Event rejected: ${eventTitle}${reason ? ` - Reason: ${reason}` : ''}`,
+    metadata: { action: 'event_rejected', event_title: eventTitle, event_id: eventId, reason }
+  }),
+
+  eventDeleted: (eventTitle: string, eventId?: string) => logActivity({
+    activityType: 'event_management',
+    description: `Event deleted: ${eventTitle}`,
+    metadata: { action: 'event_deleted', event_title: eventTitle, event_id: eventId }
+  }),
+
+  // Enhanced System Actions
+  settingsChanged: (settingCategory: string, settingKey?: string, oldValue?: string, newValue?: string) => logActivity({
+    activityType: 'system_config',
+    description: `System setting updated: ${settingCategory}${settingKey ? ` - ${settingKey}` : ''}`,
+    metadata: { action: 'setting_changed', category: settingCategory, setting_key: settingKey, old_value: oldValue, new_value: newValue }
+  }),
+
+  adminLoginAttempt: (successful: boolean, ipAddress?: string) => logActivity({
+    activityType: 'admin_security',
+    description: `Admin login ${successful ? 'successful' : 'failed'}${ipAddress ? ` from ${ipAddress}` : ''}`,
+    metadata: { action: 'admin_login', successful, ip_address: ipAddress }
+  }),
+
+  securityPolicyChanged: (policyName: string, details?: string) => logActivity({
+    activityType: 'admin_security',
+    description: `Security policy changed: ${policyName}${details ? ` - ${details}` : ''}`,
+    metadata: { action: 'security_policy_changed', policy_name: policyName, details }
+  }),
+
+  // User Dashboard Access by Type
+  userDashboardAccess: (userType: string) => logActivity({
+    activityType: 'user_action',
+    description: `${userType.charAt(0).toUpperCase() + userType.slice(1)} dashboard accessed`,
+    metadata: { action: 'dashboard_access', user_type: userType }
+  }),
+
+  // Advertising Dashboard Access
+  advertisingDashboardAccess: (userType: string) => logActivity({
+    activityType: 'advertising_action',
+    description: `${userType.charAt(0).toUpperCase() + userType.slice(1)} advertising dashboard accessed`,
+    metadata: { action: 'advertising_dashboard_access', user_type: userType }
+  }),
+
+  // Advertising Actions
+  adCampaignCreated: (campaignTitle: string, userType: string) => logActivity({
+    activityType: 'advertising_action',
+    description: `Ad campaign created: ${campaignTitle} by ${userType}`,
+    metadata: { action: 'campaign_created', campaign_title: campaignTitle, user_type: userType }
+  }),
+
+  adCampaignUpdated: (campaignTitle: string, userType: string) => logActivity({
+    activityType: 'advertising_action',
+    description: `Ad campaign updated: ${campaignTitle} by ${userType}`,
+    metadata: { action: 'campaign_updated', campaign_title: campaignTitle, user_type: userType }
+  }),
+
+  adCampaignPaused: (campaignTitle: string, userType: string) => logActivity({
+    activityType: 'advertising_action',
+    description: `Ad campaign paused: ${campaignTitle} by ${userType}`,
+    metadata: { action: 'campaign_paused', campaign_title: campaignTitle, user_type: userType }
+  }),
+
+  adCampaignDeleted: (campaignTitle: string, userType: string) => logActivity({
+    activityType: 'advertising_action',
+    description: `Ad campaign deleted: ${campaignTitle} by ${userType}`,
+    metadata: { action: 'campaign_deleted', campaign_title: campaignTitle, user_type: userType }
   })
 };
 
