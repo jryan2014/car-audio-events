@@ -72,47 +72,81 @@ export default function PaymentSettings() {
   const saveStripeConfig = async () => {
     try {
       setSaving(true);
-      setError(null);
+      
+      // Validate Stripe settings
+      if (config.stripe_active && config.mode === 'test' && !config.stripe_test_publishable_key) {
+        throw new Error('STRIPE TEST PUBLISHABLE KEY is required for test mode');
+      }
+      if (config.stripe_active && config.mode === 'test' && !config.stripe_test_secret_key) {
+        throw new Error('STRIPE TEST SECRET KEY is required for test mode');
+      }
+      if (config.stripe_active && config.mode === 'live' && !config.stripe_live_publishable_key) {
+        throw new Error('STRIPE LIVE PUBLISHABLE KEY is required for live mode');
+      }
+      if (config.stripe_active && config.mode === 'live' && !config.stripe_live_secret_key) {
+        throw new Error('STRIPE LIVE SECRET KEY is required for live mode');
+      }
 
-      // Validate required Stripe fields for current mode
-      const currentMode = config.mode;
-      const requiredFields = [
-        `stripe_${currentMode}_publishable_key`,
-        `stripe_${currentMode}_secret_key`
+      // Prepare settings to save
+      const settingsToSave = [
+        { category: 'payment', key: 'stripe_active', value: config.stripe_active.toString(), is_sensitive: false },
+        { category: 'payment', key: 'stripe_test_publishable_key', value: config.stripe_test_publishable_key, is_sensitive: false },
+        { category: 'payment', key: 'stripe_test_secret_key', value: config.stripe_test_secret_key, is_sensitive: true },
+        { category: 'payment', key: 'stripe_test_webhook_secret', value: config.stripe_test_webhook_secret, is_sensitive: true },
+        { category: 'payment', key: 'stripe_live_publishable_key', value: config.stripe_live_publishable_key, is_sensitive: false },
+        { category: 'payment', key: 'stripe_live_secret_key', value: config.stripe_live_secret_key, is_sensitive: true },
+        { category: 'payment', key: 'stripe_live_webhook_secret', value: config.stripe_live_webhook_secret, is_sensitive: true },
+        { category: 'payment', key: 'mode', value: config.mode.toString(), is_sensitive: false }
       ];
 
-      for (const field of requiredFields) {
-        if (!config[field as keyof PaymentConfig]) {
-          throw new Error(`${field.replace(/_/g, ' ').toUpperCase()} is required for ${currentMode} mode`);
+      // Save each setting individually using check-then-insert/update approach
+      for (const setting of settingsToSave) {
+        // Check if record exists
+        const { data: existing, error: checkError } = await supabase
+          .from('admin_settings')
+          .select('*')
+          .eq('category', setting.category)
+          .eq('key', setting.key)
+          .single();
+
+        if (checkError && checkError.code !== 'PGRST116') {
+          throw checkError;
+        }
+
+        if (existing) {
+          // Update existing record
+          const { error: updateError } = await supabase
+            .from('admin_settings')
+            .update({
+              value: setting.value,
+              is_sensitive: setting.is_sensitive,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existing.id);
+
+          if (updateError) throw updateError;
+        } else {
+          // Insert new record
+          const { error: insertError } = await supabase
+            .from('admin_settings')
+            .insert({
+              category: setting.category,
+              key: setting.key,
+              value: setting.value,
+              is_sensitive: setting.is_sensitive,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+
+          if (insertError) throw insertError;
         }
       }
 
-      // Prepare only Stripe settings for database
-      const stripeConfig = {
-        mode: config.mode,
-        stripe_active: config.stripe_active,
-        [`stripe_${currentMode}_publishable_key`]: config[`stripe_${currentMode}_publishable_key` as keyof PaymentConfig],
-        [`stripe_${currentMode}_secret_key`]: config[`stripe_${currentMode}_secret_key` as keyof PaymentConfig],
-        [`stripe_${currentMode}_webhook_secret`]: config[`stripe_${currentMode}_webhook_secret` as keyof PaymentConfig]
-      };
-
-      // Save to database using individual key-value pairs
-      const settingsToSave = Object.entries(stripeConfig).map(([key, value]) => ({
-        category: 'payment',
-        key,
-        value: String(value),
-        is_sensitive: key.includes('secret') || key.includes('key'),
-        updated_at: new Date().toISOString()
-      }));
-
-      const { error } = await supabase
-        .from('admin_settings')
-        .upsert(settingsToSave, { onConflict: 'category,key' });
-
-      if (error) throw error;
-
-      setSuccess(`Stripe configuration saved successfully! Mode: ${currentMode.toUpperCase()}, Status: ${config.stripe_active ? 'ACTIVE' : 'INACTIVE'}`);
+      // Show success message
+      const activeStatus = config.stripe_active ? 'ACTIVE' : 'INACTIVE';
+      setSuccess(`✅ Stripe settings saved successfully! Status: ${activeStatus}`);
       setTimeout(() => setSuccess(null), 5000);
+      
     } catch (error) {
       console.error('Error saving Stripe config:', error);
       setError(error instanceof Error ? error.message : 'Failed to save Stripe configuration');
@@ -124,46 +158,78 @@ export default function PaymentSettings() {
   const savePayPalConfig = async () => {
     try {
       setSaving(true);
-      setError(null);
+      
+      // Validate PayPal settings
+      if (config.paypal_active && config.mode === 'test' && !config.paypal_test_client_id) {
+        throw new Error('PAYPAL TEST CLIENT ID is required for test mode');
+      }
+      if (config.paypal_active && config.mode === 'test' && !config.paypal_test_client_secret) {
+        throw new Error('PAYPAL TEST CLIENT SECRET is required for test mode');
+      }
+      if (config.paypal_active && config.mode === 'live' && !config.paypal_live_client_id) {
+        throw new Error('PAYPAL LIVE CLIENT ID is required for live mode');
+      }
+      if (config.paypal_active && config.mode === 'live' && !config.paypal_live_client_secret) {
+        throw new Error('PAYPAL LIVE CLIENT SECRET is required for live mode');
+      }
 
-      // Validate required PayPal fields for current mode
-      const currentMode = config.mode;
-      const requiredFields = [
-        `paypal_${currentMode}_client_id`,
-        `paypal_${currentMode}_client_secret`
+      // Prepare settings to save
+      const settingsToSave = [
+        { category: 'payment', key: 'paypal_active', value: config.paypal_active.toString(), is_sensitive: false },
+        { category: 'payment', key: 'paypal_test_client_id', value: config.paypal_test_client_id, is_sensitive: false },
+        { category: 'payment', key: 'paypal_test_client_secret', value: config.paypal_test_client_secret, is_sensitive: true },
+        { category: 'payment', key: 'paypal_live_client_id', value: config.paypal_live_client_id, is_sensitive: false },
+        { category: 'payment', key: 'paypal_live_client_secret', value: config.paypal_live_client_secret, is_sensitive: true }
       ];
 
-      for (const field of requiredFields) {
-        if (!config[field as keyof PaymentConfig]) {
-          throw new Error(`${field.replace(/_/g, ' ').toUpperCase()} is required for ${currentMode} mode`);
+      // Save each setting individually using check-then-insert/update approach
+      for (const setting of settingsToSave) {
+        // Check if record exists
+        const { data: existing, error: checkError } = await supabase
+          .from('admin_settings')
+          .select('*')
+          .eq('category', setting.category)
+          .eq('key', setting.key)
+          .single();
+
+        if (checkError && checkError.code !== 'PGRST116') {
+          throw checkError;
+        }
+
+        if (existing) {
+          // Update existing record
+          const { error: updateError } = await supabase
+            .from('admin_settings')
+            .update({
+              value: setting.value,
+              is_sensitive: setting.is_sensitive,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existing.id);
+
+          if (updateError) throw updateError;
+        } else {
+          // Insert new record
+          const { error: insertError } = await supabase
+            .from('admin_settings')
+            .insert({
+              category: setting.category,
+              key: setting.key,
+              value: setting.value,
+              is_sensitive: setting.is_sensitive,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+
+          if (insertError) throw insertError;
         }
       }
 
-      // Prepare only PayPal settings for database
-      const paypalConfig = {
-        mode: config.mode,
-        paypal_active: config.paypal_active,
-        [`paypal_${currentMode}_client_id`]: config[`paypal_${currentMode}_client_id` as keyof PaymentConfig],
-        [`paypal_${currentMode}_client_secret`]: config[`paypal_${currentMode}_client_secret` as keyof PaymentConfig]
-      };
-
-      // Save to database using individual key-value pairs
-      const settingsToSave = Object.entries(paypalConfig).map(([key, value]) => ({
-        category: 'payment',
-        key,
-        value: String(value),
-        is_sensitive: key.includes('secret') || key.includes('key'),
-        updated_at: new Date().toISOString()
-      }));
-
-      const { error } = await supabase
-        .from('admin_settings')
-        .upsert(settingsToSave, { onConflict: 'category,key' });
-
-      if (error) throw error;
-
-      setSuccess(`PayPal configuration saved successfully! Mode: ${currentMode.toUpperCase()}, Status: ${config.paypal_active ? 'ACTIVE' : 'INACTIVE'}`);
+      // Show success message
+      const activeStatus = config.paypal_active ? 'ACTIVE' : 'INACTIVE';
+      setSuccess(`✅ PayPal settings saved successfully! Status: ${activeStatus}`);
       setTimeout(() => setSuccess(null), 5000);
+      
     } catch (error) {
       console.error('Error saving PayPal config:', error);
       setError(error instanceof Error ? error.message : 'Failed to save PayPal configuration');
