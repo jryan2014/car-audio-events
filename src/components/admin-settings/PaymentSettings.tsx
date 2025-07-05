@@ -96,15 +96,18 @@ export default function PaymentSettings() {
         [`stripe_${currentMode}_webhook_secret`]: config[`stripe_${currentMode}_webhook_secret` as keyof PaymentConfig]
       };
 
-      // Save to database
+      // Save to database using individual key-value pairs
+      const settingsToSave = Object.entries(stripeConfig).map(([key, value]) => ({
+        category: 'payment',
+        key,
+        value: String(value),
+        is_sensitive: key.includes('secret') || key.includes('key'),
+        updated_at: new Date().toISOString()
+      }));
+
       const { error } = await supabase
         .from('admin_settings')
-        .upsert({
-          category: 'payment',
-          key: 'stripe_config',
-          settings: stripeConfig,
-          updated_at: new Date().toISOString()
-        });
+        .upsert(settingsToSave, { onConflict: 'category,key' });
 
       if (error) throw error;
 
@@ -144,15 +147,18 @@ export default function PaymentSettings() {
         [`paypal_${currentMode}_client_secret`]: config[`paypal_${currentMode}_client_secret` as keyof PaymentConfig]
       };
 
-      // Save to database
+      // Save to database using individual key-value pairs
+      const settingsToSave = Object.entries(paypalConfig).map(([key, value]) => ({
+        category: 'payment',
+        key,
+        value: String(value),
+        is_sensitive: key.includes('secret') || key.includes('key'),
+        updated_at: new Date().toISOString()
+      }));
+
       const { error } = await supabase
         .from('admin_settings')
-        .upsert({
-          category: 'payment',
-          key: 'paypal_config',
-          settings: paypalConfig,
-          updated_at: new Date().toISOString()
-        });
+        .upsert(settingsToSave, { onConflict: 'category,key' });
 
       if (error) throw error;
 
