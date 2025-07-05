@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CreditCard, Lock, AlertCircle, CheckCircle, Loader } from 'lucide-react';
-import { PaymentProvider, createPaymentIntent, confirmStripePayment, loadPayPalSDK } from '../lib/payments';
+import { PaymentProvider, createPaymentIntent, confirmStripePayment, loadPayPalSDK, getAvailableProviders } from '../lib/payments';
 import { CreditCardLogos } from './CreditCardLogos';
-import { stripePromise } from '../lib/payments';
+import { getStripe } from '../lib/stripe';
 
 interface MultiProviderPaymentFormProps {
   amount: number;
@@ -40,7 +40,7 @@ export default function MultiProviderPaymentForm({
     if (selectedProvider === 'stripe' && allowedProviders.includes('stripe')) {
       const initializeStripe = async () => {
         try {
-          const stripeInstance = await stripePromise;
+          const stripeInstance = await getStripe();
           setStripe(stripeInstance);
 
           if (stripeInstance) {

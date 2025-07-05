@@ -1,13 +1,49 @@
-import { loadStripe } from '@stripe/stripe-js';
+import { loadStripe, Stripe } from '@stripe/stripe-js';
+import { getStripeConfig } from '../services/paymentConfigService';
 
-const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+// Global Stripe instance - will be initialized on first use
+let stripePromise: Promise<Stripe | null> | null = null;
 
-if (!stripePublishableKey) {
-  console.warn('Missing Stripe publishable key - payment functionality will be limited');
-}
+/**
+ * Initialize Stripe with configuration from database or environment
+ */
+const initializeStripe = async (): Promise<Stripe | null> => {
+  try {
+    const stripeConfig = await getStripeConfig();
+    
+    if (!stripeConfig.publishableKey) {
+      console.warn('No Stripe publishable key found - payment functionality will be limited');
+      return null;
+    }
+    
+    console.log(`Initializing Stripe - Mode: ${stripeConfig.isTestMode ? 'Test' : 'Live'}, Source: ${stripeConfig.source}`);
+    
+    return await loadStripe(stripeConfig.publishableKey);
+  } catch (error) {
+    console.error('Error initializing Stripe:', error);
+    return null;
+  }
+};
 
-export const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
+/**
+ * Get Stripe instance with dynamic configuration
+ */
+export const getStripe = async (): Promise<Stripe | null> => {
+  if (!stripePromise) {
+    stripePromise = initializeStripe();
+  }
+  return stripePromise;
+};
 
+/**
+ * Legacy export for backward compatibility
+ * @deprecated Use getStripe() instead for dynamic configuration
+ */
+export const stripePromiseCompat = getStripe();
+
+/**
+ * Create a payment intent using current configuration
+ */
 export const createPaymentIntent = async (amount: number, currency: string = 'usd', metadata: any = {}) => {
   try {
     // Get Supabase URL from environment
@@ -32,7 +68,8 @@ export const createPaymentIntent = async (amount: number, currency: string = 'us
     });
 
     if (!response.ok) {
-      throw new Error('Failed to create payment intent');
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to create payment intent');
     }
 
     return await response.json();
@@ -42,6 +79,9 @@ export const createPaymentIntent = async (amount: number, currency: string = 'us
   }
 };
 
+/**
+ * Confirm a payment using current configuration
+ */
 export const confirmPayment = async (paymentIntentId: string) => {
   try {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -63,12 +103,33 @@ export const confirmPayment = async (paymentIntentId: string) => {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to confirm payment');
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to confirm payment');
     }
 
     return await response.json();
   } catch (error) {
     console.error('Error confirming payment:', error);
     throw error;
+  }
+};
+
+/**
+ * Force re-initialization of Stripe (useful when configuration changes)
+ */
+export const reinitializeStripe = async (): Promise<Stripe | null> => {
+  stripePromise = null;
+  return await getStripe();
+};
+
+/**
+ * Check if Stripe is properly configured
+ */
+export const isStripeConfigured = async (): Promise<boolean> => {
+  try {
+    const stripe = await getStripe();
+    return stripe !== null;
+  } catch (error) {
+    return false;
   }
 };

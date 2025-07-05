@@ -1,5 +1,6 @@
-import { loadStripe } from '@stripe/stripe-js';
 import { supabase } from './supabase';
+import { getStripe } from './stripe';
+import { getPayPalConfig, getPaymentConfig } from '../services/paymentConfigService';
 
 // Payment provider types
 export type PaymentProvider = 'stripe' | 'paypal';
@@ -32,13 +33,42 @@ export interface RefundResponse {
   error?: string;
 }
 
-// Stripe configuration
-const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
-export const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
+/**
+ * Check if a payment provider is available and configured
+ */
+export const isProviderAvailable = async (provider: PaymentProvider): Promise<boolean> => {
+  try {
+    const config = await getPaymentConfig();
+    
+    if (provider === 'stripe') {
+      return config.stripe_active;
+    } else if (provider === 'paypal') {
+      return config.paypal_active;
+    }
+    
+    return false;
+  } catch (error) {
+    console.error(`Error checking ${provider} availability:`, error);
+    return false;
+  }
+};
 
-// PayPal configuration
-const paypalClientId = import.meta.env.VITE_PAYPAL_CLIENT_ID;
-const paypalEnvironment = import.meta.env.VITE_PAYPAL_ENVIRONMENT || 'sandbox';
+/**
+ * Get available payment providers based on configuration
+ */
+export const getAvailableProviders = async (): Promise<PaymentProvider[]> => {
+  const providers: PaymentProvider[] = [];
+  
+  if (await isProviderAvailable('stripe')) {
+    providers.push('stripe');
+  }
+  
+  if (await isProviderAvailable('paypal')) {
+    providers.push('paypal');
+  }
+  
+  return providers;
+};
 
 /**
  * Create a payment intent for the specified provider
@@ -50,6 +80,11 @@ export const createPaymentIntent = async (
   metadata: any = {}
 ): Promise<PaymentIntent> => {
   try {
+    // Check if provider is available
+    if (!(await isProviderAvailable(provider))) {
+      throw new Error(`${provider} is not available or configured`);
+    }
+
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       throw new Error('Authentication required for payment processing');
@@ -131,9 +166,9 @@ export const confirmStripePayment = async (
   paymentMethod: any
 ): Promise<any> => {
   try {
-    const stripe = await stripePromise;
+    const stripe = await getStripe();
     if (!stripe) {
-      throw new Error('Stripe not initialized');
+      throw new Error('Stripe not initialized or not configured');
     }
 
     const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
@@ -295,26 +330,31 @@ export const checkRefundEligibility = (paymentDate: string): boolean => {
 /**
  * Load PayPal SDK dynamically
  */
-export const loadPayPalSDK = (): Promise<any> => {
-  return new Promise((resolve, reject) => {
+export const loadPayPalSDK = async (): Promise<any> => {
+  return new Promise(async (resolve, reject) => {
     if ((window as any).paypal) {
       resolve((window as any).paypal);
       return;
     }
 
-    if (!paypalClientId) {
-      reject(new Error('PayPal client ID not configured'));
-      return;
-    }
+    try {
+      const paypalConfig = await getPayPalConfig();
+      if (!paypalConfig || !paypalConfig.clientId) {
+        reject(new Error('PayPal client ID not configured'));
+        return;
+      }
 
-    const script = document.createElement('script');
-    script.src = `https://www.paypal.com/sdk/js?client-id=${paypalClientId}&currency=USD&intent=capture&enable-funding=venmo,paylater`;
-    script.onload = () => {
-      resolve((window as any).paypal);
-    };
-    script.onerror = () => {
-      reject(new Error('Failed to load PayPal SDK'));
-    };
-    document.head.appendChild(script);
+      const script = document.createElement('script');
+      script.src = `https://www.paypal.com/sdk/js?client-id=${paypalConfig.clientId}&currency=USD&intent=capture&enable-funding=venmo,paylater`;
+      script.onload = () => {
+        resolve((window as any).paypal);
+      };
+      script.onerror = () => {
+        reject(new Error('Failed to load PayPal SDK'));
+      };
+      document.head.appendChild(script);
+    } catch (error) {
+      reject(new Error('Failed to get PayPal configuration'));
+    }
   });
 }; 

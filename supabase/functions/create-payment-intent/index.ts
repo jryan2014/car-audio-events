@@ -7,6 +7,100 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+interface PaymentConfig {
+  mode: 'test' | 'live';
+  stripe_active: boolean;
+  stripe_test_secret_key: string;
+  stripe_live_secret_key: string;
+}
+
+/**
+ * Get Stripe configuration from database first, fallback to environment
+ */
+async function getStripeConfig(supabase: any): Promise<{ secretKey: string; isTestMode: boolean; source: string }> {
+  try {
+    // Try to load from database first
+    const { data, error } = await supabase
+      .from('admin_settings')
+      .select('*')
+      .eq('category', 'payment');
+
+    if (error) {
+      console.warn('Error loading payment config from database, using environment variables:', error);
+      return getEnvironmentStripeConfig();
+    }
+
+    if (!data || data.length === 0) {
+      console.log('No payment config found in database, using environment variables');
+      return getEnvironmentStripeConfig();
+    }
+
+    // Convert database settings to config object
+    const config: PaymentConfig = {
+      mode: 'test',
+      stripe_active: true,
+      stripe_test_secret_key: '',
+      stripe_live_secret_key: ''
+    };
+
+    // Map database values to config
+    data.forEach((setting: any) => {
+      const key = setting.key;
+      if (key === 'stripe_active') {
+        config.stripe_active = setting.value === 'true';
+      } else if (key === 'mode') {
+        config.mode = setting.value as 'test' | 'live';
+      } else if (key === 'stripe_test_secret_key') {
+        config.stripe_test_secret_key = setting.value || '';
+      } else if (key === 'stripe_live_secret_key') {
+        config.stripe_live_secret_key = setting.value || '';
+      }
+    });
+
+    if (!config.stripe_active) {
+      throw new Error('Stripe is not active in payment configuration');
+    }
+
+    const isTestMode = config.mode === 'test';
+    const secretKey = isTestMode ? config.stripe_test_secret_key : config.stripe_live_secret_key;
+
+    if (!secretKey) {
+      console.log('Stripe secret key not found in database, falling back to environment variables');
+      return getEnvironmentStripeConfig();
+    }
+
+    console.log(`Stripe config loaded from database - Mode: ${config.mode}, Source: database`);
+    return {
+      secretKey,
+      isTestMode,
+      source: 'database'
+    };
+
+  } catch (error) {
+    console.error('Error getting Stripe config from database:', error);
+    return getEnvironmentStripeConfig();
+  }
+}
+
+/**
+ * Fallback to environment variables
+ */
+function getEnvironmentStripeConfig(): { secretKey: string; isTestMode: boolean; source: string } {
+  const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
+  if (!stripeSecretKey) {
+    throw new Error('STRIPE_SECRET_KEY not found in environment variables or database');
+  }
+
+  const isTestMode = stripeSecretKey.startsWith('sk_test_');
+  console.log(`Stripe config loaded from environment - Test Mode: ${isTestMode}, Source: environment`);
+  
+  return {
+    secretKey: stripeSecretKey,
+    isTestMode,
+    source: 'environment'
+  };
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -14,21 +108,18 @@ serve(async (req) => {
   }
 
   try {
-    // Get Stripe secret key from environment
-    const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY')
-    if (!stripeSecretKey) {
-      throw new Error('STRIPE_SECRET_KEY environment variable is not set')
-    }
-
-    // Initialize Stripe
-    const stripe = new Stripe(stripeSecretKey, {
-      apiVersion: '2025-06-30',
-    })
-
     // Get Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+    // Get Stripe configuration from database or environment
+    const stripeConfig = await getStripeConfig(supabase);
+
+    // Initialize Stripe with the correct configuration
+    const stripe = new Stripe(stripeConfig.secretKey, {
+      apiVersion: '2025-06-30',
+    })
 
     // Parse request body
     const { amount, currency = 'usd', metadata = {} } = await req.json()
@@ -56,15 +147,20 @@ serve(async (req) => {
     const userId = user?.id || 'anonymous';
     const userEmail = user?.email || metadata.email || 'anonymous@membership.purchase';
 
+    // Add configuration info to metadata
+    const enhancedMetadata = {
+      user_id: userId,
+      user_email: userEmail,
+      stripe_mode: stripeConfig.isTestMode ? 'test' : 'live',
+      config_source: stripeConfig.source,
+      ...metadata
+    };
+
     // Create payment intent
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount), // Amount in cents
       currency: currency.toLowerCase(),
-      metadata: {
-        user_id: userId,
-        user_email: userEmail,
-        ...metadata
-      },
+      metadata: enhancedMetadata,
       automatic_payment_methods: {
         enabled: true,
       },
@@ -82,11 +178,7 @@ serve(async (req) => {
           status: paymentIntent.status,
           payment_provider: 'stripe',
           stripe_payment_intent_id: paymentIntent.id,
-          metadata: {
-            user_id: user.id,
-            user_email: user.email,
-            ...metadata
-          },
+          metadata: enhancedMetadata,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
@@ -105,7 +197,11 @@ serve(async (req) => {
         new_status: paymentIntent.status,
         amount: amount / 100,
         currency: currency.toLowerCase(),
-        metadata: { payment_intent_id: paymentIntent.id }
+        metadata: { 
+          payment_intent_id: paymentIntent.id,
+          stripe_mode: stripeConfig.isTestMode ? 'test' : 'live',
+          config_source: stripeConfig.source
+        }
       })
 
       // Update user's refund eligibility window
@@ -122,13 +218,15 @@ serve(async (req) => {
     }
 
     // Log payment intent creation
-    console.log(`Payment intent created: ${paymentIntent.id} for user: ${userEmail}`)
+    console.log(`Payment intent created: ${paymentIntent.id} for user: ${userEmail} using ${stripeConfig.source} config (${stripeConfig.isTestMode ? 'test' : 'live'} mode)`)
 
     return new Response(
       JSON.stringify({
         client_secret: paymentIntent.client_secret,
         payment_intent_id: paymentIntent.id,
-        provider: 'stripe'
+        provider: 'stripe',
+        mode: stripeConfig.isTestMode ? 'test' : 'live',
+        config_source: stripeConfig.source
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

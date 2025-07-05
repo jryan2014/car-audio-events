@@ -7,6 +7,113 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+interface PaymentConfig {
+  mode: 'test' | 'live';
+  stripe_active: boolean;
+  stripe_test_secret_key: string;
+  stripe_live_secret_key: string;
+  stripe_test_webhook_secret: string;
+  stripe_live_webhook_secret: string;
+}
+
+/**
+ * Get Stripe configuration from database first, fallback to environment
+ */
+async function getStripeWebhookConfig(supabase: any): Promise<{ secretKey: string; webhookSecret: string; isTestMode: boolean; source: string }> {
+  try {
+    // Try to load from database first
+    const { data, error } = await supabase
+      .from('admin_settings')
+      .select('*')
+      .eq('category', 'payment');
+
+    if (error) {
+      console.warn('Error loading payment config from database, using environment variables:', error);
+      return getEnvironmentWebhookConfig();
+    }
+
+    if (!data || data.length === 0) {
+      console.log('No payment config found in database, using environment variables');
+      return getEnvironmentWebhookConfig();
+    }
+
+    // Convert database settings to config object
+    const config: PaymentConfig = {
+      mode: 'test',
+      stripe_active: true,
+      stripe_test_secret_key: '',
+      stripe_live_secret_key: '',
+      stripe_test_webhook_secret: '',
+      stripe_live_webhook_secret: ''
+    };
+
+    // Map database values to config
+    data.forEach((setting: any) => {
+      const key = setting.key;
+      if (key === 'stripe_active') {
+        config.stripe_active = setting.value === 'true';
+      } else if (key === 'mode') {
+        config.mode = setting.value as 'test' | 'live';
+      } else if (key === 'stripe_test_secret_key') {
+        config.stripe_test_secret_key = setting.value || '';
+      } else if (key === 'stripe_live_secret_key') {
+        config.stripe_live_secret_key = setting.value || '';
+      } else if (key === 'stripe_test_webhook_secret') {
+        config.stripe_test_webhook_secret = setting.value || '';
+      } else if (key === 'stripe_live_webhook_secret') {
+        config.stripe_live_webhook_secret = setting.value || '';
+      }
+    });
+
+    if (!config.stripe_active) {
+      throw new Error('Stripe is not active in payment configuration');
+    }
+
+    const isTestMode = config.mode === 'test';
+    const secretKey = isTestMode ? config.stripe_test_secret_key : config.stripe_live_secret_key;
+    const webhookSecret = isTestMode ? config.stripe_test_webhook_secret : config.stripe_live_webhook_secret;
+
+    if (!secretKey || !webhookSecret) {
+      console.log('Stripe keys not found in database, falling back to environment variables');
+      return getEnvironmentWebhookConfig();
+    }
+
+    console.log(`Stripe webhook config loaded from database - Mode: ${config.mode}, Source: database`);
+    return {
+      secretKey,
+      webhookSecret,
+      isTestMode,
+      source: 'database'
+    };
+
+  } catch (error) {
+    console.error('Error getting Stripe webhook config from database:', error);
+    return getEnvironmentWebhookConfig();
+  }
+}
+
+/**
+ * Fallback to environment variables
+ */
+function getEnvironmentWebhookConfig(): { secretKey: string; webhookSecret: string; isTestMode: boolean; source: string } {
+  const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
+  const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET');
+  
+  if (!stripeSecretKey || !webhookSecret) {
+    throw new Error('STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET not found in environment variables or database');
+  }
+
+  const isTestMode = stripeSecretKey.startsWith('sk_test_');
+  console.log(`Stripe webhook config loaded from environment - Test Mode: ${isTestMode}, Source: environment`);
+  
+  return {
+    secretKey: stripeSecretKey,
+    webhookSecret,
+    isTestMode,
+    source: 'environment'
+  };
+}
+
 interface Database {
   public: {
     Tables: {
@@ -91,23 +198,18 @@ serve(async (req) => {
   }
 
   try {
-    // Get Stripe secret key and webhook secret from environment
-    const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY')
-    const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET')
-    
-    if (!stripeSecretKey || !webhookSecret) {
-      throw new Error('Missing Stripe configuration')
-    }
-
-    // Initialize Stripe
-    const stripe = new Stripe(stripeSecretKey, {
-      apiVersion: '2025-06-30',
-    })
-
     // Get Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey)
+
+    // Get Stripe configuration from database or environment
+    const stripeConfig = await getStripeWebhookConfig(supabase);
+
+    // Initialize Stripe with the correct configuration
+    const stripe = new Stripe(stripeConfig.secretKey, {
+      apiVersion: '2025-06-30',
+    })
 
     // Get the raw body and signature
     const body = await req.text()
@@ -117,21 +219,29 @@ serve(async (req) => {
       throw new Error('No Stripe signature found')
     }
 
-    // Verify webhook signature
+    // Verify webhook signature using the correct webhook secret
     let event: Stripe.Event
     try {
-      event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
+      event = stripe.webhooks.constructEvent(body, signature, stripeConfig.webhookSecret)
     } catch (err) {
       console.error('Webhook signature verification failed:', err)
       return new Response('Invalid signature', { status: 400 })
     }
 
-    console.log(`Received webhook event: ${event.type}`)
+    console.log(`Received webhook event: ${event.type} (${stripeConfig.source} config, ${stripeConfig.isTestMode ? 'test' : 'live'} mode)`)
 
     // Handle different event types
     switch (event.type) {
       case 'payment_intent.succeeded': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent
+        
+        // Enhanced metadata with configuration info
+        const enhancedMetadata = {
+          ...paymentIntent.metadata,
+          stripe_mode: stripeConfig.isTestMode ? 'test' : 'live',
+          config_source: stripeConfig.source,
+          webhook_processed_at: new Date().toISOString()
+        };
         
         // Create or update payment record with enhanced schema
         const { error: upsertError } = await supabase
@@ -143,7 +253,7 @@ serve(async (req) => {
             currency: paymentIntent.currency,
             status: paymentIntent.status,
             payment_provider: 'stripe',
-            metadata: paymentIntent.metadata,
+            metadata: enhancedMetadata,
             stripe_payment_intent_id: paymentIntent.id,
             created_at: new Date(paymentIntent.created * 1000).toISOString(),
             updated_at: new Date().toISOString()
@@ -164,7 +274,9 @@ serve(async (req) => {
             currency: paymentIntent.currency,
             metadata: { 
               payment_intent_id: paymentIntent.id,
-              stripe_event_id: event.id
+              stripe_event_id: event.id,
+              stripe_mode: stripeConfig.isTestMode ? 'test' : 'live',
+              config_source: stripeConfig.source
             }
           })
         }
@@ -194,6 +306,15 @@ serve(async (req) => {
       case 'payment_intent.payment_failed': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent
         
+        // Enhanced metadata with configuration info
+        const enhancedMetadata = {
+          ...paymentIntent.metadata,
+          stripe_mode: stripeConfig.isTestMode ? 'test' : 'live',
+          config_source: stripeConfig.source,
+          webhook_processed_at: new Date().toISOString(),
+          failure_reason: paymentIntent.last_payment_error?.message || 'Unknown error'
+        };
+        
         // Update payment record with failed status
         const { error: updateError } = await supabase
           .from('payments')
@@ -203,7 +324,7 @@ serve(async (req) => {
             amount: paymentIntent.amount,
             currency: paymentIntent.currency,
             status: paymentIntent.status,
-            metadata: paymentIntent.metadata,
+            metadata: enhancedMetadata,
             stripe_payment_intent_id: paymentIntent.id,
             created_at: new Date(paymentIntent.created * 1000).toISOString(),
             updated_at: new Date().toISOString()
@@ -219,6 +340,15 @@ serve(async (req) => {
       case 'payment_intent.canceled': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent
         
+        // Enhanced metadata with configuration info
+        const enhancedMetadata = {
+          ...paymentIntent.metadata,
+          stripe_mode: stripeConfig.isTestMode ? 'test' : 'live',
+          config_source: stripeConfig.source,
+          webhook_processed_at: new Date().toISOString(),
+          cancellation_reason: paymentIntent.cancellation_reason || 'Unknown'
+        };
+        
         // Update payment record with canceled status
         const { error: updateError } = await supabase
           .from('payments')
@@ -228,7 +358,7 @@ serve(async (req) => {
             amount: paymentIntent.amount,
             currency: paymentIntent.currency,
             status: paymentIntent.status,
-            metadata: paymentIntent.metadata,
+            metadata: enhancedMetadata,
             stripe_payment_intent_id: paymentIntent.id,
             created_at: new Date(paymentIntent.created * 1000).toISOString(),
             updated_at: new Date().toISOString()

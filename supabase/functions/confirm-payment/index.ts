@@ -7,6 +7,100 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+interface PaymentConfig {
+  mode: 'test' | 'live';
+  stripe_active: boolean;
+  stripe_test_secret_key: string;
+  stripe_live_secret_key: string;
+}
+
+/**
+ * Get Stripe configuration from database first, fallback to environment
+ */
+async function getStripeConfig(supabase: any): Promise<{ secretKey: string; isTestMode: boolean; source: string }> {
+  try {
+    // Try to load from database first
+    const { data, error } = await supabase
+      .from('admin_settings')
+      .select('*')
+      .eq('category', 'payment');
+
+    if (error) {
+      console.warn('Error loading payment config from database, using environment variables:', error);
+      return getEnvironmentStripeConfig();
+    }
+
+    if (!data || data.length === 0) {
+      console.log('No payment config found in database, using environment variables');
+      return getEnvironmentStripeConfig();
+    }
+
+    // Convert database settings to config object
+    const config: PaymentConfig = {
+      mode: 'test',
+      stripe_active: true,
+      stripe_test_secret_key: '',
+      stripe_live_secret_key: ''
+    };
+
+    // Map database values to config
+    data.forEach((setting: any) => {
+      const key = setting.key;
+      if (key === 'stripe_active') {
+        config.stripe_active = setting.value === 'true';
+      } else if (key === 'mode') {
+        config.mode = setting.value as 'test' | 'live';
+      } else if (key === 'stripe_test_secret_key') {
+        config.stripe_test_secret_key = setting.value || '';
+      } else if (key === 'stripe_live_secret_key') {
+        config.stripe_live_secret_key = setting.value || '';
+      }
+    });
+
+    if (!config.stripe_active) {
+      throw new Error('Stripe is not active in payment configuration');
+    }
+
+    const isTestMode = config.mode === 'test';
+    const secretKey = isTestMode ? config.stripe_test_secret_key : config.stripe_live_secret_key;
+
+    if (!secretKey) {
+      console.log('Stripe secret key not found in database, falling back to environment variables');
+      return getEnvironmentStripeConfig();
+    }
+
+    console.log(`Stripe config loaded from database - Mode: ${config.mode}, Source: database`);
+    return {
+      secretKey,
+      isTestMode,
+      source: 'database'
+    };
+
+  } catch (error) {
+    console.error('Error getting Stripe config from database:', error);
+    return getEnvironmentStripeConfig();
+  }
+}
+
+/**
+ * Fallback to environment variables
+ */
+function getEnvironmentStripeConfig(): { secretKey: string; isTestMode: boolean; source: string } {
+  const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
+  if (!stripeSecretKey) {
+    throw new Error('STRIPE_SECRET_KEY not found in environment variables or database');
+  }
+
+  const isTestMode = stripeSecretKey.startsWith('sk_test_');
+  console.log(`Stripe config loaded from environment - Test Mode: ${isTestMode}, Source: environment`);
+  
+  return {
+    secretKey: stripeSecretKey,
+    isTestMode,
+    source: 'environment'
+  };
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -14,21 +108,18 @@ serve(async (req) => {
   }
 
   try {
-    // Get Stripe secret key from environment
-    const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY')
-    if (!stripeSecretKey) {
-      throw new Error('STRIPE_SECRET_KEY environment variable is not set')
-    }
-
-    // Initialize Stripe
-    const stripe = new Stripe(stripeSecretKey, {
-      apiVersion: '2025-06-30',
-    })
-
     // Get Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+    // Get Stripe configuration from database or environment
+    const stripeConfig = await getStripeConfig(supabase);
+
+    // Initialize Stripe with the correct configuration
+    const stripe = new Stripe(stripeConfig.secretKey, {
+      apiVersion: '2025-06-30',
+    })
 
     // Parse request body
     const { payment_intent_id } = await req.json()
@@ -60,7 +151,14 @@ serve(async (req) => {
 
     // Check payment status
     if (paymentIntent.status === 'succeeded') {
-      // Create payment record in database
+      // Create payment record in database with configuration metadata
+      const enhancedMetadata = {
+        ...paymentIntent.metadata,
+        stripe_mode: stripeConfig.isTestMode ? 'test' : 'live',
+        config_source: stripeConfig.source,
+        confirmed_at: new Date().toISOString()
+      };
+
       const { data: paymentRecord, error: insertError } = await supabase
         .from('payments')
         .insert({
@@ -69,7 +167,7 @@ serve(async (req) => {
           amount: paymentIntent.amount,
           currency: paymentIntent.currency,
           status: paymentIntent.status,
-          metadata: paymentIntent.metadata,
+          metadata: enhancedMetadata,
           stripe_payment_intent_id: paymentIntent.id,
           created_at: new Date().toISOString()
         })
@@ -99,7 +197,7 @@ serve(async (req) => {
         }
       }
 
-      console.log(`Payment confirmed: ${paymentIntent.id} for user: ${user.email}`)
+      console.log(`Payment confirmed: ${paymentIntent.id} for user: ${user.email} using ${stripeConfig.source} config (${stripeConfig.isTestMode ? 'test' : 'live'} mode)`)
 
       return new Response(
         JSON.stringify({
@@ -108,7 +206,9 @@ serve(async (req) => {
             id: paymentIntent.id,
             status: paymentIntent.status,
             amount: paymentIntent.amount,
-            currency: paymentIntent.currency
+            currency: paymentIntent.currency,
+            mode: stripeConfig.isTestMode ? 'test' : 'live',
+            config_source: stripeConfig.source
           }
         }),
         {
