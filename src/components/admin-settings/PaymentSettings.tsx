@@ -65,16 +65,62 @@ export default function PaymentSettings() {
     }
   };
 
-  const savePaymentConfig = async () => {
+  const saveStripeConfig = async () => {
     try {
       setSaving(true);
       setError(null);
 
-      // Validate required fields for current mode
+      // Validate required Stripe fields for current mode
       const currentMode = config.mode;
       const requiredFields = [
         `stripe_${currentMode}_publishable_key`,
-        `stripe_${currentMode}_secret_key`,
+        `stripe_${currentMode}_secret_key`
+      ];
+
+      for (const field of requiredFields) {
+        if (!config[field as keyof PaymentConfig]) {
+          throw new Error(`${field.replace(/_/g, ' ').toUpperCase()} is required for ${currentMode} mode`);
+        }
+      }
+
+      // Prepare only Stripe settings for database
+      const stripeConfig = {
+        mode: config.mode,
+        [`stripe_${currentMode}_publishable_key`]: config[`stripe_${currentMode}_publishable_key` as keyof PaymentConfig],
+        [`stripe_${currentMode}_secret_key`]: config[`stripe_${currentMode}_secret_key` as keyof PaymentConfig],
+        [`stripe_${currentMode}_webhook_secret`]: config[`stripe_${currentMode}_webhook_secret` as keyof PaymentConfig]
+      };
+
+      // Save to database
+      const { error } = await supabase
+        .from('admin_settings')
+        .upsert({
+          category: 'payment',
+          key: 'stripe_config',
+          settings: stripeConfig,
+          updated_at: new Date().toISOString()
+        });
+
+      if (error) throw error;
+
+      setSuccess(`Stripe configuration saved successfully! Mode: ${currentMode.toUpperCase()}`);
+      setTimeout(() => setSuccess(null), 5000);
+    } catch (error) {
+      console.error('Error saving Stripe config:', error);
+      setError(error instanceof Error ? error.message : 'Failed to save Stripe configuration');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const savePayPalConfig = async () => {
+    try {
+      setSaving(true);
+      setError(null);
+
+      // Validate required PayPal fields for current mode
+      const currentMode = config.mode;
+      const requiredFields = [
         `paypal_${currentMode}_client_id`,
         `paypal_${currentMode}_client_secret`
       ];
@@ -85,34 +131,30 @@ export default function PaymentSettings() {
         }
       }
 
+      // Prepare only PayPal settings for database
+      const paypalConfig = {
+        mode: config.mode,
+        [`paypal_${currentMode}_client_id`]: config[`paypal_${currentMode}_client_id` as keyof PaymentConfig],
+        [`paypal_${currentMode}_client_secret`]: config[`paypal_${currentMode}_client_secret` as keyof PaymentConfig]
+      };
+
       // Save to database
       const { error } = await supabase
         .from('admin_settings')
         .upsert({
           category: 'payment',
-          settings: config,
+          key: 'paypal_config',
+          settings: paypalConfig,
           updated_at: new Date().toISOString()
         });
 
       if (error) throw error;
 
-      // Update environment variables via Edge Function
-      const { error: updateError } = await supabase.functions.invoke('admin-update-keys', {
-        body: { 
-          category: 'payment',
-          config: config
-        }
-      });
-
-      if (updateError) {
-        console.warn('Environment update warning:', updateError);
-      }
-
-      setSuccess(`Payment configuration saved successfully! Mode: ${currentMode.toUpperCase()}`);
+      setSuccess(`PayPal configuration saved successfully! Mode: ${currentMode.toUpperCase()}`);
       setTimeout(() => setSuccess(null), 5000);
     } catch (error) {
-      console.error('Error saving payment config:', error);
-      setError(error instanceof Error ? error.message : 'Failed to save payment configuration');
+      console.error('Error saving PayPal config:', error);
+      setError(error instanceof Error ? error.message : 'Failed to save PayPal configuration');
     } finally {
       setSaving(false);
     }
@@ -370,12 +412,30 @@ export default function PaymentSettings() {
         </div>
       </div>
 
-      {/* Save Button */}
-      <div className="flex justify-end">
+      {/* Save Buttons */}
+      <div className="flex flex-col sm:flex-row gap-4 justify-end">
         <button
-          onClick={savePaymentConfig}
+          onClick={saveStripeConfig}
           disabled={saving}
-          className="bg-electric-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-electric-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+          className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+        >
+          {saving ? (
+            <>
+              <Settings className="animate-spin h-5 w-5" />
+              <span>Saving...</span>
+            </>
+          ) : (
+            <>
+              <CreditCard className="h-5 w-5" />
+              <span>Save Stripe Settings</span>
+            </>
+          )}
+        </button>
+        
+        <button
+          onClick={savePayPalConfig}
+          disabled={saving}
+          className="bg-yellow-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-yellow-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
         >
           {saving ? (
             <>
@@ -385,7 +445,7 @@ export default function PaymentSettings() {
           ) : (
             <>
               <Key className="h-5 w-5" />
-              <span>Save Payment Settings</span>
+              <span>Save PayPal Settings</span>
             </>
           )}
         </button>
