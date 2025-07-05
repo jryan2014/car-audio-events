@@ -48,18 +48,33 @@ export default function PaymentSettings() {
   const loadPaymentConfig = async () => {
     try {
       setLoading(true);
+      
+      // Load all payment settings
       const { data, error } = await supabase
         .from('admin_settings')
         .select('*')
-        .eq('category', 'payment')
-        .single();
+        .eq('category', 'payment');
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         throw error;
       }
 
-      if (data?.settings) {
-        setConfig({ ...config, ...data.settings });
+      // Convert array of settings to config object
+      const loadedConfig = { ...config };
+      
+      if (data && data.length > 0) {
+        data.forEach(setting => {
+          const key = setting.key as keyof PaymentConfig;
+          if (key === 'stripe_active' || key === 'paypal_active') {
+            loadedConfig[key] = setting.value === 'true';
+          } else if (key === 'mode') {
+            loadedConfig[key] = setting.value as 'test' | 'live';
+          } else {
+            loadedConfig[key] = setting.value || '';
+          }
+        });
+        
+        setConfig(loadedConfig);
       }
     } catch (error) {
       console.error('Error loading payment config:', error);
