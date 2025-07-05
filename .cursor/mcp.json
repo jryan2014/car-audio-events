@@ -1,0 +1,13 @@
+{
+  "mcpServers": [
+    {
+      "name": "car-audio-events-db",
+      "command": "npm",
+      "args": ["run", "mcp:start"],
+      "cwd": ".",
+      "env": {
+        "NODE_ENV": "development"
+      }
+    }
+  ]
+} 
