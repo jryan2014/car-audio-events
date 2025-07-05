@@ -4,6 +4,8 @@ import { supabase } from '../../lib/supabase';
 
 interface PaymentConfig {
   mode: 'test' | 'live';
+  stripe_active: boolean;
+  paypal_active: boolean;
   stripe_test_publishable_key: string;
   stripe_test_secret_key: string;
   stripe_test_webhook_secret: string;
@@ -19,6 +21,8 @@ interface PaymentConfig {
 export default function PaymentSettings() {
   const [config, setConfig] = useState<PaymentConfig>({
     mode: 'test',
+    stripe_active: true,
+    paypal_active: false,
     stripe_test_publishable_key: '',
     stripe_test_secret_key: '',
     stripe_test_webhook_secret: '',
@@ -86,6 +90,7 @@ export default function PaymentSettings() {
       // Prepare only Stripe settings for database
       const stripeConfig = {
         mode: config.mode,
+        stripe_active: config.stripe_active,
         [`stripe_${currentMode}_publishable_key`]: config[`stripe_${currentMode}_publishable_key` as keyof PaymentConfig],
         [`stripe_${currentMode}_secret_key`]: config[`stripe_${currentMode}_secret_key` as keyof PaymentConfig],
         [`stripe_${currentMode}_webhook_secret`]: config[`stripe_${currentMode}_webhook_secret` as keyof PaymentConfig]
@@ -103,7 +108,7 @@ export default function PaymentSettings() {
 
       if (error) throw error;
 
-      setSuccess(`Stripe configuration saved successfully! Mode: ${currentMode.toUpperCase()}`);
+      setSuccess(`Stripe configuration saved successfully! Mode: ${currentMode.toUpperCase()}, Status: ${config.stripe_active ? 'ACTIVE' : 'INACTIVE'}`);
       setTimeout(() => setSuccess(null), 5000);
     } catch (error) {
       console.error('Error saving Stripe config:', error);
@@ -134,6 +139,7 @@ export default function PaymentSettings() {
       // Prepare only PayPal settings for database
       const paypalConfig = {
         mode: config.mode,
+        paypal_active: config.paypal_active,
         [`paypal_${currentMode}_client_id`]: config[`paypal_${currentMode}_client_id` as keyof PaymentConfig],
         [`paypal_${currentMode}_client_secret`]: config[`paypal_${currentMode}_client_secret` as keyof PaymentConfig]
       };
@@ -150,7 +156,7 @@ export default function PaymentSettings() {
 
       if (error) throw error;
 
-      setSuccess(`PayPal configuration saved successfully! Mode: ${currentMode.toUpperCase()}`);
+      setSuccess(`PayPal configuration saved successfully! Mode: ${currentMode.toUpperCase()}, Status: ${config.paypal_active ? 'ACTIVE' : 'INACTIVE'}`);
       setTimeout(() => setSuccess(null), 5000);
     } catch (error) {
       console.error('Error saving PayPal config:', error);
@@ -167,7 +173,7 @@ export default function PaymentSettings() {
     }));
   };
 
-  const handleInputChange = (field: keyof PaymentConfig, value: string) => {
+  const handleInputChange = (field: keyof PaymentConfig, value: string | boolean) => {
     setConfig(prev => ({
       ...prev,
       [field]: value
@@ -179,9 +185,9 @@ export default function PaymentSettings() {
   const getCurrentKeys = () => {
     const mode = config.mode;
     return {
-      stripe_publishable: config[`stripe_${mode}_publishable_key` as keyof PaymentConfig],
-      stripe_secret: config[`stripe_${mode}_secret_key` as keyof PaymentConfig],
-      paypal_client_id: config[`paypal_${mode}_client_id` as keyof PaymentConfig]
+      stripe_publishable: config[`stripe_${mode}_publishable_key` as keyof PaymentConfig] as string,
+      stripe_secret: config[`stripe_${mode}_secret_key` as keyof PaymentConfig] as string,
+      paypal_client_id: config[`paypal_${mode}_client_id` as keyof PaymentConfig] as string
     };
   };
 
@@ -288,6 +294,56 @@ export default function PaymentSettings() {
             </div>
             <div className="text-xs text-gray-400 mt-1">Real payments</div>
           </button>
+        </div>
+      </div>
+
+      {/* Payment Provider Toggles */}
+      <div className="mb-8">
+        <h3 className="text-lg font-semibold text-white mb-4">Payment Provider Status</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex items-center justify-between p-4 bg-gray-700/30 rounded-lg">
+            <div className="flex items-center space-x-3">
+              <CreditCard className="h-5 w-5 text-blue-400" />
+              <div>
+                <span className="text-white font-medium">Stripe</span>
+                <div className="text-xs text-gray-400">Credit card processing</div>
+              </div>
+            </div>
+            <button
+              onClick={() => handleInputChange('stripe_active', !config.stripe_active)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                config.stripe_active ? 'bg-blue-600' : 'bg-gray-600'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  config.stripe_active ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+          
+          <div className="flex items-center justify-between p-4 bg-gray-700/30 rounded-lg">
+            <div className="flex items-center space-x-3">
+              <Key className="h-5 w-5 text-yellow-400" />
+              <div>
+                <span className="text-white font-medium">PayPal</span>
+                <div className="text-xs text-gray-400">PayPal processing</div>
+              </div>
+            </div>
+            <button
+              onClick={() => handleInputChange('paypal_active', !config.paypal_active)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                config.paypal_active ? 'bg-yellow-600' : 'bg-gray-600'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  config.paypal_active ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
         </div>
       </div>
 
