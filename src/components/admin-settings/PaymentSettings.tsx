@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard, Settings, AlertTriangle, CheckCircle, Key, Eye, EyeOff } from 'lucide-react';
+import { CreditCard, Settings, AlertTriangle, CheckCircle, Key, Eye, EyeOff, Info } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useNotifications } from '../NotificationSystem';
 
 interface PaymentConfig {
   mode: 'test' | 'live';
@@ -19,6 +20,8 @@ interface PaymentConfig {
 }
 
 export default function PaymentSettings() {
+  const { showSuccess, showError, showInfo, showWarning } = useNotifications();
+  
   const [config, setConfig] = useState<PaymentConfig>({
     mode: 'test',
     stripe_active: true,
@@ -87,6 +90,7 @@ export default function PaymentSettings() {
   const saveStripeConfig = async () => {
     try {
       setSaving(true);
+      showInfo('Saving Stripe configuration...', 'Validating and updating payment settings');
       
       // Validate Stripe settings
       if (config.stripe_active && config.mode === 'test' && !config.stripe_test_publishable_key) {
@@ -159,12 +163,14 @@ export default function PaymentSettings() {
 
       // Show success message
       const activeStatus = config.stripe_active ? 'ACTIVE' : 'INACTIVE';
-      setSuccess(`✅ Stripe settings saved successfully! Status: ${activeStatus}`);
-      setTimeout(() => setSuccess(null), 5000);
+      const modeStatus = config.mode.toUpperCase();
+      showSuccess('Stripe Configuration Saved', `Settings updated successfully! Status: ${activeStatus} (${modeStatus} mode)`);
       
     } catch (error) {
       console.error('Error saving Stripe config:', error);
-      setError(error instanceof Error ? error.message : 'Failed to save Stripe configuration');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save Stripe configuration';
+      showError('Stripe Configuration Error', errorMessage);
+      setError(errorMessage);
     } finally {
       setSaving(false);
     }
@@ -173,6 +179,7 @@ export default function PaymentSettings() {
   const savePayPalConfig = async () => {
     try {
       setSaving(true);
+      showInfo('Saving PayPal configuration...', 'Validating and updating payment settings');
       
       // Validate PayPal settings
       if (config.paypal_active && config.mode === 'test' && !config.paypal_test_client_id) {
@@ -242,12 +249,14 @@ export default function PaymentSettings() {
 
       // Show success message
       const activeStatus = config.paypal_active ? 'ACTIVE' : 'INACTIVE';
-      setSuccess(`✅ PayPal settings saved successfully! Status: ${activeStatus}`);
-      setTimeout(() => setSuccess(null), 5000);
+      const modeStatus = config.mode.toUpperCase();
+      showSuccess('PayPal Configuration Saved', `Settings updated successfully! Status: ${activeStatus} (${modeStatus} mode)`);
       
     } catch (error) {
       console.error('Error saving PayPal config:', error);
-      setError(error instanceof Error ? error.message : 'Failed to save PayPal configuration');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save PayPal configuration';
+      showError('PayPal Configuration Error', errorMessage);
+      setError(errorMessage);
     } finally {
       setSaving(false);
     }
@@ -554,6 +563,86 @@ export default function PaymentSettings() {
           </div>
         </div>
       </div>
+
+      {/* Test Card Helper Information */}
+      {config.mode === 'test' && (
+        <div className="mb-8 p-6 bg-blue-500/5 border border-blue-500/20 rounded-lg">
+          <div className="flex items-center space-x-2 mb-4">
+            <Info className="h-5 w-5 text-blue-400" />
+            <h3 className="text-lg font-semibold text-white">Test Card Information</h3>
+          </div>
+          <p className="text-blue-300 text-sm mb-6">
+            Use these test card details for development and testing. These cards will not be charged.
+          </p>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Stripe Test Cards */}
+            <div className="bg-gray-700/30 rounded-lg p-4">
+              <h4 className="font-medium text-white mb-3 flex items-center space-x-2">
+                <CreditCard className="h-4 w-4 text-blue-400" />
+                <span>Stripe Test Cards</span>
+              </h4>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-300">Visa (Success):</span>
+                  <span className="text-white font-mono">4242 4242 4242 4242</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-300">Visa (Declined):</span>
+                  <span className="text-white font-mono">4000 0000 0000 0002</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-300">Mastercard:</span>
+                  <span className="text-white font-mono">5555 5555 5555 4444</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-300">American Express:</span>
+                  <span className="text-white font-mono">3782 822463 10005</span>
+                </div>
+                <div className="border-t border-gray-600 pt-3 mt-3">
+                  <div className="flex justify-between">
+                    <span className="text-gray-300">Expiration:</span>
+                    <span className="text-white font-mono">Any future date</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-300">CVV:</span>
+                    <span className="text-white font-mono">Any 3-4 digits</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* PayPal Test Information */}
+            <div className="bg-gray-700/30 rounded-lg p-4">
+              <h4 className="font-medium text-white mb-3 flex items-center space-x-2">
+                <Key className="h-4 w-4 text-yellow-400" />
+                <span>PayPal Test Account</span>
+              </h4>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-300">Email:</span>
+                  <span className="text-white font-mono">sb-buyer@example.com</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-300">Password:</span>
+                  <span className="text-white font-mono">testpass123</span>
+                </div>
+                <div className="border-t border-gray-600 pt-3 mt-3">
+                  <p className="text-gray-300 text-xs">
+                    Use PayPal's sandbox accounts for testing. Create test accounts in your PayPal Developer dashboard.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+            <p className="text-yellow-300 text-sm">
+              <strong>Important:</strong> These test cards only work in test mode. Switch to live mode for real payments.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Save Buttons */}
       <div className="flex flex-col sm:flex-row gap-4 justify-end">

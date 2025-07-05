@@ -10,6 +10,8 @@ import {
 } from '@stripe/react-stripe-js';
 import { supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
+import { TestTube } from 'lucide-react';
+import { getPaymentConfig, getStripeConfig } from '../services/paymentConfigService';
 
 interface PaymentFormProps {
   amount: number;
@@ -54,6 +56,7 @@ const PaymentFormContent: React.FC<PaymentFormContentProps> = ({
   const [expressCheckoutReady, setExpressCheckoutReady] = useState(false);
   const [showTraditionalForm, setShowTraditionalForm] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [paymentConfig, setPaymentConfig] = useState<{ mode: 'test' | 'live'; stripe_active: boolean } | null>(null);
   const [userInfo, setUserInfo] = useState<UserInfo>({
     firstName: currentUser?.user_metadata?.first_name || '',
     lastName: currentUser?.user_metadata?.last_name || '',
@@ -68,6 +71,20 @@ const PaymentFormContent: React.FC<PaymentFormContentProps> = ({
       country: 'US'
     }
   });
+
+  // Load payment configuration to detect test mode
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const config = await getPaymentConfig();
+        setPaymentConfig(config);
+      } catch (error) {
+        console.error('Error loading payment config:', error);
+      }
+    };
+    
+    loadConfig();
+  }, []);
 
   // Handle Express Checkout (Apple Pay, Google Pay, etc.)
   const handleExpressCheckout = async (event: any) => {
@@ -295,23 +312,43 @@ const PaymentFormContent: React.FC<PaymentFormContentProps> = ({
         </div>
 
         <div className="bg-gray-800 rounded-b-2xl border border-gray-700 p-8">
-          {/* Express Checkout */}
+          {/* Test Mode Indicator */}
+          {paymentConfig && paymentConfig.mode === 'test' && (
+            <div className="mb-8 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+              <div className="flex items-center space-x-2">
+                <TestTube className="h-5 w-5 text-yellow-400" />
+                <span className="text-yellow-300 text-lg font-semibold">Test Mode Active</span>
+              </div>
+              <p className="text-yellow-200 text-sm mt-2">
+                This is a test payment. No real money will be charged.
+              </p>
+            </div>
+          )}
+
+          {/* Payment Methods */}
           <div className="mb-8">
-            <h3 className="text-xl font-semibold text-white mb-4 text-center">🚀 Quick Payment Options</h3>
-            <div className="max-w-md mx-auto">
-              <ExpressCheckoutElement
-                onConfirm={handleExpressCheckout}
-                onReady={() => setExpressCheckoutReady(true)}
-                options={{
-                  buttonType: { applePay: 'buy', googlePay: 'buy' },
-                  layout: { maxColumns: 1, maxRows: 1 }
-                }}
+            <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
+              <PaymentElement 
+                options={{ 
+                  layout: 'tabs',
+                  paymentMethodOrder: ['link', 'card'],
+                  defaultValues: {
+                    billingDetails: {
+                      name: `${userInfo.firstName} ${userInfo.lastName}`.trim(),
+                      email: userInfo.email,
+                      phone: userInfo.phone,
+                      address: {
+                        line1: userInfo.address.line1,
+                        line2: userInfo.address.line2,
+                        city: userInfo.address.city,
+                        state: userInfo.address.state,
+                        postal_code: userInfo.address.postal_code,
+                        country: userInfo.address.country,
+                      }
+                    }
+                  }
+                }} 
               />
-              {!expressCheckoutReady && (
-                <div className="text-center text-gray-400 py-4">
-                  <div className="animate-pulse">Loading express payment options...</div>
-                </div>
-              )}
             </div>
           </div>
 
@@ -321,7 +358,7 @@ const PaymentFormContent: React.FC<PaymentFormContentProps> = ({
               <div className="w-full border-t border-gray-600" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-gray-800 text-gray-400">or pay with card</span>
+              <span className="px-4 bg-gray-800 text-gray-400">or</span>
             </div>
           </div>
 
@@ -509,15 +546,23 @@ const PaymentFormContent: React.FC<PaymentFormContentProps> = ({
               </div>
             </div>
 
-            {/* Payment Information */}
+            {/* Express Checkout */}
             <div>
-              <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
-                <span className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm mr-3">3</span>
-                Payment Information
-              </h3>
-              
-              <div className="bg-gray-700 border border-gray-600 rounded-lg p-4">
-                <PaymentElement options={{ layout: 'tabs' }} />
+              <h3 className="text-xl font-semibold text-white mb-4 text-center">🚀 Express Checkout</h3>
+              <div className="max-w-md mx-auto">
+                <ExpressCheckoutElement
+                  onConfirm={handleExpressCheckout}
+                  onReady={() => setExpressCheckoutReady(true)}
+                  options={{
+                    buttonType: { applePay: 'buy', googlePay: 'buy' },
+                    layout: { maxColumns: 1, maxRows: 1 }
+                  }}
+                />
+                {!expressCheckoutReady && (
+                  <div className="text-center text-gray-400 py-4">
+                    <div className="animate-pulse">Loading express payment options...</div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -561,11 +606,9 @@ const PaymentFormContent: React.FC<PaymentFormContentProps> = ({
   );
 };
 
-// Initialize Stripe
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY!);
-
 const PaymentForm: React.FC<PaymentFormProps> = (props) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
 
   useEffect(() => {
     const getCurrentUser = async () => {
@@ -575,7 +618,36 @@ const PaymentForm: React.FC<PaymentFormProps> = (props) => {
     getCurrentUser();
   }, []);
 
-  // Elements options for deferred payment intent creation
+  useEffect(() => {
+    const initializeStripe = async () => {
+      try {
+        const stripeConfig = await getStripeConfig();
+        const stripe = loadStripe(stripeConfig.publishableKey);
+        setStripePromise(stripe);
+        console.log(`Stripe initialized - Mode: ${stripeConfig.isTestMode ? 'Test' : 'Live'}, Source: ${stripeConfig.source}`);
+      } catch (error) {
+        console.error('Failed to initialize Stripe:', error);
+        // Fallback to environment variable
+        const fallbackStripe = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
+        setStripePromise(fallbackStripe);
+      }
+    };
+
+    initializeStripe();
+  }, []);
+
+  if (!stripePromise) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-400">Initializing secure payment...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Elements options for deferred payment intent creation  
   const elementsOptions = {
     mode: 'payment' as const,
     amount: props.amount * 100, // Convert to cents
@@ -592,7 +664,7 @@ const PaymentForm: React.FC<PaymentFormProps> = (props) => {
         borderRadius: '6px'
       }
     },
-    paymentMethodTypes: ['card', 'link']
+    paymentMethodTypes: ['link', 'card']
   };
 
   return (

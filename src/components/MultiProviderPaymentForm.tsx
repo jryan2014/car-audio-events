@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { CreditCard, Lock, AlertCircle, CheckCircle, Loader } from 'lucide-react';
+import { CreditCard, Lock, AlertCircle, CheckCircle, Loader, TestTube } from 'lucide-react';
 import { PaymentProvider, createPaymentIntent, confirmStripePayment, loadPayPalSDK, getAvailableProviders } from '../lib/payments';
 import { CreditCardLogos } from './CreditCardLogos';
 import { getStripe } from '../lib/stripe';
+import { getPaymentConfig } from '../services/paymentConfigService';
 
 interface MultiProviderPaymentFormProps {
   amount: number;
@@ -25,6 +26,7 @@ export default function MultiProviderPaymentForm({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paymentIntent, setPaymentIntent] = useState<any>(null);
+  const [paymentConfig, setPaymentConfig] = useState<{ mode: 'test' | 'live'; stripe_active: boolean; paypal_active: boolean } | null>(null);
   
   // Stripe specific state
   const [stripe, setStripe] = useState<any>(null);
@@ -34,6 +36,20 @@ export default function MultiProviderPaymentForm({
   // PayPal specific state
   const [paypalLoaded, setPaypalLoaded] = useState(false);
   const paypalRef = useRef<HTMLDivElement>(null);
+
+  // Load payment configuration to detect test mode
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const config = await getPaymentConfig();
+        setPaymentConfig(config);
+      } catch (error) {
+        console.error('Error loading payment config:', error);
+      }
+    };
+    
+    loadConfig();
+  }, []);
 
   // Initialize Stripe
   useEffect(() => {
@@ -206,6 +222,19 @@ export default function MultiProviderPaymentForm({
         <Lock className="h-5 w-5 text-electric-500" />
         <h3 className="text-xl font-bold text-white">Secure Payment</h3>
       </div>
+
+      {/* Test Mode Indicator */}
+      {paymentConfig && paymentConfig.mode === 'test' && (
+        <div className="mb-6 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+          <div className="flex items-center space-x-2">
+            <TestTube className="h-4 w-4 text-yellow-400" />
+            <span className="text-yellow-300 text-sm font-medium">Test Mode Active</span>
+          </div>
+          <p className="text-yellow-200 text-xs mt-1">
+            This is a test payment. No real money will be charged.
+          </p>
+        </div>
+      )}
 
       {/* Payment Summary */}
       <div className="mb-6">
