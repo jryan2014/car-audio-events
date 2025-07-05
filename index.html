@@ -12,10 +12,13 @@
     <meta http-equiv="Expires" content="0">
     <meta name="cache-version" content="v1.5.23-tinymce-csp-fix">
     
-    <!-- Only security headers that work in meta tags -->
+    <!-- Enhanced security headers (meta tag compatible only) -->
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
     <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
-    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://maps.googleapis.com https://www.google.com https://maps.gstatic.com https://cdn.tiny.cloud https://*.tinymce.com;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://maps.googleapis.com https://www.google.com https://maps.gstatic.com https://cdn.tiny.cloud https://*.tinymce.com blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; frame-src 'self' https://js.stripe.com https://www.google.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://maps.googleapis.com https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data: https:; object-src 'none'; base-uri 'self'; form-action 'self';">
+    
+    <!-- Feature Policy fallback for older browsers -->
+    <meta http-equiv="Feature-Policy" content="payment *; payment-handler *; encrypted-media *; microphone 'none'; camera 'none'; geolocation *">
     
     <!-- Critical resource hints for performance -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -107,8 +110,6 @@
             registration.unregister();
           }
         });
-        // TEMPORARILY DISABLE SERVICE WORKER FOR CSP DEBUGGING
-        console.log('Service workers disabled for CSP debugging');
       }
       
       // Security: Prevent clickjacking and frame embedding

@@ -47,20 +47,89 @@ export default function Pricing() {
     }
   };
 
-  const handlePlanSelected = (planId: string, paymentIntentId: string) => {
-    // Here you would typically update the user's subscription in your database
-    console.log('Plan selected:', planId, 'Payment:', paymentIntentId);
+  const handlePlanSelected = async (planId: string, paymentIntentId: string, userInfo?: any) => {
+    console.log('Plan selected:', planId, 'Payment:', paymentIntentId, 'User Info:', userInfo);
     
     // Check if user is logged in
     if (!user) {
-      // User not logged in - redirect to registration with selected plan
-      navigate(`/register?plan=${planId}`);
+      // User not logged in - need to create account with membership
+      if (userInfo && paymentIntentId !== 'free') {
+        // User provided information during payment - create account directly
+        try {
+          // Create user account with the collected information
+          const { data: authData, error: authError } = await supabase.auth.signUp({
+            email: userInfo.email,
+            password: generateTempPassword(), // Generate temporary password
+            options: {
+              data: {
+                name: `${userInfo.firstName} ${userInfo.lastName}`,
+                phone: userInfo.phone,
+                membership_type: getPlanType(planId),
+                billing_address: userInfo.address,
+                payment_intent_id: paymentIntentId
+              }
+            }
+          });
+
+          if (authError) throw authError;
+
+          // Show success message and redirect
+          alert('Account created successfully! Please check your email to verify your account.');
+          navigate('/login?message=account_created');
+        } catch (error) {
+          console.error('Error creating account:', error);
+          alert('Failed to create account. Please try again or contact support.');
+        }
+      } else {
+        // Free plan or no user info - redirect to registration with selected plan
+        navigate(`/register?plan=${planId}`);
+      }
       return;
     }
     
-    // User is logged in - update their plan and redirect to dashboard
-    // TODO: Update user's membership in database
-    navigate('/dashboard');
+    // User is logged in - update their membership
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({
+          membership_type: getPlanType(planId),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      // Show success message and redirect to dashboard
+      alert('Membership updated successfully!');
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Error updating membership:', error);
+      alert('Failed to update membership. Please try again or contact support.');
+    }
+  };
+
+  const generateTempPassword = (): string => {
+    // Generate a random temporary password
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+    let password = '';
+    for (let i = 0; i < 12; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
+  };
+
+  const getPlanType = (planId: string): string => {
+    // Map plan IDs to membership types
+    const planTypeMap: { [key: string]: string } = {
+      'competitor': 'competitor',
+      'pro': 'competitor', // Pro is still competitor type but with enhanced features
+      'business': 'retailer',
+      'retailer': 'retailer',
+      'manufacturer': 'manufacturer',
+      'organization': 'organization'
+    };
+    
+    return planTypeMap[planId] || 'competitor';
   };
 
   return (

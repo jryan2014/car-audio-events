@@ -38,26 +38,31 @@ serve(async (req) => {
       throw new Error('Amount must be at least $0.50 USD')
     }
 
-    // Get user from authorization header
+    // Get user from authorization header (optional for membership purchases)
     const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      throw new Error('No authorization header')
+    let user = null;
+    
+    if (authHeader) {
+      const token = authHeader.replace('Bearer ', '')
+      const { data: { user: authUser }, error: userError } = await supabase.auth.getUser(token)
+      
+      if (!userError && authUser) {
+        user = authUser;
+      }
     }
 
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token)
-    
-    if (userError || !user) {
-      throw new Error('Invalid user token')
-    }
+    // For membership purchases, we allow anonymous users
+    // The user info will be collected in the payment form
+    const userId = user?.id || 'anonymous';
+    const userEmail = user?.email || metadata.email || 'anonymous@membership.purchase';
 
     // Create payment intent
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount), // Amount in cents
       currency: currency.toLowerCase(),
       metadata: {
-        user_id: user.id,
-        user_email: user.email,
+        user_id: userId,
+        user_email: userEmail,
         ...metadata
       },
       automatic_payment_methods: {
@@ -65,57 +70,59 @@ serve(async (req) => {
       },
     })
 
-    // Store payment intent in database with enhanced schema
-    const { error: insertError } = await supabase
-      .from('payments')
-      .insert({
-        id: paymentIntent.id,
-        user_id: user.id,
-        amount: Math.round(amount),
-        currency: currency.toLowerCase(),
-        status: paymentIntent.status,
-        payment_provider: 'stripe',
-        stripe_payment_intent_id: paymentIntent.id,
-        metadata: {
+    // Store payment intent in database with enhanced schema (only for authenticated users)
+    if (user) {
+      const { error: insertError } = await supabase
+        .from('payments')
+        .insert({
+          id: paymentIntent.id,
           user_id: user.id,
-          user_email: user.email,
-          ...metadata
-        },
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+          amount: Math.round(amount),
+          currency: currency.toLowerCase(),
+          status: paymentIntent.status,
+          payment_provider: 'stripe',
+          stripe_payment_intent_id: paymentIntent.id,
+          metadata: {
+            user_id: user.id,
+            user_email: user.email,
+            ...metadata
+          },
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+
+      if (insertError) {
+        console.error('Error storing payment record:', insertError)
+        // Continue anyway - webhook will handle this
+      }
+
+      // Log payment creation in subscription history
+      await supabase.from('subscription_history').insert({
+        user_id: user.id,
+        subscription_id: paymentIntent.id,
+        provider: 'stripe',
+        action: 'created',
+        new_status: paymentIntent.status,
+        amount: amount / 100,
+        currency: currency.toLowerCase(),
+        metadata: { payment_intent_id: paymentIntent.id }
       })
 
-    if (insertError) {
-      console.error('Error storing payment record:', insertError)
-      // Continue anyway - webhook will handle this
-    }
+      // Update user's refund eligibility window
+      const { error: userUpdateError } = await supabase
+        .from('users')
+        .update({
+          refund_eligible_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
+        })
+        .eq('id', user.id)
 
-    // Log payment creation in subscription history
-    await supabase.from('subscription_history').insert({
-      user_id: user.id,
-      subscription_id: paymentIntent.id,
-      provider: 'stripe',
-      action: 'created',
-      new_status: paymentIntent.status,
-      amount: amount / 100,
-      currency: currency.toLowerCase(),
-      metadata: { payment_intent_id: paymentIntent.id }
-    })
-
-    // Update user's refund eligibility window
-    const { error: userUpdateError } = await supabase
-      .from('users')
-      .update({
-        refund_eligible_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
-      })
-      .eq('id', user.id)
-
-    if (userUpdateError) {
-      console.error('Error updating user refund eligibility:', userUpdateError)
+      if (userUpdateError) {
+        console.error('Error updating user refund eligibility:', userUpdateError)
+      }
     }
 
     // Log payment intent creation
-    console.log(`Payment intent created: ${paymentIntent.id} for user: ${user.email}`)
+    console.log(`Payment intent created: ${paymentIntent.id} for user: ${userEmail}`)
 
     return new Response(
       JSON.stringify({

@@ -145,11 +145,11 @@ export default function EventDetails() {
     setIsFavorited(!isFavorited);
   };
 
-  const handlePaymentSuccess = (paymentIntentId: string) => {
+  const handlePaymentSuccess = (paymentIntentId: string, userInfo?: any) => {
     setIsRegistered(true);
     setShowPayment(false);
     // Here you would typically save the registration to your database
-    console.log('Registration payment successful:', paymentIntentId);
+    console.log('Registration payment successful:', paymentIntentId, userInfo);
   };
 
   const handlePaymentError = (error: string) => {
@@ -343,6 +343,7 @@ export default function EventDetails() {
             {showPayment ? (
               <PaymentForm
                 amount={event.registrationFee}
+                planName="Event Registration"
                 description={`Registration for ${event.title}`}
                 onSuccess={handlePaymentSuccess}
                 onError={handlePaymentError}

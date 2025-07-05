@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { Check, Star, Zap, Crown } from 'lucide-react';
-import PaymentForm from './PaymentForm';
 import { supabase } from '../lib/supabase';
 
+// Lazy load PaymentForm to prevent Payment Request API violations on page load
+const PaymentForm = lazy(() => import('./PaymentForm'));
+
 interface PricingPlansProps {
-  onPlanSelected?: (planId: string, paymentIntentId: string) => void;
+  onPlanSelected?: (planId: string, paymentIntentId: string, userInfo?: any) => void;
   type?: string;
   preLoadedPlans?: any[];
 }
@@ -216,7 +218,7 @@ export default function PricingPlans({ onPlanSelected, type, preLoadedPlans }: P
     if (plan?.price === 0) {
       // Free plan - no payment needed
       if (onPlanSelected) {
-        onPlanSelected(planId, 'free');
+        onPlanSelected(planId, 'free', undefined);
       }
     } else {
       // Check if Stripe is configured
@@ -234,9 +236,10 @@ export default function PricingPlans({ onPlanSelected, type, preLoadedPlans }: P
     }
   };
 
-  const handlePaymentSuccess = (paymentIntentId: string) => {
+  const handlePaymentSuccess = (paymentIntentId: string, userInfo: any) => {
     if (onPlanSelected && selectedPlan) {
-      onPlanSelected(selectedPlan, paymentIntentId);
+      // Pass both payment info and user info to the parent component
+      onPlanSelected(selectedPlan, paymentIntentId, userInfo);
     }
     setShowPayment(false);
     setSelectedPlan(null);
@@ -251,7 +254,7 @@ export default function PricingPlans({ onPlanSelected, type, preLoadedPlans }: P
 
   if (showPayment && selectedPlanData) {
     return (
-      <div className="max-w-md mx-auto">
+      <div className="mx-auto" style={{ maxWidth: '1000px' }}>
         <div className="text-center mb-6">
           <h3 className="text-2xl font-bold text-white mb-2">
             Complete Your {selectedPlanData.name} Subscription
@@ -261,16 +264,24 @@ export default function PricingPlans({ onPlanSelected, type, preLoadedPlans }: P
           </p>
         </div>
         
-        <PaymentForm
-          amount={selectedPlanData.price}
-          description={`${selectedPlanData.name} Subscription`}
-          onSuccess={handlePaymentSuccess}
-          onError={handlePaymentError}
-          metadata={{
-            plan_id: selectedPlanData.id,
-            plan_name: selectedPlanData.name
-          }}
-        />
+        <Suspense fallback={
+          <div className="flex justify-center items-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-electric-500"></div>
+            <span className="ml-3 text-gray-400">Loading payment form...</span>
+          </div>
+        }>
+          <PaymentForm
+            amount={selectedPlanData.price}
+            planName={selectedPlanData.name}
+            description={`${selectedPlanData.name} Subscription`}
+            onSuccess={handlePaymentSuccess}
+            onError={handlePaymentError}
+            metadata={{
+              plan_id: selectedPlanData.id,
+              plan_name: selectedPlanData.name
+            }}
+          />
+        </Suspense>
 
         <button
           onClick={() => setShowPayment(false)}

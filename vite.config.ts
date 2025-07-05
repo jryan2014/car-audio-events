@@ -8,7 +8,7 @@ const securityHeaders = {
   'X-XSS-Protection': '1; mode=block',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
-  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(self), payment=(self)'
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(self), payment=*, fullscreen=*'
 };
 
 // Content Security Policy
