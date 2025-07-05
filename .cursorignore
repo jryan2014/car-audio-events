@@ -1,0 +1,2 @@
+# Add direc!.env*tories or file patterns to ignore during indexing (e.g. foo/ or *.csv)
+!.env*

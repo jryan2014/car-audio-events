@@ -133,7 +133,7 @@ serve(async (req) => {
       case 'payment_intent.succeeded': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent
         
-        // Create or update payment record
+        // Create or update payment record with enhanced schema
         const { error: upsertError } = await supabase
           .from('payments')
           .upsert({
@@ -142,6 +142,7 @@ serve(async (req) => {
             amount: paymentIntent.amount,
             currency: paymentIntent.currency,
             status: paymentIntent.status,
+            payment_provider: 'stripe',
             metadata: paymentIntent.metadata,
             stripe_payment_intent_id: paymentIntent.id,
             created_at: new Date(paymentIntent.created * 1000).toISOString(),
@@ -150,6 +151,22 @@ serve(async (req) => {
 
         if (upsertError) {
           console.error('Error upserting payment record:', upsertError)
+        } else {
+          // Log successful payment in subscription history
+          await supabase.from('subscription_history').insert({
+            user_id: paymentIntent.metadata.user_id,
+            subscription_id: paymentIntent.id,
+            provider: 'stripe',
+            action: 'renewed',
+            old_status: 'pending',
+            new_status: 'completed',
+            amount: paymentIntent.amount / 100,
+            currency: paymentIntent.currency,
+            metadata: { 
+              payment_intent_id: paymentIntent.id,
+              stripe_event_id: event.id
+            }
+          })
         }
 
         // If this is an event registration payment, ensure registration exists

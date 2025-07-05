@@ -5,7 +5,7 @@ import { Navigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import AdminEmailSettings from '../components/AdminEmailSettings';
 import { ServiceWorkerManager } from '../components/ServiceWorkerManager';
-import { StripeSettings } from '../components/admin-settings/StripeSettings';
+
 import { SupabaseSettings } from '../components/admin-settings/SupabaseSettings';
 import { GoogleMapsSettings } from '../components/admin-settings/GoogleMapsSettings';
 import { HCaptchaSettings } from '../components/admin-settings/HCaptchaSettings';
@@ -13,6 +13,7 @@ import { SessionSettings } from '../components/admin-settings/SessionSettings';
 import { EmailSettings } from '../components/admin-settings/EmailSettings';
 import { CacheSettings } from '../components/admin-settings/CacheSettings';
 import { DebugSettings } from '../components/admin-settings/DebugSettings';
+import PaymentSettings from '../components/admin-settings/PaymentSettings';
 
 interface IntegrationKeys {
   stripe_publishable_key: string;
@@ -35,7 +36,7 @@ interface IntegrationKeys {
 }
 
 const sections = [
-  { id: 'stripe', label: 'Stripe', icon: <CreditCard className="h-5 w-5" /> },
+  { id: 'payments', label: 'Payment Providers', icon: <CreditCard className="h-5 w-5" /> },
   { id: 'supabase', label: 'Supabase', icon: <Database className="h-5 w-5" /> },
   { id: 'google', label: 'Google Maps', icon: <Map className="h-5 w-5" /> },
       { id: 'hcaptcha', label: 'hCaptcha', icon: <Shield className="h-5 w-5" /> },
@@ -69,7 +70,7 @@ export default function AdminSettings() {
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
-  const [activeSection, setActiveSection] = useState('stripe');
+  const [activeSection, setActiveSection] = useState('payments');
   const [debugModeEnabled, setDebugModeEnabled] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -330,7 +331,7 @@ export default function AdminSettings() {
 
   const renderSection = () => {
     switch (activeSection) {
-      case 'stripe': return <StripeSettings />;
+      case 'payments': return <PaymentSettings />;
       case 'supabase': return <SupabaseSettings />;
       case 'google': return <GoogleMapsSettings />;
               case 'hcaptcha': return <HCaptchaSettings />;

@@ -65,13 +65,63 @@ serve(async (req) => {
       },
     })
 
+    // Store payment intent in database with enhanced schema
+    const { error: insertError } = await supabase
+      .from('payments')
+      .insert({
+        id: paymentIntent.id,
+        user_id: user.id,
+        amount: Math.round(amount),
+        currency: currency.toLowerCase(),
+        status: paymentIntent.status,
+        payment_provider: 'stripe',
+        stripe_payment_intent_id: paymentIntent.id,
+        metadata: {
+          user_id: user.id,
+          user_email: user.email,
+          ...metadata
+        },
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+
+    if (insertError) {
+      console.error('Error storing payment record:', insertError)
+      // Continue anyway - webhook will handle this
+    }
+
+    // Log payment creation in subscription history
+    await supabase.from('subscription_history').insert({
+      user_id: user.id,
+      subscription_id: paymentIntent.id,
+      provider: 'stripe',
+      action: 'created',
+      new_status: paymentIntent.status,
+      amount: amount / 100,
+      currency: currency.toLowerCase(),
+      metadata: { payment_intent_id: paymentIntent.id }
+    })
+
+    // Update user's refund eligibility window
+    const { error: userUpdateError } = await supabase
+      .from('users')
+      .update({
+        refund_eligible_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
+      })
+      .eq('id', user.id)
+
+    if (userUpdateError) {
+      console.error('Error updating user refund eligibility:', userUpdateError)
+    }
+
     // Log payment intent creation
     console.log(`Payment intent created: ${paymentIntent.id} for user: ${user.email}`)
 
     return new Response(
       JSON.stringify({
         client_secret: paymentIntent.client_secret,
-        payment_intent_id: paymentIntent.id
+        payment_intent_id: paymentIntent.id,
+        provider: 'stripe'
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
