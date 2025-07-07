@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, X, User, Calendar, MapPin, Users, LogOut, Settings, Shield, Package, BarChart3, Target, FileText, Building2, ChevronDown, Search } from 'lucide-react';
+import { Menu, X, User, Calendar, MapPin, Users, LogOut, Settings, Shield, Package, BarChart3, Target, FileText, Building2, ChevronDown, Search, CreditCard } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import MegaMenu from './MegaMenu';
 import MobileMegaMenu from './MobileMegaMenu';
@@ -108,6 +108,15 @@ export default function Header() {
                         >
                           <Settings className="h-4 w-4" />
                           <span>Settings</span>
+                        </Link>
+                        
+                        <Link
+                          to="/billing"
+                          onClick={() => setIsUserDropdownOpen(false)}
+                          className="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700/50 rounded-lg transition-colors duration-200"
+                        >
+                          <CreditCard className="h-4 w-4" />
+                          <span>Billing & Subscription</span>
                         </Link>
 
                         {/* Business Tools Section for eligible users */}

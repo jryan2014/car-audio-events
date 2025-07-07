@@ -1,12 +1,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Stripe from 'https://esm.sh/stripe@14.21.0'
+import { corsHeaders } from '../_shared/cors.ts'
 import { edgeEmailService } from '../_shared/edge-email-service.ts'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
 
 interface PaymentConfig {
   mode: 'test' | 'live';
@@ -193,328 +189,354 @@ interface Database {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
+  // CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
+  // Initialize clients
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  const adminClient = createClient(supabaseUrl, supabaseServiceKey)
+  
+  const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY')!
+  const stripe = new Stripe(stripeSecretKey, {
+    apiVersion: '2023-10-16',
+  })
+
+  let event: Stripe.Event;
+
   try {
-    // Get Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey)
-
-    // Get Stripe configuration from database or environment
-    const stripeConfig = await getStripeWebhookConfig(supabase);
-
-    // Initialize Stripe with the correct configuration
-    const stripe = new Stripe(stripeConfig.secretKey, {
-      apiVersion: '2023-10-16',
-    })
-
-    // Get the raw body and signature
-    const body = await req.text()
+    const payload = await req.text()
     const signature = req.headers.get('stripe-signature')
+    const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET')
 
-    if (!signature) {
-      throw new Error('No Stripe signature found')
+    if (!signature || !webhookSecret) {
+      console.error('Missing signature or webhook secret')
+      return new Response('Bad request', { status: 400 })
     }
 
-    // Verify webhook signature using the correct webhook secret
-    let event: Stripe.Event
-    try {
-      event = stripe.webhooks.constructEvent(body, signature, stripeConfig.webhookSecret)
-    } catch (err) {
-      console.error('Webhook signature verification failed:', err)
-      return new Response('Invalid signature', { status: 400 })
-    }
+    // Verify the webhook signature
+    event = stripe.webhooks.constructEvent(payload, signature, webhookSecret)
 
-    console.log(`Received webhook event: ${event.type} (${stripeConfig.source} config, ${stripeConfig.isTestMode ? 'test' : 'live'} mode)`)
+    console.log(`Processing webhook event: ${event.type}`)
+
+    // Create webhook log entry
+    await adminClient
+      .from('webhook_logs')
+      .insert({
+        provider: 'stripe',
+        event_type: event.type,
+        event_id: event.id,
+        payload: event,
+        headers: Object.fromEntries(req.headers.entries()),
+        status: 'processing',
+        ip_address: req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip'),
+        user_agent: req.headers.get('user-agent')
+      });
 
     // Handle different event types
     switch (event.type) {
       case 'payment_intent.succeeded': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent
         
-        // Enhanced metadata with configuration info
-        const enhancedMetadata = {
-          ...paymentIntent.metadata,
-          stripe_mode: stripeConfig.isTestMode ? 'test' : 'live',
-          config_source: stripeConfig.source,
-          webhook_processed_at: new Date().toISOString()
-        };
+        console.log('Payment succeeded:', paymentIntent.id)
         
-        // Create or update payment record with enhanced schema
-        const { error: upsertError } = await supabase
-          .from('payments')
-          .upsert({
-            id: paymentIntent.id,
-            user_id: paymentIntent.metadata.user_id,
-            amount: paymentIntent.amount,
-            currency: paymentIntent.currency,
-            status: paymentIntent.status,
-            payment_provider: 'stripe',
-            metadata: enhancedMetadata,
-            stripe_payment_intent_id: paymentIntent.id,
-            created_at: new Date(paymentIntent.created * 1000).toISOString(),
-            updated_at: new Date().toISOString()
-          })
+        const userId = paymentIntent.metadata?.user_id
+        const eventId = paymentIntent.metadata?.event_id
+        
+        if (userId) {
+          // Record transaction
+          await adminClient
+            .from('transactions')
+            .insert({
+              user_id: userId,
+              type: eventId ? 'one_time' : 'subscription',
+              status: 'succeeded',
+              amount: paymentIntent.amount / 100,
+              currency: paymentIntent.currency.toUpperCase(),
+              payment_provider: 'stripe',
+              provider_transaction_id: paymentIntent.id,
+              provider_customer_id: paymentIntent.customer as string,
+              payment_method_type: paymentIntent.payment_method_types[0],
+              description: paymentIntent.description || 'Payment',
+              metadata: paymentIntent.metadata
+            });
 
-        if (upsertError) {
-          console.error('Error upserting payment record:', upsertError)
-        } else {
-          // Log successful payment in subscription history
-          await supabase.from('subscription_history').insert({
-            user_id: paymentIntent.metadata.user_id,
-            subscription_id: paymentIntent.id,
-            provider: 'stripe',
-            action: 'renewed',
-            old_status: 'pending',
-            new_status: 'completed',
-            amount: paymentIntent.amount / 100,
-            currency: paymentIntent.currency,
-            metadata: { 
-              payment_intent_id: paymentIntent.id,
-              stripe_event_id: event.id,
-              stripe_mode: stripeConfig.isTestMode ? 'test' : 'live',
-              config_source: stripeConfig.source
-            }
-          })
-
-          // Send payment confirmation email
-          if (paymentIntent.metadata.user_id) {
-            // Get user email
-            const { data: userData } = await supabase
-              .from('users')
-              .select('email, full_name, membershipType')
-              .eq('id', paymentIntent.metadata.user_id)
-              .single()
-
-            if (userData && userData.email) {
-              await edgeEmailService.sendTemplatedEmail(
-                userData.email,
-                'payment_success',
-                {
-                  name: userData.full_name || 'Member',
-                  amount: (paymentIntent.amount / 100).toFixed(2),
-                  currency: paymentIntent.currency.toUpperCase(),
-                  payment_date: new Date().toLocaleDateString(),
-                  payment_id: paymentIntent.id,
-                  description: paymentIntent.description || `Payment for ${userData.membershipType} membership`,
-                  membershipLevel: userData.membershipType
-                }
-              )
+          if (eventId) {
+            // Handle event registration
+            const paymentId = paymentIntent.metadata?.payment_id
+            
+            if (paymentId) {
+              // Update payment status
+              await adminClient
+                .from('payments')
+                .update({ 
+                  status: 'completed',
+                  stripe_payment_intent_id: paymentIntent.id,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', paymentId)
+              
+              // Update registration status
+              await adminClient
+                .from('event_registrations')
+                .update({ status: 'confirmed' })
+                .eq('payment_id', paymentId)
+              
+              // Log activity
+              await adminClient
+                .from('activity_logs')
+                .insert({
+                  user_id: userId,
+                  activity_type: 'event_registration_confirmed',
+                  activity_description: `Event registration confirmed via Stripe payment`,
+                  metadata: { event_id: eventId, payment_id: paymentId }
+                })
             }
           }
         }
-
-        // If this is an event registration payment, ensure registration exists
-        if (paymentIntent.metadata.event_id && paymentIntent.metadata.user_id) {
-          const { error: registrationError } = await supabase
-            .from('event_registrations')
-            .upsert({
-              user_id: paymentIntent.metadata.user_id,
-              event_id: paymentIntent.metadata.event_id,
-              payment_id: paymentIntent.id,
-              registration_date: new Date().toISOString(),
-              status: 'confirmed'
-            })
-
-          if (registrationError) {
-            console.error('Error creating event registration:', registrationError)
-          } else {
-            console.log(`Event registration confirmed for user ${paymentIntent.metadata.user_id}`)
-          }
-        }
-
         break
       }
 
       case 'payment_intent.payment_failed': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent
         
-        // Enhanced metadata with configuration info
-        const enhancedMetadata = {
-          ...paymentIntent.metadata,
-          stripe_mode: stripeConfig.isTestMode ? 'test' : 'live',
-          config_source: stripeConfig.source,
-          webhook_processed_at: new Date().toISOString(),
-          failure_reason: paymentIntent.last_payment_error?.message || 'Unknown error'
-        };
+        console.log('Payment failed:', paymentIntent.id)
         
-        // Update payment record with failed status
-        const { error: updateError } = await supabase
-          .from('payments')
-          .upsert({
-            id: paymentIntent.id,
-            user_id: paymentIntent.metadata.user_id,
-            amount: paymentIntent.amount,
-            currency: paymentIntent.currency,
-            status: paymentIntent.status,
-            metadata: enhancedMetadata,
-            stripe_payment_intent_id: paymentIntent.id,
-            created_at: new Date(paymentIntent.created * 1000).toISOString(),
-            updated_at: new Date().toISOString()
-          })
-
-        if (updateError) {
-          console.error('Error updating failed payment record:', updateError)
-        }
-
-        break
-      }
-
-      case 'payment_intent.canceled': {
-        const paymentIntent = event.data.object as Stripe.PaymentIntent
+        const userId = paymentIntent.metadata?.user_id
         
-        // Enhanced metadata with configuration info
-        const enhancedMetadata = {
-          ...paymentIntent.metadata,
-          stripe_mode: stripeConfig.isTestMode ? 'test' : 'live',
-          config_source: stripeConfig.source,
-          webhook_processed_at: new Date().toISOString(),
-          cancellation_reason: paymentIntent.cancellation_reason || 'Unknown'
-        };
-        
-        // Update payment record with canceled status
-        const { error: updateError } = await supabase
-          .from('payments')
-          .upsert({
-            id: paymentIntent.id,
-            user_id: paymentIntent.metadata.user_id,
-            amount: paymentIntent.amount,
-            currency: paymentIntent.currency,
-            status: paymentIntent.status,
-            metadata: enhancedMetadata,
-            stripe_payment_intent_id: paymentIntent.id,
-            created_at: new Date(paymentIntent.created * 1000).toISOString(),
-            updated_at: new Date().toISOString()
-          })
+        if (userId) {
+          // Record failed transaction
+          await adminClient
+            .from('transactions')
+            .insert({
+              user_id: userId,
+              type: 'payment',
+              status: 'failed',
+              amount: paymentIntent.amount / 100,
+              currency: paymentIntent.currency.toUpperCase(),
+              payment_provider: 'stripe',
+              provider_transaction_id: paymentIntent.id,
+              description: paymentIntent.description || 'Failed payment',
+              metadata: {
+                ...paymentIntent.metadata,
+                failure_code: paymentIntent.last_payment_error?.code,
+                failure_message: paymentIntent.last_payment_error?.message
+              }
+            });
 
-        if (updateError) {
-          console.error('Error updating canceled payment record:', updateError)
-        }
+          // Update user payment failed count
+          const { data: user } = await adminClient
+            .from('users')
+            .select('payment_failed_count')
+            .eq('id', userId)
+            .maybeSingle();
 
-        // Remove any associated event registrations
-        if (paymentIntent.metadata.event_id && paymentIntent.metadata.user_id) {
-          const { error: deleteError } = await supabase
-            .from('event_registrations')
-            .delete()
-            .eq('user_id', paymentIntent.metadata.user_id)
-            .eq('event_id', paymentIntent.metadata.event_id)
-            .eq('payment_id', paymentIntent.id)
-
-          if (deleteError) {
-            console.error('Error removing event registration:', deleteError)
+          if (user) {
+            await adminClient
+              .from('users')
+              .update({
+                payment_failed_count: (user.payment_failed_count || 0) + 1,
+                last_payment_attempt: new Date().toISOString()
+              })
+              .eq('id', userId);
           }
         }
-
         break
       }
 
       case 'customer.subscription.created':
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription
-        await handleSubscriptionChange(supabase, subscription)
         
-        // Send subscription created email for new subscriptions
-        if (event.type === 'customer.subscription.created' && subscription.status === 'active') {
-          // Get customer email
-          const { data: userData } = await supabase
-            .from('users')
-            .select('email, full_name, membershipType')
-            .eq('stripe_customer_id', subscription.customer)
-            .single()
+        console.log(`Subscription ${event.type}:`, subscription.id)
+        
+        const customerId = subscription.customer as string
+        const userId = subscription.metadata?.user_id
+        
+        if (userId) {
+          // Check if subscription exists
+          const { data: existingSub } = await adminClient
+            .from('subscriptions')
+            .select('id')
+            .eq('provider_subscription_id', subscription.id)
+            .single();
 
-          if (userData && userData.email) {
-            const startDate = new Date(subscription.current_period_start * 1000).toLocaleDateString()
-            const nextBillingDate = new Date(subscription.current_period_end * 1000).toLocaleDateString()
-            const amount = subscription.items.data[0]?.price?.unit_amount || 0
-            
-            await edgeEmailService.sendTemplatedEmail(
-              userData.email,
-              'subscription_created',
-              {
-                name: userData.full_name || 'Member',
-                membership_level: userData.membershipType,
-                start_date: startDate,
-                next_billing_date: nextBillingDate,
-                amount: (amount / 100).toFixed(2),
-                dashboard_url: 'https://caraudioevents.com/dashboard'
-              }
-            )
+          const subData = {
+            user_id: userId,
+            membership_plan_id: subscription.metadata?.plan_id,
+            status: subscription.status as any,
+            payment_provider: 'stripe',
+            provider_subscription_id: subscription.id,
+            provider_customer_id: customerId,
+            current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+            cancel_at_period_end: subscription.cancel_at_period_end,
+            cancelled_at: subscription.canceled_at ? new Date(subscription.canceled_at * 1000).toISOString() : null,
+            trial_start: subscription.trial_start ? new Date(subscription.trial_start * 1000).toISOString() : null,
+            trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
+            metadata: subscription.metadata,
+            updated_at: new Date().toISOString()
+          };
+
+          if (existingSub) {
+            // Update existing subscription
+            await adminClient
+              .from('subscriptions')
+              .update(subData)
+              .eq('id', existingSub.id);
+          } else {
+            // Create new subscription
+            await adminClient
+              .from('subscriptions')
+              .insert(subData);
           }
+
+          // Update user's Stripe customer ID if not set
+          await adminClient
+            .from('users')
+            .update({ stripe_customer_id: customerId })
+            .eq('id', userId)
+            .is('stripe_customer_id', null);
         }
         break
       }
 
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription
-        await handleSubscriptionCancelled(supabase, subscription)
         
-        // Send subscription cancelled email
-        const { data: userData } = await supabase
-          .from('users')
-          .select('email, full_name, membershipType')
-          .eq('stripe_customer_id', subscription.customer)
-          .single()
-
-        if (userData && userData.email) {
-          const accessEndDate = new Date(subscription.current_period_end * 1000).toLocaleDateString()
-          
-          await edgeEmailService.sendTemplatedEmail(
-            userData.email,
-            'subscription_cancelled',
-            {
-              name: userData.full_name || 'Member',
-              membership_level: userData.membershipType,
-              access_end_date: accessEndDate,
-              resubscribe_url: 'https://caraudioevents.com/pricing'
-            }
-          )
-        }
+        console.log('Subscription cancelled:', subscription.id)
+        
+        // Update subscription status
+        await adminClient
+          .from('subscriptions')
+          .update({
+            status: 'cancelled',
+            cancelled_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('provider_subscription_id', subscription.id);
+        
         break
       }
 
       case 'invoice.payment_succeeded': {
         const invoice = event.data.object as Stripe.Invoice
-        await handlePaymentSucceeded(supabase, invoice)
         
-        // Send invoice paid email
-        if (invoice.customer_email) {
-          await edgeEmailService.sendTemplatedEmail(
-            invoice.customer_email,
-            'invoice_paid',
-            {
-              name: invoice.customer_name || 'Customer',
-              invoice_number: invoice.number || invoice.id,
-              invoice_date: new Date(invoice.created * 1000).toLocaleDateString(),
-              amount: (invoice.amount_paid / 100).toFixed(2),
-              description: invoice.lines.data[0]?.description || 'Subscription payment',
-              invoice_url: invoice.hosted_invoice_url || '#'
-            }
-          )
+        console.log('Invoice payment succeeded:', invoice.id)
+        
+        const userId = invoice.subscription_metadata?.user_id || invoice.metadata?.user_id
+        
+        if (userId && invoice.subscription) {
+          // Create invoice record
+          const invoiceNumber = await adminClient.rpc('generate_invoice_number');
+          
+          await adminClient
+            .from('invoices')
+            .insert({
+              invoice_number: invoiceNumber,
+              user_id: userId,
+              subscription_id: invoice.subscription as string,
+              status: 'paid',
+              due_date: invoice.due_date ? new Date(invoice.due_date * 1000).toISOString() : null,
+              paid_at: new Date().toISOString(),
+              subtotal: invoice.subtotal / 100,
+              tax_amount: (invoice.tax || 0) / 100,
+              discount_amount: invoice.discount ? invoice.discount.coupon.amount_off || 0 : 0,
+              total: invoice.amount_paid / 100,
+              currency: invoice.currency.toUpperCase(),
+              payment_provider: 'stripe',
+              provider_invoice_id: invoice.id,
+              provider_invoice_url: invoice.hosted_invoice_url,
+              pdf_url: invoice.invoice_pdf,
+              line_items: invoice.lines.data.map(item => ({
+                description: item.description,
+                amount: item.amount / 100,
+                quantity: item.quantity
+              })),
+              metadata: invoice.metadata
+            });
+
+          // Record successful payment transaction
+          await adminClient
+            .from('transactions')
+            .insert({
+              user_id: userId,
+              type: 'subscription',
+              status: 'succeeded',
+              amount: invoice.amount_paid / 100,
+              currency: invoice.currency.toUpperCase(),
+              payment_provider: 'stripe',
+              provider_transaction_id: invoice.payment_intent as string,
+              description: `Subscription payment for ${invoice.period_start ? new Date(invoice.period_start * 1000).toLocaleDateString() : 'N/A'}`,
+              metadata: {
+                invoice_id: invoice.id,
+                subscription_id: invoice.subscription
+              }
+            });
+
+          // Queue email notification
+          await adminClient
+            .from('email_queue')
+            .insert({
+              to_email: invoice.customer_email || '',
+              template_id: 'payment_success',
+              template_data: {
+                amount: invoice.amount_paid / 100,
+                invoice_url: invoice.hosted_invoice_url,
+                invoice_pdf: invoice.invoice_pdf
+              },
+              priority: 'high'
+            });
         }
         break
       }
 
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice
-        await handlePaymentFailed(supabase, invoice)
         
-        // Send payment failed email
-        if (invoice.customer_email) {
-          await edgeEmailService.sendTemplatedEmail(
-            invoice.customer_email,
-            'payment_failed',
-            {
-              name: invoice.customer_name || 'Customer',
-              amount: (invoice.amount_due / 100).toFixed(2),
-              payment_date: new Date().toLocaleDateString(),
-              reason: 'Your payment could not be processed. Please update your payment method.',
-              update_payment_url: 'https://caraudioevents.com/account/payment-methods'
-            }
-          )
+        console.log('Invoice payment failed:', invoice.id)
+        
+        const userId = invoice.subscription_metadata?.user_id || invoice.metadata?.user_id
+        
+        if (userId) {
+          // Update subscription to past_due
+          await adminClient
+            .from('subscriptions')
+            .update({
+              status: 'past_due',
+              updated_at: new Date().toISOString()
+            })
+            .eq('provider_subscription_id', invoice.subscription);
+
+          // Queue email notification
+          await adminClient
+            .from('email_queue')
+            .insert({
+              to_email: invoice.customer_email || '',
+              template_id: 'payment_failed',
+              template_data: {
+                amount: invoice.amount_due / 100,
+                retry_url: invoice.hosted_invoice_url
+              },
+              priority: 'high'
+            });
+        }
+        break
+      }
+
+      case 'checkout.session.completed': {
+        const session = event.data.object as Stripe.Checkout.Session
+        
+        console.log('Checkout session completed:', session.id)
+        
+        const userId = session.metadata?.user_id
+        const planId = session.metadata?.plan_id
+        
+        if (userId && planId) {
+          // Session completed, subscription should be created via subscription webhooks
+          console.log('Checkout completed for user:', userId, 'plan:', planId)
         }
         break
       }
@@ -523,21 +545,39 @@ serve(async (req) => {
         console.log(`Unhandled event type: ${event.type}`)
     }
 
+    // Update webhook log status
+    await adminClient
+      .from('webhook_logs')
+      .update({
+        status: 'processed',
+        processed_at: new Date().toISOString()
+      })
+      .eq('event_id', event.id);
+
     return new Response(JSON.stringify({ received: true }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json' },
       status: 200,
     })
-
   } catch (error) {
     console.error('Webhook error:', error)
     
+    // Log error in webhook logs
+    if (event?.id) {
+      await adminClient
+        .from('webhook_logs')
+        .update({
+          status: 'error',
+          error_message: error.message,
+          processed_at: new Date().toISOString()
+        })
+        .eq('event_id', event.id);
+    }
+    
     return new Response(
-      JSON.stringify({
-        error: error.message || 'Webhook processing failed'
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
+      JSON.stringify({ error: error.message }),
+      { 
+        headers: { 'Content-Type': 'application/json' },
+        status: 400 
       }
     )
   }

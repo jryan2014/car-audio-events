@@ -16,7 +16,8 @@ import {
   ChevronDown,
   UserCheck,
   Megaphone,
-  Cog
+  Cog,
+  CreditCard
 } from 'lucide-react';
 
 interface AdminNavItem {
@@ -127,6 +128,12 @@ const adminNavGroups: AdminNavGroup[] = [
     name: 'System',
     icon: Cog,
     items: [
+      {
+        name: 'Billing',
+        href: '/admin/billing',
+        icon: CreditCard,
+        description: 'Billing & subscriptions'
+      },
       {
         name: 'Settings',
         href: '/admin/settings',
