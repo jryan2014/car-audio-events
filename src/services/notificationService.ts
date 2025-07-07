@@ -520,9 +520,21 @@ class NotificationService {
   /**
    * Real-time notification subscription
    */
+  private activeSubscriptions = new Map<string, any>();
+
   subscribeToNotifications(userId: string, callback: (notification: NotificationWithType) => void) {
-    return supabase
-      .channel(`user_notifications:${userId}`)
+    const channelName = `user_notifications:${userId}`;
+    
+    // Check if we already have an active subscription
+    const existingSubscription = this.activeSubscriptions.get(channelName);
+    if (existingSubscription) {
+      // Unsubscribe from the existing one first
+      existingSubscription.unsubscribe();
+      this.activeSubscriptions.delete(channelName);
+    }
+
+    const subscription = supabase
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -540,6 +552,17 @@ class NotificationService {
         }
       )
       .subscribe();
+
+    // Store the subscription
+    this.activeSubscriptions.set(channelName, subscription);
+
+    // Return a wrapper that properly cleans up
+    return {
+      unsubscribe: () => {
+        subscription.unsubscribe();
+        this.activeSubscriptions.delete(channelName);
+      }
+    };
   }
 
   /**

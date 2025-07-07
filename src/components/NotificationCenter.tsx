@@ -70,16 +70,32 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ classNam
   useEffect(() => {
     if (!user) return;
 
-    const subscription = notificationService.subscribeToNotifications(
-      user.id,
-      (newNotification) => {
-        setNotifications(prev => [newNotification, ...prev]);
-        setUnreadCount(prev => prev + 1);
+    let subscription: any;
+    let isSubscribed = true;
+
+    const setupSubscription = async () => {
+      try {
+        subscription = notificationService.subscribeToNotifications(
+          user.id,
+          (newNotification) => {
+            if (isSubscribed) {
+              setNotifications(prev => [newNotification, ...prev]);
+              setUnreadCount(prev => prev + 1);
+            }
+          }
+        );
+      } catch (error) {
+        console.error('Error setting up notification subscription:', error);
       }
-    );
+    };
+
+    setupSubscription();
 
     return () => {
-      subscription?.unsubscribe();
+      isSubscribed = false;
+      if (subscription) {
+        subscription.unsubscribe();
+      }
     };
   }, [user]);
 
