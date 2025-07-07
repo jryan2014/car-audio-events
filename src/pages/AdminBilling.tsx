@@ -805,8 +805,8 @@ export default function AdminBilling() {
                     <tr key={transaction.id} className="border-b border-gray-700/50 hover:bg-gray-700/30">
                       <td className="py-3 px-4 text-gray-300">{formatDate(transaction.created_at)}</td>
                       <td className="py-3 px-4">
-                        <p className="text-white text-sm">{transaction.users?.name || 'Unknown'}</p>
-                        <p className="text-gray-400 text-xs">{transaction.users?.email}</p>
+                        <p className="text-white text-sm">{(transaction as any).users?.name || 'Unknown'}</p>
+                        <p className="text-gray-400 text-xs">{(transaction as any).users?.email || ''}</p>
                       </td>
                       <td className="py-3 px-4 text-white">{transaction.description || 'Payment'}</td>
                       <td className="py-3 px-4">
