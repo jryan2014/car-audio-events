@@ -5,6 +5,7 @@ import Stripe from 'https://esm.sh/stripe@14.21.0'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
 interface PaymentConfig {
@@ -104,7 +105,10 @@ function getEnvironmentStripeConfig(): { secretKey: string; isTestMode: boolean;
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response(null, { 
+      status: 200,
+      headers: corsHeaders 
+    })
   }
 
   try {
@@ -118,7 +122,7 @@ serve(async (req) => {
 
     // Initialize Stripe with the correct configuration
     const stripe = new Stripe(stripeConfig.secretKey, {
-      apiVersion: '2025-06-30',
+      apiVersion: '2023-10-16',
     })
 
     // Parse request body
@@ -161,9 +165,7 @@ serve(async (req) => {
       amount: Math.round(amount), // Amount in cents
       currency: currency.toLowerCase(),
       metadata: enhancedMetadata,
-      automatic_payment_methods: {
-        enabled: true,
-      },
+      payment_method_types: ['card', 'link'], // Match frontend configuration
     })
 
     // Store payment intent in database with enhanced schema (only for authenticated users)

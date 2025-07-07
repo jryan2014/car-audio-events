@@ -50,3 +50,6 @@ backup-*
 *.zip
 *.js
 *.cjs
+
+# Local Netlify folder
+.netlify

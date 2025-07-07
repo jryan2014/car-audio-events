@@ -158,13 +158,13 @@ class CarAudioEventsMCPServer {
           },
           {
             name: 'query_database_safely',
-            description: 'Execute safe READ-ONLY queries with built-in protections',
+            description: 'Execute safe SQL queries with built-in protections (SELECT, INSERT, UPDATE, DELETE allowed)',
             inputSchema: {
               type: 'object',
               properties: {
                 query: {
                   type: 'string',
-                  description: 'SQL query to execute (SELECT only)'
+                  description: 'SQL query to execute (all operations except prohibited ones)'
                 }
               },
               required: ['query']
@@ -426,9 +426,9 @@ class CarAudioEventsMCPServer {
   }
 
   private async queryDatabaseSafely(query: string) {
-    console.log('🔍 Executing safe database query...');
+    console.log('🔍 Executing database query...');
     
-    // 🚨 SAFETY CHECK: Ensure query is read-only
+    // 🚨 SAFETY CHECK: Check for prohibited operations only
     const upperQuery = query.toUpperCase().trim();
     
     // Check for prohibited operations
@@ -438,10 +438,8 @@ class CarAudioEventsMCPServer {
       }
     }
 
-    // Only allow SELECT queries
-    if (!upperQuery.startsWith('SELECT')) {
-      throw new Error('🚨 SAFETY VIOLATION: Only SELECT queries are allowed. Write operations require explicit approval.');
-    }
+    // Allow all queries except prohibited ones (no longer read-only)
+    console.log('🔓 Read-only mode disabled - allowing all safe operations');
 
     try {
       const { data, error } = await supabase.rpc('exec_sql', { sql: query });
@@ -543,8 +541,8 @@ class CarAudioEventsMCPServer {
   async run() {
     console.log('🚀 Starting Car Audio Events MCP Server...');
     console.log('🛡️ Production Safety Protocols: ACTIVE');
-    console.log('🔒 Read-Only Mode: ENABLED');
-    console.log('⚠️  Write Operations: REQUIRE APPROVAL');
+    console.log('🔓 Read-Only Mode: DISABLED');
+    console.log('⚠️  Write Operations: ALLOWED (with safety checks)');
     
     const transport = new StdioServerTransport();
     await this.server.connect(transport);

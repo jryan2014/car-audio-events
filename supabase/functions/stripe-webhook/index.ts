@@ -208,7 +208,7 @@ serve(async (req) => {
 
     // Initialize Stripe with the correct configuration
     const stripe = new Stripe(stripeConfig.secretKey, {
-      apiVersion: '2025-06-30',
+      apiVersion: '2023-10-16',
     })
 
     // Get the raw body and signature

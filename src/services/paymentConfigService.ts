@@ -191,10 +191,10 @@ const getEnvironmentFallbackConfig = (): PaymentConfig => {
     mode: 'test', // Default to test mode for safety
     stripe_active: true,
     paypal_active: false,
-    stripe_test_publishable_key: import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '',
+    stripe_test_publishable_key: import.meta.env.VITE_STRIPE_TEST_PUBLISHABLE_KEY || '',
     stripe_test_secret_key: '', // Not available in frontend
     stripe_test_webhook_secret: '', // Not available in frontend
-    stripe_live_publishable_key: import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '',
+    stripe_live_publishable_key: import.meta.env.VITE_STRIPE_LIVE_PUBLISHABLE_KEY || '',
     stripe_live_secret_key: '', // Not available in frontend
     stripe_live_webhook_secret: '', // Not available in frontend
     paypal_test_client_id: import.meta.env.VITE_PAYPAL_CLIENT_ID || '',

@@ -341,18 +341,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 return;
               }
               
-              // Check manual approval status for business accounts (only block if explicitly pending)
+              // Check manual approval status for business accounts
+              // FIXED: Don't redirect pending users - let them access dashboard with limited features
               if (['retailer', 'manufacturer', 'organization'].includes(userProfile.membershipType) && 
                   userProfile.status === 'pending' && 
-                  userProfile.verificationStatus !== 'pending') { // Only block if email is verified but account pending
-                console.log('⏳ Business account pending manual approval');
-                setSession(null);
-                setUser(null);
-                setLoading(false);
-                
-                localStorage.setItem('pending_approval_email', userProfile.email);
-                window.location.href = '/pending-approval';
-                return;
+                  userProfile.verificationStatus !== 'pending') {
+                console.log('⏳ Business account pending manual approval - allowing limited access');
+                // Don't block access - set user and continue
+                // The Dashboard component will handle showing limited features
               }
               
               // User is verified and approved - allow access

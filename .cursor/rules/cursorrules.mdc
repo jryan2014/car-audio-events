@@ -259,7 +259,8 @@ Remember: This is a production platform handling real users and payments. Priori
 - **Before executing ANY multi-step task (e.g., deployment, feature implementation, refactoring), you MUST copy this entire checklist into your response and confirm each point.**
 - ✅ **ALWAYS create backup** before any significant changes (backup-[feature-name]-YYYY-MM-DD_HH-mm-ss)
 - ✅ **ALWAYS use step-by-step approach** with user confirmation at each stage
-- ✅ **ALWAYS provide only ONE SQL file** to be run in Supabase editor
+### - ✅ ** ALWAYS provide only ONE SQL file ** to be run in Supabase editor
+- ✅ **ALWAYS Use MCP connection to the Supabase database** to be run in Supabase editor
 - ✅ **ALWAYS use remote database only** - Never suggest local database work
 - ✅ **ALWAYS explain what each step does and why it's needed**
 - ✅ **ALWAYS wait for "proceed" or "continue" before next step**

@@ -355,6 +355,90 @@ export default function Dashboard() {
     );
   }
 
+  // Check if user needs admin approval (business accounts)
+  if (['retailer', 'manufacturer', 'organization'].includes(user.membershipType) && 
+      user.status === 'pending') {
+    return (
+      <div className="min-h-screen py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-8 text-center">
+            <div className="w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <User className="h-8 w-8 text-yellow-400" />
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-4">Account Pending Approval</h2>
+            <p className="text-gray-400 mb-6">
+              Your {user.membershipType} account is pending admin approval. You'll receive an email once your account is approved.
+            </p>
+            <p className="text-gray-500 text-sm mb-6">
+              This usually takes 1-2 business days. Thank you for your patience!
+            </p>
+            <Link
+              to="/profile"
+              className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-500 transition-colors inline-block"
+            >
+              View Profile
+            </Link>
+          </div>
+          
+          {/* Limited Profile Access */}
+          <div className="mt-8 bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+            <h3 className="text-xl font-bold text-white mb-4">Your Profile</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Name</label>
+                <p className="text-white">{user.name}</p>
+              </div>
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Email</label>
+                <p className="text-white">{user.email}</p>
+              </div>
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Business Type</label>
+                <p className="text-white capitalize">{user.membershipType}</p>
+              </div>
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Company</label>
+                <p className="text-white">{user.companyName || 'Not specified'}</p>
+              </div>
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Status</label>
+                <span className="bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-full text-sm">
+                  Pending Approval
+                </span>
+              </div>
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Membership Plan</label>
+                <p className="text-white capitalize">{user.subscriptionPlan || 'Pending'}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Links for Pending Users */}
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Link 
+              to="/resources"
+              className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 hover:border-electric-500/50 transition-colors"
+            >
+              <h4 className="text-lg font-semibold text-white mb-2">Browse Resources</h4>
+              <p className="text-gray-400 text-sm">
+                Explore our resource library while your account is being reviewed.
+              </p>
+            </Link>
+            <Link 
+              to="/events"
+              className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 hover:border-electric-500/50 transition-colors"
+            >
+              <h4 className="text-lg font-semibold text-white mb-2">View Events</h4>
+              <p className="text-gray-400 text-sm">
+                Check out upcoming car audio events in your area.
+              </p>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Check if user needs email verification
   if (user.verificationStatus === 'pending' && user.membershipType !== 'admin') {
     return (
