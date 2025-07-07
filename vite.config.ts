@@ -23,7 +23,8 @@ const csp = `
     https://*.tinymce.com;
   style-src 'self' 'unsafe-inline' 
     https://fonts.googleapis.com
-    https://cdn.tiny.cloud;
+    https://cdn.tiny.cloud
+    https://*.tinymce.com;
   font-src 'self' 
     https://fonts.gstatic.com 
     https://fonts.googleapis.com;
@@ -37,7 +38,8 @@ const csp = `
     https://fonts.googleapis.com
     https://fonts.gstatic.com
     https://api.openai.com
-    https://cdn.tiny.cloud;
+    https://cdn.tiny.cloud
+    https://*.tinymce.com;
   frame-src 'self' 
     https://www.google.com 
     https://maps.google.com

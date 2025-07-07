@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Stripe from 'https://esm.sh/stripe@14.21.0'
+import { edgeEmailService } from '../_shared/edge-email-service.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -279,6 +280,32 @@ serve(async (req) => {
               config_source: stripeConfig.source
             }
           })
+
+          // Send payment confirmation email
+          if (paymentIntent.metadata.user_id) {
+            // Get user email
+            const { data: userData } = await supabase
+              .from('users')
+              .select('email, full_name, membershipType')
+              .eq('id', paymentIntent.metadata.user_id)
+              .single()
+
+            if (userData && userData.email) {
+              await edgeEmailService.sendTemplatedEmail(
+                userData.email,
+                'payment_success',
+                {
+                  name: userData.full_name || 'Member',
+                  amount: (paymentIntent.amount / 100).toFixed(2),
+                  currency: paymentIntent.currency.toUpperCase(),
+                  payment_date: new Date().toLocaleDateString(),
+                  payment_id: paymentIntent.id,
+                  description: paymentIntent.description || `Payment for ${userData.membershipType} membership`,
+                  membershipLevel: userData.membershipType
+                }
+              )
+            }
+          }
         }
 
         // If this is an event registration payment, ensure registration exists
@@ -382,6 +409,113 @@ serve(async (req) => {
           }
         }
 
+        break
+      }
+
+      case 'customer.subscription.created':
+      case 'customer.subscription.updated': {
+        const subscription = event.data.object as Stripe.Subscription
+        await handleSubscriptionChange(supabase, subscription)
+        
+        // Send subscription created email for new subscriptions
+        if (event.type === 'customer.subscription.created' && subscription.status === 'active') {
+          // Get customer email
+          const { data: userData } = await supabase
+            .from('users')
+            .select('email, full_name, membershipType')
+            .eq('stripe_customer_id', subscription.customer)
+            .single()
+
+          if (userData && userData.email) {
+            const startDate = new Date(subscription.current_period_start * 1000).toLocaleDateString()
+            const nextBillingDate = new Date(subscription.current_period_end * 1000).toLocaleDateString()
+            const amount = subscription.items.data[0]?.price?.unit_amount || 0
+            
+            await edgeEmailService.sendTemplatedEmail(
+              userData.email,
+              'subscription_created',
+              {
+                name: userData.full_name || 'Member',
+                membership_level: userData.membershipType,
+                start_date: startDate,
+                next_billing_date: nextBillingDate,
+                amount: (amount / 100).toFixed(2),
+                dashboard_url: 'https://caraudioevents.com/dashboard'
+              }
+            )
+          }
+        }
+        break
+      }
+
+      case 'customer.subscription.deleted': {
+        const subscription = event.data.object as Stripe.Subscription
+        await handleSubscriptionCancelled(supabase, subscription)
+        
+        // Send subscription cancelled email
+        const { data: userData } = await supabase
+          .from('users')
+          .select('email, full_name, membershipType')
+          .eq('stripe_customer_id', subscription.customer)
+          .single()
+
+        if (userData && userData.email) {
+          const accessEndDate = new Date(subscription.current_period_end * 1000).toLocaleDateString()
+          
+          await edgeEmailService.sendTemplatedEmail(
+            userData.email,
+            'subscription_cancelled',
+            {
+              name: userData.full_name || 'Member',
+              membership_level: userData.membershipType,
+              access_end_date: accessEndDate,
+              resubscribe_url: 'https://caraudioevents.com/pricing'
+            }
+          )
+        }
+        break
+      }
+
+      case 'invoice.payment_succeeded': {
+        const invoice = event.data.object as Stripe.Invoice
+        await handlePaymentSucceeded(supabase, invoice)
+        
+        // Send invoice paid email
+        if (invoice.customer_email) {
+          await edgeEmailService.sendTemplatedEmail(
+            invoice.customer_email,
+            'invoice_paid',
+            {
+              name: invoice.customer_name || 'Customer',
+              invoice_number: invoice.number || invoice.id,
+              invoice_date: new Date(invoice.created * 1000).toLocaleDateString(),
+              amount: (invoice.amount_paid / 100).toFixed(2),
+              description: invoice.lines.data[0]?.description || 'Subscription payment',
+              invoice_url: invoice.hosted_invoice_url || '#'
+            }
+          )
+        }
+        break
+      }
+
+      case 'invoice.payment_failed': {
+        const invoice = event.data.object as Stripe.Invoice
+        await handlePaymentFailed(supabase, invoice)
+        
+        // Send payment failed email
+        if (invoice.customer_email) {
+          await edgeEmailService.sendTemplatedEmail(
+            invoice.customer_email,
+            'payment_failed',
+            {
+              name: invoice.customer_name || 'Customer',
+              amount: (invoice.amount_due / 100).toFixed(2),
+              payment_date: new Date().toLocaleDateString(),
+              reason: 'Your payment could not be processed. Please update your payment method.',
+              update_payment_url: 'https://caraudioevents.com/account/payment-methods'
+            }
+          )
+        }
         break
       }
 

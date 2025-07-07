@@ -20,7 +20,7 @@ export default function AdminEmailSettingsPage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">Email Settings</h1>
           <p className="text-gray-400">
-            Configure Postmark email integration for transactional emails, welcome messages, and notifications.
+            Configure email templates and settings for transactional emails, welcome messages, and notifications.
           </p>
         </div>
 

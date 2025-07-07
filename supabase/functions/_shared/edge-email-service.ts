@@ -1,5 +1,4 @@
 // @ts-nocheck
-import { Client } from "https://cdn.skypack.dev/postmark";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { EmailType, EmailTemplate } from './email-types.ts';
 
@@ -10,26 +9,23 @@ function replacePlaceholders(text: string, data: Record<string, any>): string {
 }
 
 class EdgeEmailService {
-  private postmarkClient: Client | null = null;
   private supabaseClient;
   private fromEmail: string;
   private defaultFromName: string;
   private isConfigured = false;
 
   constructor() {
-    const postmarkApiKey = Deno.env.get("POSTMARK_API_KEY");
-    this.fromEmail = Deno.env.get("POSTMARK_FROM_EMAIL") || 'no-reply@caraudioevents.com';
-    this.defaultFromName = Deno.env.get("POSTMARK_FROM_NAME") || 'Car Audio Events';
+    this.fromEmail = Deno.env.get("FROM_EMAIL") || 'no-reply@caraudioevents.com';
+    this.defaultFromName = Deno.env.get("FROM_NAME") || 'Car Audio Events';
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
 
-    if (postmarkApiKey && supabaseUrl && supabaseAnonKey) {
-      this.postmarkClient = new Client(postmarkApiKey);
+    if (supabaseUrl && supabaseAnonKey) {
       this.supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
       this.isConfigured = true;
     } else {
-      console.warn('⚠️ Missing environment variables (POSTMARK_API_KEY, SUPABASE_URL, SUPABASE_ANON_KEY). Email service is disabled.');
+      console.warn('⚠️ Missing environment variables (SUPABASE_URL, SUPABASE_ANON_KEY). Email service is disabled.');
     }
   }
 
@@ -51,7 +47,7 @@ class EdgeEmailService {
         .from('email_templates')
         .select('*')
         .eq('email_type', emailType)
-        .is('membership_level', null)
+        .eq('membership_level', 'all')
         .eq('is_active', true)
         .limit(1);
         
@@ -71,7 +67,7 @@ class EdgeEmailService {
     emailType: EmailType,
     templateData: Record<string, any>,
   ): Promise<{ success: boolean; error?: string }> {
-    if (!this.isConfigured || !this.postmarkClient) {
+    if (!this.isConfigured) {
       const errorMsg = 'Email service is not configured.';
       console.error(`❌ ${errorMsg}`);
       return { success: false, error: errorMsg };
@@ -87,22 +83,83 @@ class EdgeEmailService {
     }
 
     const subject = replacePlaceholders(template.subject, templateData);
-    const htmlBody = replacePlaceholders(template.htmlBody, templateData);
-    const textBody = replacePlaceholders(template.textBody, templateData);
+    const htmlBody = replacePlaceholders(template.body || template.htmlBody, templateData);
     const fromName = template.from_name || this.defaultFromName;
 
     try {
-      await this.postmarkClient.sendEmail({
-        From: `${fromName} <${this.fromEmail}>`,
-        To: to,
-        Subject: subject,
-        HtmlBody: htmlBody,
-        TextBody: textBody,
-        MessageStream: "outbound",
-      });
+      // Queue the email for processing
+      const { error: queueError } = await this.supabaseClient
+        .from('email_queue')
+        .insert({
+          to_email: to,
+          from_email: this.fromEmail,
+          from_name: fromName,
+          subject: subject,
+          body: htmlBody,
+          email_type: emailType,
+          template_data: templateData,
+          status: 'pending',
+          created_at: new Date().toISOString()
+        });
+
+      if (queueError) {
+        console.error('❌ Failed to queue email:', queueError);
+        return { success: false, error: queueError.message };
+      }
+
+      // Log the email activity
+      await this.supabaseClient
+        .from('email_logs')
+        .insert({
+          to_email: to,
+          email_type: emailType,
+          status: 'queued',
+          created_at: new Date().toISOString()
+        });
+
       return { success: true };
     } catch (error) {
       console.error('❌ Failed to send templated email:', error);
+      return { success: false, error: error.message || 'Failed to send email' };
+    }
+  }
+
+  // Generic send email method that uses templates
+  async sendEmail(
+    to: string,
+    subject: string,
+    htmlBody: string,
+    options?: { fromName?: string; emailType?: string }
+  ): Promise<{ success: boolean; error?: string }> {
+    if (!this.isConfigured) {
+      const errorMsg = 'Email service is not configured.';
+      console.error(`❌ ${errorMsg}`);
+      return { success: false, error: errorMsg };
+    }
+
+    try {
+      // Queue the email for processing
+      const { error: queueError } = await this.supabaseClient
+        .from('email_queue')
+        .insert({
+          to_email: to,
+          from_email: this.fromEmail,
+          from_name: options?.fromName || this.defaultFromName,
+          subject: subject,
+          body: htmlBody,
+          email_type: options?.emailType || 'custom',
+          status: 'pending',
+          created_at: new Date().toISOString()
+        });
+
+      if (queueError) {
+        console.error('❌ Failed to queue email:', queueError);
+        return { success: false, error: queueError.message };
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Failed to send email:', error);
       return { success: false, error: error.message || 'Failed to send email' };
     }
   }
