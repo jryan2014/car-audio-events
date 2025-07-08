@@ -221,19 +221,24 @@ serve(async (req) => {
 
     console.log(`Processing webhook event: ${event.type}`)
 
-    // Create webhook log entry
-    await adminClient
-      .from('webhook_logs')
-      .insert({
-        provider: 'stripe',
-        event_type: event.type,
-        event_id: event.id,
-        payload: event,
-        headers: Object.fromEntries(req.headers.entries()),
-        status: 'processing',
-        ip_address: req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip'),
-        user_agent: req.headers.get('user-agent')
-      });
+    // Try to create webhook log entry (table might not exist yet)
+    try {
+      await adminClient
+        .from('webhook_logs')
+        .insert({
+          provider: 'stripe',
+          event_type: event.type,
+          event_id: event.id,
+          payload: event,
+          headers: Object.fromEntries(req.headers.entries()),
+          status: 'processing',
+          ip_address: req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip'),
+          user_agent: req.headers.get('user-agent')
+        });
+    } catch (logError) {
+      console.warn('Could not log webhook (table might not exist):', logError);
+      // Continue processing even if logging fails
+    }
 
     // Handle different event types
     switch (event.type) {
@@ -476,19 +481,33 @@ serve(async (req) => {
               }
             });
 
-          // Queue email notification
-          await adminClient
-            .from('email_queue')
-            .insert({
-              to_email: invoice.customer_email || '',
-              template_id: 'payment_success',
-              template_data: {
-                amount: invoice.amount_paid / 100,
-                invoice_url: invoice.hosted_invoice_url,
-                invoice_pdf: invoice.invoice_pdf
-              },
-              priority: 'high'
-            });
+          // Queue email notification for successful payment
+          if (invoice.customer_email && userId) {
+            const { data: user } = await adminClient
+              .from('users')
+              .select('name, email')
+              .eq('id', userId)
+              .single();
+
+            if (user) {
+              await adminClient
+                .from('email_queue')
+                .insert({
+                  to_email: user.email,
+                  template_id: 'payment_success',
+                  template_data: {
+                    name: user.name || user.email.split('@')[0],
+                    email: user.email,
+                    amount: (invoice.amount_paid / 100).toFixed(2),
+                    payment_method: 'Card',
+                    payment_date: new Date().toLocaleDateString(),
+                    website_url: 'https://car-audio-events.netlify.app',
+                    support_url: 'https://car-audio-events.netlify.app/contact'
+                  },
+                  priority: 'high'
+                });
+            }
+          }
         }
         break
       }
@@ -510,18 +529,32 @@ serve(async (req) => {
             })
             .eq('provider_subscription_id', invoice.subscription);
 
-          // Queue email notification
-          await adminClient
-            .from('email_queue')
-            .insert({
-              to_email: invoice.customer_email || '',
-              template_id: 'payment_failed',
-              template_data: {
-                amount: invoice.amount_due / 100,
-                retry_url: invoice.hosted_invoice_url
-              },
-              priority: 'high'
-            });
+          // Queue email notification for failed payment
+          if (invoice.customer_email && userId) {
+            const { data: user } = await adminClient
+              .from('users')
+              .select('name, email')
+              .eq('id', userId)
+              .single();
+
+            if (user) {
+              await adminClient
+                .from('email_queue')
+                .insert({
+                  to_email: user.email,
+                  template_id: 'payment_failed',
+                  template_data: {
+                    name: user.name || user.email.split('@')[0],
+                    email: user.email,
+                    payment_method: 'Card',
+                    retry_payment_url: invoice.hosted_invoice_url || 'https://car-audio-events.netlify.app/billing',
+                    website_url: 'https://car-audio-events.netlify.app',
+                    support_url: 'https://car-audio-events.netlify.app/contact'
+                  },
+                  priority: 'high'
+                });
+            }
+          }
         }
         break
       }

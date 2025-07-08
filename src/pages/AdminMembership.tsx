@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Package, Plus, Edit, Trash2, Save, X, Star, Check, AlertCircle, Users, Building, Wrench, Crown, HelpCircle, UserPlus, Shield, Mail, Calendar, Trophy } from 'lucide-react';
+import { Package, Plus, Edit, Trash2, Save, X, Star, Check, AlertCircle, Users, Building, Wrench, Crown, HelpCircle, UserPlus, Shield, Mail, Calendar, Trophy, CreditCard, BarChart3, DollarSign, TrendingUp } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { AdminCouponManager } from '../components/AdminCouponManager';
 
 interface MembershipPlan {
   id: string;
@@ -91,6 +92,11 @@ export default function AdminMembership() {
   const [showFeatureInput, setShowFeatureInput] = useState(false);
   const [selectedPlans, setSelectedPlans] = useState<string[]>([]);
   const [showBulkActions, setShowBulkActions] = useState(false);
+  
+  // Billing analytics state
+  const [billingStats, setBillingStats] = useState<any>(null);
+  const [planAnalytics, setPlanAnalytics] = useState<any[]>([]);
+  const [billingLoading, setBillingLoading] = useState(false);
 
   // Check if user is admin
   if (!user || user.membershipType !== 'admin') {
@@ -187,6 +193,8 @@ export default function AdminMembership() {
     loadPermissions();
     if (activeTab === 'teams') {
       loadTeams();
+    } else if (activeTab === 'billing') {
+      loadBillingAnalytics();
     }
   }, [activeTab]);
 
@@ -362,6 +370,87 @@ export default function AdminMembership() {
       console.error('Failed to load team members:', error);
     }
   }, []);
+
+  const loadBillingAnalytics = useCallback(async () => {
+    try {
+      setBillingLoading(true);
+      
+      // Get total revenue
+      const { data: revenueData, error: revenueError } = await supabase
+        .from('transactions')
+        .select('amount, currency, membership_plan_id, created_at')
+        .eq('type', 'payment')
+        .eq('status', 'succeeded');
+
+      if (revenueError) throw revenueError;
+
+      const totalRevenue = revenueData?.reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
+
+      // Get active subscriptions count per plan
+      const { data: subscriptionsData, error: subsError } = await supabase
+        .from('subscriptions')
+        .select(`
+          membership_plan_id,
+          membership_plans (name, price)
+        `)
+        .eq('status', 'active');
+
+      if (subsError) throw subsError;
+
+      // Calculate analytics per plan
+      const planAnalytics = plans.map(plan => {
+        const planSubscriptions = subscriptionsData?.filter(sub => sub.membership_plan_id === plan.id) || [];
+        const planRevenue = revenueData?.filter(t => t.membership_plan_id === plan.id)
+          .reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
+
+        return {
+          planId: plan.id,
+          planName: plan.name,
+          activeSubscriptions: planSubscriptions.length,
+          monthlyRevenue: planRevenue,
+          planPrice: plan.price,
+          billingPeriod: plan.billing_period
+        };
+      });
+
+      // Get recent transactions
+      const { data: recentTransactions, error: transError } = await supabase
+        .from('transactions')
+        .select(`
+          *,
+          membership_plans (name)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (transError) throw transError;
+
+      // Get failed payments count (last 30 days)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      const { count: failedPayments, error: failedError } = await supabase
+        .from('transactions')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'failed')
+        .gte('created_at', thirtyDaysAgo.toISOString());
+
+      if (failedError) throw failedError;
+
+      setBillingStats({
+        totalRevenue: totalRevenue / 100, // Convert from cents
+        activeSubscriptions: subscriptionsData?.length || 0,
+        failedPayments: failedPayments || 0,
+        recentTransactions: recentTransactions || []
+      });
+
+      setPlanAnalytics(planAnalytics);
+    } catch (error) {
+      console.error('Failed to load billing analytics:', error);
+    } finally {
+      setBillingLoading(false);
+    }
+  }, [plans]);
 
   const handleCreatePlan = () => {
     setFormData({
@@ -819,6 +908,17 @@ export default function AdminMembership() {
             <Shield className="h-4 w-4" />
             <span>Permissions</span>
           </button>
+          <button
+            onClick={() => setActiveTab('billing')}
+            className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
+              activeTab === 'billing'
+                ? 'bg-electric-500 text-white shadow-lg'
+                : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+            }`}
+          >
+            <CreditCard className="h-4 w-4" />
+            <span>Billing</span>
+          </button>
         </div>
 
         {/* Plans Tab */}
@@ -1140,6 +1240,149 @@ export default function AdminMembership() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Billing Tab */}
+        {activeTab === 'billing' && (
+          <div className="space-y-8">
+            {/* Billing Analytics Overview */}
+            <div>
+              <h2 className="text-2xl font-bold text-white mb-6">Billing Analytics</h2>
+              
+              {billingLoading ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-electric-500 mx-auto mb-4"></div>
+                  <p className="text-gray-400">Loading billing analytics...</p>
+                </div>
+              ) : billingStats ? (
+                <>
+                  {/* Stats Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-lg p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-400 text-sm">Total Revenue</p>
+                          <p className="text-2xl font-bold text-green-400">
+                            ${billingStats.totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                        <DollarSign className="h-8 w-8 text-green-400 opacity-50" />
+                      </div>
+                    </div>
+
+                    <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-lg p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-400 text-sm">Active Subscriptions</p>
+                          <p className="text-2xl font-bold text-blue-400">{billingStats.activeSubscriptions}</p>
+                        </div>
+                        <Users className="h-8 w-8 text-blue-400 opacity-50" />
+                      </div>
+                    </div>
+
+                    <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-lg p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-400 text-sm">Failed Payments (30d)</p>
+                          <p className="text-2xl font-bold text-red-400">{billingStats.failedPayments}</p>
+                        </div>
+                        <AlertCircle className="h-8 w-8 text-red-400 opacity-50" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Plan Analytics */}
+                  <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-lg p-6 mb-8">
+                    <h3 className="text-xl font-bold text-white mb-4 flex items-center">
+                      <BarChart3 className="h-5 w-5 mr-2" />
+                      Revenue by Plan
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {planAnalytics.map((plan) => (
+                        <div key={plan.planId} className="bg-gray-700/30 p-4 rounded-lg">
+                          <h4 className="text-white font-medium mb-2">{plan.planName}</h4>
+                          <div className="space-y-1 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">Subscribers:</span>
+                              <span className="text-white">{plan.activeSubscriptions}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">Revenue:</span>
+                              <span className="text-green-400">
+                                ${(plan.monthlyRevenue / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-400">Plan Price:</span>
+                              <span className="text-white">${plan.planPrice}/{plan.billingPeriod}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Recent Transactions */}
+                  <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-lg p-6 mb-8">
+                    <h3 className="text-xl font-bold text-white mb-4 flex items-center">
+                      <TrendingUp className="h-5 w-5 mr-2" />
+                      Recent Transactions
+                    </h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-gray-700/50">
+                          <tr>
+                            <th className="text-left p-3 text-gray-300 font-medium">Date</th>
+                            <th className="text-left p-3 text-gray-300 font-medium">Plan</th>
+                            <th className="text-left p-3 text-gray-300 font-medium">Amount</th>
+                            <th className="text-left p-3 text-gray-300 font-medium">Status</th>
+                            <th className="text-left p-3 text-gray-300 font-medium">Provider</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {billingStats.recentTransactions.slice(0, 5).map((transaction: any) => (
+                            <tr key={transaction.id} className="border-t border-gray-700/50">
+                              <td className="p-3 text-gray-300 text-sm">
+                                {new Date(transaction.created_at).toLocaleDateString()}
+                              </td>
+                              <td className="p-3 text-white text-sm">
+                                {transaction.membership_plans?.name || 'N/A'}
+                              </td>
+                              <td className="p-3 text-green-400 text-sm font-medium">
+                                ${((transaction.amount || 0) / 100).toFixed(2)}
+                              </td>
+                              <td className="p-3 text-sm">
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  transaction.status === 'succeeded' ? 'bg-green-500/20 text-green-400' :
+                                  transaction.status === 'failed' ? 'bg-red-500/20 text-red-400' :
+                                  'bg-yellow-500/20 text-yellow-400'
+                                }`}>
+                                  {transaction.status}
+                                </span>
+                              </td>
+                              <td className="p-3 text-gray-300 text-sm capitalize">
+                                {transaction.payment_provider}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-12">
+                  <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-400">No billing data available</p>
+                </div>
+              )}
+            </div>
+
+            {/* Coupon Management Section */}
+            <div>
+              <AdminCouponManager />
+            </div>
           </div>
         )}
 

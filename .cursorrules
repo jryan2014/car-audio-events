@@ -9,8 +9,8 @@ This is a React/TypeScript car audio competition platform using Supabase as BaaS
 - **Frontend**: React 18.3.1, TypeScript 5.5.3, Vite 6.3.5
 - **Styling**: Tailwind CSS 3.4.1, Lucide React icons
 - **Backend**: Supabase (PostgreSQL, Auth, Edge Functions)
-- **Payments**: Stripe integration
-- **AI**: OpenAI GPT integration
+- **Payments**: Stripe and Paypal integration
+- **AI**: OpenAI Dalle, Stability AI,  Open AI GPT, Anthropic Claude, Google Gemini integration
 - **Email**: Postmark service
 
 ## 📋 CODE GENERATION PROTOCOL
@@ -70,6 +70,11 @@ Before creating any new file (e.g., `.tsx`, `.ts`), you MUST follow this workflo
 - **Explicit Check Requirement**: When implementing or modifying any feature that touches authentication or user permissions, you MUST explicitly state the check being performed and the reasoning for it (e.g., "Adding a check to ensure only the profile owner can edit their profile.").
 - Follow RLS policies for database access
 - Sanitize user inputs
+- ❌ **NEVER use `eval()`, `innerHTML`, or unsafe dynamic DOM injection**
+- ✅ **ALWAYS use `dangerouslySetInnerHTML` with explicit sanitization**
+- ✅ **ALWAYS implement rate limiting** on sensitive endpoints (auth, payments, submissions)
+- ✅ **Use Supabase Edge Functions or server middleware** for enforcing limits
+
 
 ### Performance
 - Use lazy loading for routes
@@ -224,6 +229,7 @@ const handleSubmit = async (e: React.FormEvent) => {
 - Mobile menu has been simplified to prevent memory leaks
 - Version system is automated - don't manually edit version files
 - Use the existing notification system instead of browser alerts
+- Always use toast notifications for all app save messaging 
 - Follow the established admin dashboard patterns
 - Maintain consistency with existing UI components
 
@@ -255,7 +261,7 @@ Remember: This is a production platform handling real users and payments. Priori
 - ✅ **ALWAYS create backup** before any significant changes (backup-[feature-name]-YYYY-MM-DD_HH-mm-ss)
 - ✅ **ALWAYS get current date** before any significant changes use todays actual date (backup-[feature-name]-YYYY-MM-DD_HH-mm-ss)
 - ✅ **ALWAYS use step-by-step approach** with user confirmation at each stage
-- ✅ **ALWAYS use MCP server tools** for database operations - never create SQL files
+- ✅ **ALWAYS use MCP and CLI server tools** for database operations - never create SQL files
 - ✅ **ALWAYS use remote database only** - Never suggest local database work
 - ✅ **ALWAYS explain what each step does and why it's needed**
 - ✅ **ALWAYS wait for "proceed" or "continue" before next step**
@@ -284,6 +290,14 @@ Remember: This is a production platform handling real users and payments. Priori
 - **SQL Injection Protection**: Built-in input validation and parameterized queries prevent injection attacks
 - **Emergency Stop**: User can halt any MCP operation immediately if needed
 - **Rollback Ready**: All operations can be reversed using standard SQL rollback procedures
+
+### ❗ MCP Failure Handling Protocol
+- ✅ If any MCP tool throws an unexpected error:
+  - Stop execution
+  - Log full output
+  - Notify user with error content
+  - Ask for direction before retrying
+
 
 ### 🔧 MANDATORY MCP USAGE RULES
 - ✅ **ALWAYS use MCP tools** for database operations (inspect_database_schema, query_database_safely, etc.)
@@ -314,7 +328,17 @@ STANDARD RESPONSE FORMAT:
 5. Execute via MCP server tools - never create SQL files
 6. Wait for user confirmation before each step
 7. Explain what each step does and why
+- ✅ **When resuming after a long delay**, re-confirm session context and current task state with user
+- ✅ **ALWAYS quote exact user phrases** when referencing prior input
+- ✅ **NEVER paraphrase critical inputs** – quote and confirm instead
 `
+
+## 📦 PLUGIN & DEPENDENCY UPGRADE PROTOCOL
+- ✅ **Before upgrading any dependency**, confirm changelog and breaking changes
+- ✅ **Test upgrades in staging only first**
+- ✅ **ALWAYS log version changes in `CHANGELOG.md`**
+- ✅ **NEVER auto-upgrade major versions without approval**
+
 
 ### 🚨 EMERGENCY PROCEDURES
 If something goes wrong:

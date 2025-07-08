@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import EmailNotificationService from './emailNotificationService';
 
 export interface Transaction {
   id: string;
@@ -138,22 +139,35 @@ class BillingService {
   
   async getUserBillingOverview(userId: string) {
     try {
-      // Get active subscription
-      const { data: subscription } = await supabase
+      // Get active subscription without join first
+      const { data: subscription, error: subError } = await supabase
         .from('subscriptions')
-        .select(`
-          *,
-          membership_plans (
-            id,
-            name,
-            price,
-            billing_period,
-            features
-          )
-        `)
+        .select('*')
         .eq('user_id', userId)
         .eq('status', 'active')
-        .single();
+        .maybeSingle();
+
+      if (subError) {
+        console.error('Error fetching subscription:', subError);
+      }
+
+      // Get membership plan separately if subscription exists
+      let membershipPlan = null;
+      if (subscription?.membership_plan_id) {
+        const { data: planData } = await supabase
+          .from('membership_plans')
+          .select('id, name, price, billing_period, features')
+          .eq('id', subscription.membership_plan_id)
+          .single();
+        
+        membershipPlan = planData;
+      }
+
+      // Combine subscription with plan data
+      const subscriptionWithPlan = subscription ? {
+        ...subscription,
+        membership_plan: membershipPlan
+      } : null;
 
       // Get recent transactions
       const { data: transactions } = await supabase
@@ -172,7 +186,7 @@ class BillingService {
 
       // Get upcoming invoice if any
       let upcomingInvoice = null;
-      if (subscription) {
+      if (subscriptionWithPlan) {
         const { data: invoice } = await supabase
           .from('invoices')
           .select('*')
@@ -184,7 +198,7 @@ class BillingService {
       }
 
       return {
-        subscription,
+        subscription: subscriptionWithPlan,
         transactions: transactions || [],
         paymentMethods: paymentMethods || [],
         upcomingInvoice
@@ -268,57 +282,39 @@ class BillingService {
     billingPeriod: 'monthly' | 'yearly'
   ) {
     try {
-      // Get user and current subscription
-      const { data: user } = await supabase
-        .from('users')
-        .select('stripe_customer_id, email')
-        .eq('id', userId)
-        .single();
+      const { data, error } = await supabase.functions.invoke('update-subscription', {
+        body: {
+          userId,
+          planId,
+          billingPeriod
+        }
+      });
 
-      if (!user) throw new Error('User not found');
-
-      // Get the new plan details
-      const { data: newPlan } = await supabase
-        .from('membership_plans')
-        .select('*')
-        .eq('id', planId)
-        .single();
-
-      if (!newPlan) throw new Error('Plan not found');
-
-      // Get current subscription
-      const { data: currentSub } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('status', 'active')
-        .single();
-
-      // For now, just update the subscription in our database
-      // In production, this would integrate with Stripe/PayPal APIs
-      if (currentSub) {
-        await supabase
-          .from('subscriptions')
-          .update({
-            membership_plan_id: planId,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', currentSub.id);
-      } else {
-        // Create new subscription record
-        await supabase
-          .from('subscriptions')
-          .insert({
-            user_id: userId,
-            membership_plan_id: planId,
-            status: 'active',
-            payment_provider: 'stripe',
-            current_period_start: new Date().toISOString(),
-            current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
-          });
+      if (error) {
+        throw new Error(error.message || 'Failed to update subscription');
       }
 
-      return { success: true, message: 'Subscription updated successfully' };
+      // Send plan change email notification
+      try {
+        // Get the new plan details
+        const { data: newPlan } = await supabase
+          .from('membership_plans')
+          .select('name')
+          .eq('id', planId)
+          .single();
+
+        if (newPlan) {
+          await EmailNotificationService.sendPlanChangedNotification(userId, {
+            newPlanName: newPlan.name,
+            billingPeriod
+          });
+        }
+      } catch (emailError) {
+        console.error('Failed to send plan change email:', emailError);
+        // Don't fail the update if email fails
+      }
+
+      return data;
     } catch (error) {
       console.error('Error updating subscription:', error);
       throw error;
@@ -355,6 +351,19 @@ class BillingService {
         })
         .eq('id', subscription.id);
 
+      // Send cancellation email notification
+      try {
+        const accessEndDate = immediately ? new Date().toISOString() : subscription.current_period_end;
+        await EmailNotificationService.sendSubscriptionCancelledNotification(userId, {
+          accessEndDate,
+          reason,
+          immediately
+        });
+      } catch (emailError) {
+        console.error('Failed to send cancellation email:', emailError);
+        // Don't fail the cancellation if email fails
+      }
+
       return { success: true, cancelled: true };
     } catch (error) {
       console.error('Error cancelling subscription:', error);
@@ -388,6 +397,56 @@ class BillingService {
       return { success: true, paused: true };
     } catch (error) {
       console.error('Error pausing subscription:', error);
+      throw error;
+    }
+  }
+
+  async resumeSubscription(userId: string) {
+    try {
+      const { data: subscription } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'paused')
+        .single();
+
+      if (!subscription) {
+        throw new Error('No paused subscription found');
+      }
+
+      // Calculate new billing period based on pause duration
+      const pausedAt = new Date(subscription.updated_at);
+      const now = new Date();
+      const pauseDuration = now.getTime() - pausedAt.getTime();
+      
+      // Extend the current period end by the pause duration
+      const currentPeriodEnd = new Date(subscription.current_period_end);
+      const newPeriodEnd = new Date(currentPeriodEnd.getTime() + pauseDuration);
+
+      // Update status back to active
+      await supabase
+        .from('subscriptions')
+        .update({
+          status: 'active',
+          current_period_end: newPeriodEnd.toISOString(),
+          metadata: { ...subscription.metadata, resumed_at: now.toISOString() },
+          updated_at: now.toISOString()
+        })
+        .eq('id', subscription.id);
+
+      // If using Stripe, resume the subscription there too
+      if (subscription.provider_subscription_id && subscription.payment_provider === 'stripe') {
+        await supabase.functions.invoke('resume-stripe-subscription', {
+          body: { 
+            subscriptionId: subscription.provider_subscription_id,
+            userId 
+          }
+        });
+      }
+
+      return { success: true, resumed: true };
+    } catch (error) {
+      console.error('Error resuming subscription:', error);
       throw error;
     }
   }
@@ -531,6 +590,31 @@ class BillingService {
     }
   }
 
+  // Payment Retry
+  
+  async retryFailedPayment(
+    transactionId: string, 
+    userId: string, 
+    paymentMethodId?: string
+  ): Promise<{ success: boolean; message?: string }> {
+    try {
+      const { data, error } = await supabase.functions.invoke('retry-payment', {
+        body: { 
+          transactionId, 
+          userId,
+          paymentMethodId 
+        }
+      });
+
+      if (error) throw error;
+
+      return data || { success: false, message: 'Failed to retry payment' };
+    } catch (error) {
+      console.error('Error retrying payment:', error);
+      throw error;
+    }
+  }
+
   // Promo Codes
   
   async validatePromoCode(code: string, userId: string, planId?: string) {
@@ -588,45 +672,59 @@ class BillingService {
     }
   }
 
-  async applyPromoCode(subscriptionId: string, promoCodeId: string) {
+  async applyPromoCode(userId: string, promoCode: string): Promise<{ success: boolean; message?: string; discount?: any }> {
     try {
-      // Get promo code details
-      const { data: promo } = await supabase
-        .from('promo_codes')
+      // First validate the promo code
+      const validation = await this.validatePromoCode(promoCode, userId);
+      
+      if (!validation.valid) {
+        throw new Error(validation.message);
+      }
+
+      // Get user's active subscription
+      const { data: subscription } = await supabase
+        .from('subscriptions')
         .select('*')
-        .eq('id', promoCodeId)
+        .eq('user_id', userId)
+        .eq('status', 'active')
         .single();
 
-      if (!promo) throw new Error('Promo code not found');
+      if (!subscription) {
+        throw new Error('No active subscription found');
+      }
 
-      // Update subscription with discount
+      // Apply the promo code to the subscription
       const updates: any = {
-        promo_code_id: promoCodeId,
+        promo_code_id: validation.promo.id,
         updated_at: new Date().toISOString()
       };
 
-      if (promo.type === 'percentage') {
-        updates.discount_percentage = promo.value;
-      } else if (promo.type === 'fixed_amount') {
-        updates.discount_amount = promo.value;
+      if (validation.promo.type === 'percentage') {
+        updates.discount_percentage = validation.promo.value;
+      } else if (validation.promo.type === 'fixed_amount') {
+        updates.discount_amount = validation.promo.value;
       }
 
       await supabase
         .from('subscriptions')
         .update(updates)
-        .eq('id', subscriptionId);
+        .eq('id', subscription.id);
 
       // Increment usage count
       await supabase
         .from('promo_codes')
         .update({ 
-          usage_count: promo.usage_count + 1,
+          usage_count: (validation.promo as any).usage_count + 1,
           updated_at: new Date().toISOString()
         })
-        .eq('id', promoCodeId);
+        .eq('id', validation.promo.id);
 
-      return { success: true };
-    } catch (error) {
+      return { 
+        success: true,
+        message: `Promo code applied! ${validation.promo.description || 'Discount active on your subscription.'}`,
+        discount: validation.promo
+      };
+    } catch (error: any) {
       console.error('Error applying promo code:', error);
       throw error;
     }

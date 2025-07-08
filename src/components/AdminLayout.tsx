@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
+import Header from './Header';
 import AdminNavigation from './AdminNavigation';
 
 interface AdminLayoutProps {
@@ -16,7 +17,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900">
+      <Header />
       <AdminNavigation />
       <div className="flex-1">
         {children}

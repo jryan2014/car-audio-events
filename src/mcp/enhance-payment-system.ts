@@ -28,7 +28,7 @@ async function enhancePaymentSystem() {
     // Step 1: Add PayPal support fields to users table
     console.log('\n📋 Step 1: Adding PayPal support to users table...');
     const { error: usersError } = await supabase.rpc('exec_sql', {
-      sql: `
+      sql_command: `
         -- Add PayPal support fields to users table
         DO $$ 
         BEGIN
@@ -79,11 +79,79 @@ async function enhancePaymentSystem() {
     }
     console.log('✅ Users table enhanced successfully');
 
-    // Step 2: Add PayPal support to payments table
-    console.log('\n📋 Step 2: Adding PayPal support to payments table...');
+    // Step 2: Create base payments table and add PayPal support
+    console.log('\n📋 Step 2: Creating payments table and adding PayPal support...');
     const { error: paymentsError } = await supabase.rpc('exec_sql', {
-      sql: `
-        -- Add PayPal support fields to payments table
+      sql_command: `
+        -- Create base payments table if it doesn't exist
+        CREATE TABLE IF NOT EXISTS payments (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+          amount INTEGER NOT NULL CHECK (amount > 0),
+          currency TEXT NOT NULL DEFAULT 'usd',
+          status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'succeeded', 'failed', 'refunded')),
+          description TEXT,
+          metadata JSONB DEFAULT '{}',
+          stripe_payment_intent_id TEXT,
+          refund_amount INTEGER DEFAULT 0,
+          refund_reason TEXT,
+          refunded_at TIMESTAMP WITH TIME ZONE,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+
+        -- Add indexes for performance if they don't exist
+        CREATE INDEX IF NOT EXISTS idx_payments_user_id ON payments(user_id);
+        CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status);
+        CREATE INDEX IF NOT EXISTS idx_payments_created_at ON payments(created_at);
+        CREATE INDEX IF NOT EXISTS idx_payments_stripe_intent ON payments(stripe_payment_intent_id);
+
+        -- Add trigger to update updated_at if it doesn't exist
+        CREATE OR REPLACE FUNCTION update_payments_updated_at()
+        RETURNS TRIGGER AS $$
+        BEGIN
+          NEW.updated_at = NOW();
+          RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+
+        DROP TRIGGER IF EXISTS trigger_update_payments_updated_at ON payments;
+        CREATE TRIGGER trigger_update_payments_updated_at
+          BEFORE UPDATE ON payments
+          FOR EACH ROW
+          EXECUTE FUNCTION update_payments_updated_at();
+
+        -- Enable RLS on payments table
+        ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
+
+        -- Create RLS policies for payments if they don't exist
+        DROP POLICY IF EXISTS "Users can view own payments" ON payments;
+        CREATE POLICY "Users can view own payments" ON payments
+          FOR SELECT USING (auth.uid() = user_id);
+
+        DROP POLICY IF EXISTS "Users can create own payments" ON payments;
+        CREATE POLICY "Users can create own payments" ON payments
+          FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+        DROP POLICY IF EXISTS "Admins can view all payments" ON payments;
+        CREATE POLICY "Admins can view all payments" ON payments
+          FOR SELECT USING (
+            EXISTS (
+              SELECT 1 FROM users 
+              WHERE id = auth.uid() AND membershipType = 'admin'
+            )
+          );
+
+        DROP POLICY IF EXISTS "Admins can manage all payments" ON payments;
+        CREATE POLICY "Admins can manage all payments" ON payments
+          FOR ALL USING (
+            EXISTS (
+              SELECT 1 FROM users 
+              WHERE id = auth.uid() AND membershipType = 'admin'
+            )
+          );
+
+        -- Now add PayPal support fields
         DO $$ 
         BEGIN
           -- Add payment_provider if it doesn't exist
@@ -113,8 +181,14 @@ async function enhancePaymentSystem() {
             COMMENT ON COLUMN payments.refund_eligible_until IS '30-day refund eligibility deadline';
           END IF;
 
-          RAISE NOTICE 'Payments table enhanced successfully';
+          RAISE NOTICE 'Payments table created and enhanced successfully';
         END $$;
+
+        -- Add table comments
+        COMMENT ON TABLE payments IS 'Payment transactions with refund tracking';
+        COMMENT ON COLUMN payments.amount IS 'Payment amount in cents';
+        COMMENT ON COLUMN payments.status IS 'Current payment status';
+        COMMENT ON COLUMN payments.refund_amount IS 'Total refunded amount in cents';
       `
     });
 
@@ -127,7 +201,7 @@ async function enhancePaymentSystem() {
     // Step 3: Create subscription_history table for audit trails
     console.log('\n📋 Step 3: Creating subscription_history table...');
     const { error: historyError } = await supabase.rpc('exec_sql', {
-      sql: `
+      sql_command: `
         -- Create subscription_history table for audit trails
         CREATE TABLE IF NOT EXISTS subscription_history (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -165,7 +239,7 @@ async function enhancePaymentSystem() {
     // Step 4: Create refunds table with 30-day policy enforcement
     console.log('\n📋 Step 4: Creating refunds table...');
     const { error: refundsError } = await supabase.rpc('exec_sql', {
-      sql: `
+      sql_command: `
         -- Create refunds table with 30-day policy enforcement
         CREATE TABLE IF NOT EXISTS refunds (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -221,7 +295,7 @@ async function enhancePaymentSystem() {
     // Step 5: Create payment_provider_configs table for secure provider management
     console.log('\n📋 Step 5: Creating payment_provider_configs table...');
     const { error: configsError } = await supabase.rpc('exec_sql', {
-      sql: `
+      sql_command: `
         -- Create payment_provider_configs table for secure provider management
         CREATE TABLE IF NOT EXISTS payment_provider_configs (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -267,7 +341,7 @@ async function enhancePaymentSystem() {
     // Step 6: Enable RLS and create security policies
     console.log('\n📋 Step 6: Enabling RLS and creating security policies...');
     const { error: rlsError } = await supabase.rpc('exec_sql', {
-      sql: `
+      sql_command: `
         -- Enable RLS on all payment-related tables
         ALTER TABLE subscription_history ENABLE ROW LEVEL SECURITY;
         ALTER TABLE refunds ENABLE ROW LEVEL SECURITY;
@@ -337,7 +411,7 @@ async function enhancePaymentSystem() {
     // Step 7: Create helper functions for 30-day refund policy
     console.log('\n📋 Step 7: Creating helper functions...');
     const { error: functionsError } = await supabase.rpc('exec_sql', {
-      sql: `
+      sql_command: `
         -- Function to check refund eligibility (30-day policy)
         CREATE OR REPLACE FUNCTION is_refund_eligible(payment_uuid UUID)
         RETURNS BOOLEAN AS $$

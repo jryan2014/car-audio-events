@@ -288,7 +288,7 @@ export const getUserPayments = async () => {
         *,
         refunds (
           id,
-          refund_amount,
+          amount,
           status,
           reason,
           requested_at,

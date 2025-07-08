@@ -86,61 +86,64 @@ function App() {
             v7_relativeSplatPath: true
           }}
         >
-          <Layout>
-            <Suspense fallback={<LoadingSpinner />}>
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/events" element={<Events />} />
-                <Route path="/events/:id" element={<EventDetails />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/directory" element={<Directory />} />
-                <Route path="/resources" element={<Resources />} />
-                <Route path="/search" element={<SearchResults />} />
-                <Route path="/notifications" element={<NotificationHistory />} />
-                <Route path="/judge-scoring" element={<JudgeScoring />} />
-                <Route path="/advertise" element={<AdvertisePage />} />
-                <Route path="/my-ads" element={<MemberAdDashboard />} />
-                <Route path="/directory/create" element={<CreateDirectoryListing />} />
-                <Route path="/directory/pending" element={<DirectoryListingPending />} />
-                <Route path="/claim-organization/:organizationId" element={<ClaimOrganization />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/forgot-password" element={<ForgotPassword />} />
-                <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path="/pricing" element={<Pricing />} />
-                <Route path="/business" element={<BusinessPricing />} />
-                <Route path="/organizations" element={<OrganizationPricing />} />
-                <Route path="/admin" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminDashboard /></Suspense></AdminLayout>} />
-                <Route path="/admin/dashboard" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminDashboard /></Suspense></AdminLayout>} />
-                <Route path="/admin/settings" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminSettings /></Suspense></AdminLayout>} />
-                <Route path="/admin/users" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminUsers /></Suspense></AdminLayout>} />
-                <Route path="/admin/users/:userId" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><UserDetails /></Suspense></AdminLayout>} />
-                <Route path="/admin/users/:userId/edit" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><EditUser /></Suspense></AdminLayout>} />
-                <Route path="/admin/membership" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminMembership /></Suspense></AdminLayout>} />
-                <Route path="/admin/events" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminEvents /></Suspense></AdminLayout>} />
-                <Route path="/admin/backup" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminBackup /></Suspense></AdminLayout>} />
-                <Route path="/create-event" element={<CreateEvent />} />
-                <Route path="/events/:id/edit" element={<EditEvent />} />
-                <Route path="/admin/analytics" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminAnalytics /></Suspense></AdminLayout>} />
-                <Route path="/admin/ad-management" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdManagement /></Suspense></AdminLayout>} />
-                <Route path="/ai-configuration" element={<AIConfiguration />} />
-                <Route path="/admin/ai-configuration" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AIConfiguration /></Suspense></AdminLayout>} />
-                <Route path="/admin/cms-pages" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><CMSPages /></Suspense></AdminLayout>} />
-                <Route path="/pages/:slug" element={<DynamicPage />} />
-                <Route path="/admin/system-configuration" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><SystemConfiguration /></Suspense></AdminLayout>} />
-                <Route path="/admin/system-configuration-demo" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><SystemConfigurationDemo /></Suspense></AdminLayout>} />
-                <Route path="/admin/organizations" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><OrganizationManager /></Suspense></AdminLayout>} />
-                <Route path="/admin/contact-settings" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminContactSettingsPage /></Suspense></AdminLayout>} />
-                <Route path="/admin/email-settings" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminEmailSettingsPage /></Suspense></AdminLayout>} />
-                <Route path="/admin/navigation-manager" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><NavigationManager /></Suspense></AdminLayout>} />
-                <Route path="/admin/directory-manager" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><DirectoryManager /></Suspense></AdminLayout>} />
-                <Route path="/admin/competition-management" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><CompetitionManagement /></Suspense></AdminLayout>} />
-                <Route path="/billing" element={<Layout><UserBilling /></Layout>} />
-                <Route path="/admin/billing" element={<AdminLayout><AdminBilling /></AdminLayout>} />
-              </Routes>
-            </Suspense>
-          </Layout>
+          <Suspense fallback={<LoadingSpinner />}>
+            <Routes>
+              {/* Routes with Layout wrapper */}
+              <Route path="/" element={<Layout><Home /></Layout>} />
+              <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
+              <Route path="/events" element={<Layout><Events /></Layout>} />
+              <Route path="/events/:id" element={<Layout><EventDetails /></Layout>} />
+              <Route path="/profile" element={<Layout><Profile /></Layout>} />
+              <Route path="/directory" element={<Layout><Directory /></Layout>} />
+              <Route path="/resources" element={<Layout><Resources /></Layout>} />
+              <Route path="/search" element={<Layout><SearchResults /></Layout>} />
+              <Route path="/notifications" element={<Layout><NotificationHistory /></Layout>} />
+              <Route path="/judge-scoring" element={<Layout><JudgeScoring /></Layout>} />
+              <Route path="/advertise" element={<Layout><AdvertisePage /></Layout>} />
+              <Route path="/my-ads" element={<Layout><MemberAdDashboard /></Layout>} />
+              <Route path="/directory/create" element={<Layout><CreateDirectoryListing /></Layout>} />
+              <Route path="/directory/pending" element={<Layout><DirectoryListingPending /></Layout>} />
+              <Route path="/claim-organization/:organizationId" element={<Layout><ClaimOrganization /></Layout>} />
+              <Route path="/login" element={<Layout><Login /></Layout>} />
+              <Route path="/register" element={<Layout><Register /></Layout>} />
+              <Route path="/forgot-password" element={<Layout><ForgotPassword /></Layout>} />
+              <Route path="/reset-password" element={<Layout><ResetPassword /></Layout>} />
+              <Route path="/pricing" element={<Layout><Pricing /></Layout>} />
+              <Route path="/business" element={<Layout><BusinessPricing /></Layout>} />
+              <Route path="/organizations" element={<Layout><OrganizationPricing /></Layout>} />
+              <Route path="/create-event" element={<Layout><CreateEvent /></Layout>} />
+              <Route path="/events/:id/edit" element={<Layout><EditEvent /></Layout>} />
+              <Route path="/ai-configuration" element={<Layout><AIConfiguration /></Layout>} />
+              <Route path="/pages/:slug" element={<Layout><DynamicPage /></Layout>} />
+              
+              {/* Billing routes with their own layout */}
+              <Route path="/billing" element={<Layout><UserBilling /></Layout>} />
+              
+              {/* Admin routes */}
+              <Route path="/admin" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminDashboard /></Suspense></AdminLayout>} />
+              <Route path="/admin/dashboard" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminDashboard /></Suspense></AdminLayout>} />
+              <Route path="/admin/settings" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminSettings /></Suspense></AdminLayout>} />
+              <Route path="/admin/users" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminUsers /></Suspense></AdminLayout>} />
+              <Route path="/admin/users/:userId" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><UserDetails /></Suspense></AdminLayout>} />
+              <Route path="/admin/users/:userId/edit" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><EditUser /></Suspense></AdminLayout>} />
+              <Route path="/admin/membership" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminMembership /></Suspense></AdminLayout>} />
+              <Route path="/admin/events" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminEvents /></Suspense></AdminLayout>} />
+              <Route path="/admin/backup" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminBackup /></Suspense></AdminLayout>} />
+              <Route path="/admin/analytics" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminAnalytics /></Suspense></AdminLayout>} />
+              <Route path="/admin/ad-management" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdManagement /></Suspense></AdminLayout>} />
+              <Route path="/admin/ai-configuration" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AIConfiguration /></Suspense></AdminLayout>} />
+              <Route path="/admin/cms-pages" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><CMSPages /></Suspense></AdminLayout>} />
+              <Route path="/admin/system-configuration" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><SystemConfiguration /></Suspense></AdminLayout>} />
+              <Route path="/admin/system-configuration-demo" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><SystemConfigurationDemo /></Suspense></AdminLayout>} />
+              <Route path="/admin/organizations" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><OrganizationManager /></Suspense></AdminLayout>} />
+              <Route path="/admin/contact-settings" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminContactSettingsPage /></Suspense></AdminLayout>} />
+              <Route path="/admin/email-settings" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminEmailSettingsPage /></Suspense></AdminLayout>} />
+              <Route path="/admin/navigation-manager" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><NavigationManager /></Suspense></AdminLayout>} />
+              <Route path="/admin/directory-manager" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><DirectoryManager /></Suspense></AdminLayout>} />
+              <Route path="/admin/competition-management" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><CompetitionManagement /></Suspense></AdminLayout>} />
+              <Route path="/admin/billing" element={<AdminLayout><AdminBilling /></AdminLayout>} />
+            </Routes>
+          </Suspense>
         </Router>
       </NotificationProvider>
     </AuthProvider>

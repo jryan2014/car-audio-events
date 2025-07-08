@@ -3,6 +3,7 @@ import { CreditCard, Users, TrendingUp, AlertCircle, Search, Filter, Download, R
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { billingService, BillingStats, Subscription, Transaction } from '../services/billingService';
+import { WebhookLogsViewer } from '../components/WebhookLogsViewer';
 import { supabase } from '../lib/supabase';
 import { formatDate } from '../utils/date-utils';
 
@@ -126,17 +127,122 @@ const RefundModal: React.FC<{
 };
 
 // Manual Adjustment Modal
+const TransactionDetailModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  transaction: Transaction | null;
+}> = ({ isOpen, onClose, transaction }) => {
+  if (!isOpen || !transaction) return null;
+
+  const formatAmount = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount / 100);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-gray-800 rounded-lg p-6 w-full max-w-2xl mx-4">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-white">Transaction Details</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white">
+            <XCircle className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-gray-400 text-sm">Transaction ID</label>
+              <p className="text-white font-mono">{transaction.id}</p>
+            </div>
+            <div>
+              <label className="text-gray-400 text-sm">Amount</label>
+              <p className="text-white font-semibold">{formatAmount(transaction.amount)}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-gray-400 text-sm">Type</label>
+              <p className="text-white">{transaction.type}</p>
+            </div>
+            <div>
+              <label className="text-gray-400 text-sm">Status</label>
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                transaction.status === 'succeeded'
+                  ? 'bg-green-500/20 text-green-400'
+                  : transaction.status === 'failed'
+                  ? 'bg-red-500/20 text-red-400'
+                  : 'bg-yellow-500/20 text-yellow-400'
+              }`}>
+                {transaction.status}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-gray-400 text-sm">Provider</label>
+              <p className="text-white">{transaction.payment_provider}</p>
+            </div>
+            <div>
+              <label className="text-gray-400 text-sm">Created</label>
+              <p className="text-white">{formatDate(transaction.created_at)}</p>
+            </div>
+          </div>
+
+          {transaction.description && (
+            <div>
+              <label className="text-gray-400 text-sm">Description</label>
+              <p className="text-white">{transaction.description}</p>
+            </div>
+          )}
+
+          {transaction.provider_transaction_id && (
+            <div>
+              <label className="text-gray-400 text-sm">Provider Transaction ID</label>
+              <p className="text-white font-mono">{transaction.provider_transaction_id}</p>
+            </div>
+          )}
+
+          {transaction.metadata && (
+            <div>
+              <label className="text-gray-400 text-sm">Metadata</label>
+              <pre className="text-white bg-gray-900 p-2 rounded text-xs overflow-auto">
+                {JSON.stringify(transaction.metadata, null, 2)}
+              </pre>
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end mt-6">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-500"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ManualAdjustmentModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   user: UserWithBilling | null;
   onConfirm: (data: any) => void;
 }> = ({ isOpen, onClose, user, onConfirm }) => {
-  const [adjustmentType, setAdjustmentType] = useState<'credit' | 'debit' | 'plan_change'>('credit');
+  const [adjustmentType, setAdjustmentType] = useState<'credit' | 'debit' | 'plan_change' | 'custom_pricing'>('credit');
   const [amount, setAmount] = useState(0);
   const [description, setDescription] = useState('');
   const [selectedPlan, setSelectedPlan] = useState('');
   const [plans, setPlans] = useState<any[]>([]);
+  const [customPrice, setCustomPrice] = useState(0);
+  const [customBillingPeriod, setCustomBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
 
   useEffect(() => {
     if (isOpen && adjustmentType === 'plan_change') {
@@ -176,10 +282,11 @@ const ManualAdjustmentModal: React.FC<{
               <option value="credit">Add Credit</option>
               <option value="debit">Add Charge</option>
               <option value="plan_change">Change Plan</option>
+              <option value="custom_pricing">Set Custom Pricing</option>
             </select>
           </div>
 
-          {adjustmentType !== 'plan_change' ? (
+          {adjustmentType === 'credit' || adjustmentType === 'debit' ? (
             <>
               <div>
                 <label className="block text-gray-400 text-sm mb-1">Amount</label>
@@ -207,7 +314,7 @@ const ManualAdjustmentModal: React.FC<{
                 />
               </div>
             </>
-          ) : (
+          ) : adjustmentType === 'plan_change' ? (
             <div>
               <label className="block text-gray-400 text-sm mb-2">Select New Plan</label>
               <select
@@ -218,12 +325,78 @@ const ManualAdjustmentModal: React.FC<{
                 <option value="">Select a plan</option>
                 {plans.map((plan) => (
                   <option key={plan.id} value={plan.id}>
-                    {plan.name} - ${plan.price}/{plan.billing_period}
+                    {plan.name} - ${(plan.price / 100).toFixed(2)}/{plan.billing_period}
                   </option>
                 ))}
               </select>
             </div>
-          )}
+          ) : adjustmentType === 'custom_pricing' ? (
+            <>
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Select Base Plan</label>
+                <select
+                  value={selectedPlan}
+                  onChange={(e) => setSelectedPlan(e.target.value)}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                >
+                  <option value="">Select a plan</option>
+                  {plans.map((plan) => (
+                    <option key={plan.id} value={plan.id}>
+                      {plan.name} - ${(plan.price / 100).toFixed(2)}/{plan.billing_period}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">Custom Price</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-3 text-gray-400">$</span>
+                    <input
+                      type="number"
+                      value={customPrice}
+                      onChange={(e) => setCustomPrice(parseFloat(e.target.value) || 0)}
+                      min={0.01}
+                      step={0.01}
+                      className="w-full pl-8 pr-3 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                      placeholder="49.99"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-gray-400 text-sm mb-1">Billing Period</label>
+                  <select
+                    value={customBillingPeriod}
+                    onChange={(e) => setCustomBillingPeriod(e.target.value as 'monthly' | 'yearly')}
+                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  >
+                    <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm mb-1">Reason for Custom Pricing</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={2}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  placeholder="e.g., VIP customer discount, special contract rate..."
+                />
+              </div>
+
+              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
+                <p className="text-yellow-400 text-sm">
+                  ⚠️ Custom pricing will override the standard plan price for this user only. 
+                  This creates a unique subscription record with special pricing.
+                </p>
+              </div>
+            </>
+          ) : null}
         </div>
 
         <div className="flex gap-3 mt-6">
@@ -238,11 +411,14 @@ const ManualAdjustmentModal: React.FC<{
               type: adjustmentType,
               amount,
               description,
-              selectedPlan
+              selectedPlan,
+              customPrice,
+              customBillingPeriod
             })}
             disabled={
-              (adjustmentType !== 'plan_change' && (!amount || !description)) ||
-              (adjustmentType === 'plan_change' && !selectedPlan)
+              (adjustmentType === 'credit' || adjustmentType === 'debit') && (!amount || !description) ||
+              (adjustmentType === 'plan_change' && !selectedPlan) ||
+              (adjustmentType === 'custom_pricing' && (!selectedPlan || !customPrice || !description))
             }
             className="flex-1 py-2 px-4 bg-electric-500 text-white rounded-lg font-medium hover:bg-electric-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -259,14 +435,16 @@ export default function AdminBilling() {
   const [stats, setStats] = useState<BillingStats | null>(null);
   const [users, setUsers] = useState<UserWithBilling[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'transactions' | 'webhooks'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'transactions' | 'webhooks' | 'audit'>('overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedUser, setSelectedUser] = useState<UserWithBilling | null>(null);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
+  const [showTransactionDetailModal, setShowTransactionDetailModal] = useState(false);
   const [processingAction, setProcessingAction] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -357,6 +535,19 @@ export default function AdminBilling() {
 
       setTransactions(transactionsData || []);
 
+      // Load audit logs
+      const { data: auditData } = await supabase
+        .from('billing_audit_log')
+        .select(`
+          *,
+          admin:users!billing_audit_log_admin_id_fkey (name, email),
+          target_user:users!billing_audit_log_target_user_id_fkey (name, email)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      setAuditLogs(auditData || []);
+
     } catch (error) {
       console.error('Error loading dashboard data:', error);
       setError('Failed to load billing data');
@@ -432,6 +623,68 @@ export default function AdminBilling() {
         );
 
         setSuccess('Plan changed successfully');
+      } else if (data.type === 'custom_pricing') {
+        // Create custom pricing subscription
+        const { data: currentSub } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('user_id', selectedUser.id)
+          .eq('status', 'active')
+          .maybeSingle();
+
+        // Cancel existing subscription if any
+        if (currentSub) {
+          await supabase
+            .from('subscriptions')
+            .update({ 
+              status: 'cancelled',
+              cancelled_at: new Date().toISOString(),
+              cancellation_reason: 'Replaced with custom pricing'
+            })
+            .eq('id', currentSub.id);
+        }
+
+        // Create new custom subscription
+        const customSubData = {
+          user_id: selectedUser.id,
+          membership_plan_id: data.selectedPlan,
+          status: 'active',
+          payment_provider: 'manual',
+          current_period_start: new Date().toISOString(),
+          current_period_end: data.customBillingPeriod === 'yearly' 
+            ? new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString()
+            : new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString(),
+          cancel_at_period_end: false,
+          metadata: {
+            custom_pricing: true,
+            custom_price: Math.round(data.customPrice * 100), // Store in cents
+            billing_period: data.customBillingPeriod,
+            admin_notes: data.description,
+            created_by_admin: user.id
+          }
+        };
+
+        await supabase
+          .from('subscriptions')
+          .insert(customSubData);
+
+        // Log the custom pricing action
+        await supabase
+          .from('billing_audit_log')
+          .insert({
+            admin_id: user.id,
+            target_user_id: selectedUser.id,
+            action: 'custom_pricing_applied',
+            entity_type: 'subscription',
+            new_values: {
+              custom_price: data.customPrice,
+              billing_period: data.customBillingPeriod,
+              plan_id: data.selectedPlan
+            },
+            reason: data.description
+          });
+
+        setSuccess(`Custom pricing applied: $${data.customPrice}/${data.customBillingPeriod}`);
       }
 
       setShowAdjustmentModal(false);
@@ -484,7 +737,7 @@ export default function AdminBilling() {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD'
-    }).format(amount);
+    }).format(amount / 100); // Convert cents to dollars
   };
 
   if (isLoading) {
@@ -579,6 +832,16 @@ export default function AdminBilling() {
             }`}
           >
             Webhooks
+          </button>
+          <button
+            onClick={() => setActiveTab('audit')}
+            className={`flex-1 py-2 px-4 rounded-md font-medium transition-colors ${
+              activeTab === 'audit'
+                ? 'bg-electric-500 text-white'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            Audit Log
           </button>
         </div>
 
@@ -850,7 +1113,13 @@ export default function AdminBilling() {
                               Refund
                             </button>
                           )}
-                          <button className="text-sm text-gray-400 hover:text-white">
+                          <button 
+                            onClick={() => {
+                              setSelectedTransaction(transaction);
+                              setShowTransactionDetailModal(true);
+                            }}
+                            className="text-sm text-gray-400 hover:text-white"
+                          >
                             View
                           </button>
                         </div>
@@ -863,15 +1132,116 @@ export default function AdminBilling() {
           </div>
         )}
 
-        {activeTab === 'webhooks' && (
-          <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 p-6">
-            <div className="text-center py-12">
-              <Activity className="h-12 w-12 text-gray-500 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-white mb-2">Webhook Logs</h3>
-              <p className="text-gray-400">View and monitor payment provider webhooks</p>
-              <p className="text-gray-400 text-sm mt-4">Coming soon...</p>
+        {activeTab === 'audit' && (
+          <div className="space-y-6">
+            {/* Audit Log Header */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-white">Billing Audit Log</h2>
+                <p className="text-gray-400 text-sm">Track all admin actions and billing changes</p>
+              </div>
+              <div className="text-gray-400 text-sm">
+                Showing last 100 entries
+              </div>
+            </div>
+
+            {/* Audit Log Table */}
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-700">
+                      <th className="text-left py-3 px-4 text-gray-400 font-medium">Date</th>
+                      <th className="text-left py-3 px-4 text-gray-400 font-medium">Admin</th>
+                      <th className="text-left py-3 px-4 text-gray-400 font-medium">Action</th>
+                      <th className="text-left py-3 px-4 text-gray-400 font-medium">Target User</th>
+                      <th className="text-left py-3 px-4 text-gray-400 font-medium">Entity</th>
+                      <th className="text-left py-3 px-4 text-gray-400 font-medium">Changes</th>
+                      <th className="text-left py-3 px-4 text-gray-400 font-medium">Reason</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {auditLogs.map((log) => (
+                      <tr key={log.id} className="border-b border-gray-700/50 hover:bg-gray-700/30">
+                        <td className="py-3 px-4 text-gray-300 text-sm">
+                          {formatDate(log.created_at)}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div>
+                            <p className="text-white text-sm">{log.admin?.name || 'Unknown'}</p>
+                            <p className="text-gray-400 text-xs">{log.admin?.email}</p>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            log.action.includes('refund') || log.action.includes('cancel')
+                              ? 'bg-red-500/20 text-red-400'
+                              : log.action.includes('custom_pricing') || log.action.includes('manual')
+                              ? 'bg-yellow-500/20 text-yellow-400'
+                              : log.action.includes('plan_change') || log.action.includes('subscription')
+                              ? 'bg-blue-500/20 text-blue-400'
+                              : 'bg-gray-500/20 text-gray-400'
+                          }`}>
+                            {log.action.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          {log.target_user ? (
+                            <div>
+                              <p className="text-white text-sm">{log.target_user.name}</p>
+                              <p className="text-gray-400 text-xs">{log.target_user.email}</p>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 text-sm">System</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="text-gray-300 text-sm capitalize">{log.entity_type}</span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="text-sm">
+                            {log.new_values && (
+                              <div className="space-y-1">
+                                {Object.entries(log.new_values as any).map(([key, value]) => (
+                                  <div key={key} className="text-gray-300">
+                                    <span className="text-gray-400">{key}:</span>{' '}
+                                    <span className="text-white">
+                                      {key.includes('amount') || key.includes('price') 
+                                        ? formatAmount(typeof value === 'number' ? value : parseInt(value as string) || 0)
+                                        : String(value)
+                                      }
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {log.old_values && (
+                              <div className="text-gray-400 text-xs mt-1">
+                                Previous: {JSON.stringify(log.old_values)}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <p className="text-gray-300 text-sm">{log.reason || '-'}</p>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              
+              {auditLogs.length === 0 && (
+                <div className="p-8 text-center">
+                  <p className="text-gray-400">No audit log entries found</p>
+                </div>
+              )}
             </div>
           </div>
+        )}
+
+        {activeTab === 'webhooks' && (
+          <WebhookLogsViewer />
         )}
       </div>
 
@@ -881,6 +1251,12 @@ export default function AdminBilling() {
         onClose={() => setShowRefundModal(false)}
         transaction={selectedTransaction}
         onConfirm={handleRefund}
+      />
+
+      <TransactionDetailModal
+        isOpen={showTransactionDetailModal}
+        onClose={() => setShowTransactionDetailModal(false)}
+        transaction={selectedTransaction}
       />
 
       <ManualAdjustmentModal
