@@ -135,6 +135,12 @@ const adminNavGroups: AdminNavGroup[] = [
         description: 'Billing & subscriptions'
       },
       {
+        name: 'Billing Configuration',
+        href: '/admin/billing-configuration',
+        icon: Settings,
+        description: 'Advanced billing settings'
+      },
+      {
         name: 'Settings',
         href: '/admin/settings',
         icon: Settings,

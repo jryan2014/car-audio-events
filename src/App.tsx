@@ -53,6 +53,7 @@ const SearchResults = React.lazy(() => import('./pages/SearchResults'));
 const NotificationHistory = React.lazy(() => import('./pages/NotificationHistory'));
 const JudgeScoring = React.lazy(() => import('./components/JudgeScoring'));
 const CompetitionManagement = React.lazy(() => import('./pages/CompetitionManagement'));
+const AdminBillingConfiguration = React.lazy(() => import('./pages/AdminBillingConfiguration'));
 
 // Loading component for Suspense fallback
 const LoadingSpinner = () => (
@@ -142,6 +143,7 @@ function App() {
               <Route path="/admin/directory-manager" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><DirectoryManager /></Suspense></AdminLayout>} />
               <Route path="/admin/competition-management" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><CompetitionManagement /></Suspense></AdminLayout>} />
               <Route path="/admin/billing" element={<AdminLayout><AdminBilling /></AdminLayout>} />
+              <Route path="/admin/billing-configuration" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminBillingConfiguration /></Suspense></AdminLayout>} />
             </Routes>
           </Suspense>
         </Router>
