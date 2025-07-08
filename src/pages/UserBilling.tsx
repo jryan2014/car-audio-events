@@ -467,6 +467,11 @@ export default function UserBilling() {
     <Elements stripe={stripePromise}>
       <div className="min-h-screen py-8">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Page Header */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-white">Billing & Subscription</h1>
+            <p className="text-gray-400 mt-2">Manage your membership, payment methods, and billing history</p>
+          </div>
 
             {/* Alerts */}
             {error && (

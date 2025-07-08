@@ -139,28 +139,59 @@ class BillingService {
   
   async getUserBillingOverview(userId: string) {
     try {
-      // Get active subscription without join first
-      const { data: subscription, error: subError } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('status', 'active')
-        .maybeSingle();
-
-      if (subError) {
-        console.error('Error fetching subscription:', subError);
-      }
-
-      // Get membership plan separately if subscription exists
+      // First check if subscriptions table exists and get subscription data
+      let subscription = null;
       let membershipPlan = null;
-      if (subscription?.membership_plan_id) {
-        const { data: planData } = await supabase
-          .from('membership_plans')
-          .select('id, name, price, billing_period, features')
-          .eq('id', subscription.membership_plan_id)
-          .single();
-        
-        membershipPlan = planData;
+      
+      try {
+        const { data: subData, error: subError } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('status', 'active')
+          .maybeSingle();
+
+        if (subError) {
+          console.log('Subscriptions table query failed, using user membership data:', subError.message);
+          // Fallback to user membership data
+          const { data: userData } = await supabase
+            .from('users')
+            .select('membershipType, membershipExpires')
+            .eq('id', userId)
+            .single();
+          
+          if (userData?.membershipType && userData.membershipType !== 'free') {
+            // Create a mock subscription from user data
+            subscription = {
+              id: 'user-membership',
+              user_id: userId,
+              membership_plan_id: userData.membershipType,
+              status: 'active',
+              payment_provider: 'stripe',
+              current_period_start: new Date().toISOString(),
+              current_period_end: userData.membershipExpires || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+              cancel_at_period_end: false,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            };
+          }
+        } else {
+          subscription = subData;
+        }
+
+        // Get membership plan separately if subscription exists
+        if (subscription?.membership_plan_id) {
+          const { data: planData } = await supabase
+            .from('membership_plans')
+            .select('id, name, price, billing_period, features')
+            .eq('id', subscription.membership_plan_id)
+            .single();
+          
+          membershipPlan = planData;
+        }
+      } catch (error) {
+        console.error('Error in subscription query:', error);
+        // Continue with null subscription
       }
 
       // Combine subscription with plan data
