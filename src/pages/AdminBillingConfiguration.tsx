@@ -496,6 +496,23 @@ export default function AdminBillingConfiguration() {
     }
   };
 
+  // Helper function to update coupon template safely
+  const updateCouponTemplate = (field: keyof CouponCampaign['coupon_template'], value: any) => {
+    const existingTemplate = campaignFormData.coupon_template || { 
+      type: 'percentage' as const, 
+      value: 10, 
+      prefix: 'PROMO' 
+    };
+    
+    setCampaignFormData({ 
+      ...campaignFormData, 
+      coupon_template: { 
+        ...existingTemplate,
+        [field]: value 
+      } 
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -1374,15 +1391,7 @@ export default function AdminBillingConfiguration() {
                       <input
                         type="text"
                                                  value={campaignFormData.coupon_template?.prefix || 'PROMO'}
-                         onChange={(e) => setCampaignFormData({ 
-                           ...campaignFormData, 
-                           coupon_template: { 
-                             type: 'percentage' as const,
-                             value: 10,
-                             ...(campaignFormData.coupon_template || {}), 
-                             prefix: e.target.value 
-                           } 
-                         })}
+                         onChange={(e) => updateCouponTemplate('prefix', e.target.value)}
                         className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
                         placeholder="PROMO"
                       />
@@ -1392,15 +1401,7 @@ export default function AdminBillingConfiguration() {
                       <label className="block text-gray-400 text-sm mb-2">Discount Type</label>
                       <select
                                                  value={campaignFormData.coupon_template?.type || 'percentage'}
-                         onChange={(e) => setCampaignFormData({ 
-                           ...campaignFormData, 
-                           coupon_template: { 
-                             prefix: 'PROMO',
-                             value: 10,
-                             ...(campaignFormData.coupon_template || {}), 
-                             type: e.target.value as 'percentage' | 'fixed_amount'
-                           } 
-                         })}
+                         onChange={(e) => updateCouponTemplate('type', e.target.value as 'percentage' | 'fixed_amount')}
                         className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
                       >
                         <option value="percentage">Percentage</option>
@@ -1414,16 +1415,7 @@ export default function AdminBillingConfiguration() {
                     <input
                       type="number"
                                              value={campaignFormData.coupon_template?.value || 10}
-                       onChange={(e) => setCampaignFormData({ 
-                         ...campaignFormData, 
-                         coupon_template: { 
-                           prefix: 'PROMO',
-                           type: 'percentage' as const,
-                           value: 10,
-                           ...(campaignFormData.coupon_template || {}),
-                           value: parseFloat(e.target.value) 
-                         } 
-                       })}
+                       onChange={(e) => updateCouponTemplate('value', parseFloat(e.target.value))}
                       className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
                       min="0"
                       step="0.01"
