@@ -244,8 +244,8 @@ export function useSystemConfiguration(): UseSystemConfigurationReturn {
           user_id: user.id,
           form_name: formName,
           field_name: fieldName,
-          field_value: value.trim(),
-          last_used_at: new Date().toISOString()
+          field_value: value.trim()
+          // Note: updated_at is automatically set by the database
         }, {
           onConflict: 'user_id,form_name,field_name,field_value',
           ignoreDuplicates: false
