@@ -236,6 +236,12 @@ export default function CreateEvent() {
   useEffect(() => {
     if (formData.sanction_body_id && organizations.length > 0) {
       const org = organizations.find(o => o.id === formData.sanction_body_id);
+      console.log('🏢 Organization lookup:', {
+        searchId: formData.sanction_body_id,
+        foundOrg: org?.name || 'Not found',
+        hasRules: !!org?.default_rules_content,
+        totalOrgs: organizations.length
+      });
       setSelectedOrganization(org || null);
       
       if (org?.default_rules_content && !formData.rules) {
@@ -442,7 +448,7 @@ export default function CreateEvent() {
 
   const loadRulesTemplate = async (templateId: string) => {
     try {
-      const templates = await getRulesTemplates();
+      const templates = getRulesTemplates(formData.sanction_body_id || undefined);
       const template = templates.find(t => t.id === templateId);
       if (template) {
         setFormData(prev => ({
@@ -471,10 +477,14 @@ export default function CreateEvent() {
       const approvalStatus = user?.membershipType === 'admin' ? 'approved' : 'pending';
       const status = 'pending_approval';
 
+      // Get category name for legacy category field
+      const selectedCategory = categories.find(cat => cat.id === formData.category_id);
+      
       eventData = {
         title: formData.title,
         description: formData.description,
         category_id: formData.category_id,
+        category: selectedCategory?.name || 'Competition', // Legacy category field (required)
         start_date: formData.start_date,
         end_date: formData.end_date,
         registration_deadline: formData.registration_deadline || null,
@@ -1412,6 +1422,7 @@ export default function CreateEvent() {
                     type="checkbox"
                     checked={!!(selectedOrganization?.default_rules_content && formData.rules === selectedOrganization.default_rules_content)}
                     onChange={(e) => {
+                      console.log('🔄 Standard rules checkbox:', e.target.checked, 'Org rules available:', !!selectedOrganization?.default_rules_content);
                       if (e.target.checked && selectedOrganization?.default_rules_content) {
                         handleInputChange('rules', selectedOrganization.default_rules_content);
                       } else {
@@ -1443,19 +1454,37 @@ export default function CreateEvent() {
                   className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
                 >
                   <option value="">Choose a rules template...</option>
-                  {getRulesTemplates(formData.sanction_body_id || undefined).map(template => (
-                    <option key={template.id} value={template.id}>
-                      {template.name}
-                      {template.organization_id ? ` (${selectedOrganization?.name || 'Org-specific'})` : ' (General)'}
-                    </option>
-                  ))}
+                  {getRulesTemplates(formData.sanction_body_id || undefined).map(template => {
+                    console.log('🎯 Rules template:', template.name, 'Org ID:', template.organization_id);
+                    return (
+                      <option key={template.id} value={template.id}>
+                        {template.name}
+                        {template.organization_id ? ` (${selectedOrganization?.name || 'Org-specific'})` : ' (General)'}
+                      </option>
+                    );
+                  })}
                 </select>
-                {formData.sanction_body_id && getRulesTemplates(formData.sanction_body_id).length === 0 && (
-                  <p className="text-yellow-400 text-xs mt-1">
-                    No specific rules templates found for {selectedOrganization?.name || 'this organization'}. 
-                    Showing general templates.
-                  </p>
-                )}
+                {(() => {
+                  const allTemplates = getRulesTemplates();
+                  const orgTemplates = getRulesTemplates(formData.sanction_body_id);
+                  console.log('📋 Rules templates debug:', {
+                    totalTemplates: allTemplates.length,
+                    orgSpecificTemplates: orgTemplates.length,
+                    orgId: formData.sanction_body_id,
+                    configLoading,
+                    configError
+                  });
+                  
+                  if (formData.sanction_body_id && orgTemplates.length === 0) {
+                    return (
+                      <p className="text-yellow-400 text-xs mt-1">
+                        No specific rules templates found for {selectedOrganization?.name || 'this organization'}. 
+                        Total templates available: {allTemplates.length}
+                      </p>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
 
               {/* Rules Text Area */}
