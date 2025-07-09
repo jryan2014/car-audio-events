@@ -15,9 +15,9 @@ interface GeocodeError {
 
 class GeocodingService {
   private readonly providers = [
-    'nominatim', // Free OpenStreetMap service
-    'google',    // Google Maps (requires API key)
-    'mapbox'     // Mapbox (requires API key)
+    'google',    // Google Maps (requires API key) - First priority, already in CSP
+    'mapbox',    // Mapbox (requires API key)
+    'nominatim'  // Free OpenStreetMap service - Last priority due to CSP issues
   ];
 
   /**

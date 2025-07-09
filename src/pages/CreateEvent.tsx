@@ -599,7 +599,7 @@ export default function CreateEvent() {
                 >
                   <option value="">Select event category</option>
                   {getOptionsByCategory('event_categories').map(category => (
-                    <option key={category.id} value={category.id}>{category.label}</option>
+                    <option key={category.id} value={category.value}>{category.label}</option>
                   ))}
                 </select>
               </div>
