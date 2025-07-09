@@ -136,15 +136,20 @@ export function useSystemConfiguration(): UseSystemConfigurationReturn {
       setRulesTemplates(rules || []);
 
       // Load saved form data for the current user
-      const { data: savedData, error: savedDataError } = await supabase
-        .from('saved_form_data')
-        .select('*')
-        .order('usage_count', { ascending: false });
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        const { data: savedData, error: savedDataError } = await supabase
+          .from('saved_form_data')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('usage_count', { ascending: false });
 
-      if (savedDataError) {
-        console.warn('Could not load saved form data:', savedDataError);
-      } else {
-        setSavedFormData(savedData || []);
+        if (savedDataError) {
+          console.warn('Could not load saved form data:', savedDataError);
+        } else {
+          setSavedFormData(savedData || []);
+        }
       }
 
     } catch (err) {
@@ -225,9 +230,18 @@ export function useSystemConfiguration(): UseSystemConfigurationReturn {
     if (!value.trim()) return;
 
     try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        console.warn('User not authenticated, skipping form data save');
+        return;
+      }
+
       const { error } = await supabase
         .from('saved_form_data')
         .upsert({
+          user_id: user.id,
           form_name: formName,
           field_name: fieldName,
           field_value: value.trim(),
@@ -244,6 +258,7 @@ export function useSystemConfiguration(): UseSystemConfigurationReturn {
         const { data: savedData } = await supabase
           .from('saved_form_data')
           .select('*')
+          .eq('user_id', user.id)
           .order('usage_count', { ascending: false });
         
         if (savedData) {

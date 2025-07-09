@@ -39,7 +39,7 @@ export const usePermissions = (): UserPermissions => {
       const { data: planData, error: planError } = await supabase
         .from('membership_plans')
         .select('permissions')
-        .eq('plan_type', user.membershipType)
+        .eq('type', user.membershipType)
         .eq('is_active', true)
         .maybeSingle();
 
