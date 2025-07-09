@@ -129,6 +129,7 @@ export default function CreateEvent() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [categories, setCategories] = useState<Array<{id: string, name: string, color: string, icon: string}>>([]);
   const [availableCities, setAvailableCities] = useState<string[]>([]);
   const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(null);
   
@@ -228,6 +229,7 @@ export default function CreateEvent() {
     }
     
     loadOrganizations();
+    loadCategories();
   }, [user, navigate, canCreateEvents]);
 
   // Auto-populate rules when organization changes
@@ -250,6 +252,22 @@ export default function CreateEvent() {
     console.log('🔄 Organizations state updated:', organizations);
     console.log('📊 Organizations count:', organizations.length);
   }, [organizations]);
+
+  const loadCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('event_categories')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) throw error;
+      setCategories(data || []);
+      console.log('✅ Categories loaded:', data?.length || 0);
+    } catch (error) {
+      console.error('Error loading categories:', error);
+    }
+  };
 
   // Auto-update SEO fields and display dates
   useEffect(() => {
@@ -598,8 +616,8 @@ export default function CreateEvent() {
                   className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
                 >
                   <option value="">Select event category</option>
-                  {getOptionsByCategory('event_categories').map(category => (
-                    <option key={category.id} value={category.value}>{category.label}</option>
+                  {categories.map(category => (
+                    <option key={category.id} value={category.id}>{category.name}</option>
                   ))}
                 </select>
               </div>
@@ -654,9 +672,12 @@ export default function CreateEvent() {
                   onChange={(e) => handleInputChange('season_year', parseInt(e.target.value))}
                   className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
                 >
-                  {getOptionsByCategory('competition_seasons').map(season => (
-                    <option key={season.value} value={season.value}>{season.label}</option>
-                  ))}
+                  {Array.from({ length: 10 }, (_, i) => {
+                    const year = new Date().getFullYear() + (i - 2); // 2 years back to 7 years forward
+                    return (
+                      <option key={year} value={year}>{year}</option>
+                    );
+                  })}
                 </select>
               </div>
 
@@ -1409,7 +1430,9 @@ export default function CreateEvent() {
 
               {/* Manual Template Selection */}
               <div className="mb-4">
-                <label className="block text-gray-400 text-sm mb-2">Or select from rules templates:</label>
+                <label className="block text-gray-400 text-sm mb-2">
+                  Or select from {selectedOrganization ? `${selectedOrganization.name} ` : ''}rules templates:
+                </label>
                 <select
                   value=""
                   onChange={(e) => {
@@ -1420,12 +1443,19 @@ export default function CreateEvent() {
                   className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
                 >
                   <option value="">Choose a rules template...</option>
-                  {getRulesTemplates().map(template => (
+                  {getRulesTemplates(formData.sanction_body_id || undefined).map(template => (
                     <option key={template.id} value={template.id}>
                       {template.name}
+                      {template.organization_id ? ` (${selectedOrganization?.name || 'Org-specific'})` : ' (General)'}
                     </option>
                   ))}
                 </select>
+                {formData.sanction_body_id && getRulesTemplates(formData.sanction_body_id).length === 0 && (
+                  <p className="text-yellow-400 text-xs mt-1">
+                    No specific rules templates found for {selectedOrganization?.name || 'this organization'}. 
+                    Showing general templates.
+                  </p>
+                )}
               </div>
 
               {/* Rules Text Area */}
