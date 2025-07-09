@@ -14,6 +14,7 @@ interface EventFormData {
   category_id: string;
   sanction_body_id: string; // Organization that will sanction the event
   season_year: number; // Competition season year
+  organizer_id: string; // Event organizer (can be different from creator)
   start_date: string;
   end_date: string;
   registration_deadline: string;
@@ -33,6 +34,7 @@ interface EventFormData {
   contact_email: string;
   contact_phone: string;
   website: string;
+  image_url?: string; // Event flyer/header image
   
   // Event Director Contact Info
   event_director_first_name: string;
@@ -132,6 +134,7 @@ export default function CreateEvent() {
   const [categories, setCategories] = useState<Array<{id: string, name: string, color: string, icon: string}>>([]);
   const [availableCities, setAvailableCities] = useState<string[]>([]);
   const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(null);
+  const [users, setUsers] = useState<Array<{id: string, name: string, email: string, phone?: string, membership_type?: string}>>([]);
   
   // Use our system configuration hook
   const { 
@@ -142,6 +145,13 @@ export default function CreateEvent() {
     error: configError 
   } = useSystemConfiguration();
   
+  // Load data on component mount
+  useEffect(() => {
+    loadCategories();
+    loadOrganizations();
+    loadUsers();
+  }, []);
+
   // Helper function to generate default datetime values
   const getDefaultDateTime = (hoursOffset: number = 0, defaultHour: number = 8) => {
     const now = new Date();
@@ -162,6 +172,7 @@ export default function CreateEvent() {
     category_id: '',
     sanction_body_id: '',
     season_year: new Date().getFullYear(),
+    organizer_id: user?.id || '', // Default to current user, admin can change
     start_date: getDefaultDateTime(0, 8), // 8:00 AM tomorrow
     end_date: getDefaultDateTime(11, 8), // 7:00 PM tomorrow (8 AM + 11 hours = 7 PM)
     registration_deadline: '',
@@ -181,6 +192,7 @@ export default function CreateEvent() {
     contact_email: user?.email || '',
     contact_phone: user?.phone || '',
     website: '',
+    image_url: '',
     
     event_director_first_name: user?.name?.split(' ')[0] || '',
     event_director_last_name: user?.name?.split(' ').slice(1).join(' ') || '',
@@ -326,6 +338,23 @@ export default function CreateEvent() {
       setOrganizations(transformedData);
     } catch (error) {
       console.error('Error loading organizations:', error);
+    }
+  };
+
+  const loadUsers = async () => {
+    try {
+      // Only load users if current user is admin
+      if (user?.membershipType === 'admin') {
+        const { data, error } = await supabase
+          .from('users')
+          .select('id, name, email, phone, membership_type')
+          .order('name');
+
+        if (error) throw error;
+        setUsers(data || []);
+      }
+    } catch (error) {
+      console.error('Error loading users:', error);
     }
   };
 
@@ -501,9 +530,10 @@ export default function CreateEvent() {
         contact_email: formData.contact_email,
         contact_phone: formData.contact_phone,
         website_url: formData.website,
+        image_url: formData.image_url || null,
         rules: formData.rules,
         organization_id: formData.sanction_body_id || null,
-        organizer_id: user?.id || null,
+        organizer_id: formData.organizer_id || user?.id || null,
         status: 'draft',
         is_featured: formData.is_featured,
         is_public: formData.is_public
@@ -690,6 +720,27 @@ export default function CreateEvent() {
                   })}
                 </select>
               </div>
+
+              {user?.membershipType === 'admin' && (
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">Event Organizer</label>
+                  <select
+                    value={formData.organizer_id}
+                    onChange={(e) => handleInputChange('organizer_id', e.target.value)}
+                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  >
+                    <option value="">Select organizer</option>
+                    {users.map(u => (
+                      <option key={u.id} value={u.id}>
+                        {u.name} ({u.email}) - {u.membership_type}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-gray-500 text-xs mt-1">
+                    As an admin, you can assign any user as the event organizer. If not set, defaults to event creator.
+                  </p>
+                </div>
+              )}
 
               <div>
                 <label className="block text-gray-400 text-sm mb-2">Max Participants</label>
@@ -1530,6 +1581,80 @@ export default function CreateEvent() {
                   <span className="text-gray-500 text-xs">This event will be displayed prominently on the home page</span>
                 </div>
               </label>
+            </div>
+          </div>
+
+          {/* Event Image/Flyer */}
+          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+            <h2 className="text-xl font-bold text-white mb-6 flex items-center space-x-2">
+              <Image className="h-5 w-5 text-electric-500" />
+              <span>Event Image/Flyer</span>
+            </h2>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Event Flyer/Header Image</label>
+                <div className="border-2 border-dashed border-gray-600 rounded-lg p-6 text-center">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        // Handle image upload
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                          const imageUrl = e.target?.result as string;
+                          handleInputChange('image_url', imageUrl);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    className="hidden"
+                    id="event-image-upload"
+                  />
+                  <label
+                    htmlFor="event-image-upload"
+                    className="cursor-pointer inline-flex items-center space-x-2 bg-electric-500 text-white px-4 py-2 rounded-lg hover:bg-electric-600 transition-colors"
+                  >
+                    <span>Choose Image</span>
+                  </label>
+                  <p className="text-gray-500 text-sm mt-2">
+                    Upload an image that will be used as the event flyer and header on the event details page
+                  </p>
+                </div>
+                
+                {formData.image_url && (
+                  <div className="mt-4">
+                    <img
+                      src={formData.image_url}
+                      alt="Event flyer preview"
+                      className="max-w-xs mx-auto rounded-lg shadow-lg"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleInputChange('image_url', '')}
+                      className="mt-2 text-red-500 hover:text-red-400 text-sm block mx-auto"
+                    >
+                      Remove Image
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Image URL (Alternative)</label>
+                <input
+                  type="url"
+                  value={formData.image_url || ''}
+                  onChange={(e) => handleInputChange('image_url', e.target.value)}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  placeholder="https://example.com/event-image.jpg"
+                />
+                <p className="text-gray-500 text-xs mt-1">
+                  Alternatively, you can enter a direct URL to an image hosted elsewhere
+                </p>
+              </div>
             </div>
           </div>
 

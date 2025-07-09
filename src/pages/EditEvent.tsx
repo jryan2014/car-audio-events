@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Calendar, MapPin, Users, DollarSign, Clock, Save, ArrowLeft, AlertCircle, CheckCircle, Globe } from 'lucide-react';
+import { Calendar, MapPin, Users, DollarSign, Clock, Save, ArrowLeft, AlertCircle, CheckCircle, Globe, Building, Image } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import { useSystemConfiguration } from '../hooks/useSystemConfiguration';
 
 interface EventFormData {
   title: string;
   description: string;
   category_id: string;
+  sanction_body_id: string; // Organization that will sanction the event
+  season_year: number; // Competition season year
+  organizer_id: string; // Event organizer (can be different from creator)
   start_date: string;
   end_date: string;
   registration_deadline: string;
@@ -15,24 +19,61 @@ interface EventFormData {
   registration_fee: number;
   early_bird_fee: number | null;
   early_bird_deadline: string;
+  early_bird_name: string; // Custom name for early bird pricing
   venue_name: string;
   address: string;
   city: string;
   state: string;
   zip_code: string;
   country: string;
+  latitude?: number;
+  longitude?: number;
   contact_email: string;
   contact_phone: string;
   website: string;
+  image_url?: string; // Event flyer/header image
+  
+  // Event Director Contact Info
+  event_director_first_name: string;
+  event_director_last_name: string;
+  event_director_email: string;
+  event_director_phone: string;
+  use_organizer_contact: boolean; // If true, pre-populate from user info
+  
+  // Event Status & Visibility
+  is_active: boolean; // Active/Inactive toggle
+  display_start_date: string; // When to start showing on frontend (up to 90 days before)
+  display_end_date: string; // When to stop showing on frontend (auto-calculated)
+  
   rules: string;
   prizes: any[];
   schedule: { time: string; activity: string }[];
   sponsors: string[];
+  
+  // Additional Details
+  first_place_trophy: boolean;
+  second_place_trophy: boolean;
+  third_place_trophy: boolean;
+  fourth_place_trophy: boolean;
+  fifth_place_trophy: boolean;
+  has_raffle: boolean;
+  
+  // Shop Sponsors
+  shop_sponsors: string[];
+  
+  // Free Giveaways
+  member_giveaways: string[];
+  non_member_giveaways: string[];
+  
+  // SEO & Marketing
+  seo_title: string;
+  seo_description: string;
+  seo_keywords: string[];
+  
   is_public: boolean;
+  is_featured: boolean;
   status: string;
   approval_status: string;
-  latitude?: number;
-  longitude?: number;
 }
 
 interface EventCategory {
@@ -40,6 +81,27 @@ interface EventCategory {
   name: string;
   color: string;
   icon: string;
+}
+
+interface Organization {
+  id: string;
+  name: string;
+  type: string;
+  organization_type?: string;
+  logo_url?: string;
+  small_logo_url?: string;
+  status?: string;
+  default_rules_template_id?: string;
+  default_rules_template_name?: string;
+  default_rules_content?: string;
+}
+
+interface DatabaseUser {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  membership_type?: string;
 }
 
 export default function EditEvent() {
@@ -51,12 +113,34 @@ export default function EditEvent() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [categories, setCategories] = useState<EventCategory[]>([]);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [users, setUsers] = useState<DatabaseUser[]>([]);
+  const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(null);
   const [selectedTimezone, setSelectedTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
+  const [showAddNewOrganizer, setShowAddNewOrganizer] = useState(false);
+  const [newOrganizerData, setNewOrganizerData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    membership_type: 'member'
+  });
+  
+  // Use our system configuration hook
+  const { 
+    getOptionsByCategory, 
+    getRulesTemplates, 
+    saveFormData,
+    isLoading: configLoading,
+    error: configError 
+  } = useSystemConfiguration();
   
   const [formData, setFormData] = useState<EventFormData>({
     title: '',
     description: '',
     category_id: '',
+    sanction_body_id: '',
+    season_year: new Date().getFullYear(),
+    organizer_id: user?.id || '',
     start_date: '',
     end_date: '',
     registration_deadline: '',
@@ -64,20 +148,59 @@ export default function EditEvent() {
     registration_fee: 0,
     early_bird_fee: null,
     early_bird_deadline: '',
+    early_bird_name: 'Early Bird Special',
     venue_name: '',
     address: '',
     city: '',
     state: '',
     zip_code: '',
     country: 'US',
+    latitude: null,
+    longitude: null,
     contact_email: '',
     contact_phone: '',
     website: '',
+    image_url: '',
+    
+    // Event Director Contact Info
+    event_director_first_name: '',
+    event_director_last_name: '',
+    event_director_email: '',
+    event_director_phone: '',
+    use_organizer_contact: false,
+    
+    // Event Status & Visibility
+    is_active: true,
+    display_start_date: '',
+    display_end_date: '',
+    
     rules: '',
     prizes: [],
     schedule: [],
     sponsors: [],
+    
+    // Additional Details
+    first_place_trophy: false,
+    second_place_trophy: false,
+    third_place_trophy: false,
+    fourth_place_trophy: false,
+    fifth_place_trophy: false,
+    has_raffle: false,
+    
+    // Shop Sponsors
+    shop_sponsors: [],
+    
+    // Free Giveaways
+    member_giveaways: [],
+    non_member_giveaways: [],
+    
+    // SEO & Marketing
+    seo_title: '',
+    seo_description: '',
+    seo_keywords: [],
+    
     is_public: true,
+    is_featured: false,
     status: 'draft',
     approval_status: 'pending'
   });
@@ -97,8 +220,25 @@ export default function EditEvent() {
     }
     
     loadCategories();
+    loadOrganizations();
+    loadUsers();
     loadEventData();
   }, [id, canEditEvents, navigate]);
+
+  // Auto-populate organization details when sanctioning body changes
+  useEffect(() => {
+    if (formData.sanction_body_id && organizations.length > 0) {
+      const org = organizations.find(o => o.id === formData.sanction_body_id);
+      setSelectedOrganization(org || null);
+      
+      console.log('🏢 Organization lookup:', {
+        searchId: formData.sanction_body_id,
+        foundOrg: org?.name || 'Not found',
+        hasRules: !!org?.default_rules_content,
+        totalOrgs: organizations.length
+      });
+    }
+  }, [formData.sanction_body_id, organizations]);
 
   const loadCategories = async () => {
     try {
@@ -112,6 +252,38 @@ export default function EditEvent() {
       setCategories(data || []);
     } catch (error) {
       console.error('Error loading categories:', error);
+    }
+  };
+
+  const loadOrganizations = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('organizations')
+        .select('*')
+        .eq('status', 'active')
+        .order('name');
+
+      if (error) throw error;
+      setOrganizations(data || []);
+    } catch (error) {
+      console.error('Error loading organizations:', error);
+    }
+  };
+
+  const loadUsers = async () => {
+    try {
+      // Only load users if current user is admin
+      if (user?.membershipType === 'admin') {
+        const { data, error } = await supabase
+          .from('users')
+          .select('id, name, email, phone, membership_type')
+          .order('name');
+
+        if (error) throw error;
+        setUsers(data || []);
+      }
+    } catch (error) {
+      console.error('Error loading users:', error);
     }
   };
 
@@ -191,6 +363,9 @@ export default function EditEvent() {
         title: event.title || '',
         description: event.description || '',
         category_id: event.category_id || '',
+        sanction_body_id: event.organization_id || '',
+        season_year: event.season_year || new Date().getFullYear(),
+        organizer_id: event.organizer_id || user?.id || '',
         start_date: formatForInput(localStartDate),
         end_date: formatForInput(localEndDate),
         registration_deadline: formatForInput(localRegistrationDeadline),
@@ -198,24 +373,61 @@ export default function EditEvent() {
         registration_fee: event.ticket_price || event.registration_fee || 0,
         early_bird_fee: event.early_bird_fee,
         early_bird_deadline: formatForInput(localEarlyBirdDeadline),
+        early_bird_name: event.early_bird_name || 'Early Bird Special',
         venue_name: event.venue_name || '',
         address: event.address || '',
         city: event.city || '',
         state: event.state || '',
         zip_code: event.zip_code || '',
         country: event.country || 'US',
+        latitude: event.latitude,
+        longitude: event.longitude,
         contact_email: event.contact_email || '',
         contact_phone: event.contact_phone || '',
         website: event.website || '',
+        image_url: event.image_url || '',
+        
+        // Event Director Contact Info
+        event_director_first_name: event.event_director_first_name || '',
+        event_director_last_name: event.event_director_last_name || '',
+        event_director_email: event.event_director_email || '',
+        event_director_phone: event.event_director_phone || '',
+        use_organizer_contact: event.use_organizer_contact || false,
+        
+        // Event Status & Visibility
+        is_active: event.is_active !== false,
+        display_start_date: event.display_start_date ? formatForInput(event.display_start_date) : '',
+        display_end_date: event.display_end_date ? formatForInput(event.display_end_date) : '',
+        
         rules: event.rules || '',
         prizes: processPrizes(),
         schedule: processSchedule(),
         sponsors: processSponsors(),
+        
+        // Additional Details
+        first_place_trophy: event.first_place_trophy || false,
+        second_place_trophy: event.second_place_trophy || false,
+        third_place_trophy: event.third_place_trophy || false,
+        fourth_place_trophy: event.fourth_place_trophy || false,
+        fifth_place_trophy: event.fifth_place_trophy || false,
+        has_raffle: event.has_raffle || false,
+        
+        // Shop Sponsors
+        shop_sponsors: Array.isArray(event.shop_sponsors) ? event.shop_sponsors : (event.shop_sponsors ? [event.shop_sponsors] : []),
+        
+        // Free Giveaways
+        member_giveaways: Array.isArray(event.member_giveaways) ? event.member_giveaways : (event.member_giveaways ? [event.member_giveaways] : []),
+        non_member_giveaways: Array.isArray(event.non_member_giveaways) ? event.non_member_giveaways : (event.non_member_giveaways ? [event.non_member_giveaways] : []),
+        
+        // SEO & Marketing
+        seo_title: event.seo_title || '',
+        seo_description: event.seo_description || '',
+        seo_keywords: Array.isArray(event.seo_keywords) ? event.seo_keywords : (event.seo_keywords ? [event.seo_keywords] : []),
+        
         is_public: event.is_public !== false,
+        is_featured: event.is_featured || false,
         status: event.status || 'draft',
-        approval_status: event.approval_status || 'pending',
-        latitude: event.latitude,
-        longitude: event.longitude
+        approval_status: event.approval_status || 'pending'
       });
     } catch (error: any) {
       console.error('Error loading event:', error);
@@ -257,10 +469,25 @@ export default function EditEvent() {
   };
 
   const handleInputChange = (field: keyof EventFormData, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    setFormData(prev => {
+      const newData = {
+        ...prev,
+        [field]: value
+      };
+
+      // If use_organizer_contact is being checked, sync organizer data to event director fields
+      if (field === 'use_organizer_contact' && value === true) {
+        const selectedOrganizer = users.find(u => u.id === prev.organizer_id);
+        if (selectedOrganizer) {
+          newData.event_director_first_name = selectedOrganizer.name?.split(' ')[0] || '';
+          newData.event_director_last_name = selectedOrganizer.name?.split(' ').slice(1).join(' ') || '';
+          newData.event_director_email = selectedOrganizer.email || '';
+          newData.event_director_phone = selectedOrganizer.phone || '';
+        }
+      }
+
+      return newData;
+    });
   };
 
   const handleTimezoneChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -366,6 +593,9 @@ export default function EditEvent() {
         title: formData.title,
         description: formData.description,
         category_id: formData.category_id,
+        organization_id: formData.sanction_body_id || null,
+        season_year: formData.season_year,
+        organizer_id: formData.organizer_id || user?.id || null,
         start_date: utcStartDate,
         end_date: utcEndDate,
         registration_deadline: utcRegistrationDeadline,
@@ -373,6 +603,7 @@ export default function EditEvent() {
         ticket_price: formData.registration_fee,
         early_bird_fee: formData.early_bird_fee,
         early_bird_deadline: utcEarlyBirdDeadline,
+        early_bird_name: formData.early_bird_name,
         venue_name: formData.venue_name,
         address: formData.address,
         city: formData.city,
@@ -382,47 +613,62 @@ export default function EditEvent() {
         contact_email: formData.contact_email,
         contact_phone: formData.contact_phone,
         website: formData.website,
+        image_url: formData.image_url || null,
+        
+        // Event Director Contact Info
+        event_director_first_name: formData.event_director_first_name,
+        event_director_last_name: formData.event_director_last_name,
+        event_director_email: formData.event_director_email,
+        event_director_phone: formData.event_director_phone,
+        use_organizer_contact: formData.use_organizer_contact,
+        
+        // Event Status & Visibility
+        is_active: formData.is_active,
+        display_start_date: formData.display_start_date ? convertTimezoneToUTC(formData.display_start_date, selectedTimezone) : null,
+        display_end_date: formData.display_end_date ? convertTimezoneToUTC(formData.display_end_date, selectedTimezone) : null,
+        
         rules: formData.rules,
         prizes: formData.prizes.filter(p => p.trim()),
         schedule: formData.schedule.filter(s => s.time && s.activity),
         sponsors: formData.sponsors.filter(s => s.trim()),
+        
+        // Additional Details
+        first_place_trophy: formData.first_place_trophy,
+        second_place_trophy: formData.second_place_trophy,
+        third_place_trophy: formData.third_place_trophy,
+        fourth_place_trophy: formData.fourth_place_trophy,
+        fifth_place_trophy: formData.fifth_place_trophy,
+        has_raffle: formData.has_raffle,
+        
+        // Shop Sponsors
+        shop_sponsors: formData.shop_sponsors.filter(s => s.trim()),
+        
+        // Free Giveaways
+        member_giveaways: formData.member_giveaways.filter(g => g.trim()),
+        non_member_giveaways: formData.non_member_giveaways.filter(g => g.trim()),
+        
+        // SEO & Marketing
+        seo_title: formData.seo_title,
+        seo_description: formData.seo_description,
+        seo_keywords: formData.seo_keywords.filter(k => k.trim()),
+        
         is_public: formData.is_public,
+        is_featured: formData.is_featured,
         status: formData.status,
         approval_status: formData.approval_status,
         latitude: formData.latitude,
         longitude: formData.longitude
       };
 
-      // Try to use the update-event edge function first for proper geocoding
-      try {
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-        const response = await fetch(`${supabaseUrl}/functions/v1/update-event`, {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(eventData)
-        });
+      // Direct database update (removed edge function due to CORS issues)
+      const { error } = await supabase
+        .from('events')
+        .update(eventData)
+        .eq('id', id);
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to update event');
-        }
-
-        const result = await response.json();
-        console.log('Event updated successfully:', result);
-      } catch (edgeFunctionError) {
-        console.warn('Edge function failed, falling back to direct update:', edgeFunctionError);
-        
-        // Fallback to direct update
-        const { error } = await supabase
-          .from('events')
-          .update(eventData)
-          .eq('id', id);
-
-        if (error) throw error;
-      }
+      if (error) throw error;
+      
+      console.log('Event updated successfully via direct database update');
 
       setSuccess(true);
       
@@ -465,6 +711,65 @@ export default function EditEvent() {
       'Australia/Sydney',
       'Pacific/Auckland'
     ];
+  };
+
+  const loadRulesTemplate = async (templateId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('rules_templates')
+        .select('content')
+        .eq('id', templateId)
+        .single();
+        
+      if (error) throw error;
+      
+      if (data?.content) {
+        handleInputChange('rules', data.content);
+      }
+    } catch (error) {
+      console.error('Error loading rules template:', error);
+    }
+  };
+
+  const handleCreateNewOrganizer = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Create new user
+      const { data: newUser, error } = await supabase
+        .from('users')
+        .insert([{
+          name: newOrganizerData.name,
+          email: newOrganizerData.email,
+          phone: newOrganizerData.phone,
+          membership_type: newOrganizerData.membership_type
+        }])
+        .select()
+        .single();
+        
+      if (error) throw error;
+      
+      // Add to users list
+      setUsers(prev => [...prev, newUser]);
+      
+      // Select the new organizer
+      handleInputChange('organizer_id', newUser.id);
+      
+      // Reset form and close modal
+      setNewOrganizerData({
+        name: '',
+        email: '',
+        phone: '',
+        membership_type: 'member'
+      });
+      setShowAddNewOrganizer(false);
+      
+    } catch (error: any) {
+      console.error('Error creating new organizer:', error);
+      setError(error.message || 'Failed to create new organizer');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (!canEditEvents) {
@@ -646,6 +951,66 @@ export default function EditEvent() {
                   placeholder="Leave empty for unlimited"
                 />
               </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Sanctioning Body</label>
+                <select
+                  value={formData.sanction_body_id}
+                  onChange={(e) => handleInputChange('sanction_body_id', e.target.value)}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                >
+                  <option value="">No sanctioning body</option>
+                  {organizations.map(org => (
+                    <option key={org.id} value={org.id}>
+                      {org.name} ({org.type || org.organization_type || 'Organization'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Competition Season Year</label>
+                <select
+                  value={formData.season_year}
+                  onChange={(e) => handleInputChange('season_year', parseInt(e.target.value))}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                >
+                  {[...Array(6)].map((_, i) => {
+                    const year = new Date().getFullYear() - 1 + i;
+                    return (
+                      <option key={year} value={year}>{year}</option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              {user?.membershipType === 'admin' && (
+                <div className="md:col-span-2">
+                  <label className="block text-gray-400 text-sm mb-2">Event Organizer</label>
+                  <select
+                    value={formData.organizer_id}
+                    onChange={(e) => {
+                      if (e.target.value === 'add_new') {
+                        setShowAddNewOrganizer(true);
+                      } else {
+                        handleInputChange('organizer_id', e.target.value);
+                      }
+                    }}
+                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  >
+                    <option value="">Select organizer</option>
+                    {users.map(u => (
+                      <option key={u.id} value={u.id}>
+                        {u.name} ({u.email}) - {u.membership_type}
+                      </option>
+                    ))}
+                    <option value="add_new">+ Add New Organizer</option>
+                  </select>
+                  <p className="text-gray-500 text-xs mt-1">
+                    As an admin, you can assign any user as the event organizer. If not set, defaults to event creator.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -870,16 +1235,486 @@ export default function EditEvent() {
             </div>
           </div>
 
-          {/* Rules */}
+          {/* Event Image/Flyer */}
+          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+            <h2 className="text-xl font-bold text-white mb-6 flex items-center space-x-2">
+              <Image className="h-5 w-5 text-electric-500" />
+              <span>Event Image/Flyer</span>
+            </h2>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Event Flyer/Header Image</label>
+                <div className="border-2 border-dashed border-gray-600 rounded-lg p-6 text-center">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        // Handle image upload
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                          const imageUrl = e.target?.result as string;
+                          handleInputChange('image_url', imageUrl);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    className="hidden"
+                    id="event-image-upload"
+                  />
+                  <label
+                    htmlFor="event-image-upload"
+                    className="cursor-pointer inline-flex items-center space-x-2 bg-electric-500 text-white px-4 py-2 rounded-lg hover:bg-electric-600 transition-colors"
+                  >
+                    <span>Choose Image</span>
+                  </label>
+                  <p className="text-gray-500 text-sm mt-2">
+                    Upload an image that will be used as the event flyer and header on the event details page
+                  </p>
+                </div>
+                
+                {formData.image_url && (
+                  <div className="mt-4">
+                    <img
+                      src={formData.image_url}
+                      alt="Event flyer preview"
+                      className="max-w-xs mx-auto rounded-lg shadow-lg"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleInputChange('image_url', '')}
+                      className="mt-2 text-red-500 hover:text-red-400 text-sm block mx-auto"
+                    >
+                      Remove Image
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Image URL (Alternative)</label>
+                <input
+                  type="url"
+                  value={formData.image_url || ''}
+                  onChange={(e) => handleInputChange('image_url', e.target.value)}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  placeholder="https://example.com/event-image.jpg"
+                />
+                <p className="text-gray-500 text-xs mt-1">
+                  Alternatively, you can enter a direct URL to an image hosted elsewhere
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Event Director Contact */}
+          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+            <h2 className="text-xl font-bold text-white mb-6 flex items-center space-x-2">
+              <Users className="h-5 w-5 text-electric-500" />
+              <span>Event Director Contact</span>
+            </h2>
+            
+            <div className="mb-4">
+              <label className="flex items-center space-x-2 text-gray-300">
+                <input
+                  type="checkbox"
+                  checked={formData.use_organizer_contact}
+                  onChange={(e) => handleInputChange('use_organizer_contact', e.target.checked)}
+                  className="rounded border-gray-600 bg-gray-700 text-electric-500 focus:ring-electric-500"
+                />
+                <span>Use organizer's contact information</span>
+              </label>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">First Name</label>
+                <input
+                  type="text"
+                  value={formData.event_director_first_name}
+                  onChange={(e) => handleInputChange('event_director_first_name', e.target.value)}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  placeholder="Event director's first name"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Last Name</label>
+                <input
+                  type="text"
+                  value={formData.event_director_last_name}
+                  onChange={(e) => handleInputChange('event_director_last_name', e.target.value)}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  placeholder="Event director's last name"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Email</label>
+                <input
+                  type="email"
+                  value={formData.event_director_email}
+                  onChange={(e) => handleInputChange('event_director_email', e.target.value)}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  placeholder="director@example.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Phone</label>
+                <input
+                  type="tel"
+                  value={formData.event_director_phone}
+                  onChange={(e) => handleInputChange('event_director_phone', e.target.value)}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  placeholder="Phone number"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Additional Details */}
+          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+            <h2 className="text-xl font-bold text-white mb-6 flex items-center space-x-2">
+              <Globe className="h-5 w-5 text-electric-500" />
+              <span>Additional Details</span>
+            </h2>
+
+            <div className="space-y-6">
+              {/* Trophy Placements */}
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-3">Trophy Placements</h3>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <label className="flex items-center space-x-2 text-gray-300">
+                    <input
+                      type="checkbox"
+                      checked={formData.first_place_trophy}
+                      onChange={(e) => handleInputChange('first_place_trophy', e.target.checked)}
+                      className="rounded border-gray-600 bg-gray-700 text-electric-500 focus:ring-electric-500"
+                    />
+                    <span>1st Place</span>
+                  </label>
+                  <label className="flex items-center space-x-2 text-gray-300">
+                    <input
+                      type="checkbox"
+                      checked={formData.second_place_trophy}
+                      onChange={(e) => handleInputChange('second_place_trophy', e.target.checked)}
+                      className="rounded border-gray-600 bg-gray-700 text-electric-500 focus:ring-electric-500"
+                    />
+                    <span>2nd Place</span>
+                  </label>
+                  <label className="flex items-center space-x-2 text-gray-300">
+                    <input
+                      type="checkbox"
+                      checked={formData.third_place_trophy}
+                      onChange={(e) => handleInputChange('third_place_trophy', e.target.checked)}
+                      className="rounded border-gray-600 bg-gray-700 text-electric-500 focus:ring-electric-500"
+                    />
+                    <span>3rd Place</span>
+                  </label>
+                  <label className="flex items-center space-x-2 text-gray-300">
+                    <input
+                      type="checkbox"
+                      checked={formData.fourth_place_trophy}
+                      onChange={(e) => handleInputChange('fourth_place_trophy', e.target.checked)}
+                      className="rounded border-gray-600 bg-gray-700 text-electric-500 focus:ring-electric-500"
+                    />
+                    <span>4th Place</span>
+                  </label>
+                  <label className="flex items-center space-x-2 text-gray-300">
+                    <input
+                      type="checkbox"
+                      checked={formData.fifth_place_trophy}
+                      onChange={(e) => handleInputChange('fifth_place_trophy', e.target.checked)}
+                      className="rounded border-gray-600 bg-gray-700 text-electric-500 focus:ring-electric-500"
+                    />
+                    <span>5th Place</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Raffle */}
+              <div>
+                <label className="flex items-center space-x-2 text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={formData.has_raffle}
+                    onChange={(e) => handleInputChange('has_raffle', e.target.checked)}
+                    className="rounded border-gray-600 bg-gray-700 text-electric-500 focus:ring-electric-500"
+                  />
+                  <span className="font-medium">Has Raffle/Door Prizes</span>
+                </label>
+              </div>
+
+              {/* Shop Sponsors */}
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-3">Shop Sponsors</h3>
+                <div className="space-y-3">
+                  {formData.shop_sponsors.map((sponsor, index) => (
+                    <div key={index} className="flex space-x-2">
+                      <input
+                        type="text"
+                        value={sponsor}
+                        onChange={(e) => {
+                          const newSponsors = [...formData.shop_sponsors];
+                          newSponsors[index] = e.target.value;
+                          handleInputChange('shop_sponsors', newSponsors);
+                        }}
+                        className="flex-1 p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                        placeholder="Shop sponsor name"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newSponsors = formData.shop_sponsors.filter((_, i) => i !== index);
+                          handleInputChange('shop_sponsors', newSponsors);
+                        }}
+                        className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => handleInputChange('shop_sponsors', [...formData.shop_sponsors, ''])}
+                    className="px-4 py-2 bg-electric-500 text-white rounded-lg hover:bg-electric-600 transition-colors"
+                  >
+                    Add Shop Sponsor
+                  </button>
+                </div>
+              </div>
+
+              {/* Free Giveaways for Members */}
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-3">Free Giveaways - Members</h3>
+                <div className="space-y-3">
+                  {formData.member_giveaways.map((giveaway, index) => (
+                    <div key={index} className="flex space-x-2">
+                      <input
+                        type="text"
+                        value={giveaway}
+                        onChange={(e) => {
+                          const newGiveaways = [...formData.member_giveaways];
+                          newGiveaways[index] = e.target.value;
+                          handleInputChange('member_giveaways', newGiveaways);
+                        }}
+                        className="flex-1 p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                        placeholder="Member giveaway item"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newGiveaways = formData.member_giveaways.filter((_, i) => i !== index);
+                          handleInputChange('member_giveaways', newGiveaways);
+                        }}
+                        className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => handleInputChange('member_giveaways', [...formData.member_giveaways, ''])}
+                    className="px-4 py-2 bg-electric-500 text-white rounded-lg hover:bg-electric-600 transition-colors"
+                  >
+                    Add Member Giveaway
+                  </button>
+                </div>
+              </div>
+
+              {/* Free Giveaways for Non-Members */}
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-3">Free Giveaways - Non-Members</h3>
+                <div className="space-y-3">
+                  {formData.non_member_giveaways.map((giveaway, index) => (
+                    <div key={index} className="flex space-x-2">
+                      <input
+                        type="text"
+                        value={giveaway}
+                        onChange={(e) => {
+                          const newGiveaways = [...formData.non_member_giveaways];
+                          newGiveaways[index] = e.target.value;
+                          handleInputChange('non_member_giveaways', newGiveaways);
+                        }}
+                        className="flex-1 p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                        placeholder="Non-member giveaway item"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newGiveaways = formData.non_member_giveaways.filter((_, i) => i !== index);
+                          handleInputChange('non_member_giveaways', newGiveaways);
+                        }}
+                        className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => handleInputChange('non_member_giveaways', [...formData.non_member_giveaways, ''])}
+                    className="px-4 py-2 bg-electric-500 text-white rounded-lg hover:bg-electric-600 transition-colors"
+                  >
+                    Add Non-Member Giveaway
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* SEO & Marketing */}
+          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+            <h2 className="text-xl font-bold text-white mb-6 flex items-center space-x-2">
+              <Globe className="h-5 w-5 text-electric-500" />
+              <span>SEO & Marketing</span>
+            </h2>
+
+            <div className="space-y-6">
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">SEO Title</label>
+                <input
+                  type="text"
+                  value={formData.seo_title}
+                  onChange={(e) => handleInputChange('seo_title', e.target.value)}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  placeholder="Custom title for search engines"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">SEO Description</label>
+                <textarea
+                  rows={3}
+                  value={formData.seo_description}
+                  onChange={(e) => handleInputChange('seo_description', e.target.value)}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500 resize-none"
+                  placeholder="Brief description for search engines"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">SEO Keywords</label>
+                <div className="space-y-3">
+                  {formData.seo_keywords.map((keyword, index) => (
+                    <div key={index} className="flex space-x-2">
+                      <input
+                        type="text"
+                        value={keyword}
+                        onChange={(e) => {
+                          const newKeywords = [...formData.seo_keywords];
+                          newKeywords[index] = e.target.value;
+                          handleInputChange('seo_keywords', newKeywords);
+                        }}
+                        className="flex-1 p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                        placeholder="SEO keyword"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newKeywords = formData.seo_keywords.filter((_, i) => i !== index);
+                          handleInputChange('seo_keywords', newKeywords);
+                        }}
+                        className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => handleInputChange('seo_keywords', [...formData.seo_keywords, ''])}
+                    className="px-4 py-2 bg-electric-500 text-white rounded-lg hover:bg-electric-600 transition-colors"
+                  >
+                    Add Keyword
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <label className="flex items-center space-x-2 text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_featured}
+                    onChange={(e) => handleInputChange('is_featured', e.target.checked)}
+                    className="rounded border-gray-600 bg-gray-700 text-electric-500 focus:ring-electric-500"
+                  />
+                  <span>Featured Event</span>
+                </label>
+
+                <label className="flex items-center space-x-2 text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_public}
+                    onChange={(e) => handleInputChange('is_public', e.target.checked)}
+                    className="rounded border-gray-600 bg-gray-700 text-electric-500 focus:ring-electric-500"
+                  />
+                  <span>Public Event</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Rules & Regulations */}
           <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
             <h2 className="text-xl font-bold text-white mb-6">Rules & Regulations</h2>
-            <textarea
-              rows={6}
-              value={formData.rules}
-              onChange={(e) => handleInputChange('rules', e.target.value)}
-              className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500 resize-none"
-              placeholder="Enter event rules and regulations..."
-            />
+
+            {/* Organization Rules Option */}
+            {selectedOrganization?.default_rules_content && (
+              <div className="mb-4">
+                <label className="flex items-center space-x-2 text-gray-300">
+                  <input
+                    type="checkbox"
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        handleInputChange('rules', selectedOrganization.default_rules_content || '');
+                      }
+                    }}
+                    className="rounded border-gray-600 bg-gray-700 text-electric-500 focus:ring-electric-500"
+                  />
+                  <span>Use standard organization rules ({selectedOrganization.default_rules_template_name || 'No template available'})</span>
+                </label>
+              </div>
+            )}
+
+            {/* Template Selection */}
+            <div className="mb-4">
+              <label className="block text-gray-400 text-sm mb-2">Or select from rules templates:</label>
+              <select
+                onChange={(e) => {
+                  if (e.target.value) {
+                    loadRulesTemplate(e.target.value);
+                  }
+                }}
+                className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+              >
+                <option value="">Choose a rules template...</option>
+                {getRulesTemplates().map(template => (
+                  <option key={template.id} value={template.id}>
+                    {template.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Custom Rules Content */}
+            <div>
+              <label className="block text-gray-400 text-sm mb-2">Rules & Regulations Content</label>
+              <textarea
+                rows={8}
+                value={formData.rules}
+                onChange={(e) => handleInputChange('rules', e.target.value)}
+                className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500 resize-none"
+                placeholder="Enter event rules and regulations..."
+              />
+              <p className="text-gray-500 text-xs mt-2">
+                You can use the templates above or write custom rules for your event.
+              </p>
+            </div>
           </div>
 
           {/* Save Button */}
@@ -910,6 +1745,92 @@ export default function EditEvent() {
             </button>
           </div>
         </form>
+
+        {/* Add New Organizer Modal */}
+        {showAddNewOrganizer && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
+              <h3 className="text-xl font-bold text-white mb-4">Add New Event Organizer</h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">Full Name *</label>
+                  <input
+                    type="text"
+                    value={newOrganizerData.name}
+                    onChange={(e) => setNewOrganizerData(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                    placeholder="Enter full name"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">Email *</label>
+                  <input
+                    type="email"
+                    value={newOrganizerData.email}
+                    onChange={(e) => setNewOrganizerData(prev => ({ ...prev, email: e.target.value }))}
+                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                    placeholder="Enter email address"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">Phone</label>
+                  <input
+                    type="tel"
+                    value={newOrganizerData.phone}
+                    onChange={(e) => setNewOrganizerData(prev => ({ ...prev, phone: e.target.value }))}
+                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                    placeholder="Enter phone number"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">Membership Type</label>
+                  <select
+                    value={newOrganizerData.membership_type}
+                    onChange={(e) => setNewOrganizerData(prev => ({ ...prev, membership_type: e.target.value }))}
+                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  >
+                    <option value="member">Member</option>
+                    <option value="premium">Premium</option>
+                    <option value="business">Business</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddNewOrganizer(false);
+                    setNewOrganizerData({
+                      name: '',
+                      email: '',
+                      phone: '',
+                      membership_type: 'member'
+                    });
+                  }}
+                  className="px-4 py-2 border border-gray-600 text-gray-400 rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreateNewOrganizer}
+                  disabled={!newOrganizerData.name || !newOrganizerData.email}
+                  className="px-4 py-2 bg-electric-500 text-white rounded-lg hover:bg-electric-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Create Organizer
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
