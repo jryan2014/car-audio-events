@@ -39,12 +39,13 @@ export const usePermissions = (): UserPermissions => {
       const { data: planData, error: planError } = await supabase
         .from('membership_plans')
         .select('permissions')
-        .eq('type', user.membershipType)
+        .eq('plan_type', user.membershipType)
         .eq('is_active', true)
-        .single();
+        .maybeSingle();
 
       if (planError && planError.code !== 'PGRST116') { // PGRST116 = no rows returned
-        throw planError;
+        console.warn('Could not load membership plan permissions:', planError);
+        // Don't throw error, fall back to role permissions
       }
 
       let userPermissions: string[] = [];

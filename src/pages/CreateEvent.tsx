@@ -276,8 +276,6 @@ export default function CreateEvent() {
 
   const loadOrganizations = async () => {
     try {
-      console.log('🏢 Loading organizations...');
-      
       const { data, error } = await supabase
         .from('organizations')
         .select('id, name, organization_type, logo_url, small_logo_url, status, default_rules_content')
@@ -285,11 +283,9 @@ export default function CreateEvent() {
         .order('name');
 
       if (error) {
-        console.error('❌ Error loading organizations:', error);
+        console.error('Error loading organizations:', error);
         throw error;
       }
-      
-      console.log('📊 Raw organizations data:', data);
       
       // Transform the data to match our interface
       const transformedData: Organization[] = (data || []).map(org => ({
@@ -303,32 +299,28 @@ export default function CreateEvent() {
         default_rules_content: org.default_rules_content
       }));
       
-      console.log('✅ Transformed organizations:', transformedData);
       setOrganizations(transformedData);
     } catch (error) {
-      console.error('💥 Error loading organizations:', error);
+      console.error('Error loading organizations:', error);
     }
   };
 
   // Real geocoding function
   const geocodeAddress = async (address: string, city: string, state: string, country: string) => {
     try {
-      console.log(`🗺️ Auto-geocoding: ${city}, ${state}, ${country}`);
-      
       const result = await geocodingService.geocodeAddress(city, state, country);
       
       if ('error' in result) {
-        console.warn('⚠️ Geocoding failed:', result.error);
+        console.warn('Geocoding failed:', result.error);
         return { latitude: null, longitude: null };
       }
       
-      console.log(`✅ Geocoded successfully:`, result);
       return {
         latitude: result.latitude,
         longitude: result.longitude
       };
     } catch (error) {
-      console.error('🚨 Geocoding error:', error);
+      console.error('Geocoding error:', error);
       return { latitude: null, longitude: null };
     }
   };
@@ -615,11 +607,7 @@ export default function CreateEvent() {
               <div>
                 <label className="block text-gray-400 text-sm mb-2">Sanctioning Body *</label>
                 
-                {/* TEMPORARY DEBUG INFO */}
-                <div className="mb-2 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded text-yellow-400 text-xs">
-                  🐛 DEBUG: Organizations count: {organizations.length} | 
-                  Names: {organizations.map(o => o.name).join(', ') || 'None loaded'}
-                </div>
+
                 
                 <select
                   required
