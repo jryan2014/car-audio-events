@@ -26,28 +26,11 @@ export default function EventDetails() {
     setError(null);
     
     try {
-      // Try to fetch using the edge function first
-      try {
-        // Get Supabase URL from environment or use hardcoded value for production
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://mpewqdnoyuutexadhljd.supabase.co';
-        
-        const response = await fetch(`${supabaseUrl}/functions/v1/get-event-data?id=${id}`, {
-          headers: {
-            'Authorization': user ? `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}` : '',
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setEvent(data.event);
-          setIsRegistered(data.event.is_registered);
-          setLoading(false);
-          return;
-        }
-      } catch (edgeFunctionError) {
-        console.warn('Edge function failed, falling back to direct query:', edgeFunctionError);
-      }
+      // Skip edge function for now due to CORS issues
+      console.log('📱 Using direct database query for event details (edge function disabled)');
+      
+      // NOTE: Edge function disabled due to CORS configuration issues
+      // TODO: Re-enable when edge function CORS is properly configured
 
       // Fallback to direct Supabase query
       const { data: eventData, error: eventError } = await supabase
@@ -63,12 +46,8 @@ export default function EventDetails() {
 
       if (eventError) throw eventError;
 
-      // Get event images
-      const { data: imagesData } = await supabase
-        .from('event_images')
-        .select('*')
-        .eq('event_id', id)
-        .order('is_primary', { ascending: false });
+      // NOTE: event_images table doesn't exist yet, using default image
+      const imagesData: any[] = [];
 
       // Check if user is registered
       if (user) {
@@ -87,8 +66,7 @@ export default function EventDetails() {
         ...eventData,
         category: eventData.event_categories?.name || 'Event',
         category_color: eventData.event_categories?.color || '#0ea5e9',
-        image: imagesData?.find(img => img.is_primary)?.image_url || 
-               imagesData?.[0]?.image_url || 
+        image: eventData.image_url || 
                "https://images.pexels.com/photos/1127000/pexels-photo-1127000.jpeg?auto=compress&cs=tinysrgb&w=1200&h=600&dpr=2",
         images: imagesData || [],
         featured: eventData.is_featured,
