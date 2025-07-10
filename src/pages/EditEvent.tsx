@@ -739,10 +739,14 @@ export default function EditEvent() {
         throw new Error('Name and email are required');
       }
       
+      // Generate UUID for new organizer
+      const newUserId = crypto.randomUUID();
+      
       // Create new organizer (contact only, not a full user account)
       const { data: newUser, error } = await supabase
         .from('users')
         .insert([{
+          id: newUserId,
           name: newOrganizerData.name.trim(),
           email: newOrganizerData.email.trim(),
           phone: newOrganizerData.phone?.trim() || null
