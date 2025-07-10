@@ -739,28 +739,21 @@ export default function EditEvent() {
         throw new Error('Name and email are required');
       }
       
-      // Generate UUID for new organizer
-      const newUserId = crypto.randomUUID();
+      // Instead of creating a user record, populate event director contact fields
+      const nameParts = newOrganizerData.name.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
       
-      // Create new organizer (contact only, not a full user account)
-      const { data: newUser, error } = await supabase
-        .from('users')
-        .insert([{
-          id: newUserId,
-          name: newOrganizerData.name.trim(),
-          email: newOrganizerData.email.trim(),
-          phone: newOrganizerData.phone?.trim() || null
-        }])
-        .select()
-        .single();
-        
-      if (error) throw error;
-      
-      // Add to users list
-      setUsers(prev => [...prev, newUser]);
-      
-      // Select the new organizer
-      handleInputChange('organizer_id', newUser.id);
+      // Update form data with organizer contact info
+      setFormData(prev => ({
+        ...prev,
+        organizer_id: '', // Clear organizer selection (using custom contact)
+        event_director_first_name: firstName,
+        event_director_last_name: lastName,
+        event_director_email: newOrganizerData.email.trim(),
+        event_director_phone: newOrganizerData.phone?.trim() || '',
+        use_organizer_contact: false // Using custom contact info
+      }));
       
       // Reset form and close modal
       setNewOrganizerData({
@@ -771,11 +764,12 @@ export default function EditEvent() {
       setShowAddNewOrganizer(false);
       
       // Show success message
-      console.log('✅ New organizer created successfully:', newUser.name);
+      console.log('✅ Organizer contact information added:', firstName, lastName);
+      setSuccess(true);
       
     } catch (error: any) {
-      console.error('Error creating new organizer:', error);
-      setError(error.message || 'Failed to create new organizer');
+      console.error('Error adding organizer contact:', error);
+      setError(error.message || 'Failed to add organizer contact');
     } finally {
       setIsLoading(false);
     }
@@ -1013,7 +1007,7 @@ export default function EditEvent() {
                         {u.name} ({u.email}) - {u.membership_type}
                       </option>
                     ))}
-                    <option value="add_new">+ Add New Organizer</option>
+                    <option value="add_new">+ Add Organizer Contact Info</option>
                   </select>
                   <p className="text-gray-500 text-xs mt-1">
                     As an admin, you can assign any user as the event organizer. If not set, defaults to event creator.
@@ -1844,7 +1838,10 @@ export default function EditEvent() {
         {showAddNewOrganizer && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
-              <h3 className="text-xl font-bold text-white mb-4">Add New Event Organizer</h3>
+              <h3 className="text-xl font-bold text-white mb-4">Add Organizer Contact Information</h3>
+              <p className="text-gray-400 text-sm mb-4">
+                Enter contact details for the event organizer. This will populate the event director contact fields.
+              </p>
               
               <div className="space-y-4">
                 <div>
