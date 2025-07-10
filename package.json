@@ -1,12 +1,13 @@
 {
   "name": "car-audio-competition-platform",
   "private": true,
-  "version": "1.15.0",
+  "version": "1.16.2",
   "type": "module",
   "scripts": {
-    "dev": "npm run version:generate && vite",
+    "dev": "vite",
+    "dev:memory": "node --max-old-space-size=16384 --expose-gc --optimize-for-size --max-semi-space-size=512 --initial-old-space-size=4096 --no-concurrent-recompilation ./node_modules/vite/bin/vite.js",
     "build": "npm run version:generate && tsc && vite build",
-    "lint": "eslint .",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "analyze": "node scripts/analyze-bundle.js",
     "build:analyze": "npm run build && npm run analyze",

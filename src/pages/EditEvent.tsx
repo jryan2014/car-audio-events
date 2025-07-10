@@ -16,10 +16,8 @@ interface EventFormData {
   end_date: string;
   registration_deadline: string;
   max_participants: number | null;
-  registration_fee: number;
-  early_bird_fee: number | null;
-  early_bird_deadline: string;
-  early_bird_name: string; // Custom name for early bird pricing
+  registration_fee: number; // Default/general registration fee
+  // Note: Member/non-member fees removed - using single registration_fee only
   venue_name: string;
   address: string;
   city: string;
@@ -74,6 +72,7 @@ interface EventFormData {
   is_featured: boolean;
   status: string;
   approval_status: string;
+  // Note: offered_competition_classes removed - not in database schema
 }
 
 interface EventCategory {
@@ -94,6 +93,7 @@ interface Organization {
   default_rules_template_id?: string;
   default_rules_template_name?: string;
   default_rules_content?: string;
+  competition_classes?: string[];
 }
 
 interface DatabaseUser {
@@ -104,7 +104,7 @@ interface DatabaseUser {
   membership_type?: string;
 }
 
-export default function EditEvent() {
+const EditEvent = React.memo(function EditEvent() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -145,9 +145,6 @@ export default function EditEvent() {
     registration_deadline: '',
     max_participants: null,
     registration_fee: 0,
-    early_bird_fee: null,
-    early_bird_deadline: '',
-    early_bird_name: 'Early Bird Special',
     venue_name: '',
     address: '',
     city: '',
@@ -201,7 +198,8 @@ export default function EditEvent() {
     is_public: true,
     is_featured: false,
     status: 'draft',
-    approval_status: 'pending'
+    approval_status: 'pending',
+    // Competition classes removed - not in database schema
   });
 
   // Check if user can edit events
@@ -218,10 +216,28 @@ export default function EditEvent() {
       return;
     }
     
-    loadCategories();
-    loadOrganizations();
-    loadUsers();
-    loadEventData();
+    const abortController = new AbortController();
+    
+    const loadAllData = async () => {
+      try {
+        await Promise.all([
+          loadCategories(),
+          loadOrganizations(),
+          loadUsers(),
+          loadEventData()
+        ]);
+      } catch (error) {
+        if (!abortController.signal.aborted) {
+          console.error('Error loading data:', error);
+        }
+      }
+    };
+    
+    loadAllData();
+    
+    return () => {
+      abortController.abort();
+    };
   }, [id, canEditEvents, navigate]);
 
   // Auto-populate organization details when sanctioning body changes
@@ -370,9 +386,6 @@ export default function EditEvent() {
         registration_deadline: formatForInput(localRegistrationDeadline),
         max_participants: event.max_participants,
         registration_fee: event.ticket_price || event.registration_fee || 0,
-        early_bird_fee: event.early_bird_fee,
-        early_bird_deadline: formatForInput(localEarlyBirdDeadline),
-        early_bird_name: event.early_bird_name || 'Early Bird Special',
         venue_name: event.venue_name || '',
         address: event.address || '',
         city: event.city || '',
@@ -426,7 +439,8 @@ export default function EditEvent() {
         is_public: event.is_public !== false,
         is_featured: event.is_featured || false,
         status: event.status || 'draft',
-        approval_status: event.approval_status || 'pending'
+        approval_status: event.approval_status || 'pending',
+        // Competition classes feature removed from form
       });
     } catch (error: any) {
       console.error('Error loading event:', error);
@@ -521,14 +535,7 @@ export default function EditEvent() {
       }));
     }
     
-    if (formData.early_bird_deadline) {
-      const utcEarlyDeadline = convertTimezoneToUTC(formData.early_bird_deadline, selectedTimezone);
-      const newLocalEarlyDeadline = convertUTCToTimezone(utcEarlyDeadline, newTimezone);
-      setFormData(prev => ({
-        ...prev,
-        early_bird_deadline: newLocalEarlyDeadline.substring(0, 16)
-      }));
-    }
+    // Early bird deadline removed - no longer needed
   };
 
   const addArrayItem = (field: 'prizes' | 'schedule' | 'sponsors') => {
@@ -584,8 +591,7 @@ export default function EditEvent() {
       const utcEndDate = convertTimezoneToUTC(formData.end_date, selectedTimezone);
       const utcRegistrationDeadline = formData.registration_deadline ? 
         convertTimezoneToUTC(formData.registration_deadline, selectedTimezone) : null;
-      const utcEarlyBirdDeadline = formData.early_bird_deadline ? 
-        convertTimezoneToUTC(formData.early_bird_deadline, selectedTimezone) : null;
+      // Early bird deadline removed - no longer needed
 
       const eventData = {
         id,
@@ -594,15 +600,12 @@ export default function EditEvent() {
         category_id: formData.category_id,
         organization_id: formData.sanction_body_id || null,
         season_year: formData.season_year,
-        organizer_id: formData.organizer_id || user?.id || null,
+        organizer_id: formData.organizer_id || null, // Optional - can use event director fields instead
         start_date: utcStartDate,
         end_date: utcEndDate,
         registration_deadline: utcRegistrationDeadline,
         max_participants: formData.max_participants,
         ticket_price: formData.registration_fee,
-        early_bird_fee: formData.early_bird_fee,
-        early_bird_deadline: utcEarlyBirdDeadline,
-        early_bird_name: formData.early_bird_name,
         venue_name: formData.venue_name,
         address: formData.address,
         city: formData.city,
@@ -655,6 +658,7 @@ export default function EditEvent() {
         is_featured: formData.is_featured,
         status: formData.status,
         approval_status: formData.approval_status,
+        // Competition classes removed from database save
         latitude: formData.latitude,
         longitude: formData.longitude
       };
@@ -763,9 +767,22 @@ export default function EditEvent() {
       });
       setShowAddNewOrganizer(false);
       
-      // Show success message
+      // Show success message without triggering redirect
       console.log('✅ Organizer contact information added:', firstName, lastName);
-      setSuccess(true);
+      
+      // Temporarily clear any errors and show visual confirmation
+      setError('');
+      
+      // Auto-scroll to event director section to show populated fields
+      setTimeout(() => {
+        const eventDirectorSection = document.querySelector('[data-section="event-director"]');
+        if (eventDirectorSection) {
+          eventDirectorSection.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center' 
+          });
+        }
+      }, 500);
       
     } catch (error: any) {
       console.error('Error adding organizer contact:', error);
@@ -843,8 +860,8 @@ export default function EditEvent() {
               <span>Timezone Settings</span>
             </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <div className="lg:col-span-4">
                 <label className="block text-gray-400 text-sm mb-2">Select Timezone for Editing</label>
                 <select
                   value={selectedTimezone}
@@ -861,9 +878,9 @@ export default function EditEvent() {
               </div>
 
               {user?.membershipType === 'admin' && (
-                <div>
+                <div className="lg:col-span-8">
                   <label className="block text-gray-400 text-sm mb-2">Event Status</label>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-gray-400 text-xs mb-1">Status</label>
                       <select
@@ -943,17 +960,17 @@ export default function EditEvent() {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-gray-400 text-sm mb-2">Max Participants</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={formData.max_participants || ''}
-                  onChange={(e) => handleInputChange('max_participants', e.target.value ? parseInt(e.target.value) : null)}
-                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                  placeholder="Leave empty for unlimited"
-                />
-              </div>
+              {/* Competition Classes feature temporarily removed - database schema mismatch */}
+              {selectedOrganization?.competition_classes && selectedOrganization.competition_classes.length > 0 && (
+                <div className="p-3 bg-gray-700/30 border border-gray-600 rounded-lg">
+                  <p className="text-gray-400 text-sm">
+                    📋 Available Competition Classes: {selectedOrganization.competition_classes.join(', ')}
+                  </p>
+                  <p className="text-gray-500 text-xs mt-1">
+                    (Information display only - class selection feature temporarily disabled)
+                  </p>
+                </div>
+              )}
 
               <div>
                 <label className="block text-gray-400 text-sm mb-2">Sanctioning Body</label>
@@ -1007,11 +1024,11 @@ export default function EditEvent() {
                         {u.name} ({u.email}) - {u.membership_type}
                       </option>
                     ))}
-                    <option value="add_new">+ Add Organizer Contact Info</option>
+                    <option value="add_new">+ Add External Organizer Contact (no account required)</option>
                   </select>
-                  <p className="text-gray-500 text-xs mt-1">
-                    As an admin, you can assign any user as the event organizer. If not set, defaults to event creator.
-                  </p>
+                                      <p className="text-gray-500 text-xs mt-1">
+                      Select a registered user as organizer, or add external contact info without requiring an account. If not set, uses the event director contact fields.
+                    </p>
                 </div>
               )}
             </div>
@@ -1021,50 +1038,95 @@ export default function EditEvent() {
           <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
             <h2 className="text-xl font-bold text-white mb-6 flex items-center space-x-2">
               <Clock className="h-5 w-5 text-electric-500" />
-              <span>Date & Time</span>
+              <span>Event Schedule</span>
             </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-6">
+              {/* Event Duration */}
               <div>
-                <label className="block text-gray-400 text-sm mb-2">Start Date & Time *</label>
-                <input
-                  type="datetime-local"
-                  required
-                  value={formData.start_date}
-                  onChange={(e) => handleInputChange('start_date', e.target.value)}
-                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                />
+                <h3 className="text-lg font-semibold text-white mb-4">Event Duration</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">
+                      Event Start Date & Time *
+                      <span className="text-gray-500 text-xs block">When your event begins</span>
+                    </label>
+                    <input
+                      type="datetime-local"
+                      required
+                      value={formData.start_date}
+                      onChange={(e) => handleInputChange('start_date', e.target.value)}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">
+                      Event End Date & Time *
+                      <span className="text-gray-500 text-xs block">When your event concludes (can be multiple days later)</span>
+                    </label>
+                    <input
+                      type="datetime-local"
+                      required
+                      value={formData.end_date}
+                      onChange={(e) => handleInputChange('end_date', e.target.value)}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                    />
+                  </div>
+                </div>
+                
+                {/* Event Duration Calculator */}
+                {formData.start_date && formData.end_date && (
+                  <div className="mt-3 p-3 bg-electric-500/10 border border-electric-500/20 rounded-lg">
+                    <p className="text-electric-400 text-sm">
+                      📅 Event Duration: {(() => {
+                        const start = new Date(formData.start_date);
+                        const end = new Date(formData.end_date);
+                        const diffTime = end.getTime() - start.getTime();
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        const diffHours = Math.ceil(diffTime / (1000 * 60 * 60));
+                        
+                        if (diffDays > 1) {
+                          return `${diffDays} days (Multi-day event)`;
+                        } else if (diffHours > 24) {
+                          return `${diffHours} hours (Single day event)`;
+                        } else {
+                          return `${diffHours} hours (Same day event)`;
+                        }
+                      })()}
+                    </p>
+                  </div>
+                )}
               </div>
 
-              <div>
-                <label className="block text-gray-400 text-sm mb-2">End Date & Time *</label>
-                <input
-                  type="datetime-local"
-                  required
-                  value={formData.end_date}
-                  onChange={(e) => handleInputChange('end_date', e.target.value)}
-                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-gray-400 text-sm mb-2">Registration Deadline</label>
-                <input
-                  type="datetime-local"
-                  value={formData.registration_deadline}
-                  onChange={(e) => handleInputChange('registration_deadline', e.target.value)}
-                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-gray-400 text-sm mb-2">Early Bird Deadline</label>
-                <input
-                  type="datetime-local"
-                  value={formData.early_bird_deadline}
-                  onChange={(e) => handleInputChange('early_bird_deadline', e.target.value)}
-                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                />
+              {/* Registration Settings */}
+              <div className="border-t border-gray-600/30 pt-6">
+                <h3 className="text-lg font-semibold text-white mb-4">Registration Settings</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">
+                      Registration Deadline
+                      <span className="text-gray-500 text-xs block">When registration closes (optional)</span>
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={formData.registration_deadline}
+                      onChange={(e) => handleInputChange('registration_deadline', e.target.value)}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                    />
+                  </div>
+                  
+                  <div className="flex items-end">
+                    <div className="text-gray-400 text-sm">
+                      <p className="mb-2">💡 <strong>Multi-Day Event Tips:</strong></p>
+                      <ul className="text-xs space-y-1 text-gray-500">
+                        <li>• Set start/end times to span entire event duration</li>
+                        <li>• Registration deadline typically 1-2 weeks before start</li>
+                        <li>• Use the Event Schedule section below for daily activities</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1246,12 +1308,16 @@ export default function EditEvent() {
           <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
             <h2 className="text-xl font-bold text-white mb-6 flex items-center space-x-2">
               <DollarSign className="h-5 w-5 text-electric-500" />
-              <span>Pricing</span>
+              <span>Registration Pricing</span>
             </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-6">
+              {/* General Registration Fee */}
               <div>
-                <label className="block text-gray-400 text-sm mb-2">Registration Fee *</label>
+                <label className="block text-gray-400 text-sm mb-2">
+                  General Registration Fee *
+                  <span className="text-gray-500 text-xs block">Default registration fee (used if member/non-member pricing not set)</span>
+                </label>
                 <input
                   type="number"
                   min="0"
@@ -1264,18 +1330,7 @@ export default function EditEvent() {
                 />
               </div>
 
-              <div>
-                <label className="block text-gray-400 text-sm mb-2">Early Bird Fee</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formData.early_bird_fee || ''}
-                  onChange={(e) => handleInputChange('early_bird_fee', e.target.value ? parseFloat(e.target.value) : null)}
-                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                  placeholder="Optional early bird pricing"
-                />
-              </div>
+              {/* Single Registration Fee - Member/Non-Member pricing removed */}
             </div>
           </div>
 
@@ -1398,7 +1453,7 @@ export default function EditEvent() {
           </div>
 
           {/* Event Director Contact */}
-          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+          <div data-section="event-director" className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
             <h2 className="text-xl font-bold text-white mb-6 flex items-center space-x-2">
               <Users className="h-5 w-5 text-electric-500" />
               <span>Event Director Contact</span>
@@ -1772,21 +1827,32 @@ export default function EditEvent() {
             {/* Template Selection */}
             <div className="mb-4">
               <label className="block text-gray-400 text-sm mb-2">Or select from rules templates:</label>
-              <select
-                onChange={(e) => {
-                  if (e.target.value) {
-                    loadRulesTemplate(e.target.value);
-                  }
-                }}
-                className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-              >
-                <option value="">Choose a rules template...</option>
-                {getRulesTemplates().map(template => (
-                  <option key={template.id} value={template.id}>
-                    {template.name}
-                  </option>
-                ))}
-              </select>
+              {configLoading ? (
+                <div className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-gray-400 flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
+                  <span>Loading templates...</span>
+                </div>
+              ) : configError ? (
+                <div className="w-full p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+                  Error loading templates: {configError}
+                </div>
+              ) : (
+                <select
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      loadRulesTemplate(e.target.value);
+                    }
+                  }}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                >
+                  <option value="">Choose a rules template...</option>
+                  {getRulesTemplates().map(template => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             {/* Custom Rules Content */}
@@ -1838,9 +1904,9 @@ export default function EditEvent() {
         {showAddNewOrganizer && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
-              <h3 className="text-xl font-bold text-white mb-4">Add Organizer Contact Information</h3>
+              <h3 className="text-xl font-bold text-white mb-4">Add External Organizer Contact</h3>
               <p className="text-gray-400 text-sm mb-4">
-                Enter contact details for the event organizer. This will populate the event director contact fields.
+                Enter contact details for an external event organizer. No user account is required - this will simply populate the event director contact fields for display purposes.
               </p>
               
               <div className="space-y-4">
@@ -1912,4 +1978,6 @@ export default function EditEvent() {
       </div>
     </div>
   );
-}
+});
+
+export default EditEvent;

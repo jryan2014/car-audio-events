@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { MapPin } from 'lucide-react';
-import { loadGoogleMapsApi, hasValidApiKey, getMapStyles } from '../lib/googleMaps';
+import { loadGoogleMapsApi } from '../lib/googleMaps';
 
 interface EventLocationMapProps {
   latitude: number;
@@ -27,12 +27,58 @@ export default function EventLocationMap({
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Refs for cleanup
+  const markerRef = useRef<google.maps.Marker | null>(null);
+  const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
+  const listenersRef = useRef<google.maps.MapsEventListener[]>([]);
+  
   const fullAddress = `${address}, ${city}, ${state}, ${country}`;
   
   // Check if Google Maps API key is configured
+  const hasValidApiKey = () => {
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+    return apiKey && apiKey !== 'your-google-maps-api-key-here' && apiKey.length > 10;
+  };
+  
   const GOOGLE_MAPS_CONFIGURED = hasValidApiKey();
 
   useEffect(() => {
+    // Cleanup function to prevent memory leaks
+    const cleanup = () => {
+      console.log('🧹 Cleaning up EventLocationMap resources...');
+      
+      // Clear all event listeners
+      listenersRef.current.forEach(listener => {
+        if (listener) {
+          google.maps.event.removeListener(listener);
+        }
+      });
+      listenersRef.current = [];
+      
+      // Close and clear info window
+      if (infoWindowRef.current) {
+        infoWindowRef.current.close();
+        infoWindowRef.current = null;
+      }
+      
+      // Clear marker
+      if (markerRef.current) {
+        markerRef.current.setMap(null);
+        markerRef.current = null;
+      }
+      
+      // Clear map
+      if (map) {
+        // Remove all listeners from map
+        google.maps.event.clearInstanceListeners(map);
+        setMap(null);
+      }
+      
+      setIsLoaded(false);
+      setError(null);
+    };
+
     // TEMPORARY DEBUG INFO
     console.log('🗺️ EventLocationMap received coordinates:', {
       latitude,
@@ -43,13 +89,13 @@ export default function EventLocationMap({
 
     if (!GOOGLE_MAPS_CONFIGURED) {
       setError('Google Maps API key not configured');
-      return;
+      return cleanup;
     }
 
     // Validate coordinates
     if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
       setError(`Invalid coordinates: lat=${latitude}, lng=${longitude}`);
-      return;
+      return cleanup;
     }
 
     const initializeMap = async () => {
@@ -65,7 +111,6 @@ export default function EventLocationMap({
         const centerCoords = { lat: latitude, lng: longitude };
         console.log('🎯 Setting map center to:', centerCoords);
         
-        // Force clear any potential Google Maps caching
         const mapOptions: google.maps.MapOptions = {
           zoom: 15,
           center: centerCoords,
@@ -108,6 +153,9 @@ export default function EventLocationMap({
           }
         });
         
+        // Store marker reference for cleanup
+        markerRef.current = marker;
+        
         // Force marker position update after delay
         setTimeout(() => {
           console.log('📍 Force updating marker position to:', markerPosition);
@@ -124,9 +172,14 @@ export default function EventLocationMap({
           `
         });
 
-        marker.addListener('click', () => {
+        // Store info window reference for cleanup
+        infoWindowRef.current = infoWindow;
+
+        // Add click listener and store for cleanup
+        const clickListener = marker.addListener('click', () => {
           infoWindow.open(mapInstance, marker);
         });
+        listenersRef.current.push(clickListener);
 
         setMap(mapInstance);
         setIsLoaded(true);
@@ -138,7 +191,71 @@ export default function EventLocationMap({
     };
 
     initializeMap();
+
+    // Return cleanup function
+    return cleanup;
   }, [latitude, longitude, eventName, fullAddress, GOOGLE_MAPS_CONFIGURED]);
+
+  // Get map styles
+  const getMapStyles = () => {
+    return [
+      {
+        "featureType": "all",
+        "elementType": "geometry",
+        "stylers": [{"color": "#2c3e50"}]
+      },
+      {
+        "featureType": "all",
+        "elementType": "labels.text.fill",
+        "stylers": [{"color": "#ecf0f1"}]
+      },
+      {
+        "featureType": "all",
+        "elementType": "labels.text.stroke",
+        "stylers": [{"color": "#34495e"}]
+      },
+      {
+        "featureType": "administrative",
+        "elementType": "geometry.stroke",
+        "stylers": [{"color": "#34495e"}]
+      },
+      {
+        "featureType": "landscape",
+        "elementType": "geometry",
+        "stylers": [{"color": "#34495e"}]
+      },
+      {
+        "featureType": "poi",
+        "elementType": "geometry",
+        "stylers": [{"color": "#34495e"}]
+      },
+      {
+        "featureType": "road",
+        "elementType": "geometry",
+        "stylers": [{"color": "#34495e"}]
+      },
+      {
+        "featureType": "road",
+        "elementType": "geometry.stroke",
+        "stylers": [{"color": "#2c3e50"}]
+      },
+      {
+        "featureType": "road.highway",
+        "elementType": "geometry",
+        "stylers": [{"color": "#4a5568"}]
+      },
+      {
+        "featureType": "transit",
+        "elementType": "geometry",
+        "stylers": [{"color": "#2c3e50"}]
+      },
+      {
+        "featureType": "water",
+        "elementType": "geometry",
+        "stylers": [{"color": "#1a365d"}]
+      }
+    ];
+  };
   
   const handleOpenInMaps = () => {
     const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`;

@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Calendar, MapPin, Users, Star, Clock, DollarSign, Trophy, ArrowLeft, Heart, Share2, Phone, Globe, Mail } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import PaymentForm from '../components/PaymentForm';
 import EventLocationMap from '../components/EventLocationMap';
 import { supabase } from '../lib/supabase';
+import { memoryManager } from '../utils/memoryManager';
+import { MemoryTestComponent } from '../components/MemoryTestComponent';
 
-export default function EventDetails() {
+const EventDetails = React.memo(function EventDetails() {
   const { id } = useParams();
   const { isAuthenticated, user } = useAuth();
   const [isRegistered, setIsRegistered] = useState(false);
@@ -15,6 +17,12 @@ export default function EventDetails() {
   const [event, setEvent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showDebug, setShowDebug] = useState(false);
+  const [memoryInfo, setMemoryInfo] = useState<any>(null);
+  const [showMemoryTest, setShowMemoryTest] = useState(false);
+  
+  // Use memory manager for better resource cleanup
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Helper function to get class color based on type
   const getClassColor = (className: string) => {
@@ -57,7 +65,30 @@ export default function EventDetails() {
 
 
   useEffect(() => {
-    loadEventDetails();
+    const abortController = new AbortController();
+    
+    const loadEventDetailsWithCleanup = async () => {
+      try {
+        await loadEventDetails();
+      } catch (error) {
+        if (!abortController.signal.aborted) {
+          console.error('Error loading event details:', error);
+        }
+      }
+    };
+    
+    loadEventDetailsWithCleanup();
+    
+    return () => {
+      abortController.abort();
+      // Clear state on unmount to prevent memory leaks
+      setEvent(null);
+      setIsRegistered(false);
+      setIsFavorited(false);
+      setShowPayment(false);
+      setError(null);
+      setShowDebug(false);
+    };
   }, [id]);
 
   const loadEventDetails = async () => {
@@ -370,8 +401,25 @@ export default function EventDetails() {
 
             {/* Event Location Map */}
             {event.latitude && event.longitude && (
-                              <div>
-                  {/* Debug info - TEMPORARY */}
+              <div>
+                {/* Admin Debug Toggle */}
+                {user?.membershipType === 'admin' && (
+                  <div className="mb-4 flex justify-end">
+                    <button
+                      onClick={() => setShowDebug(!showDebug)}
+                      className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                        showDebug 
+                          ? 'bg-red-500/30 text-red-200 border border-red-500/50' 
+                          : 'bg-gray-600/30 text-gray-300 border border-gray-600/50'
+                      }`}
+                    >
+                      {showDebug ? '🐛 Hide Debug' : '🔧 Show Debug'}
+                    </button>
+                  </div>
+                )}
+
+                {/* Debug info - Admin only, toggleable */}
+                {showDebug && user?.membershipType === 'admin' && (
                   <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <div className="text-red-200 font-semibold text-sm">🐛 DEBUG INFO (Event ID: {event.id})</div>
@@ -387,12 +435,38 @@ export default function EventDetails() {
                         </button>
                         <button
                           onClick={() => {
+                            const info = memoryManager.getMemoryInfo();
+                            setMemoryInfo(info);
+                            console.log('🧠 Memory info:', info);
+                          }}
+                          className="bg-purple-500/30 hover:bg-purple-500/50 text-purple-200 px-2 py-1 rounded text-xs font-medium"
+                        >
+                          Memory Info
+                        </button>
+                        <button
+                          onClick={() => {
+                            memoryManager.forceGarbageCollection();
+                            console.log('🗑️ Forced garbage collection');
+                            setTimeout(() => setMemoryInfo(memoryManager.getMemoryInfo()), 1000);
+                          }}
+                          className="bg-green-500/30 hover:bg-green-500/50 text-green-200 px-2 py-1 rounded text-xs font-medium"
+                        >
+                          Force GC
+                        </button>
+                        <button
+                          onClick={() => {
                             console.log('🗺️ Force reloading page to clear all caches...');
                             window.location.reload();
                           }}
                           className="bg-blue-500/30 hover:bg-blue-500/50 text-blue-200 px-2 py-1 rounded text-xs font-medium"
                         >
                           Reload Page
+                        </button>
+                        <button
+                          onClick={() => setShowMemoryTest(true)}
+                          className="bg-yellow-500/30 hover:bg-yellow-500/50 text-yellow-200 px-2 py-1 rounded text-xs font-medium"
+                        >
+                          Memory Test
                         </button>
                       </div>
                     </div>
@@ -404,6 +478,22 @@ export default function EventDetails() {
                       <div>Expected: 40.72081, -88.02913 (correct location from screenshot)</div>
                       <div>Match: {Math.abs(parseFloat(event.latitude) - 40.72081) < 0.00001 && Math.abs(parseFloat(event.longitude) - (-88.02913)) < 0.00001 ? '✅ YES' : '❌ NO'}</div>
                       <div>Data Loaded At: {new Date().toLocaleTimeString()}</div>
+                      
+                      {/* Memory Information */}
+                      {memoryInfo && (
+                        <div className="mt-3 p-2 bg-purple-500/20 border border-purple-500/30 rounded">
+                          <div className="text-purple-200 font-semibold text-xs mb-1">🧠 Memory Usage:</div>
+                          {memoryInfo.used && (
+                            <>
+                              <div>Used: {(memoryInfo.used / 1024 / 1024).toFixed(1)} MB</div>
+                              <div>Total: {(memoryInfo.total / 1024 / 1024).toFixed(1)} MB</div>
+                              <div>Usage: {memoryInfo.percentage.toFixed(1)}%</div>
+                            </>
+                          )}
+                          <div>Checked: {new Date(memoryInfo.timestamp).toLocaleTimeString()}</div>
+                        </div>
+                      )}
+                      
                       <div className="mt-2">
                         <a
                           href={`https://www.google.com/maps/search/?api=1&query=${event.latitude},${event.longitude}`}
@@ -416,6 +506,7 @@ export default function EventDetails() {
                       </div>
                     </div>
                   </div>
+                )}
                 <EventLocationMap
                   key={`map-${event.id}-${event.latitude}-${event.longitude}`} // Force re-render on coordinate change
                   latitude={parseFloat(event.latitude)}
@@ -430,10 +521,10 @@ export default function EventDetails() {
               </div>
             )}
 
-            {/* Schedule */}
-            <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-              <h2 className="text-2xl font-bold text-white mb-6">Event Schedule</h2>
-              {event.schedule && event.schedule.length > 0 ? (
+            {/* Schedule - Only show if there are schedule items */}
+            {event.schedule && event.schedule.length > 0 && (
+              <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+                <h2 className="text-2xl font-bold text-white mb-6">Event Schedule</h2>
                 <div className="space-y-4">
                   {event.schedule.map((item: any, index: number) => (
                     <div key={index} className="flex items-center space-x-4 p-4 bg-gray-700/30 rounded-lg">
@@ -447,15 +538,13 @@ export default function EventDetails() {
                     </div>
                   ))}
                 </div>
-              ) : (
-                <p className="text-gray-400">No schedule information available for this event.</p>
-              )}
-            </div>
+              </div>
+            )}
 
-            {/* Prizes */}
-            <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-              <h2 className="text-2xl font-bold text-white mb-6">Prizes & Awards</h2>
-              {event.prizes && event.prizes.length > 0 ? (
+            {/* Prizes - Only show if there are prizes */}
+            {event.prizes && event.prizes.length > 0 && (
+              <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+                <h2 className="text-2xl font-bold text-white mb-6">Prizes & Awards</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {event.prizes.map((prize: any, index: number) => (
                     <div key={index} className="flex items-center space-x-4 p-4 bg-gray-700/30 rounded-lg">
@@ -469,15 +558,13 @@ export default function EventDetails() {
                     </div>
                   ))}
                 </div>
-              ) : (
-                <p className="text-gray-400">No prize information available for this event.</p>
-              )}
-            </div>
+              </div>
+            )}
 
-            {/* Sponsors */}
-            <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-              <h2 className="text-2xl font-bold text-white mb-6">Event Sponsors</h2>
-              {event.sponsors && event.sponsors.length > 0 ? (
+            {/* Sponsors - Only show if there are sponsors */}
+            {event.sponsors && event.sponsors.length > 0 && (
+              <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+                <h2 className="text-2xl font-bold text-white mb-6">Event Sponsors</h2>
                 <div className="flex flex-wrap gap-4">
                   {event.sponsors.map((sponsor: any, index: number) => (
                     <div key={index} className="flex flex-col items-center space-y-2">
@@ -495,10 +582,8 @@ export default function EventDetails() {
                     </div>
                   ))}
                 </div>
-              ) : (
-                <p className="text-gray-400">No sponsor information available for this event.</p>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           {/* Sidebar */}
@@ -689,6 +774,13 @@ export default function EventDetails() {
           </div>
         </div>
       </div>
+
+      {/* Memory Test Modal */}
+      {showMemoryTest && (
+        <MemoryTestComponent onClose={() => setShowMemoryTest(false)} />
+      )}
     </div>
   );
-}
+});
+
+export default EventDetails;

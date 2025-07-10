@@ -161,7 +161,29 @@ export function useSystemConfiguration(): UseSystemConfigurationReturn {
   };
 
   useEffect(() => {
-    loadData();
+    const abortController = new AbortController();
+    
+    const loadDataWithCleanup = async () => {
+      try {
+        await loadData();
+      } catch (error) {
+        if (!abortController.signal.aborted) {
+          console.error('Error loading system configuration:', error);
+        }
+      }
+    };
+    
+    loadDataWithCleanup();
+    
+    return () => {
+      abortController.abort();
+      // Clear large state objects on unmount
+      setConfigOptions([]);
+      setFormFieldConfigs([]);
+      setRulesTemplates([]);
+      setSavedFormData([]);
+      setCategoriesMap(new Map());
+    };
   }, []);
 
   const getOptionsByCategory = (categoryName: string): ConfigurationOption[] => {

@@ -47,6 +47,7 @@ export default function GoogleMap() {
   const navigate = useNavigate();
   const markersRef = useRef<google.maps.Marker[]>([]);
   const infoWindowsRef = useRef<google.maps.InfoWindow[]>([]);
+  const listenersRef = useRef<google.maps.MapsEventListener[]>([]);
   const mapHeight = window.innerWidth <= 768 ? '400px' : '500px'; // Shorter on mobile
 
   // Check if Google Maps API key is configured
@@ -61,6 +62,57 @@ export default function GoogleMap() {
 
   // Set up event handlers and load script
   useEffect(() => {
+    // Comprehensive cleanup function
+    const cleanup = () => {
+      console.log('🧹 Cleaning up GoogleMap resources...');
+      
+      // Clear all event listeners
+      listenersRef.current.forEach(listener => {
+        if (listener) {
+          google.maps.event.removeListener(listener);
+        }
+      });
+      listenersRef.current = [];
+      
+      // Close and clear all info windows
+      infoWindowsRef.current.forEach(infoWindow => {
+        if (infoWindow) {
+          infoWindow.close();
+        }
+      });
+      infoWindowsRef.current = [];
+      
+      // Clear all markers
+      markersRef.current.forEach(marker => {
+        if (marker) {
+          // Clear any intervals attached to the marker
+          if ((marker as any).blinkInterval) {
+            clearInterval((marker as any).blinkInterval);
+          }
+          marker.setMap(null);
+        }
+      });
+      markersRef.current = [];
+      
+      // Clear map
+      if (map) {
+        // Remove all listeners from map
+        google.maps.event.clearInstanceListeners(map);
+        setMap(null);
+      }
+      
+      // Cleanup global function
+      if (window.navigateToEvent) {
+        delete window.navigateToEvent;
+      }
+      
+      setIsLoaded(false);
+      setIsScriptLoaded(false);
+      setLoading(false);
+      setEvents([]);
+      setError(null);
+    };
+
     // Global function for navigation from info window
     window.navigateToEvent = (eventId: string) => {
       navigate(`/events/${eventId}`);
@@ -71,7 +123,7 @@ export default function GoogleMap() {
       setLoading(false);
       setEvents([]);
       setError('Google Maps API key not configured');
-      return;
+      return cleanup;
     }
 
     // Load Google Maps API
@@ -89,29 +141,8 @@ export default function GoogleMap() {
 
     loadMap();
 
-    return () => {
-      // Cleanup global function
-      if (window.navigateToEvent) {
-        delete window.navigateToEvent;
-      }
-      
-      // Clean up markers and info windows
-      markersRef.current.forEach(marker => {
-        if (marker) {
-          // Clear any intervals attached to the marker
-          if ((marker as any).blinkInterval) {
-            clearInterval((marker as any).blinkInterval);
-          }
-          marker.setMap(null);
-        }
-      });
-      
-      infoWindowsRef.current.forEach(infoWindow => {
-        if (infoWindow) {
-          infoWindow.close();
-        }
-      });
-    };
+    // Return cleanup function
+    return cleanup;
   }, [navigate, GOOGLE_MAPS_CONFIGURED]);
 
   // Function to initialize the map
@@ -154,14 +185,17 @@ export default function GoogleMap() {
       
       console.log('Map instance created:', mapInstance);
       
-      // Add event listeners to track map loading
-      mapInstance.addListener('idle', () => {
+      // Add event listeners to track map loading and store for cleanup
+      const idleListener = mapInstance.addListener('idle', () => {
         console.log('Map is idle (finished loading)');
       });
       
-      mapInstance.addListener('tilesloaded', () => {
+      const tilesLoadedListener = mapInstance.addListener('tilesloaded', () => {
         console.log('Map tiles have finished loading');
       });
+      
+      // Store listeners for cleanup
+      listenersRef.current.push(idleListener, tilesLoadedListener);
       
       setMap(mapInstance);
       setIsLoaded(true);
@@ -273,6 +307,14 @@ export default function GoogleMap() {
       }
     });
     
+    // Clear existing hover windows from global scope
+    for (let i = 0; i < 1000; i++) {
+      if (window[`hoverWindow${i}`]) {
+        window[`hoverWindow${i}`].close();
+        delete window[`hoverWindow${i}`];
+      }
+    }
+    
     // Reset references
     markersRef.current = [];
     infoWindowsRef.current = [];
@@ -339,8 +381,8 @@ export default function GoogleMap() {
       
       infoWindowsRef.current.push(infoWindow);
 
-      // Add click listener
-      marker.addListener('click', (e: any) => {
+      // Add click listener and track for cleanup
+      const clickListener = marker.addListener('click', (e: any) => {
         e.stop();
         
         // Close any open info windows
@@ -352,12 +394,15 @@ export default function GoogleMap() {
         
         infoWindow.open(mapInstance, marker);
       });
+      
+      // Track listener for cleanup
+      listenersRef.current.push(clickListener);
 
       // Add hover effects (only on desktop)
       const isMobile = window.innerWidth <= 768;
       
       if (!isMobile) {
-        marker.addListener('mouseover', () => {
+        const mouseoverListener = marker.addListener('mouseover', () => {
           isHovering = true;
           
           // Close any existing hover windows
@@ -387,7 +432,7 @@ export default function GoogleMap() {
           window[`hoverWindow${index}`] = hoverWindow;
         });
 
-        marker.addListener('mouseout', () => {
+        const mouseoutListener = marker.addListener('mouseout', () => {
           isHovering = false;
           
           marker.setIcon({
@@ -402,9 +447,13 @@ export default function GoogleMap() {
           setTimeout(() => {
             if (window[`hoverWindow${index}`]) {
               window[`hoverWindow${index}`].close();
+              delete window[`hoverWindow${index}`];
             }
           }, 200);
         });
+        
+        // Track hover listeners for cleanup
+        listenersRef.current.push(mouseoverListener, mouseoutListener);
       }
 
       // Store the interval for cleanup
@@ -414,20 +463,11 @@ export default function GoogleMap() {
       markers.push(marker);
       markersRef.current.push(marker);
     });
+
+    // Log marker creation summary
+    console.log(`Created ${markers.length} markers on map`);
     
-    // Add markers to clusterer if we have the MarkerClusterer class
-    if (window.google.maps.MarkerClusterer) {
-      new window.google.maps.MarkerClusterer({
-        map: mapInstance,
-        markers: markers,
-        algorithm: new window.google.maps.SuperClusterAlgorithm({
-          radius: 100,
-          maxZoom: 16
-        })
-      });
-    }
-    
-    // Fit map to markers if we have any
+    // Fit map to show all markers if we have any
     if (markers.length > 0) {
       const bounds = new window.google.maps.LatLngBounds();
       markers.forEach(marker => {
@@ -436,19 +476,20 @@ export default function GoogleMap() {
           bounds.extend(position);
         }
       });
-      mapInstance.fitBounds(bounds);
       
-      // Don't zoom in too far
-      const listener = window.google.maps.event.addListener(mapInstance, 'idle', () => {
-        const zoom = mapInstance.getZoom();
-        if (zoom && zoom > 10) {
-          mapInstance.setZoom(10);
-        }
-        window.google.maps.event.removeListener(listener);
-      });
+      // Only fit bounds if we have multiple markers
+      if (markers.length > 1) {
+        mapInstance.fitBounds(bounds, 50);
+        
+        // Ensure minimum zoom level
+        const listener = mapInstance.addListener('idle', () => {
+          if (mapInstance.getZoom() > 15) {
+            mapInstance.setZoom(15);
+          }
+          google.maps.event.removeListener(listener);
+        });
+      }
     }
-    
-    console.log(`Successfully added ${markers.length} markers to the map`);
   };
 
   const createInfoWindowContent = (event: MapEvent) => {
