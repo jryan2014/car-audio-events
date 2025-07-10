@@ -121,8 +121,7 @@ export default function EditEvent() {
   const [newOrganizerData, setNewOrganizerData] = useState({
     name: '',
     email: '',
-    phone: '',
-    membership_type: 'member'
+    phone: ''
   });
   
   // Use our system configuration hook
@@ -735,14 +734,18 @@ export default function EditEvent() {
     try {
       setIsLoading(true);
       
-      // Create new user
+      // Validate required fields
+      if (!newOrganizerData.name.trim() || !newOrganizerData.email.trim()) {
+        throw new Error('Name and email are required');
+      }
+      
+      // Create new organizer (contact only, not a full user account)
       const { data: newUser, error } = await supabase
         .from('users')
         .insert([{
-          name: newOrganizerData.name,
-          email: newOrganizerData.email,
-          phone: newOrganizerData.phone,
-          membership_type: newOrganizerData.membership_type
+          name: newOrganizerData.name.trim(),
+          email: newOrganizerData.email.trim(),
+          phone: newOrganizerData.phone?.trim() || null
         }])
         .select()
         .single();
@@ -759,10 +762,12 @@ export default function EditEvent() {
       setNewOrganizerData({
         name: '',
         email: '',
-        phone: '',
-        membership_type: 'member'
+        phone: ''
       });
       setShowAddNewOrganizer(false);
+      
+      // Show success message
+      console.log('✅ New organizer created successfully:', newUser.name);
       
     } catch (error: any) {
       console.error('Error creating new organizer:', error);
@@ -1150,6 +1155,91 @@ export default function EditEvent() {
                   <option value="FR">France</option>
                   <option value="JP">Japan</option>
                 </select>
+              </div>
+
+              {/* Coordinate Override Section */}
+              <div className="md:col-span-2">
+                <div className="border-t border-gray-600/50 pt-6 mt-6">
+                  <h3 className="text-lg font-semibold text-white mb-4 flex items-center space-x-2">
+                    <Globe className="h-4 w-4 text-electric-500" />
+                    <span>Location Coordinates</span>
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2">
+                        Latitude
+                        <span className="text-gray-500 text-xs block">Decimal degrees (e.g. 40.715432)</span>
+                      </label>
+                      <input
+                        type="number"
+                        step="any"
+                        value={formData.latitude || ''}
+                        onChange={(e) => handleInputChange('latitude', e.target.value ? parseFloat(e.target.value) : null)}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                        placeholder="Auto-generated from address"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2">
+                        Longitude
+                        <span className="text-gray-500 text-xs block">Decimal degrees (e.g. -88.006928)</span>
+                      </label>
+                      <input
+                        type="number"
+                        step="any"
+                        value={formData.longitude || ''}
+                        onChange={(e) => handleInputChange('longitude', e.target.value ? parseFloat(e.target.value) : null)}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                        placeholder="Auto-generated from address"
+                      />
+                    </div>
+                    <div className="flex flex-col justify-end">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // Re-geocode from address
+                          if (formData.address && formData.city && formData.state) {
+                            const fullAddress = `${formData.address}, ${formData.city}, ${formData.state} ${formData.zip_code}`;
+                            // Note: This would normally call a geocoding service
+                            console.log('Re-geocoding address:', fullAddress);
+                            // For now, just show a message
+                            alert(`Re-geocoding functionality would query coordinates for: ${fullAddress}`);
+                          } else {
+                            alert('Please fill in the address fields first');
+                          }
+                        }}
+                        className="w-full py-3 bg-electric-500/20 border border-electric-500/50 text-electric-400 rounded-lg hover:bg-electric-500/30 transition-colors text-sm font-medium"
+                      >
+                        Re-geocode Address
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {formData.latitude && formData.longitude && (
+                    <div className="mt-4 p-3 bg-gray-700/30 border border-gray-600/50 rounded-lg">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-400">Current coordinates:</span>
+                        <span className="text-electric-400 font-mono">
+                          {formData.latitude.toFixed(6)}, {formData.longitude.toFixed(6)}
+                        </span>
+                      </div>
+                      <div className="mt-2">
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${formData.latitude},${formData.longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-electric-400 hover:text-electric-300 text-xs underline"
+                        >
+                          View on Google Maps ↗
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="mt-3 text-xs text-gray-500">
+                    💡 Tip: If the map shows the wrong location, you can manually adjust these coordinates for accuracy.
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1788,19 +1878,7 @@ export default function EditEvent() {
                   />
                 </div>
                 
-                <div>
-                  <label className="block text-gray-400 text-sm mb-2">Membership Type</label>
-                  <select
-                    value={newOrganizerData.membership_type}
-                    onChange={(e) => setNewOrganizerData(prev => ({ ...prev, membership_type: e.target.value }))}
-                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                  >
-                    <option value="member">Member</option>
-                    <option value="premium">Premium</option>
-                    <option value="business">Business</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </div>
+
               </div>
               
               <div className="flex justify-end space-x-3 mt-6">
@@ -1811,8 +1889,7 @@ export default function EditEvent() {
                     setNewOrganizerData({
                       name: '',
                       email: '',
-                      phone: '',
-                      membership_type: 'member'
+                      phone: ''
                     });
                   }}
                   className="px-4 py-2 border border-gray-600 text-gray-400 rounded-lg hover:bg-gray-700 transition-colors"

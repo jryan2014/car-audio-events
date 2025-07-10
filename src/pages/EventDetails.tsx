@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Calendar, MapPin, Users, Star, Clock, DollarSign, Trophy, ArrowLeft, Heart, Share2 } from 'lucide-react';
+import { Calendar, MapPin, Users, Star, Clock, DollarSign, Trophy, ArrowLeft, Heart, Share2, Phone, Globe, Mail } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import PaymentForm from '../components/PaymentForm';
+import EventLocationMap from '../components/EventLocationMap';
 import { supabase } from '../lib/supabase';
 
 export default function EventDetails() {
@@ -14,6 +15,46 @@ export default function EventDetails() {
   const [event, setEvent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Helper function to get class color based on type
+  const getClassColor = (className: string) => {
+    const classLower = className.toLowerCase();
+    
+    // SPL classes - red variants
+    if (classLower.includes('spl') || classLower.includes('sound pressure')) {
+      return 'bg-red-500';
+    }
+    
+    // Sound Quality classes - green variants  
+    if (classLower.includes('sq') || classLower.includes('sound quality')) {
+      return 'bg-green-500';
+    }
+    
+    // Installation classes - green variants
+    if (classLower.includes('install') || classLower.includes('installation')) {
+      return 'bg-green-700';
+    }
+    
+    // RTA classes - green variants
+    if (classLower.includes('rta') || classLower.includes('real time')) {
+      return 'bg-green-800';
+    }
+    
+    // Show classes - gray variants
+    if (classLower.includes('show') || classLower.includes('shine') || classLower.includes('light')) {
+      return 'bg-gray-600';
+    }
+    
+    // Bass Race - purple
+    if (classLower.includes('bass') || classLower.includes('race')) {
+      return 'bg-purple-500';
+    }
+    
+    // Default - blue
+    return 'bg-blue-500';
+  };
+
+
 
   useEffect(() => {
     loadEventDetails();
@@ -33,6 +74,7 @@ export default function EventDetails() {
       // TODO: Re-enable when edge function CORS is properly configured
 
       // Fallback to direct Supabase query
+      console.log('🔍 Fetching event data for ID:', id, 'at', new Date().toISOString());
       const { data: eventData, error: eventError } = await supabase
         .from('events')
         .select(`
@@ -43,6 +85,14 @@ export default function EventDetails() {
         `)
         .eq('id', id)
         .single();
+
+      console.log('📊 Raw event data received:', {
+        id: eventData?.id,
+        title: eventData?.title,
+        latitude: eventData?.latitude,
+        longitude: eventData?.longitude,
+        timestamp: new Date().toISOString()
+      });
 
       if (eventError) throw eventError;
 
@@ -91,7 +141,10 @@ export default function EventDetails() {
           website: eventData.website || eventData.organizations?.website || '#',
           phone: eventData.contact_phone || eventData.users?.phone || '+1 (555) 123-4567'
         },
-        sponsors: Array.isArray(eventData.sponsors) ? eventData.sponsors : []
+        sponsors: Array.isArray(eventData.sponsors) ? eventData.sponsors : [],
+        // Add organization data for competition classes
+        organization: eventData.organizations || null,
+        competitionClasses: eventData.organizations?.competition_classes || []
       };
 
       setEvent(formattedEvent);
@@ -244,6 +297,139 @@ export default function EventDetails() {
               <p className="text-gray-300 leading-relaxed">{event.description}</p>
             </div>
 
+            {/* Events Offered */}
+            <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+              <h2 className="text-2xl font-bold text-white mb-6">Events Offered</h2>
+              
+              {event.organization?.name && (
+                <div className="mb-6 flex items-center space-x-4 p-4 bg-gray-700/30 rounded-lg">
+                  {event.organization.logo_url && (
+                    <img
+                      src={event.organization.logo_url}
+                      alt={event.organization.name}
+                      className="w-16 h-16 object-contain bg-white/10 rounded-lg p-2"
+                    />
+                  )}
+                  <div>
+                    <span className="text-gray-400 text-sm">Sanctioned by</span>
+                    <div className="text-electric-400 font-semibold text-lg">{event.organization.name}</div>
+                    {event.organization.website && (
+                      <a 
+                        href={event.organization.website} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-electric-300 text-sm hover:text-electric-200"
+                      >
+                        Visit Organization Website
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {event.competitionClasses && event.competitionClasses.length > 0 ? (
+                <div className="flex flex-wrap gap-3">
+                  {event.competitionClasses.map((className, index) => (
+                    <span
+                      key={index}
+                      className={`${getClassColor(className)} text-white px-3 py-2 rounded-lg text-sm font-semibold`}
+                    >
+                      {className}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-gray-400">
+                  <p>Competition classes will be announced closer to the event date.</p>
+                  {!event.organization && (
+                    <p className="text-sm mt-2">This event is not currently sanctioned by a specific organization.</p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Additional Information */}
+            <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+              <h2 className="text-2xl font-bold text-white mb-6">Additional Information</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-3">Event Director</h3>
+                  <p className="text-gray-300 font-medium">{event.organizer?.name || 'Jason Antis'}</p>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-3">Event Contact</h3>
+                  <div className="flex items-center space-x-2">
+                    <Phone className="h-4 w-4 text-electric-500" />
+                    <span className="text-red-400 font-medium border border-red-400 px-2 py-1 rounded">
+                      {event.organizer?.phone || event.contact_phone || '(614)345-8640'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Event Location Map */}
+            {event.latitude && event.longitude && (
+                              <div>
+                  {/* Debug info - TEMPORARY */}
+                  <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-red-200 font-semibold text-sm">🐛 DEBUG INFO (Event ID: {event.id})</div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            console.log('🔄 Force refreshing event data...');
+                            loadEventDetails();
+                          }}
+                          className="bg-red-500/30 hover:bg-red-500/50 text-red-200 px-2 py-1 rounded text-xs font-medium"
+                        >
+                          Refresh Data
+                        </button>
+                        <button
+                          onClick={() => {
+                            console.log('🗺️ Force reloading page to clear all caches...');
+                            window.location.reload();
+                          }}
+                          className="bg-blue-500/30 hover:bg-blue-500/50 text-blue-200 px-2 py-1 rounded text-xs font-medium"
+                        >
+                          Reload Page
+                        </button>
+                      </div>
+                    </div>
+                    <div className="text-red-100 text-xs space-y-1">
+                      <div>Raw DB Latitude: {event.latitude}</div>
+                      <div>Raw DB Longitude: {event.longitude}</div>
+                      <div>Parsed Latitude: {parseFloat(event.latitude)}</div>
+                      <div>Parsed Longitude: {parseFloat(event.longitude)}</div>
+                      <div>Expected: 40.72081, -88.02913 (correct location from screenshot)</div>
+                      <div>Match: {Math.abs(parseFloat(event.latitude) - 40.72081) < 0.00001 && Math.abs(parseFloat(event.longitude) - (-88.02913)) < 0.00001 ? '✅ YES' : '❌ NO'}</div>
+                      <div>Data Loaded At: {new Date().toLocaleTimeString()}</div>
+                      <div className="mt-2">
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${event.latitude},${event.longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-300 hover:text-blue-200 underline text-xs"
+                        >
+                          🗺️ Test Coordinates in New Google Maps Tab ↗
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                <EventLocationMap
+                  key={`map-${event.id}-${event.latitude}-${event.longitude}`} // Force re-render on coordinate change
+                  latitude={parseFloat(event.latitude)}
+                  longitude={parseFloat(event.longitude)}
+                  eventName={event.title}
+                  address={event.address || ''}
+                  city={event.city || ''}
+                  state={event.state || ''}
+                  country={event.country || 'US'}
+                  className="w-full"
+                />
+              </div>
+            )}
+
             {/* Schedule */}
             <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
               <h2 className="text-2xl font-bold text-white mb-6">Event Schedule</h2>
@@ -317,83 +503,131 @@ export default function EventDetails() {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Registration Card */}
-            {showPayment ? (
-              <PaymentForm
-                amount={event.registrationFee}
-                planName="Event Registration"
-                description={`Registration for ${event.title}`}
-                onSuccess={handlePaymentSuccess}
-                onError={handlePaymentError}
-                metadata={{
-                  event_id: event.id,
-                  event_title: event.title
-                }}
-              />
-            ) : (
-              <div className="bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700/50 rounded-xl p-6 sticky top-8">
-                <div className="text-center mb-6">
-                  <div className="text-3xl font-black text-white mb-2">
-                    ${typeof event.registrationFee === 'number' ? event.registrationFee.toFixed(2) : event.registration_fee.toFixed(2)}
+            {/* Registration Card - Only show if registration is enabled and open */}
+            {(event.registration_required !== false && 
+              event.registration_deadline && 
+              new Date(event.registration_deadline) > new Date() &&
+              (!event.maxParticipants || event.participants < event.maxParticipants)) && (
+              showPayment ? (
+                <PaymentForm
+                  amount={event.registrationFee}
+                  planName="Event Registration"
+                  description={`Registration for ${event.title}`}
+                  onSuccess={handlePaymentSuccess}
+                  onError={handlePaymentError}
+                  metadata={{
+                    event_id: event.id,
+                    event_title: event.title
+                  }}
+                />
+              ) : (
+                <div className="bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700/50 rounded-xl p-6 sticky top-6">
+                  <div className="text-center mb-6">
+                    <div className="text-3xl font-black text-white mb-2">
+                      ${typeof event.registrationFee === 'number' ? event.registrationFee.toFixed(2) : event.registration_fee.toFixed(2)}
+                    </div>
+                    <div className="text-gray-400">Registration Fee</div>
                   </div>
-                  <div className="text-gray-400">Registration Fee</div>
-                </div>
 
-                <div className="space-y-4">
-                  {isAuthenticated ? (
-                    <>
-                      <button
-                        onClick={handleRegister}
-                        className={`w-full py-3 rounded-lg font-bold text-lg transition-all duration-200 ${
-                          isRegistered
-                            ? 'bg-green-600 text-white hover:bg-green-700'
-                            : 'bg-electric-500 text-white hover:bg-electric-600 shadow-lg'
-                        }`}
-                      >
-                        {isRegistered ? 'Registered ✓' : 'Register Now'}
-                      </button>
-                      
-                      <div className="flex space-x-2">
+                  <div className="space-y-4">
+                    {isAuthenticated ? (
+                      <>
                         <button
-                          onClick={handleFavorite}
-                          className={`flex-1 flex items-center justify-center space-x-2 py-2 px-4 rounded-lg font-medium transition-all duration-200 ${
-                            isFavorited
-                              ? 'bg-red-600 text-white hover:bg-red-700'
-                              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                          onClick={handleRegister}
+                          className={`w-full py-3 rounded-lg font-bold text-lg transition-all duration-200 ${
+                            isRegistered
+                              ? 'bg-green-600 text-white hover:bg-green-700'
+                              : 'bg-electric-500 text-white hover:bg-electric-600 shadow-lg'
                           }`}
                         >
-                          <Heart className={`h-4 w-4 ${isFavorited ? 'fill-current' : ''}`} />
-                          <span>{isFavorited ? 'Saved' : 'Save'}</span>
+                          {isRegistered ? 'Registered ✓' : 'Register Now'}
                         </button>
-                        <button className="flex items-center justify-center space-x-2 py-2 px-4 bg-gray-700 text-gray-300 rounded-lg font-medium hover:bg-gray-600 transition-all duration-200">
-                          <Share2 className="h-4 w-4" />
-                        </button>
+                        
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={handleFavorite}
+                            className={`flex-1 flex items-center justify-center space-x-2 py-2 px-4 rounded-lg font-medium transition-all duration-200 ${
+                              isFavorited
+                                ? 'bg-red-600 text-white hover:bg-red-700'
+                                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                            }`}
+                          >
+                            <Heart className={`h-4 w-4 ${isFavorited ? 'fill-current' : ''}`} />
+                            <span>{isFavorited ? 'Saved' : 'Save'}</span>
+                          </button>
+                          <button className="flex items-center justify-center space-x-2 py-2 px-4 bg-gray-700 text-gray-300 rounded-lg font-medium hover:bg-gray-600 transition-all duration-200">
+                            <Share2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="space-y-4">
+                        <Link
+                          to="/login"
+                          className="block w-full py-3 bg-electric-500 text-white rounded-lg font-bold text-lg text-center hover:bg-electric-600 transition-all duration-200 shadow-lg"
+                        >
+                          Login to Register
+                        </Link>
+                        <p className="text-gray-400 text-sm text-center">
+                          New to Car Audio Events? <Link to="/register" className="text-electric-400 hover:text-electric-300">Create an account</Link>
+                        </p>
                       </div>
-                    </>
-                  ) : (
-                    <div className="space-y-4">
-                      <Link
-                        to="/login"
-                        className="block w-full py-3 bg-electric-500 text-white rounded-lg font-bold text-lg text-center hover:bg-electric-600 transition-all duration-200 shadow-lg"
-                      >
-                        Login to Register
-                      </Link>
-                      <p className="text-gray-400 text-sm text-center">
-                        New to Car Audio Events? <Link to="/register" className="text-electric-400 hover:text-electric-300">Create an account</Link>
-                      </p>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
+              )
+            )}
+
+            {/* Save Event Button - Available for all logged-in users */}
+            {isAuthenticated && !showPayment && (
+              <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-4">
+                <button
+                  onClick={handleFavorite}
+                  className={`w-full flex items-center justify-center space-x-2 py-3 rounded-lg font-medium transition-all duration-200 ${
+                    isFavorited
+                      ? 'bg-red-600 text-white hover:bg-red-700'
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  <Heart className={`h-5 w-5 ${isFavorited ? 'fill-current' : ''}`} />
+                  <span>{isFavorited ? 'Event Saved' : 'Save Event'}</span>
+                </button>
               </div>
             )}
 
             {/* Event Info */}
             <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
               <h3 className="text-xl font-bold text-white mb-4">Event Details</h3>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div>
                   <div className="text-gray-400 text-sm">Venue</div>
                   <div className="text-white font-medium">{event.venue_name || event.venue}</div>
+                </div>
+                <div>
+                  <div className="text-gray-400 text-sm">Full Address</div>
+                  <div className="text-white font-medium">{event.address}</div>
+                  <div className="text-gray-300 text-sm">{event.city}, {event.state} {event.zip_code}</div>
+                </div>
+                <div>
+                  <div className="text-gray-400 text-sm">Event Dates</div>
+                  <div className="text-white font-medium">
+                    {new Date(event.start_date).toLocaleDateString('en-US', { 
+                      weekday: 'long',
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })}
+                  </div>
+                  {event.start_date !== event.end_date && (
+                    <div className="text-gray-300 text-sm">
+                      Ends: {new Date(event.end_date).toLocaleDateString('en-US', { 
+                        weekday: 'long',
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      })}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <div className="text-gray-400 text-sm">Organizer</div>
@@ -402,13 +636,54 @@ export default function EventDetails() {
                 <div>
                   <div className="text-gray-400 text-sm">Contact</div>
                   <div className="text-electric-400 font-medium">{event.organizer.phone}</div>
+                  {event.contact_email && (
+                    <div className="text-electric-400 text-sm">{event.contact_email}</div>
+                  )}
+                  {event.website && (
+                    <a 
+                      href={event.website} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-electric-300 text-sm hover:text-electric-200 block"
+                    >
+                      Event Website
+                    </a>
+                  )}
                 </div>
                 <div>
-                  <div className="text-gray-400 text-sm">Registration Status</div>
-                  <div className="text-green-400 font-medium">
-                    {new Date(event.registration_deadline) > new Date() ? 'Open' : 'Closed'}
+                  <div className="text-gray-400 text-sm">Registration</div>
+                  <div className={`font-medium ${
+                    event.registration_deadline && new Date(event.registration_deadline) > new Date() 
+                      ? 'text-green-400' 
+                      : 'text-red-400'
+                  }`}>
+                    {event.registration_deadline && new Date(event.registration_deadline) > new Date() ? 'Open' : 'Closed'}
+                  </div>
+                  {event.registration_deadline && (
+                    <div className="text-gray-300 text-sm">
+                      Deadline: {new Date(event.registration_deadline).toLocaleDateString()}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <div className="text-gray-400 text-sm">Participants</div>
+                  <div className="text-white font-medium">
+                    {event.participants || 0} registered
+                    {event.maxParticipants && ` (${event.maxParticipants} max)`}
                   </div>
                 </div>
+                {event.organization?.name && (
+                  <div>
+                    <div className="text-gray-400 text-sm">Sanctioning Body</div>
+                    <div className="text-electric-400 font-medium">{event.organization.name}</div>
+                  </div>
+                )}
+                {(event.season_year || event.metadata?.season_year) && (
+                  <div>
+                    <div className="text-gray-400 text-sm">Competition Season</div>
+                    <div className="text-white font-medium">{event.season_year || event.metadata?.season_year}</div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { MapPin } from 'lucide-react';
+import { loadGoogleMapsApi, hasValidApiKey, getMapStyles } from '../lib/googleMaps';
 
 interface EventLocationMapProps {
   latitude: number;
@@ -20,18 +21,126 @@ export default function EventLocationMap({
   city,
   state,
   country,
-  className = "w-full h-64"
+  className = "w-full h-80"
 }: EventLocationMapProps) {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const [map, setMap] = useState<google.maps.Map | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const fullAddress = `${address}, ${city}, ${state}, ${country}`;
   
-  // For now, using a placeholder map. In production, you'd integrate with:
-  // - Google Maps
-  // - OpenStreetMap/Leaflet
-  // - Mapbox
-  // - Apple Maps
+  // Check if Google Maps API key is configured
+  const GOOGLE_MAPS_CONFIGURED = hasValidApiKey();
+
+  useEffect(() => {
+    // TEMPORARY DEBUG INFO
+    console.log('🗺️ EventLocationMap received coordinates:', {
+      latitude,
+      longitude,
+      eventName,
+      timestamp: new Date().toISOString()
+    });
+
+    if (!GOOGLE_MAPS_CONFIGURED) {
+      setError('Google Maps API key not configured');
+      return;
+    }
+
+    // Validate coordinates
+    if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
+      setError(`Invalid coordinates: lat=${latitude}, lng=${longitude}`);
+      return;
+    }
+
+    const initializeMap = async () => {
+      try {
+        console.log('🗺️ Creating map with center coordinates:', { lat: latitude, lng: longitude });
+        await loadGoogleMapsApi();
+        
+        if (!mapRef.current || !window.google) {
+          throw new Error('Google Maps failed to load');
+        }
+
+        // Create map centered on the event location
+        const centerCoords = { lat: latitude, lng: longitude };
+        console.log('🎯 Setting map center to:', centerCoords);
+        
+        // Force clear any potential Google Maps caching
+        const mapOptions: google.maps.MapOptions = {
+          zoom: 15,
+          center: centerCoords,
+          styles: getMapStyles(),
+          disableDefaultUI: false,
+          zoomControl: true,
+          mapTypeControl: false,
+          scaleControl: false,
+          streetViewControl: true,
+          rotateControl: false,
+          fullscreenControl: true,
+          gestureHandling: 'greedy',
+          // Force refresh with timestamp to prevent caching
+          mapId: `event-map-${Date.now()}`
+        };
+
+        const mapInstance = new window.google.maps.Map(mapRef.current, mapOptions);
+        
+        // Force the map to recenter after a brief delay
+        setTimeout(() => {
+          console.log('🔄 Force recentering map to:', centerCoords);
+          mapInstance.setCenter(centerCoords);
+          mapInstance.setZoom(15);
+        }, 100);
+
+        // Add marker for the event location
+        const markerPosition = { lat: latitude, lng: longitude };
+        console.log('📍 Creating marker at position:', markerPosition);
+        const marker = new window.google.maps.Marker({
+          position: markerPosition,
+          map: mapInstance,
+          title: eventName,
+          icon: {
+            path: window.google.maps.SymbolPath.CIRCLE,
+            scale: 8,
+            fillColor: '#0ea5e9',
+            fillOpacity: 1,
+            strokeColor: '#ffffff',
+            strokeWeight: 2,
+          }
+        });
+        
+        // Force marker position update after delay
+        setTimeout(() => {
+          console.log('📍 Force updating marker position to:', markerPosition);
+          marker.setPosition(markerPosition);
+        }, 200);
+
+        // Add info window
+        const infoWindow = new window.google.maps.InfoWindow({
+          content: `
+            <div style="color: #333; font-family: sans-serif; max-width: 200px;">
+              <h3 style="margin: 0 0 8px 0; font-size: 16px; font-weight: bold;">${eventName}</h3>
+              <p style="margin: 0; font-size: 14px; color: #666;">${fullAddress}</p>
+            </div>
+          `
+        });
+
+        marker.addListener('click', () => {
+          infoWindow.open(mapInstance, marker);
+        });
+
+        setMap(mapInstance);
+        setIsLoaded(true);
+        
+      } catch (err) {
+        console.error('Error initializing Google Maps:', err);
+        setError('Failed to load Google Maps');
+      }
+    };
+
+    initializeMap();
+  }, [latitude, longitude, eventName, fullAddress, GOOGLE_MAPS_CONFIGURED]);
   
   const handleOpenInMaps = () => {
-    // Try to open in native maps app or Google Maps
     const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`;
     window.open(mapsUrl, '_blank');
   };
@@ -55,23 +164,34 @@ export default function EventLocationMap({
       </div>
 
       {/* Map Area */}
-      <div className="relative h-48 bg-gray-700">
-        {/* Placeholder for actual map */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-center">
-            <MapPin className="h-12 w-12 text-electric-500 mx-auto mb-2" />
-            <p className="text-white font-medium">{eventName}</p>
-            <p className="text-gray-400 text-sm">{fullAddress}</p>
-            {latitude && longitude && (
-              <p className="text-xs text-gray-500 mt-1">
-                {latitude.toFixed(6)}, {longitude.toFixed(6)}
-              </p>
-            )}
+      <div className="relative h-80 bg-gray-700">
+        {GOOGLE_MAPS_CONFIGURED && !error ? (
+          <div ref={mapRef} className="w-full h-full" />
+        ) : (
+          /* Fallback placeholder */
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center">
+              <MapPin className="h-12 w-12 text-electric-500 mx-auto mb-2" />
+              <p className="text-white font-medium">{eventName}</p>
+              <p className="text-gray-400 text-sm">{fullAddress}</p>
+              {latitude && longitude && (
+                <p className="text-xs text-gray-500 mt-1">
+                  {latitude.toFixed(6)}, {longitude.toFixed(6)}
+                </p>
+              )}
+              {error && (
+                <p className="text-red-400 text-xs mt-2">{error}</p>
+              )}
+            </div>
           </div>
-        </div>
+        )}
         
-        {/* Overlay for better visibility */}
-        <div className="absolute inset-0 bg-gradient-to-t from-gray-900/50 to-transparent"></div>
+        {/* Loading overlay */}
+        {GOOGLE_MAPS_CONFIGURED && !isLoaded && !error && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-700/50">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-electric-500"></div>
+          </div>
+        )}
       </div>
 
       {/* Address Details */}
