@@ -172,6 +172,11 @@ const EventDetails = React.memo(function EventDetails() {
           website: eventData.website || eventData.organizations?.website || '#',
           phone: eventData.contact_phone || eventData.users?.phone || '+1 (555) 123-4567'
         },
+        eventDirector: {
+          name: `${eventData.event_director_first_name || ''} ${eventData.event_director_last_name || ''}`.trim() || 'Unknown',
+          email: eventData.event_director_email || '',
+          phone: eventData.event_director_phone || ''
+        },
         sponsors: Array.isArray(eventData.sponsors) ? eventData.sponsors : [],
         // Add organization data for competition classes
         organization: eventData.organizations || null,
@@ -385,14 +390,14 @@ const EventDetails = React.memo(function EventDetails() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <h3 className="text-lg font-semibold text-white mb-3">Event Director</h3>
-                  <p className="text-gray-300 font-medium">{event.organizer?.name || 'Jason Antis'}</p>
+                  <p className="text-gray-300 font-medium">{event.eventDirector?.name || 'Jason Antis'}</p>
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-white mb-3">Event Contact</h3>
                   <div className="flex items-center space-x-2">
                     <Phone className="h-4 w-4 text-electric-500" />
                     <span className="text-red-400 font-medium border border-red-400 px-2 py-1 rounded">
-                      {event.organizer?.phone || event.contact_phone || '(614)345-8640'}
+                      {event.eventDirector?.phone || event.contact_phone || '(614)345-8640'}
                     </span>
                   </div>
                 </div>
@@ -715,14 +720,14 @@ const EventDetails = React.memo(function EventDetails() {
                   )}
                 </div>
                 <div>
-                  <div className="text-gray-400 text-sm">Organizer</div>
-                  <div className="text-white font-medium">{event.organizer.name}</div>
+                  <div className="text-gray-400 text-sm">Event Director</div>
+                  <div className="text-white font-medium">{event.eventDirector.name}</div>
                 </div>
                 <div>
                   <div className="text-gray-400 text-sm">Contact</div>
-                  <div className="text-electric-400 font-medium">{event.organizer.phone}</div>
-                  {event.contact_email && (
-                    <div className="text-electric-400 text-sm">{event.contact_email}</div>
+                  <div className="text-electric-400 font-medium">{event.eventDirector.phone}</div>
+                  {event.eventDirector.email && (
+                    <div className="text-electric-400 text-sm">{event.eventDirector.email}</div>
                   )}
                   {event.website && (
                     <a 

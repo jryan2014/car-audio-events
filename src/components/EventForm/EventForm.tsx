@@ -223,7 +223,13 @@ export const EventForm: React.FC<EventFormProps> = ({
     e.preventDefault();
     setShowValidationSummary(true);
     
-    const validation = validateEventForm(formData);
+    // Ensure registration_deadline is always a string for validation
+    const cleanedFormData = {
+      ...formData,
+      registration_deadline: formData.registration_deadline ? String(formData.registration_deadline) : ''
+    };
+    
+    const validation = validateEventForm(cleanedFormData);
     
     if (!validation.success) {
       setValidationErrors(formatValidationErrors(validation.error));
@@ -236,7 +242,7 @@ export const EventForm: React.FC<EventFormProps> = ({
     
     setIsSubmitting(true);
     try {
-      await onSubmit(formData);
+      await onSubmit(cleanedFormData);
     } catch (error) {
       console.error('Error submitting form:', error);
     } finally {
