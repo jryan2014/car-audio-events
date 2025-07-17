@@ -272,7 +272,8 @@ const EditEvent = React.memo(function EditEvent() {
         contact_phone: formData.contact_phone,
         website_url: formData.website,
         image_url: formData.image_url || null,
-        image_position: formData.image_position || 50,
+        // Temporarily comment out image_position until schema cache updates
+        // image_position: formData.image_position || 50,
         event_director_first_name: formData.event_director_first_name,
         event_director_last_name: formData.event_director_last_name,
         event_director_email: formData.event_director_email,
@@ -311,6 +312,21 @@ const EditEvent = React.memo(function EditEvent() {
         .eq('id', id);
 
       if (error) throw error;
+      
+      // Try to update image_position separately to avoid schema cache issues
+      if (formData.image_position !== undefined && formData.image_position !== 50) {
+        try {
+          const { error: positionError } = await supabase.rpc('exec_sql', {
+            sql_command: `UPDATE events SET image_position = ${formData.image_position} WHERE id = ${id}`
+          });
+          if (positionError) {
+            console.warn('Could not update image position:', positionError);
+          }
+        } catch (positionError) {
+          console.warn('Could not update image position:', positionError);
+          // Continue anyway - this is not critical
+        }
+      }
       
       setSuccess(true);
       

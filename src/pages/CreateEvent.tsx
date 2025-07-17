@@ -135,7 +135,8 @@ export default function CreateEvent() {
         contact_phone: formData.contact_phone,
         website_url: formData.website,
         image_url: formData.image_url || null,
-        image_position: formData.image_position || 50,
+        // Temporarily comment out image_position until schema cache updates
+        // image_position: formData.image_position || 50,
         rules: formData.rules,
         organization_id: formData.sanction_body_id || null,
         organizer_id: formData.organizer_id || user?.id || null,
