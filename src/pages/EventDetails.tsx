@@ -214,6 +214,35 @@ const EventDetails = React.memo(function EventDetails() {
     setIsFavorited(!isFavorited);
   };
 
+  const handleShare = async (platform: string) => {
+    const eventUrl = window.location.href;
+    const eventTitle = event?.title || 'Check out this event';
+    const eventDescription = event?.description || '';
+
+    switch (platform) {
+      case 'facebook':
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(eventUrl)}`, '_blank');
+        break;
+      case 'twitter':
+        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(eventTitle)}&url=${encodeURIComponent(eventUrl)}`, '_blank');
+        break;
+      case 'linkedin':
+        window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(eventUrl)}`, '_blank');
+        break;
+      case 'whatsapp':
+        window.open(`https://wa.me/?text=${encodeURIComponent(eventTitle + ' ' + eventUrl)}`, '_blank');
+        break;
+      case 'copy':
+        try {
+          await navigator.clipboard.writeText(eventUrl);
+          alert('Event link copied to clipboard!');
+        } catch (err) {
+          console.error('Failed to copy:', err);
+        }
+        break;
+    }
+  };
+
   const handlePaymentSuccess = (paymentIntentId: string, userInfo?: any) => {
     setIsRegistered(true);
     setShowPayment(false);
@@ -294,46 +323,94 @@ const EventDetails = React.memo(function EventDetails() {
                 </div>
               </div>
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent pointer-events-none"></div>
-            <div className="absolute bottom-6 left-6 right-6">
-              <div className="flex flex-wrap items-center gap-2 mb-4">
+            {/* Mobile: Simple header without overlay text */}
+            <div className="md:hidden p-6 bg-gray-900">
+              <div className="flex flex-wrap items-center gap-2 mb-3">
                 {event.featured && (
-                  <div className="bg-electric-500 text-white px-3 py-1 rounded-full text-sm font-bold flex items-center space-x-1">
+                  <div className="bg-electric-500 text-white px-2 py-1 rounded-full text-xs font-bold flex items-center space-x-1">
                     <Star className="h-3 w-3" />
-                    <span>Featured Event</span>
+                    <span>Featured</span>
                   </div>
                 )}
-                <div className="bg-black/70 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-medium">
+                <div className="bg-gray-700 text-white px-2 py-1 rounded-full text-xs font-medium">
                   {event.category}
                 </div>
-                {event.registration_deadline && (
-                  <div className="bg-yellow-500/70 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-medium flex items-center space-x-1">
-                    <Clock className="h-3 w-3" />
-                    <span>Register by {new Date(event.registration_deadline).toLocaleDateString()}</span>
-                  </div>
-                )}
               </div>
-              <h1 className="text-3xl lg:text-5xl font-black text-white mb-4 leading-tight">
+              <h1 className="text-2xl font-black text-white mb-3 leading-tight">
                 {event.title}
               </h1>
-              <div className="flex flex-wrap items-center gap-6 text-gray-300">
-                <div className="flex items-center space-x-2">
-                  <Calendar className="h-5 w-5 text-electric-500" />
-                  <span className="font-medium">{event.date}</span>
+            </div>
+            
+            {/* Desktop: Original overlay design */}
+            <div className="hidden md:block">
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent pointer-events-none"></div>
+              <div className="absolute bottom-6 left-6 right-6">
+                <div className="flex flex-wrap items-center gap-2 mb-4">
+                  {event.featured && (
+                    <div className="bg-electric-500 text-white px-3 py-1 rounded-full text-sm font-bold flex items-center space-x-1">
+                      <Star className="h-3 w-3" />
+                      <span>Featured Event</span>
+                    </div>
+                  )}
+                  <div className="bg-black/70 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-medium">
+                    {event.category}
+                  </div>
+                  {event.registration_deadline && (
+                    <div className="bg-yellow-500/70 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-medium flex items-center space-x-1">
+                      <Clock className="h-3 w-3" />
+                      <span>Register by {new Date(event.registration_deadline).toLocaleDateString()}</span>
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center space-x-2">
-                  <MapPin className="h-5 w-5 text-electric-500" />
-                  <span className="font-medium">{event.location}</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Users className="h-5 w-5 text-electric-500" />
-                  <span className="font-medium">
-                    {event.participants}
-                    {event.maxParticipants ? `/${event.maxParticipants}` : ''} Registered
-                  </span>
+                <h1 className="text-3xl lg:text-5xl font-black text-white mb-4 leading-tight">
+                  {event.title}
+                </h1>
+                <div className="flex flex-wrap items-center gap-6 text-gray-300">
+                  <div className="flex items-center space-x-2">
+                    <Calendar className="h-5 w-5 text-electric-500" />
+                    <span className="font-medium">{event.date}</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <MapPin className="h-5 w-5 text-electric-500" />
+                    <span className="font-medium">{event.location}</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Users className="h-5 w-5 text-electric-500" />
+                    <span className="font-medium">
+                      {event.participants}
+                      {event.maxParticipants ? `/${event.maxParticipants}` : ''} Registered
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Mobile Event Info Bar */}
+        <div className="md:hidden bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-4 mb-6">
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="flex items-center space-x-2">
+              <Calendar className="h-4 w-4 text-electric-500" />
+              <span className="text-gray-300">{event.date}</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <MapPin className="h-4 w-4 text-electric-500" />
+              <span className="text-gray-300">{event.location}</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Users className="h-4 w-4 text-electric-500" />
+              <span className="text-gray-300">
+                {event.participants}
+                {event.maxParticipants ? `/${event.maxParticipants}` : ''} Registered
+              </span>
+            </div>
+            {event.registration_deadline && (
+              <div className="flex items-center space-x-2">
+                <Clock className="h-4 w-4 text-yellow-500" />
+                <span className="text-gray-300">Reg by {new Date(event.registration_deadline).toLocaleDateString()}</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -606,97 +683,113 @@ const EventDetails = React.memo(function EventDetails() {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Registration Card - Only show if registration is enabled and open */}
-            {(event.registration_required !== false && 
-              event.registration_deadline && 
-              new Date(event.registration_deadline) > new Date() &&
-              (!event.maxParticipants || event.participants < event.maxParticipants)) && (
-              showPayment ? (
-                <PaymentForm
-                  amount={event.registrationFee}
-                  planName="Event Registration"
-                  description={`Registration for ${event.title}`}
-                  onSuccess={handlePaymentSuccess}
-                  onError={handlePaymentError}
-                  metadata={{
-                    event_id: event.id,
-                    event_title: event.title
-                  }}
-                />
-              ) : (
-                <div className="bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700/50 rounded-xl p-6 sticky top-6">
-                  <div className="text-center mb-6">
-                    <div className="text-3xl font-black text-white mb-2">
-                      ${typeof event.registrationFee === 'number' ? event.registrationFee.toFixed(2) : event.registration_fee.toFixed(2)}
-                    </div>
-                    <div className="text-gray-400">Registration Fee</div>
+            {/* Registration/Save Card */}
+            <div className="bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700/50 rounded-xl p-6 sticky top-6">
+              {/* Show registration fee only if event has pre-registration and fee > 0 */}
+              {event.registration_deadline && 
+               new Date(event.registration_deadline) > new Date() &&
+               event.registrationFee > 0 && (
+                <div className="text-center mb-6">
+                  <div className="text-3xl font-black text-white mb-2">
+                    ${typeof event.registrationFee === 'number' ? event.registrationFee.toFixed(2) : '0.00'}
                   </div>
+                  <div className="text-gray-400">Pre-Registration Fee</div>
+                </div>
+              )}
 
-                  <div className="space-y-4">
-                    {isAuthenticated ? (
-                      <>
-                        <button
-                          onClick={handleRegister}
-                          className={`w-full py-3 rounded-lg font-bold text-lg transition-all duration-200 ${
-                            isRegistered
-                              ? 'bg-green-600 text-white hover:bg-green-700'
-                              : 'bg-electric-500 text-white hover:bg-electric-600 shadow-lg'
-                          }`}
-                        >
-                          {isRegistered ? 'Registered ✓' : 'Register Now'}
+              <div className="space-y-4">
+                {isAuthenticated ? (
+                  <>
+                    {/* Show Register button only if registration deadline exists and hasn't passed */}
+                    {event.registration_deadline && 
+                     new Date(event.registration_deadline) > new Date() &&
+                     (!event.maxParticipants || event.participants < event.maxParticipants) && (
+                      <button
+                        onClick={handleRegister}
+                        className={`w-full py-3 rounded-lg font-bold text-lg transition-all duration-200 ${
+                          isRegistered
+                            ? 'bg-green-600 text-white hover:bg-green-700'
+                            : 'bg-electric-500 text-white hover:bg-electric-600 shadow-lg'
+                        }`}
+                      >
+                        {isRegistered ? 'Registered ✓' : event.registrationFee > 0 ? 'Pre-Register Now' : 'Register Now'}
+                      </button>
+                    )}
+                    
+                    {/* Save and Share buttons */}
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={handleFavorite}
+                        className={`flex-1 flex items-center justify-center space-x-2 py-2 px-4 rounded-lg font-medium transition-all duration-200 ${
+                          isFavorited
+                            ? 'bg-red-600 text-white hover:bg-red-700'
+                            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        }`}
+                      >
+                        <Heart className={`h-4 w-4 ${isFavorited ? 'fill-current' : ''}`} />
+                        <span>{isFavorited ? 'Saved' : 'Save Event'}</span>
+                      </button>
+                      <div className="relative group">
+                        <button className="flex items-center justify-center space-x-2 py-2 px-4 bg-gray-700 text-gray-300 rounded-lg font-medium hover:bg-gray-600 transition-all duration-200">
+                          <Share2 className="h-4 w-4" />
+                          <span>Share</span>
                         </button>
-                        
-                        <div className="flex space-x-2">
+                        {/* Share dropdown */}
+                        <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-xl border border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
                           <button
-                            onClick={handleFavorite}
-                            className={`flex-1 flex items-center justify-center space-x-2 py-2 px-4 rounded-lg font-medium transition-all duration-200 ${
-                              isFavorited
-                                ? 'bg-red-600 text-white hover:bg-red-700'
-                                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                            }`}
+                            onClick={() => handleShare('facebook')}
+                            className="flex items-center space-x-3 w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
                           >
-                            <Heart className={`h-4 w-4 ${isFavorited ? 'fill-current' : ''}`} />
-                            <span>{isFavorited ? 'Saved' : 'Save'}</span>
+                            <span>Facebook</span>
                           </button>
-                          <button className="flex items-center justify-center space-x-2 py-2 px-4 bg-gray-700 text-gray-300 rounded-lg font-medium hover:bg-gray-600 transition-all duration-200">
-                            <Share2 className="h-4 w-4" />
+                          <button
+                            onClick={() => handleShare('twitter')}
+                            className="flex items-center space-x-3 w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+                          >
+                            <span>Twitter</span>
+                          </button>
+                          <button
+                            onClick={() => handleShare('linkedin')}
+                            className="flex items-center space-x-3 w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+                          >
+                            <span>LinkedIn</span>
+                          </button>
+                          <button
+                            onClick={() => handleShare('whatsapp')}
+                            className="flex items-center space-x-3 w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+                          >
+                            <span>WhatsApp</span>
+                          </button>
+                          <div className="border-t border-gray-700"></div>
+                          <button
+                            onClick={() => handleShare('copy')}
+                            className="flex items-center space-x-3 w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+                          >
+                            <span>Copy Link</span>
                           </button>
                         </div>
-                      </>
-                    ) : (
-                      <div className="space-y-4">
-                        <Link
-                          to="/login"
-                          className="block w-full py-3 bg-electric-500 text-white rounded-lg font-bold text-lg text-center hover:bg-electric-600 transition-all duration-200 shadow-lg"
-                        >
-                          Login to Register
-                        </Link>
-                        <p className="text-gray-400 text-sm text-center">
-                          New to Car Audio Events? <Link to="/register" className="text-electric-400 hover:text-electric-300">Create an account</Link>
-                        </p>
                       </div>
-                    )}
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-4">
+                    <Link
+                      to="/login"
+                      className="block w-full py-3 bg-electric-500 text-white rounded-lg font-bold text-lg text-center hover:bg-electric-600 transition-all duration-200 shadow-lg"
+                    >
+                      Login to Save Event
+                    </Link>
+                    <p className="text-gray-400 text-sm text-center">
+                      Members can save events to their favorites and get notifications
+                    </p>
+                    <p className="text-gray-400 text-sm text-center">
+                      New to Car Audio Events? <Link to="/register" className="text-electric-400 hover:text-electric-300">Create an account</Link>
+                    </p>
                   </div>
-                </div>
-              )
-            )}
-
-            {/* Save Event Button - Available for all logged-in users */}
-            {isAuthenticated && !showPayment && (
-              <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-4">
-                <button
-                  onClick={handleFavorite}
-                  className={`w-full flex items-center justify-center space-x-2 py-3 rounded-lg font-medium transition-all duration-200 ${
-                    isFavorited
-                      ? 'bg-red-600 text-white hover:bg-red-700'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  }`}
-                >
-                  <Heart className={`h-5 w-5 ${isFavorited ? 'fill-current' : ''}`} />
-                  <span>{isFavorited ? 'Event Saved' : 'Save Event'}</span>
-                </button>
+                )}
               </div>
-            )}
+            </div>
+
 
             {/* Event Info */}
             <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
