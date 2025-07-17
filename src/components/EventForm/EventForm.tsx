@@ -8,6 +8,7 @@ import { AlertCircle } from 'lucide-react';
 
 // Lazy load form sections for better performance
 const BasicInfoSection = React.lazy(() => import('./sections/BasicInfoSection'));
+const ImageSection = React.lazy(() => import('./sections/ImageSection'));
 const ScheduleSection = React.lazy(() => import('./sections/ScheduleSection'));
 const LocationSection = React.lazy(() => import('./sections/LocationSection'));
 const PricingSection = React.lazy(() => import('./sections/PricingSection'));
@@ -81,6 +82,7 @@ export const EventForm: React.FC<EventFormProps> = ({
     ],
     sponsors: [''],
     image_url: '',
+    image_position: 50,
     first_place_trophy: false,
     second_place_trophy: false,
     third_place_trophy: false,
@@ -291,6 +293,15 @@ export const EventForm: React.FC<EventFormProps> = ({
           users={users}
           selectedOrganization={selectedOrganization}
           isAdmin={isAdmin}
+          updateField={updateField}
+          getFieldError={getFieldError}
+          touchField={touchField}
+        />
+      </React.Suspense>
+
+      <React.Suspense fallback={<SectionSkeleton />}>
+        <ImageSection
+          formData={formData}
           updateField={updateField}
           getFieldError={getFieldError}
           touchField={touchField}

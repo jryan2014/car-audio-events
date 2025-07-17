@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Calendar, MapPin, Users, Star, Clock, DollarSign, Trophy, ArrowLeft, Heart, Share2, Phone, Globe, Mail } from 'lucide-react';
+import { Calendar, MapPin, Users, Star, Clock, DollarSign, Trophy, ArrowLeft, Heart, Share2, Phone, Globe, Mail, X, ZoomIn } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import PaymentForm from '../components/PaymentForm';
 import EventLocationMap from '../components/EventLocationMap';
@@ -18,6 +18,7 @@ const EventDetails = React.memo(function EventDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showDebug, setShowDebug] = useState(false);
+  const [showLightbox, setShowLightbox] = useState(false);
   const [memoryInfo, setMemoryInfo] = useState<any>(null);
   const [showMemoryTest, setShowMemoryTest] = useState(false);
   
@@ -149,6 +150,7 @@ const EventDetails = React.memo(function EventDetails() {
         category_color: eventData.event_categories?.color || '#0ea5e9',
         image: eventData.image_url || 
                "https://images.pexels.com/photos/1127000/pexels-photo-1127000.jpeg?auto=compress&cs=tinysrgb&w=1200&h=600&dpr=2",
+        imagePosition: eventData.image_position || 50,
         images: imagesData || [],
         featured: eventData.is_featured,
         date: `${new Date(eventData.start_date).toLocaleDateString('en-US', { 
@@ -275,13 +277,24 @@ const EventDetails = React.memo(function EventDetails() {
         <div className="bg-gradient-to-r from-gray-800 to-gray-900 rounded-2xl overflow-hidden mb-8 border border-gray-700/50">
           <div className="relative">
             {event.image && (
-              <img 
-                src={event.image} 
-                alt={event.title}
-                className="w-full h-64 md:h-80 object-cover"
-              />
+              <div 
+                className="relative cursor-pointer group"
+                onClick={() => setShowLightbox(true)}
+              >
+                <img 
+                  src={event.image} 
+                  alt={event.title}
+                  className="w-full h-64 md:h-80 object-cover transition-transform group-hover:scale-105"
+                  style={{
+                    objectPosition: `center ${event.imagePosition}%`
+                  }}
+                />
+                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <ZoomIn className="h-12 w-12 text-white" />
+                </div>
+              </div>
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent pointer-events-none"></div>
             <div className="absolute bottom-6 left-6 right-6">
               <div className="flex flex-wrap items-center gap-2 mb-4">
                 {event.featured && (
@@ -779,6 +792,49 @@ const EventDetails = React.memo(function EventDetails() {
           </div>
         </div>
       </div>
+
+      {/* Event Flier Section */}
+      {event.image && event.image !== "https://images.pexels.com/photos/1127000/pexels-photo-1127000.jpeg?auto=compress&cs=tinysrgb&w=1200&h=600&dpr=2" && (
+        <div className="mt-8">
+          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+            <h3 className="text-lg font-semibold text-white mb-4">Event Flier</h3>
+            <div 
+              className="inline-block cursor-pointer group"
+              onClick={() => setShowLightbox(true)}
+            >
+              <img 
+                src={event.image} 
+                alt={`${event.title} flier`}
+                className="w-full max-w-md h-auto rounded-lg shadow-lg transition-transform group-hover:scale-105"
+              />
+              <p className="text-sm text-gray-400 mt-2 text-center">Click to view full size</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox */}
+      {showLightbox && event.image && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setShowLightbox(false)}
+        >
+          <div className="relative max-w-full max-h-full">
+            <button
+              onClick={() => setShowLightbox(false)}
+              className="absolute -top-10 right-0 text-white hover:text-gray-300 transition-colors"
+            >
+              <X className="h-8 w-8" />
+            </button>
+            <img 
+              src={event.image} 
+              alt={event.title}
+              className="max-w-full max-h-[90vh] object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Memory Test Modal */}
       {showMemoryTest && (

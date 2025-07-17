@@ -51,6 +51,7 @@ export interface EventFormData {
   schedule: EventScheduleItem[];
   sponsors: string[];
   image_url?: string;
+  image_position?: number;
   
   // Additional Details
   first_place_trophy: boolean;
