@@ -326,7 +326,11 @@ const EditEvent = React.memo(function EditEvent() {
   };
 
   const handleCancel = () => {
-    navigate(-1);
+    if (user?.membershipType === 'admin') {
+      navigate('/admin/events');
+    } else {
+      navigate('/events');
+    }
   };
 
   if (!canEditEvents) {
@@ -378,7 +382,7 @@ const EditEvent = React.memo(function EditEvent() {
         {/* Header */}
         <div className="flex items-center space-x-4 mb-8">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => user?.membershipType === 'admin' ? navigate('/admin/events') : navigate('/events')}
             className="text-electric-400 hover:text-electric-300 transition-colors"
           >
             <ArrowLeft className="h-6 w-6" />

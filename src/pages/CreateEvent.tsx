@@ -168,7 +168,11 @@ export default function CreateEvent() {
       
       // Redirect after success
       setTimeout(() => {
-        navigate('/events');
+        if (user?.membershipType === 'admin') {
+          navigate('/admin/events');
+        } else {
+          navigate('/events');
+        }
       }, 2000);
 
     } catch (error: any) {
@@ -178,7 +182,11 @@ export default function CreateEvent() {
   };
 
   const handleCancel = () => {
-    navigate('/events');
+    if (user?.membershipType === 'admin') {
+      navigate('/admin/events');
+    } else {
+      navigate('/events');
+    }
   };
 
   // Initial form data with user defaults
@@ -225,7 +233,7 @@ export default function CreateEvent() {
         {/* Header */}
         <div className="flex items-center space-x-4 mb-8">
           <button
-            onClick={() => navigate('/events')}
+            onClick={() => user?.membershipType === 'admin' ? navigate('/admin/events') : navigate('/events')}
             className="text-gray-400 hover:text-white transition-colors"
           >
             <ArrowLeft className="h-6 w-6" />
