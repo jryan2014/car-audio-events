@@ -13,8 +13,7 @@ import { loadStripe } from '@stripe/stripe-js';
 import { Elements, useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
 import { loadPayPalSDK } from '../lib/payments';
-
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
+import { getStripeConfig } from '../services/paymentConfigService';
 
 interface BillingOverview {
   subscription: Subscription | null;
@@ -345,6 +344,7 @@ export default function UserBilling() {
   const [processingAction, setProcessingAction] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [stripePromise, setStripePromise] = useState<any>(null);
 
   // Redirect if not logged in
   if (!user) {
@@ -356,6 +356,29 @@ export default function UserBilling() {
       loadBillingData();
     }
   }, [user]);
+
+  // Load Stripe configuration from payment settings
+  useEffect(() => {
+    const initializeStripe = async () => {
+      try {
+        const stripeConfig = await getStripeConfig();
+        if (stripeConfig.publishableKey) {
+          const stripe = loadStripe(stripeConfig.publishableKey);
+          setStripePromise(stripe);
+        }
+      } catch (error) {
+        console.error('Failed to load Stripe config:', error);
+        // Fallback to environment variable if payment settings fetch fails
+        const envKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+        if (envKey) {
+          const stripe = loadStripe(envKey);
+          setStripePromise(stripe);
+        }
+      }
+    };
+
+    initializeStripe();
+  }, []);
 
   const loadBillingData = async () => {
     if (!user?.id) return;
@@ -463,10 +486,9 @@ export default function UserBilling() {
     );
   }
 
-  return (
-    <Elements stripe={stripePromise}>
-      <div className="min-h-screen py-8">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+  const content = (
+    <div className="min-h-screen py-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Page Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-white">Billing & Subscription</h1>
@@ -1142,6 +1164,12 @@ export default function UserBilling() {
           />
         </div>
       </div>
-    </Elements>
   );
+
+  // Only wrap with Elements if Stripe is configured
+  return stripePromise ? (
+    <Elements stripe={stripePromise}>
+      {content}
+    </Elements>
+  ) : content;
 } 

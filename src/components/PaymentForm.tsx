@@ -628,8 +628,14 @@ const PaymentForm: React.FC<PaymentFormProps> = (props) => {
       } catch (error) {
         console.error('Failed to initialize Stripe:', error);
         // Fallback to environment variable
-        const fallbackStripe = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
-        setStripePromise(fallbackStripe);
+        const fallbackKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+        if (fallbackKey) {
+          const fallbackStripe = loadStripe(fallbackKey);
+          setStripePromise(fallbackStripe);
+        } else {
+          console.warn('No Stripe publishable key available');
+          setStripePromise(null);
+        }
       }
     };
 
