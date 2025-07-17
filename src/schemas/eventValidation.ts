@@ -9,8 +9,8 @@ const optionalString = z.string().optional();
 const phoneRegex = /^[\d\s()+-]+$/;
 const emailSchema = z.string().email('Invalid email address');
 
-// Event form validation schema
-export const eventFormSchema = z.object({
+// Create base schema without refinements
+const baseEventSchema = z.object({
   // Basic Information
   title: requiredString('Event title')
     .max(200, 'Event title must be less than 200 characters'),
@@ -133,7 +133,10 @@ export const eventFormSchema = z.object({
   is_active: z.boolean(),
   status: z.enum(['draft', 'pending_approval', 'approved', 'published', 'cancelled', 'completed']),
   approval_status: z.enum(['pending', 'approved', 'rejected'])
-}).superRefine((data, ctx) => {
+});
+
+// Event form validation schema with refinements
+export const eventFormSchema = baseEventSchema.superRefine((data, ctx) => {
   // Custom validations that depend on multiple fields
   
   // End date must be after start date
@@ -199,7 +202,7 @@ export const eventFormSchema = z.object({
 export type ValidatedEventFormData = z.infer<typeof eventFormSchema>;
 
 // Partial schema for draft saves
-export const eventDraftSchema = eventFormSchema.partial();
+export const eventDraftSchema = baseEventSchema.partial();
 
 // Helper function to validate form data
 export function validateEventForm(data: unknown) {
