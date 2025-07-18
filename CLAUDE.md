@@ -5,10 +5,11 @@ When starting a new session, read this file to understand the project context an
 
 ## Project Overview
 - **Name**: Car Audio Events Competition Platform
-- **Version**: 1.16.2
+- **Version**: 1.17.1
 - **Tech Stack**: React, TypeScript, Supabase, Tailwind CSS, Vite
 - **Database**: Supabase (PostgreSQL)
 - **Deployment**: Netlify
+- **Storage**: Supabase Storage (event-images bucket)
 
 ## Critical Project Information
 
@@ -89,6 +90,13 @@ Environment variables are set in Netlify dashboard, NOT in code.
 - `competitor` - Regular users
 - `sponsor` - Business sponsors
 
+#### Event Management
+- Event flier image upload with Supabase Storage
+- Image position control (0-100%) for header display
+- Mobile-optimized event details view
+- Social sharing integration
+- Pre-registration vs day-of-event pricing
+
 #### Memory Management
 - Comprehensive memory optimization system in place
 - See `src/utils/memoryManager.ts`
@@ -110,6 +118,14 @@ const result = await supabaseAdmin.getRLSStatus();
 ```javascript
 const sqlContent = fs.readFileSync('migration-file.sql', 'utf8');
 await supabaseAdmin.runSQLFile(sqlContent);
+```
+
+#### Add Database Columns
+```javascript
+// When schema cache issues occur, use exec_sql RPC
+await supabase.rpc('exec_sql', {
+  sql_command: 'ALTER TABLE events ADD COLUMN image_position integer DEFAULT 50'
+});
 ```
 
 ### 7. Security Best Practices
@@ -162,6 +178,12 @@ When starting a new session, tell the AI:
 - Created reusable database administration utility
 - Set up secure environment variable handling
 - Implemented comprehensive security policies
+- Fixed event form validation errors for numeric ID fields
+- Restored and enhanced event flier image functionality
+- Added image upload to Supabase storage with position control
+- Improved mobile UX for event details page
+- Implemented social sharing features (Facebook, Twitter, LinkedIn, WhatsApp)
+- Updated registration fee display logic for better clarity
 
 ---
 Last Updated: January 2025
