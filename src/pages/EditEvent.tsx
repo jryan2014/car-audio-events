@@ -246,7 +246,16 @@ const EditEvent = React.memo(function EditEvent() {
       // Get category name for legacy category field
       const selectedCategory = categories.find(cat => cat.id === formData.category_id);
 
-      console.log('Saving event with image_position:', formData.image_position);
+      // Ensure image_position is a number
+      const imagePosition = typeof formData.image_position === 'number' ? 
+        formData.image_position : 
+        (formData.image_position ? parseInt(formData.image_position.toString(), 10) : 50);
+      
+      console.log('Image position before save:', {
+        original: formData.image_position,
+        type: typeof formData.image_position,
+        parsed: imagePosition
+      });
       
       const eventUpdateData = {
         id,
@@ -272,7 +281,7 @@ const EditEvent = React.memo(function EditEvent() {
         contact_phone: formData.contact_phone,
         website_url: formData.website,
         image_url: formData.image_url || null,
-        image_position: formData.image_position || 50,
+        image_position: imagePosition,
         event_director_first_name: formData.event_director_first_name,
         event_director_last_name: formData.event_director_last_name,
         event_director_email: formData.event_director_email,
@@ -305,12 +314,49 @@ const EditEvent = React.memo(function EditEvent() {
         longitude: formData.longitude
       };
 
-      const { error } = await supabase
+      console.log('Full update payload:', eventUpdateData);
+      console.log('Specifically image_position in payload:', eventUpdateData.image_position);
+      
+      const { data: updateResult, error } = await supabase
         .from('events')
         .update(eventUpdateData)
-        .eq('id', id);
+        .eq('id', id)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Update error:', error);
+        throw error;
+      }
+      
+      console.log('Update result:', updateResult);
+      console.log('Updated image_position:', updateResult?.[0]?.image_position);
+      
+      // Force update image_position using exec_sql as a workaround
+      if (typeof imagePosition === 'number') {
+        console.log('Forcing image_position update via exec_sql');
+        try {
+          const { error: execError } = await supabase.rpc('exec_sql', {
+            sql_command: `UPDATE events SET image_position = $1 WHERE id = $2`,
+            bindings: [imagePosition, parseInt(id)]
+          });
+          
+          if (execError) {
+            // Try without bindings
+            const { error: execError2 } = await supabase.rpc('exec_sql', {
+              sql_command: `UPDATE events SET image_position = ${imagePosition} WHERE id = '${id}'`
+            });
+            if (execError2) {
+              console.error('Failed to update image_position via exec_sql:', execError2);
+            } else {
+              console.log('Successfully updated image_position via exec_sql (no bindings)');
+            }
+          } else {
+            console.log('Successfully updated image_position via exec_sql');
+          }
+        } catch (e) {
+          console.error('Error updating image_position:', e);
+        }
+      }
 
       // Update competition classes
       // First, delete existing classes
