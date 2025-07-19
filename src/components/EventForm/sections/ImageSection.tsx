@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Upload, Link, Image as ImageIcon, Trash2, AlertCircle, Move } from 'lucide-react';
 import { EventFormData } from '../../../types/event';
 import { supabase } from '../../../lib/supabase';
@@ -19,8 +19,15 @@ const ImageSection: React.FC<ImageSectionProps> = ({
   const [uploadMethod, setUploadMethod] = useState<'upload' | 'url'>('url');
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string>(formData.image_url || '');
-  const [imagePosition, setImagePosition] = useState<number>(50); // Default center position
+  const [imagePosition, setImagePosition] = useState<number>(formData.image_position || 50); // Initialize with saved position
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Sync imagePosition when formData changes (e.g., when editing an existing event)
+  useEffect(() => {
+    if (formData.image_position !== undefined) {
+      setImagePosition(formData.image_position);
+    }
+  }, [formData.image_position]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

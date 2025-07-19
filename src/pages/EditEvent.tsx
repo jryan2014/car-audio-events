@@ -268,8 +268,7 @@ const EditEvent = React.memo(function EditEvent() {
         contact_phone: formData.contact_phone,
         website_url: formData.website,
         image_url: formData.image_url || null,
-        // Temporarily comment out image_position until schema cache updates
-        // image_position: formData.image_position || 50,
+        image_position: formData.image_position || 50,
         event_director_first_name: formData.event_director_first_name,
         event_director_last_name: formData.event_director_last_name,
         event_director_email: formData.event_director_email,
