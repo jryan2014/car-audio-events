@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { EventFormData, EventScheduleItem, Organization, EventCategory, DatabaseUser } from '../../types/event';
+import { EventFormData, EventScheduleItem, Organization, EventCategory, DatabaseUser, COUNTRIES } from '../../types/event';
 import { validateEventForm, validateEventDraft, formatValidationErrors } from '../../schemas/eventValidation';
 import { useDebounce } from '../../hooks/useDebounce';
 import { geocodingService } from '../../services/geocoding';
@@ -215,10 +215,13 @@ export const EventForm: React.FC<EventFormProps> = ({
     
     // Only geocode if we have a complete address
     if (debouncedAddress && formData.address && formData.city && formData.state) {
+      // Convert country code to country name for geocoding
+      const countryName = COUNTRIES.find(c => c.code === formData.country)?.name || formData.country;
+      
       geocodingService.geocodeAddress(
         formData.city, 
         formData.state, 
-        formData.country,
+        countryName,
         formData.address,
         formData.zip_code
       )

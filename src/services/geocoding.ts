@@ -81,7 +81,8 @@ class GeocodingService {
    * Geocode using OpenStreetMap Nominatim (Free)
    */
   private async geocodeWithNominatim(address: string): Promise<GeocodeResult | null> {
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1&countrycodes=us`;
+    // Remove country restriction to support worldwide geocoding
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`;
     
     const response = await fetch(url, {
       headers: {
@@ -153,7 +154,8 @@ class GeocodingService {
       throw new Error('Mapbox API key not configured');
     }
 
-    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${apiKey}&country=us&limit=1`;
+    // Remove country restriction to support worldwide geocoding
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${apiKey}&limit=1`;
     
     const response = await fetch(url);
     
