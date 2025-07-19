@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Search, MapPin, Phone, Globe, Star, Filter, Building, Wrench, Heart, Eye, Package, DollarSign } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -137,7 +137,7 @@ export default function Directory() {
     }
   };
 
-  const handleAdvancedSearch = (filters: any) => {
+  const handleAdvancedSearch = useCallback((filters: any) => {
     setCurrentFilters(filters);
     setViewMode(filters.viewMode);
     let filtered = [...listings];
@@ -253,12 +253,12 @@ export default function Directory() {
     });
 
     setFilteredListings(filtered);
-  };
+  }, [listings]);
 
-  const handleSearchReset = () => {
+  const handleSearchReset = useCallback(() => {
     setCurrentFilters(null);
     setFilteredListings(listings);
-  };
+  }, [listings]);
 
   // Get unique locations and types for filters
   const locations = [...new Set(listings.map(listing => `${listing.city}, ${listing.state}`))];
