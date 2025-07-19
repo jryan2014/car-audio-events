@@ -196,14 +196,20 @@ export default function CreateDirectoryListing() {
         return;
       }
 
-      // Success! Redirect to pending confirmation
-      navigate('/directory/pending', { 
-        state: { 
-          listingId: data.id,
-          listingType: formData.listing_type,
-          businessName: formData.business_name || formData.item_title
-        }
-      });
+      // Success! Redirect to appropriate location based on user type
+      if (user.membershipType === 'admin') {
+        // Admin users go back to admin directory page
+        navigate('/admin/directory');
+      } else {
+        // Regular users go to pending confirmation
+        navigate('/directory/pending', { 
+          state: { 
+            listingId: data.id,
+            listingType: formData.listing_type,
+            businessName: formData.business_name || formData.item_title
+          }
+        });
+      }
 
     } catch (error) {
       console.error('Error creating listing:', error);
@@ -432,7 +438,7 @@ export default function CreateDirectoryListing() {
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center space-x-4">
             <Link
-              to="/directory"
+              to={user.membershipType === 'admin' ? '/admin/directory' : '/directory'}
               className="text-gray-400 hover:text-white transition-colors"
             >
               <ArrowLeft className="h-6 w-6" />
