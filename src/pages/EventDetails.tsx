@@ -333,13 +333,6 @@ const EventDetails = React.memo(function EventDetails() {
                   style={{
                     objectPosition: `center ${event.imagePosition !== null && event.imagePosition !== undefined ? event.imagePosition : 50}%`
                   }}
-                  onLoad={(e) => {
-                    console.log('🖼️ Image loaded');
-                    console.log('  - event.imagePosition:', event.imagePosition);
-                    console.log('  - event.image_position:', event.image_position);
-                    console.log('  - Computed style:', `center ${event.imagePosition !== null && event.imagePosition !== undefined ? event.imagePosition : 50}%`);
-                    console.log('  - Actual computed style:', window.getComputedStyle(e.currentTarget).objectPosition);
-                  }}
                 />
                 <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                   <ZoomIn className="h-12 w-12 text-white" />
