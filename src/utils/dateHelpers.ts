@@ -43,7 +43,13 @@ export function formatDateForDateInput(dateString: string | null | undefined): s
   if (!dateString) return '';
   
   try {
-    const date = new Date(dateString);
+    // If it's just a date string (YYYY-MM-DD), return as is
+    if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      return dateString;
+    }
+    
+    // Otherwise parse and format
+    const date = parseLocalDate(dateString);
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -53,4 +59,21 @@ export function formatDateForDateInput(dateString: string | null | undefined): s
     console.error('Error formatting date:', error);
     return '';
   }
+}
+
+/**
+ * Parse a date string as local date (not UTC)
+ * This prevents timezone shifts when displaying dates
+ */
+export function parseLocalDate(dateString: string | null | undefined): Date {
+  if (!dateString) return new Date();
+  
+  // If it's just a date (YYYY-MM-DD), parse it as local midnight
+  if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  }
+  
+  // Otherwise parse normally
+  return new Date(dateString);
 }

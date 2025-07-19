@@ -6,6 +6,7 @@ import PaymentForm from '../components/PaymentForm';
 import EventLocationMap from '../components/EventLocationMap';
 import { supabase } from '../lib/supabase';
 import { memoryManager } from '../utils/memoryManager';
+import { parseLocalDate } from '../utils/dateHelpers';
 import { MemoryTestComponent } from '../components/MemoryTestComponent';
 
 const EventDetails = React.memo(function EventDetails() {
@@ -155,10 +156,10 @@ const EventDetails = React.memo(function EventDetails() {
         imagePosition: eventData.image_position !== null && eventData.image_position !== undefined ? eventData.image_position : 50,
         images: imagesData || [],
         featured: eventData.is_featured,
-        date: `${new Date(eventData.start_date).toLocaleDateString('en-US', { 
+        date: `${parseLocalDate(eventData.start_date).toLocaleDateString('en-US', { 
           month: 'long', 
           day: 'numeric' 
-        })} - ${new Date(eventData.end_date).toLocaleDateString('en-US', { 
+        })} - ${parseLocalDate(eventData.end_date).toLocaleDateString('en-US', { 
           month: 'long', 
           day: 'numeric', 
           year: 'numeric' 
@@ -824,7 +825,7 @@ const EventDetails = React.memo(function EventDetails() {
                 <div>
                   <div className="text-gray-400 text-sm">Event Dates</div>
                   <div className="text-white font-medium">
-                    {new Date(event.start_date).toLocaleDateString('en-US', { 
+                    {parseLocalDate(event.start_date).toLocaleDateString('en-US', { 
                       weekday: 'long',
                       year: 'numeric', 
                       month: 'long', 
@@ -833,7 +834,7 @@ const EventDetails = React.memo(function EventDetails() {
                   </div>
                   {event.start_date !== event.end_date && (
                     <div className="text-gray-300 text-sm">
-                      Ends: {new Date(event.end_date).toLocaleDateString('en-US', { 
+                      Ends: {parseLocalDate(event.end_date).toLocaleDateString('en-US', { 
                         weekday: 'long',
                         year: 'numeric', 
                         month: 'long', 
