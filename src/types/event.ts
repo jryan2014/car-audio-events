@@ -181,6 +181,19 @@ export const COUNTRIES = [
   { code: 'DO', name: 'Dominican Republic' },
   { code: 'JM', name: 'Jamaica' },
   { code: 'TT', name: 'Trinidad and Tobago' },
+  { code: 'VI', name: 'U.S. Virgin Islands' },
+  { code: 'VG', name: 'British Virgin Islands' },
+  { code: 'PR', name: 'Puerto Rico' },
+  { code: 'BB', name: 'Barbados' },
+  { code: 'BS', name: 'Bahamas' },
+  { code: 'KY', name: 'Cayman Islands' },
+  { code: 'BM', name: 'Bermuda' },
+  { code: 'CU', name: 'Cuba' },
+  { code: 'HT', name: 'Haiti' },
+  { code: 'GU', name: 'Guam' },
+  { code: 'FJ', name: 'Fiji' },
+  { code: 'PG', name: 'Papua New Guinea' },
+  { code: 'NF', name: 'Norfolk Island' },
 ] as const;
 
 // US States data
