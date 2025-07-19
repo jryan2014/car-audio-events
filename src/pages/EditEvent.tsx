@@ -115,9 +115,6 @@ const EditEvent = React.memo(function EditEvent() {
 
       if (error) throw error;
 
-      console.log('Loaded event data:', event);
-      console.log('Event image_position from database:', event.image_position);
-
       // Load competition classes for this event
       const { data: competitionClasses, error: classesError } = await supabase
         .from('event_competition_classes')
@@ -251,12 +248,6 @@ const EditEvent = React.memo(function EditEvent() {
         formData.image_position : 
         (formData.image_position ? parseInt(formData.image_position.toString(), 10) : 50);
       
-      console.log('Image position before save:', {
-        original: formData.image_position,
-        type: typeof formData.image_position,
-        parsed: imagePosition
-      });
-      
       const eventUpdateData = {
         id,
         title: formData.title,
@@ -314,49 +305,12 @@ const EditEvent = React.memo(function EditEvent() {
         longitude: formData.longitude
       };
 
-      console.log('Full update payload:', eventUpdateData);
-      console.log('Specifically image_position in payload:', eventUpdateData.image_position);
-      
-      const { data: updateResult, error } = await supabase
+      const { error } = await supabase
         .from('events')
         .update(eventUpdateData)
-        .eq('id', id)
-        .select();
+        .eq('id', id);
 
-      if (error) {
-        console.error('Update error:', error);
-        throw error;
-      }
-      
-      console.log('Update result:', updateResult);
-      console.log('Updated image_position:', updateResult?.[0]?.image_position);
-      
-      // Force update image_position using exec_sql as a workaround
-      if (typeof imagePosition === 'number') {
-        console.log('Forcing image_position update via exec_sql');
-        try {
-          const { error: execError } = await supabase.rpc('exec_sql', {
-            sql_command: `UPDATE events SET image_position = $1 WHERE id = $2`,
-            bindings: [imagePosition, parseInt(id)]
-          });
-          
-          if (execError) {
-            // Try without bindings
-            const { error: execError2 } = await supabase.rpc('exec_sql', {
-              sql_command: `UPDATE events SET image_position = ${imagePosition} WHERE id = '${id}'`
-            });
-            if (execError2) {
-              console.error('Failed to update image_position via exec_sql:', execError2);
-            } else {
-              console.log('Successfully updated image_position via exec_sql (no bindings)');
-            }
-          } else {
-            console.log('Successfully updated image_position via exec_sql');
-          }
-        } catch (e) {
-          console.error('Error updating image_position:', e);
-        }
-      }
+      if (error) throw error;
 
       // Update competition classes
       // First, delete existing classes

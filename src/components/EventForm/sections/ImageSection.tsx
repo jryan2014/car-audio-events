@@ -108,7 +108,6 @@ const ImageSection: React.FC<ImageSectionProps> = ({
   };
 
   const handlePositionChange = (position: number) => {
-    console.log('Image position changing to:', position);
     setImagePosition(position);
     // Store position in metadata or as a separate field
     updateField('image_position', position);

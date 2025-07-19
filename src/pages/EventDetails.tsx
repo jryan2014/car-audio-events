@@ -328,7 +328,7 @@ const EventDetails = React.memo(function EventDetails() {
                   alt={event.title}
                   className="w-full h-64 md:h-80 object-cover transition-transform group-hover:scale-105"
                   style={{
-                    objectPosition: `center ${event.imagePosition}%`
+                    objectPosition: `center ${event.imagePosition || 50}%`
                   }}
                 />
                 <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
