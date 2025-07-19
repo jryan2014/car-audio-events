@@ -231,7 +231,7 @@ export default function AdminUsers() {
     setFilteredUsers(filtered);
   };
 
-  const handleUserAction = async (userId: string, action: string) => {
+  const handleUserAction = async (userId: string, action: 'suspend' | 'activate' | 'approve' | 'ban' | 'verify_email' | 'delete') => {
     try {
       // Check if we have a valid session and user is authenticated
       if (!session || !user) {
@@ -334,9 +334,6 @@ export default function AdminUsers() {
           case 'verify_email':
             await ActivityLogger.userVerified(userEmail, userName);
             break;
-          case 'delete':
-            await ActivityLogger.userDeleted(userEmail, userName);
-            break;
         }
       } catch (logError) {
         console.warn('Failed to log user action:', logError);
@@ -362,9 +359,6 @@ export default function AdminUsers() {
           break;
         case 'verify_email':
           showSuccess('Email verified successfully');
-          break;
-        case 'delete':
-          // Success message already shown in delete case above
           break;
         default:
           showSuccess(`User ${action} successful`);
