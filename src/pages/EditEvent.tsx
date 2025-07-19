@@ -114,6 +114,9 @@ const EditEvent = React.memo(function EditEvent() {
         .single();
 
       if (error) throw error;
+      
+      console.log('DEBUG: Raw event data from DB:', event);
+      console.log('DEBUG: image_position from DB:', event.image_position);
 
       // Load competition classes for this event
       const { data: competitionClasses, error: classesError } = await supabase
@@ -207,7 +210,7 @@ const EditEvent = React.memo(function EditEvent() {
         schedule: processSchedule(),
         sponsors: processSponsors(),
         image_url: event.image_url || '',
-        image_position: event.image_position || 50,
+        image_position: event.image_position !== null && event.image_position !== undefined ? event.image_position : 50,
         first_place_trophy: event.first_place_trophy || false,
         second_place_trophy: event.second_place_trophy || false,
         third_place_trophy: event.third_place_trophy || false,
@@ -229,6 +232,7 @@ const EditEvent = React.memo(function EditEvent() {
       };
 
 
+      console.log('DEBUG: Setting eventData with image_position:', transformedData.image_position);
       setEventData(transformedData);
     } catch (error: any) {
       console.error('Error loading event:', error);
@@ -244,9 +248,11 @@ const EditEvent = React.memo(function EditEvent() {
       const selectedCategory = categories.find(cat => cat.id === formData.category_id);
 
       // Ensure image_position is a number
+      console.log('DEBUG: formData.image_position:', formData.image_position, 'type:', typeof formData.image_position);
       const imagePosition = typeof formData.image_position === 'number' ? 
         formData.image_position : 
         (formData.image_position ? parseInt(formData.image_position.toString(), 10) : 50);
+      console.log('DEBUG: Parsed imagePosition:', imagePosition);
       
       const eventUpdateData = {
         id,
@@ -305,12 +311,49 @@ const EditEvent = React.memo(function EditEvent() {
         longitude: formData.longitude
       };
 
-      const { error } = await supabase
+      console.log('DEBUG: Saving event with image_position:', imagePosition);
+      console.log('DEBUG: eventUpdateData.image_position:', eventUpdateData.image_position);
+      console.log('DEBUG: Full eventUpdateData keys:', Object.keys(eventUpdateData));
+      console.log('DEBUG: Full eventUpdateData:', JSON.stringify(eventUpdateData, null, 2));
+
+      console.log('DEBUG: About to update with user:', user);
+      console.log('DEBUG: User membership type:', user?.membershipType);
+      console.log('DEBUG: Updating event ID:', id);
+      
+      const { data: updateResult, error } = await supabase
         .from('events')
         .update(eventUpdateData)
-        .eq('id', id);
+        .eq('id', id)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('DEBUG: Update error:', error);
+        console.error('DEBUG: Error code:', error.code);
+        console.error('DEBUG: Error message:', error.message);
+        throw error;
+      }
+      
+      console.log('DEBUG: Update result:', updateResult);
+      console.log('DEBUG: Update result length:', updateResult?.length);
+      console.log('DEBUG: Updated image_position to:', updateResult?.[0]?.image_position);
+      
+      if (updateResult?.length === 0) {
+        console.error('DEBUG: Update returned empty array - RLS blocking update!');
+        
+        // Try a simple test update
+        console.log('DEBUG: Trying simple image_position only update...');
+        const { data: testUpdate, error: testError } = await supabase
+          .from('events')
+          .update({ image_position: imagePosition })
+          .eq('id', id)
+          .select('id, image_position');
+          
+        if (testError) {
+          console.error('DEBUG: Simple update also failed:', testError);
+        } else {
+          console.log('DEBUG: Simple update result:', testUpdate);
+        }
+      }
 
       // Update competition classes
       // First, delete existing classes
@@ -395,6 +438,7 @@ const EditEvent = React.memo(function EditEvent() {
   }
 
   if (!eventData) {
+    console.log('DEBUG: eventData is null, loading...');
     return (
       <div className="min-h-screen flex items-center justify-center py-8">
         <div className="text-center">
@@ -435,16 +479,19 @@ const EditEvent = React.memo(function EditEvent() {
 
         {/* Event Form - Only render when data is loaded */}
         {eventData && (
-          <EventForm
-            initialData={eventData}
-            onSubmit={handleSubmit}
-            isEditMode={true}
-            categories={categories}
-            organizations={organizations}
-            users={users}
-            isAdmin={user?.membershipType === 'admin'}
-            onCancel={handleCancel}
-          />
+          <>
+            {console.log('DEBUG: Rendering EventForm with eventData.image_position:', eventData.image_position)}
+            <EventForm
+              initialData={eventData}
+              onSubmit={handleSubmit}
+              isEditMode={true}
+              categories={categories}
+              organizations={organizations}
+              users={users}
+              isAdmin={user?.membershipType === 'admin'}
+              onCancel={handleCancel}
+            />
+          </>
         )}
       </div>
     </div>

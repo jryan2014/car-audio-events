@@ -145,13 +145,14 @@ const EventDetails = React.memo(function EventDetails() {
 
       // Format the event data
       console.log('🎯 Image position from DB:', eventData.image_position);
+      console.log('📊 Full eventData:', eventData);
       const formattedEvent = {
         ...eventData,
         category: eventData.event_categories?.name || 'Event',
         category_color: eventData.event_categories?.color || '#0ea5e9',
         image: eventData.image_url || 
                "https://images.pexels.com/photos/1127000/pexels-photo-1127000.jpeg?auto=compress&cs=tinysrgb&w=1200&h=600&dpr=2",
-        imagePosition: eventData.image_position || 50,
+        imagePosition: eventData.image_position !== null && eventData.image_position !== undefined ? eventData.image_position : 50,
         images: imagesData || [],
         featured: eventData.is_featured,
         date: `${new Date(eventData.start_date).toLocaleDateString('en-US', { 
@@ -199,6 +200,7 @@ const EventDetails = React.memo(function EventDetails() {
       // Update event with competition classes
       formattedEvent.competitionClasses = competitionClasses?.map(item => item.competition_class) || [];
 
+      console.log('🎨 Setting formatted event with imagePosition:', formattedEvent.imagePosition);
       setEvent(formattedEvent);
     } catch (error) {
       console.error('Error loading event details:', error);
@@ -329,9 +331,15 @@ const EventDetails = React.memo(function EventDetails() {
                   alt={event.title}
                   className="w-full h-64 md:h-80 object-cover transition-transform group-hover:scale-105"
                   style={{
-                    objectPosition: `center ${event.imagePosition || 50}%`
+                    objectPosition: `center ${event.imagePosition !== null && event.imagePosition !== undefined ? event.imagePosition : 50}%`
                   }}
-                  onLoad={() => console.log('🖼️ Image loaded with position:', event.imagePosition)}
+                  onLoad={(e) => {
+                    console.log('🖼️ Image loaded');
+                    console.log('  - event.imagePosition:', event.imagePosition);
+                    console.log('  - event.image_position:', event.image_position);
+                    console.log('  - Computed style:', `center ${event.imagePosition !== null && event.imagePosition !== undefined ? event.imagePosition : 50}%`);
+                    console.log('  - Actual computed style:', window.getComputedStyle(e.currentTarget).objectPosition);
+                  }}
                 />
                 <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                   <ZoomIn className="h-12 w-12 text-white" />

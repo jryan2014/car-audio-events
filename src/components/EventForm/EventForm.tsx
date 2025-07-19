@@ -40,6 +40,7 @@ export const EventForm: React.FC<EventFormProps> = ({
   isAdmin = false,
   onCancel
 }) => {
+  console.log('DEBUG EventForm: Received initialData with image_position:', initialData?.image_position);
 
   // Form state
   const [formData, setFormData] = useState<EventFormData>(() => ({
@@ -105,7 +106,7 @@ export const EventForm: React.FC<EventFormProps> = ({
     approval_status: 'pending',
     ...initialData
   }));
-
+  
   // UI state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -147,6 +148,9 @@ export const EventForm: React.FC<EventFormProps> = ({
     field: K,
     value: EventFormData[K]
   ) => {
+    if (field === 'image_position') {
+      console.log('DEBUG EventForm: Updating image_position to:', value);
+    }
     setFormData(prev => ({ ...prev, [field]: value }));
     setTouched(prev => new Set(prev).add(field));
     
@@ -255,6 +259,9 @@ export const EventForm: React.FC<EventFormProps> = ({
       registration_deadline: formData.registration_deadline ? String(formData.registration_deadline) : ''
     };
     
+    console.log('DEBUG EventForm handleSubmit: formData.image_position:', formData.image_position);
+    console.log('DEBUG EventForm handleSubmit: cleanedFormData.image_position:', cleanedFormData.image_position);
+    
     const validation = validateEventForm(cleanedFormData);
     
     if (!validation.success) {
@@ -266,6 +273,7 @@ export const EventForm: React.FC<EventFormProps> = ({
       return;
     }
     
+    console.log('DEBUG EventForm: Submitting form with image_position:', cleanedFormData.image_position);
     setIsSubmitting(true);
     try {
       await onSubmit(cleanedFormData);

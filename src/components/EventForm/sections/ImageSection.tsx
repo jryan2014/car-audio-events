@@ -19,11 +19,16 @@ const ImageSection: React.FC<ImageSectionProps> = ({
   const [uploadMethod, setUploadMethod] = useState<'upload' | 'url'>('url');
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string>(formData.image_url || '');
-  const [imagePosition, setImagePosition] = useState<number>(formData.image_position || 50); // Initialize with saved position
+  const [imagePosition, setImagePosition] = useState<number>(
+    formData.image_position !== null && formData.image_position !== undefined 
+      ? formData.image_position 
+      : 50
+  ); // Initialize with saved position
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Sync state when formData changes (e.g., when editing an existing event)
   useEffect(() => {
+    console.log('DEBUG ImageSection: formData.image_position changed to:', formData.image_position);
     if (formData.image_position !== undefined) {
       setImagePosition(formData.image_position);
     }
@@ -108,9 +113,11 @@ const ImageSection: React.FC<ImageSectionProps> = ({
   };
 
   const handlePositionChange = (position: number) => {
+    console.log('DEBUG ImageSection: Changing position to:', position);
     setImagePosition(position);
     // Store position in metadata or as a separate field
     updateField('image_position', position);
+    console.log('DEBUG ImageSection: Called updateField with:', position);
   };
 
   return (
@@ -247,6 +254,7 @@ const ImageSection: React.FC<ImageSectionProps> = ({
                   value={imagePosition}
                   onChange={(e) => handlePositionChange(Number(e.target.value))}
                   className="flex-1"
+                  onMouseUp={() => console.log('DEBUG: Slider released at:', imagePosition)}
                 />
                 <span className="text-sm text-gray-400 w-12 text-right">{imagePosition}%</span>
               </div>
