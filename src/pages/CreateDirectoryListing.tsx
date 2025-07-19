@@ -198,8 +198,8 @@ export default function CreateDirectoryListing() {
 
       // Success! Redirect to appropriate location based on user type
       if (user.membershipType === 'admin') {
-        // Admin users go back to admin directory page
-        navigate('/admin/directory');
+        // Admin users go back to admin directory manager page
+        navigate('/admin/directory-manager');
       } else {
         // Regular users go to pending confirmation
         navigate('/directory/pending', { 
@@ -438,7 +438,7 @@ export default function CreateDirectoryListing() {
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center space-x-4">
             <Link
-              to={user.membershipType === 'admin' ? '/admin/directory' : '/directory'}
+              to={user.membershipType === 'admin' ? '/admin/directory-manager' : '/directory'}
               className="text-gray-400 hover:text-white transition-colors"
             >
               <ArrowLeft className="h-6 w-6" />
