@@ -5,7 +5,7 @@ When starting a new session, read this file to understand the project context an
 
 ## Project Overview
 - **Name**: Car Audio Events Competition Platform
-- **Version**: 1.18.1
+- **Version**: 1.19.0
 - **Tech Stack**: React, TypeScript, Supabase, Tailwind CSS, Vite
 - **Database**: Supabase (PostgreSQL)
 - **Deployment**: Netlify
