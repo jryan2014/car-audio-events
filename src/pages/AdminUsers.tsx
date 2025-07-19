@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { ActivityLogger } from '../utils/activityLogger';
+import { useNotifications } from '../components/NotificationSystem';
 
 const USERS_PER_PAGE = 25;
 
@@ -64,6 +65,7 @@ interface NewUserFormData {
 export default function AdminUsers() {
   const { user, session } = useAuth();
   const navigate = useNavigate();
+  const { showSuccess, showError, showWarning } = useNotifications();
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -77,7 +79,6 @@ export default function AdminUsers() {
   const [error, setError] = useState<string | null>(null);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [totalUsers, setTotalUsers] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -263,9 +264,43 @@ export default function AdminUsers() {
           updateData.verification_status = 'verified';
           break;
         case 'delete':
-          // For delete, we'll actually just ban the user to preserve data integrity
-          updateData.status = 'banned';
-          break;
+          // Use the Edge Function to delete user completely
+          try {
+            // Get the current session token
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+              throw new Error('No active session');
+            }
+
+            // Call the Edge Function with proper authorization
+            const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`,
+                'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY
+              },
+              body: JSON.stringify({ userId })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+              throw new Error(result.error || 'Failed to delete user');
+            }
+
+            // Log the deletion
+            await ActivityLogger.userDeleted(userEmail, userName);
+            
+            // Reload users after deletion
+            await loadUsers();
+            
+            showSuccess('User completely deleted', 'User has been removed from both the database and auth system');
+            return; // Exit early since we don't need to update
+          } catch (error) {
+            console.error('Failed to delete user:', error);
+            throw error;
+          }
         default:
           throw new Error('Invalid action');
       }
@@ -310,25 +345,38 @@ export default function AdminUsers() {
 
       // Reload users after action
       await loadUsers();
-      setSuccessMessage(`User ${action} successful`);
-      setTimeout(() => setSuccessMessage(null), 3000);
+      
+      // Show appropriate success message
+      switch (action) {
+        case 'activate':
+          showSuccess('User activated successfully');
+          break;
+        case 'approve':
+          showSuccess('User approved and activated successfully');
+          break;
+        case 'suspend':
+          showSuccess('User suspended successfully');
+          break;
+        case 'ban':
+          showSuccess('User banned successfully');
+          break;
+        case 'verify_email':
+          showSuccess('Email verified successfully');
+          break;
+        case 'delete':
+          // Success message already shown in delete case above
+          break;
+        default:
+          showSuccess(`User ${action} successful`);
+      }
     } catch (error) {
       console.error('Failed to perform user action:', error);
-      setError(error instanceof Error ? error.message : 'Failed to perform user action');
-      setTimeout(() => setError(null), 5000);
+      showError('Failed to perform user action', error instanceof Error ? error.message : 'Unknown error');
     }
   };
 
   const handleApproveUser = async (userId: string) => {
-    try {
-      await handleUserAction(userId, 'approve');
-      setSuccessMessage('User approved successfully');
-      setTimeout(() => setSuccessMessage(null), 3000);
-    } catch (error) {
-      console.error('Failed to approve user:', error);
-      setError(error instanceof Error ? error.message : 'Failed to approve user');
-      setTimeout(() => setError(null), 5000);
-    }
+    await handleUserAction(userId, 'approve');
   };
 
   const handleAddUser = async () => {
@@ -443,17 +491,16 @@ export default function AdminUsers() {
       setShowAddUserModal(false);
       
       if (hasNewFields) {
-        setSuccessMessage('User created successfully with all fields');
+        showSuccess('User created successfully', 'All fields have been saved.');
       } else {
-        setSuccessMessage('User created successfully (basic fields only - run database migration for full functionality)');
+        showSuccess('User created successfully', 'Basic fields only - run database migration for full functionality.');
       }
-      setTimeout(() => setSuccessMessage(null), 3000);
       
       // Reload users
       await loadUsers();
     } catch (error) {
       console.error('Failed to add user:', error);
-      setError(error instanceof Error ? error.message : 'Failed to add user');
+      showError('Failed to add user', error instanceof Error ? error.message : 'Unknown error');
     } finally {
       setIsSubmitting(false);
     }
@@ -570,16 +617,6 @@ export default function AdminUsers() {
           </button>
         </div>
 
-        {/* Success Message */}
-        {successMessage && (
-          <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 mb-8 flex items-start space-x-3 animate-fade-in">
-            <CheckCircle className="h-5 w-5 text-green-400 mt-0.5 flex-shrink-0" />
-            <div>
-              <h3 className="text-green-400 font-semibold">Success</h3>
-              <p className="text-green-300">{successMessage}</p>
-            </div>
-          </div>
-        )}
         {/* Error Message */}
         {error && (
           <div className="bg-red-500/20 border border-red-500/30 rounded-xl p-6 mb-8">
@@ -1260,12 +1297,12 @@ export default function AdminUsers() {
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-white">Delete User</h3>
-                  <p className="text-gray-400">This action cannot be undone</p>
+                  <p className="text-gray-400">This will permanently delete the user</p>
                 </div>
               </div>
               <p className="text-gray-300 mb-6">
-                Are you sure you want to delete <strong>{userToDelete.name}</strong>? 
-                This will permanently ban their account to preserve data integrity.
+                Are you sure you want to permanently delete <strong>{userToDelete.name}</strong>? 
+                This action cannot be undone. The user will be removed from the system and their email can be reused.
               </p>
               <div className="flex justify-end space-x-4">
                 <button
@@ -1295,21 +1332,6 @@ export default function AdminUsers() {
         </div>
       )}
 
-      {/* Success Message */}
-      {successMessage && (
-        <div className="fixed top-4 right-4 bg-green-500/20 border border-green-500/30 text-green-400 px-6 py-3 rounded-lg z-50 flex items-center space-x-2">
-          <CheckCircle className="h-5 w-5" />
-          <span>{successMessage}</span>
-        </div>
-      )}
-
-      {/* Error Message */}
-      {error && (
-        <div className="fixed top-4 right-4 bg-red-500/20 border border-red-500/30 text-red-400 px-6 py-3 rounded-lg z-50 flex items-center space-x-2">
-          <AlertTriangle className="h-5 w-5" />
-          <span>{error}</span>
-        </div>
-      )}
     </div>
   );
 }

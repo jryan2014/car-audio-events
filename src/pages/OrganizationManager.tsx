@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Building2, Upload, Save, Plus, Edit2, Trash2, Image, FileText, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import { useNotifications } from '../components/NotificationSystem';
 
 interface Organization {
   id: string;
@@ -21,6 +22,7 @@ interface Organization {
   state?: string;
   zip_code?: string;
   country?: string;
+  marker_color?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -39,6 +41,7 @@ interface RulesTemplate {
 
 export default function OrganizationManager() {
   const { user } = useAuth();
+  const { showSuccess, showError } = useNotifications();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [rulesTemplates, setRulesTemplates] = useState<RulesTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -56,7 +59,8 @@ export default function OrganizationManager() {
     small_logo_url: '',
     status: 'active',
     competition_classes: [''],
-    default_rules_template_id: ''
+    default_rules_template_id: '',
+    marker_color: '#0ea5e9'
   });
 
   // Check if user is admin
@@ -105,7 +109,13 @@ export default function OrganizationManager() {
           description,
           website,
           contact_email,
+          marker_color,
           contact_phone,
+          address,
+          city,
+          state,
+          zip_code,
+          country,
           created_at,
           updated_at
         `)
@@ -113,7 +123,8 @@ export default function OrganizationManager() {
 
       if (orgError) {
         console.error('❌ Organizations error:', orgError);
-        throw new Error(`Failed to load organizations: ${orgError.message}`);
+        showError('Failed to load organizations', orgError.message);
+        return;
       }
       
       console.log('✅ Organizations loaded:', orgData?.length || 0, 'records');
@@ -227,7 +238,8 @@ export default function OrganizationManager() {
         small_logo_url: formData.small_logo_url,
         status: formData.status,
         competition_classes: formData.competition_classes.filter(cls => cls.trim()),
-        default_rules_template_id: formData.default_rules_template_id || null
+        default_rules_template_id: formData.default_rules_template_id || null,
+        marker_color: formData.marker_color
       };
 
       console.log('💾 Saving organization data:', orgData);
@@ -246,7 +258,7 @@ export default function OrganizationManager() {
         }
         
         console.log('✅ Update successful:', data);
-        setSuccess('Organization updated successfully');
+        showSuccess('Organization updated successfully');
       } else {
         console.log('➕ Creating new organization');
         const { data, error } = await supabase
@@ -260,7 +272,7 @@ export default function OrganizationManager() {
         }
         
         console.log('✅ Insert successful:', data);
-        setSuccess('Organization created successfully');
+        showSuccess('Organization created successfully');
       }
 
       closeModal();
@@ -268,7 +280,7 @@ export default function OrganizationManager() {
     } catch (error) {
       console.error('💥 Save error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      setError(`Failed to save organization: ${errorMessage}`);
+      showError('Failed to save organization', errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -285,7 +297,8 @@ export default function OrganizationManager() {
       small_logo_url: org.small_logo_url || '',
       status: org.status,
       competition_classes: org.competition_classes.length ? org.competition_classes : [''],
-      default_rules_template_id: org.default_rules_template_id || ''
+      default_rules_template_id: org.default_rules_template_id || '',
+      marker_color: org.marker_color || '#0ea5e9'
     });
     setShowForm(true);
   };
@@ -300,11 +313,11 @@ export default function OrganizationManager() {
         .eq('id', orgId);
 
       if (error) throw error;
-      setSuccess('Organization deleted successfully');
+      showSuccess('Organization deleted successfully');
       loadData();
     } catch (error) {
       console.error('Error deleting organization:', error);
-      setError('Failed to delete organization');
+      showError('Failed to delete organization');
     }
   };
 
@@ -318,7 +331,8 @@ export default function OrganizationManager() {
       small_logo_url: '',
       status: 'active',
       competition_classes: [''],
-      default_rules_template_id: ''
+      default_rules_template_id: '',
+      marker_color: '#0ea5e9'
     });
   };
 
@@ -452,6 +466,34 @@ export default function OrganizationManager() {
                       <option value="suspended">Suspended</option>
                     </select>
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">Map Marker Color</label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="color"
+                      value={formData.marker_color}
+                      onChange={(e) => handleInputChange('marker_color', e.target.value)}
+                      className="h-12 w-24 bg-gray-700/50 border border-gray-600 rounded-lg cursor-pointer focus:outline-none focus:border-electric-500"
+                    />
+                    <input
+                      type="text"
+                      value={formData.marker_color}
+                      onChange={(e) => handleInputChange('marker_color', e.target.value)}
+                      className="flex-1 p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                      placeholder="#0ea5e9"
+                      pattern="^#[0-9A-Fa-f]{6}$"
+                    />
+                    <div
+                      className="h-12 w-12 rounded-lg border-2 border-gray-600"
+                      style={{ backgroundColor: formData.marker_color }}
+                      title="Preview"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    This color will be used for map markers on event detail pages
+                  </p>
                 </div>
 
                 <div>
@@ -632,14 +674,26 @@ export default function OrganizationManager() {
                   </div>
                   
                   <div className="space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        org.status === 'active' ? 'bg-green-500/20 text-green-400' :
-                        org.status === 'inactive' ? 'bg-gray-500/20 text-gray-400' :
-                        'bg-yellow-500/20 text-yellow-400'
-                      }`}>
-                        {org.status}
-                      </span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          org.status === 'active' ? 'bg-green-500/20 text-green-400' :
+                          org.status === 'inactive' ? 'bg-gray-500/20 text-gray-400' :
+                          'bg-yellow-500/20 text-yellow-400'
+                        }`}>
+                          {org.status}
+                        </span>
+                      </div>
+                      {org.marker_color && (
+                        <div className="flex items-center space-x-1">
+                          <span className="text-xs text-gray-400">Map:</span>
+                          <div
+                            className="w-4 h-4 rounded-full border border-gray-600"
+                            style={{ backgroundColor: org.marker_color }}
+                            title={`Map marker color: ${org.marker_color}`}
+                          />
+                        </div>
+                      )}
                     </div>
                     
                     {org.competition_classes?.length > 0 && (

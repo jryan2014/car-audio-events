@@ -10,6 +10,7 @@ interface EventLocationMapProps {
   city: string;
   state: string;
   country: string;
+  organizationColor?: string;
   className?: string;
 }
 
@@ -21,6 +22,7 @@ export default function EventLocationMap({
   city,
   state,
   country,
+  organizationColor = '#0ea5e9',
   className = "w-full h-80"
 }: EventLocationMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -145,12 +147,13 @@ export default function EventLocationMap({
           title: eventName,
           icon: {
             path: window.google.maps.SymbolPath.CIRCLE,
-            scale: 8,
-            fillColor: '#0ea5e9',
+            scale: 10,
+            fillColor: organizationColor,
             fillOpacity: 1,
             strokeColor: '#ffffff',
-            strokeWeight: 2,
-          }
+            strokeWeight: 3,
+          },
+          animation: null // Explicitly no animation
         });
         
         // Store marker reference for cleanup
@@ -194,7 +197,7 @@ export default function EventLocationMap({
 
     // Return cleanup function
     return cleanup;
-  }, [latitude, longitude, eventName, fullAddress, GOOGLE_MAPS_CONFIGURED]);
+  }, [latitude, longitude, eventName, fullAddress, organizationColor, GOOGLE_MAPS_CONFIGURED]);
 
   // Get map styles
   const getMapStyles = () => {

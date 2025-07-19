@@ -219,7 +219,7 @@ const LocationSection: React.FC<LocationSectionProps> = ({
                 name="latitude"
                 type="number"
                 step="any"
-                value={formData.latitude || ''}
+                value={formData.latitude !== null && formData.latitude !== undefined ? formData.latitude : ''}
                 onChange={(e) => updateField('latitude', e.target.value ? parseFloat(e.target.value) : null)}
                 onBlur={() => touchField('latitude')}
                 className={`w-full p-3 bg-gray-700/50 border rounded-lg text-white focus:outline-none focus:border-electric-500 ${
@@ -244,7 +244,7 @@ const LocationSection: React.FC<LocationSectionProps> = ({
                 name="longitude"
                 type="number"
                 step="any"
-                value={formData.longitude || ''}
+                value={formData.longitude !== null && formData.longitude !== undefined ? formData.longitude : ''}
                 onChange={(e) => updateField('longitude', e.target.value ? parseFloat(e.target.value) : null)}
                 onBlur={() => touchField('longitude')}
                 className={`w-full p-3 bg-gray-700/50 border rounded-lg text-white focus:outline-none focus:border-electric-500 ${

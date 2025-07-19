@@ -26,9 +26,17 @@ class GeocodingService {
   async geocodeAddress(
     city: string, 
     state: string, 
-    country: string = 'United States'
+    country: string = 'United States',
+    streetAddress?: string,
+    zipCode?: string
   ): Promise<GeocodeResult | GeocodeError> {
-    const address = `${city}, ${state}, ${country}`;
+    // Use full address if available for more accurate results
+    let address = `${city}, ${state}, ${country}`;
+    if (streetAddress && zipCode) {
+      address = `${streetAddress}, ${city}, ${state} ${zipCode}, ${country}`;
+    } else if (streetAddress) {
+      address = `${streetAddress}, ${city}, ${state}, ${country}`;
+    }
     
     // Try each provider in order
     for (const provider of this.providers) {
@@ -174,12 +182,12 @@ class GeocodingService {
    * Batch geocode multiple addresses
    */
   async batchGeocode(
-    addresses: Array<{ id: string; city: string; state: string; country?: string }>
+    addresses: Array<{ id: string; city: string; state: string; country?: string; streetAddress?: string; zipCode?: string }>
   ): Promise<Array<{ id: string; result: GeocodeResult | GeocodeError }>> {
     const results = [];
     
     for (const addr of addresses) {
-      const result = await this.geocodeAddress(addr.city, addr.state, addr.country);
+      const result = await this.geocodeAddress(addr.city, addr.state, addr.country, addr.streetAddress, addr.zipCode);
       results.push({ id: addr.id, result });
       
       // Add delay to respect rate limits

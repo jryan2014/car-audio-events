@@ -5,7 +5,7 @@ When starting a new session, read this file to understand the project context an
 
 ## Project Overview
 - **Name**: Car Audio Events Competition Platform
-- **Version**: 1.17.1
+- **Version**: 1.18.0
 - **Tech Stack**: React, TypeScript, Supabase, Tailwind CSS, Vite
 - **Database**: Supabase (PostgreSQL)
 - **Deployment**: Netlify
@@ -44,12 +44,14 @@ The database has a custom `exec_sql` function that accepts a `sql_command` param
 await supabase.rpc('exec_sql', { sql_command: 'YOUR SQL HERE' });
 ```
 
-### 3. Recent Security Fixes Implemented
+### 3. Recent Security & Performance Fixes Implemented
 
 #### RLS (Row Level Security)
 - ✅ Enabled RLS on `refunds` and `payment_provider_configs` tables
 - ✅ Created policies for user access control
 - ✅ Admin users (membership_type = 'admin') have elevated privileges
+- ✅ Fixed 180+ RLS performance issues by wrapping auth functions in SELECT statements
+- ✅ Optimized all policies to prevent re-evaluation of auth functions per row
 
 #### Function Search Path Security
 Fixed search_path warnings for these functions:
@@ -62,6 +64,11 @@ Fixed search_path warnings for these functions:
 - `check_refund_eligibility`
 
 All functions now have `SET search_path = 'public', 'pg_catalog', 'pg_temp'`
+
+#### Database Cleanup
+- ✅ Removed 37 functions referencing non-existent tables/columns
+- ✅ Cleaned up orphaned database objects
+- ✅ Fixed user deletion to properly remove from both users table and auth system
 
 ### 4. Environment Configuration
 
@@ -175,6 +182,8 @@ When starting a new session, tell the AI:
 
 ## Recent Work Completed
 - Fixed all Supabase security warnings (RLS and search_path)
+- Optimized 180+ RLS policies for better query performance
+- Removed 37 problematic database functions
 - Created reusable database administration utility
 - Set up secure environment variable handling
 - Implemented comprehensive security policies
@@ -184,6 +193,58 @@ When starting a new session, tell the AI:
 - Improved mobile UX for event details page
 - Implemented social sharing features (Facebook, Twitter, LinkedIn, WhatsApp)
 - Updated registration fee display logic for better clarity
+- Fixed user deletion to actually delete users (created Edge Function)
+- Cleaned up orphaned auth users from incomplete deletions
+- **Competition Classes System**:
+  - Created event_competition_classes junction table with RLS
+  - Built CompetitionClassesSection component for multi-select
+  - Integrated with EventForm, CreateEvent, and EditEvent pages
+  - Only selected classes display on event details page
+- **Data Persistence Fixes**:
+  - Fixed EventForm rendering before data loaded issue
+  - Added proper date/time formatting helpers
+  - Fixed coordinate inputs to handle null/0 values
+  - Prevented display dates from auto-calculating over manual edits
+- **Geocoding Improvements**:
+  - Updated geocoding to use full street address (not just city/state)
+  - Fixed incorrect coordinate lookups
+  - Prevented automatic geocoding from overriding saved coordinates
+
+### 11. Common Development Patterns
+
+#### Competition Classes
+```javascript
+// Load classes for an event
+const { data: competitionClasses } = await supabase
+  .from('event_competition_classes')
+  .select('competition_class')
+  .eq('event_id', eventId);
+
+// Save classes (delete then insert)
+await supabase.from('event_competition_classes').delete().eq('event_id', eventId);
+await supabase.from('event_competition_classes').insert(classesData);
+```
+
+#### Date Handling
+```javascript
+// Database stores date-only, show as noon for consistency
+import { formatDateForInput, formatDateForDateInput } from './utils/dateHelpers';
+
+// For datetime inputs
+start_date: formatDateForInput(event.start_date),
+// For date inputs
+display_start_date: formatDateForDateInput(event.display_start_date),
+```
+
+#### Geocoding with Full Address
+```javascript
+// Always pass full address for accurate coordinates
+await geocodingService.geocodeAddress(
+  city, state, country, 
+  streetAddress, // Include street address
+  zipCode       // Include zip code
+);
+```
 
 ---
 Last Updated: January 2025

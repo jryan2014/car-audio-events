@@ -66,7 +66,7 @@ export default function CreateEvent() {
     try {
       const { data, error } = await supabase
         .from('organizations')
-        .select('id, name, organization_type, logo_url, small_logo_url, status, default_rules_content')
+        .select('id, name, organization_type, logo_url, small_logo_url, status, default_rules_content, competition_classes')
         .eq('status', 'active')
         .order('name');
 
@@ -80,7 +80,8 @@ export default function CreateEvent() {
         logo_url: org.logo_url,
         small_logo_url: org.small_logo_url,
         status: org.status,
-        default_rules_content: org.default_rules_content
+        default_rules_content: org.default_rules_content,
+        competition_classes: org.competition_classes || []
       }));
       
       setOrganizations(transformedData);
@@ -165,6 +166,23 @@ export default function CreateEvent() {
         .single();
 
       if (error) throw error;
+
+      // Save competition classes if any were selected
+      if (data && formData.competition_classes && formData.competition_classes.length > 0) {
+        const classesData = formData.competition_classes.map(className => ({
+          event_id: data.id,
+          competition_class: className
+        }));
+
+        const { error: classesError } = await supabase
+          .from('event_competition_classes')
+          .insert(classesData);
+
+        if (classesError) {
+          console.error('Error saving competition classes:', classesError);
+          // Don't throw - event was created successfully
+        }
+      }
 
       setSuccess(true);
       

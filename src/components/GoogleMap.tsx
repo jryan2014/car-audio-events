@@ -58,7 +58,7 @@ export default function GoogleMap() {
     if (isScriptLoaded && mapRef.current && !map) {
       initializeMap();
     }
-  }, [isScriptLoaded, mapRef.current]);
+  }, [isScriptLoaded, map]);
 
   // Set up event handlers and load script
   useEffect(() => {
@@ -67,11 +67,13 @@ export default function GoogleMap() {
       console.log('🧹 Cleaning up GoogleMap resources...');
       
       // Clear all event listeners
-      listenersRef.current.forEach(listener => {
-        if (listener) {
-          google.maps.event.removeListener(listener);
-        }
-      });
+      if (window.google && window.google.maps && window.google.maps.event) {
+        listenersRef.current.forEach(listener => {
+          if (listener) {
+            google.maps.event.removeListener(listener);
+          }
+        });
+      }
       listenersRef.current = [];
       
       // Close and clear all info windows
@@ -85,17 +87,13 @@ export default function GoogleMap() {
       // Clear all markers
       markersRef.current.forEach(marker => {
         if (marker) {
-          // Clear any intervals attached to the marker
-          if ((marker as any).blinkInterval) {
-            clearInterval((marker as any).blinkInterval);
-          }
           marker.setMap(null);
         }
       });
       markersRef.current = [];
       
       // Clear map
-      if (map) {
+      if (map && window.google && window.google.maps && window.google.maps.event) {
         // Remove all listeners from map
         google.maps.event.clearInstanceListeners(map);
         setMap(null);
@@ -144,6 +142,86 @@ export default function GoogleMap() {
     // Return cleanup function
     return cleanup;
   }, [navigate, GOOGLE_MAPS_CONFIGURED]);
+
+  // Load map events function
+  const loadMapEvents = useCallback(async (mapInstance: google.maps.Map) => {
+    try {
+      setLoading(true);
+      
+      // Load events from remote database
+      const { data, error } = await supabase
+        .from('events')
+        .select(`
+          id,
+          title,
+          start_date,
+          venue_name,
+          city,
+          state,
+          latitude,
+          longitude,
+          current_participants,
+          max_participants,
+          event_categories!inner(name, color, icon),
+          organizations(name, marker_color)
+        `)
+        .eq('status', 'published')
+        .eq('approval_status', 'approved')
+        .not('latitude', 'is', null)
+        .not('longitude', 'is', null)
+        .gte('start_date', new Date().toISOString());
+
+      if (error) {
+        console.error('Error loading events:', error);
+        setError('Unable to load events at this time');
+        setEvents([]);
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        console.log('No events found with location data');
+        setEvents([]);
+        return;
+      }
+
+      // Format events for map display
+      const mapEvents: MapEvent[] = data.map(event => {
+        const category = event.event_categories as any;
+        const organization = event.organizations as any;
+        
+        // Use organization marker color if available, otherwise fall back to category color
+        const markerColor = organization?.marker_color || category?.color || '#3b82f6';
+        
+        return {
+          id: event.id,
+          title: event.title,
+          category_name: category?.name || 'Event',
+          category_color: category?.color || '#3b82f6',
+          category_icon: category?.icon || 'calendar',
+          start_date: event.start_date,
+          venue_name: event.venue_name || '',
+          city: event.city,
+          state: event.state,
+          latitude: event.latitude,
+          longitude: event.longitude,
+          pin_color: markerColor,
+          organization_name: organization?.name,
+          participant_count: event.current_participants || 0,
+          max_participants: event.max_participants
+        };
+      });
+
+      setEvents(mapEvents);
+      addMarkersToMap(mapInstance, mapEvents);
+
+    } catch (error) {
+      console.error('Error in loadMapEvents:', error);
+      setError('Failed to load event data');
+      setEvents([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   // Function to initialize the map
   const initializeMap = useCallback(() => {
@@ -210,79 +288,7 @@ export default function GoogleMap() {
       setLoading(false);
       setEvents([]);
     }
-  }, []);
-
-  const loadMapEvents = async (mapInstance: google.maps.Map) => {
-    try {
-      setLoading(true);
-      
-      // Load events from remote database
-      const { data, error } = await supabase
-        .from('events')
-        .select(`
-          id,
-          title,
-          start_date,
-          venue_name,
-          city,
-          state,
-          latitude,
-          longitude,
-          current_participants,
-          max_participants,
-          event_categories!inner(name, color, icon)
-        `)
-        .eq('status', 'published')
-        .eq('approval_status', 'approved')
-        .not('latitude', 'is', null)
-        .not('longitude', 'is', null)
-        .gte('start_date', new Date().toISOString());
-
-      if (error) {
-        console.error('Error loading events:', error);
-        setError('Unable to load events at this time');
-        setEvents([]);
-        return;
-      }
-
-      if (!data || data.length === 0) {
-        console.log('No events found with location data');
-        setEvents([]);
-        return;
-      }
-
-      // Format events for map display
-      const mapEvents: MapEvent[] = data.map(event => {
-        const category = event.event_categories as any;
-        return {
-          id: event.id,
-          title: event.title,
-          category_name: category?.name || 'Event',
-          category_color: category?.color || '#3b82f6',
-          category_icon: category?.icon || 'calendar',
-          start_date: event.start_date,
-          venue_name: event.venue_name || '',
-          city: event.city,
-          state: event.state,
-          latitude: event.latitude,
-          longitude: event.longitude,
-          pin_color: category?.color || '#3b82f6',
-          participant_count: event.current_participants || 0,
-          max_participants: event.max_participants
-        };
-      });
-
-      setEvents(mapEvents);
-      addMarkersToMap(mapInstance, mapEvents);
-
-    } catch (error) {
-      console.error('Error in loadMapEvents:', error);
-      setError('Failed to load event data');
-      setEvents([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [loadMapEvents]);
 
   const addMarkersToMap = (mapInstance: google.maps.Map, events: MapEvent[]) => {
     if (!window.google || !mapInstance) return;
@@ -292,10 +298,6 @@ export default function GoogleMap() {
     // Clear existing markers
     markersRef.current.forEach(marker => {
       if (marker) {
-        // Clear any intervals attached to the marker
-        if ((marker as any).blinkInterval) {
-          clearInterval((marker as any).blinkInterval);
-        }
         marker.setMap(null);
       }
     });
@@ -335,7 +337,6 @@ export default function GoogleMap() {
       console.log(`Creating marker for ${event.title} at ${event.latitude},${event.longitude}`);
       
       let isHovering = false;
-      let blinkInterval: NodeJS.Timeout;
       
       // Create custom marker with event-specific styling
       const marker = new window.google.maps.Marker({
@@ -356,21 +357,7 @@ export default function GoogleMap() {
         optimized: true // Better performance
       });
 
-      // Add blinking animation
-      let blinkState = false;
-      blinkInterval = setInterval(() => {
-        if (isHovering) return;
-        
-        blinkState = !blinkState;
-        marker.setIcon({
-          path: window.google.maps.SymbolPath.CIRCLE,
-          scale: blinkState ? 16 : 12,
-          fillColor: blinkState ? '#22d3ee' : event.pin_color,
-          fillOpacity: 1,
-          strokeColor: '#ffffff',
-          strokeWeight: blinkState ? 4 : 3,
-        });
-      }, 600);
+      // No blinking animation - just static marker
 
       // Create enhanced info window
       const infoWindow = new window.google.maps.InfoWindow({
@@ -456,8 +443,6 @@ export default function GoogleMap() {
         listenersRef.current.push(mouseoverListener, mouseoutListener);
       }
 
-      // Store the interval for cleanup
-      (marker as any).blinkInterval = blinkInterval;
       
       // Store marker for clustering
       markers.push(marker);

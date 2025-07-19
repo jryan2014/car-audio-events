@@ -55,6 +55,28 @@ If you're an AI assistant picking up this project, start here:
    - Updated login prompts to emphasize member benefits
    - Consolidated save/favorite functionality in main card
 
+9. **Competition Classes Selection System**
+   - Created `event_competition_classes` junction table with proper RLS policies
+   - Built `CompetitionClassesSection.tsx` component with multi-select checkboxes
+   - Color-coded classes by type (SPL=red, SQ=green, SQC=purple, etc.)
+   - Integrated with EventForm, CreateEvent, and EditEvent pages
+   - Only selected classes display on event details page
+   - Fixed organization ID type mismatch (number vs string comparison)
+
+10. **Data Persistence Fixes**
+    - Fixed EventForm rendering before data loaded (key={eventData ? 'loaded' : 'loading'})
+    - Created date helper functions for proper formatting
+    - Fixed coordinate inputs to handle null/0 values properly
+    - Prevented display dates from auto-calculating over manual edits
+    - Fixed date/time fields showing 12:00 AM due to date-only database columns
+
+11. **Geocoding System Improvements**
+    - Updated geocoding service to accept full street address
+    - Fixed incorrect coordinate lookups (was using city center instead of exact address)
+    - Prevented automatic geocoding from overriding saved coordinates
+    - Added proper null checks before geocoding
+    - Updated from city/state only to full address geocoding
+
 ### Key Technical Decisions
 
 1. **Why We Use `exec_sql`**
@@ -98,12 +120,25 @@ If you're an AI assistant picking up this project, start here:
    - Convert numeric fields to strings when loading: `String(value)`
    - Common fields: organization_id, category_id, organizer_id
 
+6. **Date/Time Display Issues**
+   - Database uses date-only columns but forms expect datetime
+   - Use formatDateForInput() to add noon time for consistency
+   - Display dates auto-calculate only when empty, not on every change
+
+7. **Geocoding Accuracy Issues**
+   - Geocoding was only using city/state, getting city center coordinates
+   - Now passes full street address for accurate results
+   - Check for existing coordinates before geocoding to prevent overwrites
+
 ### Database Schema Notes
 
 Key tables with RLS:
 - `users` - User profiles, RLS enabled
 - `events` - Competition events, RLS enabled
   - Added `image_position` column (integer, default 50)
+- `event_competition_classes` - Junction table for event classes, RLS enabled
+  - Columns: event_id, competition_class, created_at
+  - Public read, authenticated write policies
 - `transactions` - Payment records, RLS enabled
 - `refunds` - Refund records, RLS enabled (we fixed this)
 - `payment_provider_configs` - Payment settings, RLS enabled (we fixed this)
@@ -175,9 +210,13 @@ Critical files for context:
 
 Key component files:
 - `/src/components/EventForm/sections/ImageSection.tsx` - Event image upload
+- `/src/components/EventForm/sections/CompetitionClassesSection.tsx` - Competition class selection
 - `/src/pages/EventDetails.tsx` - Event details with mobile optimization
 - `/src/pages/EditEvent.tsx` - Event editing with validation fixes
+- `/src/pages/CreateEvent.tsx` - Event creation with competition classes
 - `/src/types/event.ts` - Event type definitions
+- `/src/utils/dateHelpers.ts` - Date formatting utilities
+- `/src/services/geocoding.ts` - Geocoding service with full address support
 
 ### Commands to Remember
 

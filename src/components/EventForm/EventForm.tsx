@@ -9,6 +9,7 @@ import { AlertCircle } from 'lucide-react';
 // Lazy load form sections for better performance
 const BasicInfoSection = React.lazy(() => import('./sections/BasicInfoSection'));
 const ImageSection = React.lazy(() => import('./sections/ImageSection'));
+import CompetitionClassesSection from './sections/CompetitionClassesSection';
 const ScheduleSection = React.lazy(() => import('./sections/ScheduleSection'));
 const LocationSection = React.lazy(() => import('./sections/LocationSection'));
 const PricingSection = React.lazy(() => import('./sections/PricingSection'));
@@ -39,6 +40,7 @@ export const EventForm: React.FC<EventFormProps> = ({
   isAdmin = false,
   onCancel
 }) => {
+
   // Form state
   const [formData, setFormData] = useState<EventFormData>(() => ({
     // Default values
@@ -83,6 +85,7 @@ export const EventForm: React.FC<EventFormProps> = ({
     sponsors: [''],
     image_url: '',
     image_position: 50,
+    competition_classes: [],
     first_place_trophy: false,
     second_place_trophy: false,
     third_place_trophy: false,
@@ -119,10 +122,11 @@ export const EventForm: React.FC<EventFormProps> = ({
   );
 
   // Selected organization details
-  const selectedOrganization = useMemo(() => 
-    organizations.find(org => org.id === formData.sanction_body_id),
-    [formData.sanction_body_id, organizations]
-  );
+  const selectedOrganization = useMemo(() => {
+    // Convert both to strings for comparison since IDs might be numbers or strings
+    const org = organizations.find(org => String(org.id) === String(formData.sanction_body_id));
+    return org;
+  }, [formData.sanction_body_id, organizations]);
 
   // Helper function to generate default datetime values
   function getDefaultDateTime(hoursOffset: number = 0, defaultHour: number = 8) {
@@ -176,9 +180,9 @@ export const EventForm: React.FC<EventFormProps> = ({
     });
   }, [formData]);
 
-  // Auto-calculate display dates
+  // Auto-calculate display dates ONLY when they are empty (initial setup)
   useEffect(() => {
-    if (formData.start_date && formData.end_date) {
+    if (formData.start_date && formData.end_date && !formData.display_start_date && !formData.display_end_date) {
       const startDate = new Date(formData.start_date);
       const endDate = new Date(formData.end_date);
       
@@ -191,34 +195,51 @@ export const EventForm: React.FC<EventFormProps> = ({
       const newDisplayStartDate = displayStart.toISOString().split('T')[0];
       const newDisplayEndDate = displayEnd.toISOString().split('T')[0];
       
-      // Only update if values actually changed
-      if (formData.display_start_date !== newDisplayStartDate || 
-          formData.display_end_date !== newDisplayEndDate) {
-        setFormData(prev => ({
-          ...prev,
-          display_start_date: newDisplayStartDate,
-          display_end_date: newDisplayEndDate
-        }));
-      }
+      setFormData(prev => ({
+        ...prev,
+        display_start_date: newDisplayStartDate,
+        display_end_date: newDisplayEndDate
+      }));
     }
-  }, [formData.start_date, formData.end_date, formData.display_start_date, formData.display_end_date]);
+  }, [formData.start_date, formData.end_date]);
 
-  // Geocode address
+  // Geocode address ONLY if coordinates are not already set
+  // This prevents overwriting manually entered or saved coordinates
   useEffect(() => {
-    if (debouncedAddress && formData.city && formData.state) {
-      geocodingService.geocodeAddress(formData.city, formData.state, formData.country)
+    // Don't geocode if:
+    // 1. We already have coordinates (prevents overwriting saved/manual coords)
+    // 2. We're in edit mode and initial data had coordinates
+    if (formData.latitude !== null && formData.longitude !== null) {
+      return;
+    }
+    
+    // Only geocode if we have a complete address
+    if (debouncedAddress && formData.address && formData.city && formData.state) {
+      geocodingService.geocodeAddress(
+        formData.city, 
+        formData.state, 
+        formData.country,
+        formData.address,
+        formData.zip_code
+      )
         .then(result => {
           if ('latitude' in result) {
-            setFormData(prev => ({
-              ...prev,
-              latitude: result.latitude,
-              longitude: result.longitude
-            }));
+            // Only update if we still don't have coordinates
+            setFormData(prev => {
+              if (prev.latitude === null && prev.longitude === null) {
+                return {
+                  ...prev,
+                  latitude: result.latitude,
+                  longitude: result.longitude
+                };
+              }
+              return prev;
+            });
           }
         })
         .catch(console.error);
     }
-  }, [debouncedAddress, formData.city, formData.state, formData.country]);
+  }, [debouncedAddress, formData.address, formData.city, formData.state, formData.country, formData.zip_code]);
 
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
@@ -307,6 +328,12 @@ export const EventForm: React.FC<EventFormProps> = ({
           touchField={touchField}
         />
       </React.Suspense>
+
+      <CompetitionClassesSection
+        formData={formData}
+        selectedOrganization={selectedOrganization}
+        updateField={updateField}
+      />
 
       <React.Suspense fallback={<SectionSkeleton />}>
         <ScheduleSection

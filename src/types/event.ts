@@ -75,6 +75,9 @@ export interface EventFormData {
   is_active: boolean;
   status: EventStatus;
   approval_status: ApprovalStatus;
+  
+  // Competition Classes
+  competition_classes?: string[];
 }
 
 export interface EventScheduleItem {

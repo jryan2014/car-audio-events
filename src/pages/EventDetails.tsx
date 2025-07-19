@@ -182,8 +182,21 @@ const EventDetails = React.memo(function EventDetails() {
         sponsors: Array.isArray(eventData.sponsors) ? eventData.sponsors : [],
         // Add organization data for competition classes
         organization: eventData.organizations || null,
-        competitionClasses: eventData.organizations?.competition_classes || []
+        competitionClasses: [] // Will be loaded separately
       };
+
+      // Load competition classes for this specific event
+      const { data: competitionClasses, error: classesError } = await supabase
+        .from('event_competition_classes')
+        .select('competition_class')
+        .eq('event_id', id);
+
+      if (classesError) {
+        console.error('Error loading competition classes:', classesError);
+      }
+
+      // Update event with competition classes
+      formattedEvent.competitionClasses = competitionClasses?.map(item => item.competition_class) || [];
 
       setEvent(formattedEvent);
     } catch (error) {
@@ -611,6 +624,7 @@ const EventDetails = React.memo(function EventDetails() {
                   city={event.city || ''}
                   state={event.state || ''}
                   country={event.country || 'US'}
+                  organizationColor={event.organizations?.marker_color}
                   className="w-full"
                 />
               </div>

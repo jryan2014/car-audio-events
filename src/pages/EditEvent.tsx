@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import EventForm from '../components/EventForm/EventForm';
 import { EventFormData, EventCategory, Organization, DatabaseUser } from '../types/event';
+import { formatDateForInput, formatDateForDateInput } from '../utils/dateHelpers';
 
 const EditEvent = React.memo(function EditEvent() {
   const { id } = useParams<{ id: string }>();
@@ -114,6 +115,17 @@ const EditEvent = React.memo(function EditEvent() {
 
       if (error) throw error;
 
+
+      // Load competition classes for this event
+      const { data: competitionClasses, error: classesError } = await supabase
+        .from('event_competition_classes')
+        .select('competition_class')
+        .eq('event_id', id);
+
+      if (classesError) {
+        console.error('Error loading competition classes:', classesError);
+      }
+
       // Process arrays that might be stored as strings
       const processPrizes = () => {
         if (!event.prizes) return [''];
@@ -165,12 +177,11 @@ const EditEvent = React.memo(function EditEvent() {
         sanction_body_id: event.organization_id ? String(event.organization_id) : '',
         season_year: Number(event.season_year) || new Date().getFullYear(),
         organizer_id: event.organizer_id ? String(event.organizer_id) : (user?.id || ''),
-        start_date: event.start_date ? new Date(event.start_date).toISOString().slice(0, 16) : '',
-        end_date: event.end_date ? new Date(event.end_date).toISOString().slice(0, 16) : '',
-        registration_deadline: event.registration_deadline ? 
-          new Date(event.registration_deadline).toISOString().slice(0, 16) : '',
-        display_start_date: event.display_start_date || '',
-        display_end_date: event.display_end_date || '',
+        start_date: formatDateForInput(event.start_date),
+        end_date: formatDateForInput(event.end_date),
+        registration_deadline: formatDateForInput(event.registration_deadline),
+        display_start_date: formatDateForDateInput(event.display_start_date),
+        display_end_date: formatDateForDateInput(event.display_end_date),
         venue_name: event.venue_name || '',
         address: event.address || '',
         city: event.city || '',
@@ -190,7 +201,7 @@ const EditEvent = React.memo(function EditEvent() {
         max_participants: event.max_participants !== null && event.max_participants !== undefined ? Number(event.max_participants) : null,
         registration_fee: Number(event.ticket_price || event.registration_fee || 0),
         early_bird_fee: event.early_bird_fee !== null && event.early_bird_fee !== undefined ? Number(event.early_bird_fee) : null,
-        early_bird_deadline: event.early_bird_deadline || '',
+        early_bird_deadline: formatDateForInput(event.early_bird_deadline),
         early_bird_name: event.early_bird_name || 'Early Bird Special',
         rules: event.rules || '',
         prizes: processPrizes(),
@@ -214,8 +225,10 @@ const EditEvent = React.memo(function EditEvent() {
         is_featured: event.is_featured || false,
         is_active: event.is_active !== false,
         status: event.status || 'draft',
-        approval_status: event.approval_status || 'pending'
+        approval_status: event.approval_status || 'pending',
+        competition_classes: competitionClasses?.map(item => item.competition_class) || []
       };
+
 
       setEventData(transformedData);
     } catch (error: any) {
@@ -226,24 +239,7 @@ const EditEvent = React.memo(function EditEvent() {
 
   const handleSubmit = async (formData: EventFormData) => {
     try {
-      // Force update coordinates first if needed
-      if (!formData.latitude || !formData.longitude || formData.latitude === 0 || formData.longitude === 0) {
-        try {
-          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-          await fetch(`${supabaseUrl}/functions/v1/force-update-coordinates`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ eventId: id })
-          });
-          console.log('Forced coordinate update before saving');
-        } catch (coordError) {
-          console.warn('Failed to force update coordinates:', coordError);
-          // Continue with save anyway
-        }
-      }
+      // Don't force coordinate updates - let user control them
 
       // Get category name for legacy category field
       const selectedCategory = categories.find(cat => cat.id === formData.category_id);
@@ -325,6 +321,33 @@ const EditEvent = React.memo(function EditEvent() {
         } catch (positionError) {
           console.warn('Could not update image position:', positionError);
           // Continue anyway - this is not critical
+        }
+      }
+
+      // Update competition classes
+      // First, delete existing classes
+      const { error: deleteError } = await supabase
+        .from('event_competition_classes')
+        .delete()
+        .eq('event_id', id);
+
+      if (deleteError) {
+        console.error('Error deleting existing competition classes:', deleteError);
+      }
+
+      // Then insert new classes if any
+      if (formData.competition_classes && formData.competition_classes.length > 0) {
+        const classesData = formData.competition_classes.map(className => ({
+          event_id: id,
+          competition_class: className
+        }));
+
+        const { error: insertError } = await supabase
+          .from('event_competition_classes')
+          .insert(classesData);
+
+        if (insertError) {
+          console.error('Error inserting competition classes:', insertError);
         }
       }
       
@@ -422,17 +445,19 @@ const EditEvent = React.memo(function EditEvent() {
           </div>
         )}
 
-        {/* Event Form */}
-        <EventForm
-          initialData={eventData}
-          onSubmit={handleSubmit}
-          isEditMode={true}
-          categories={categories}
-          organizations={organizations}
-          users={users}
-          isAdmin={user?.membershipType === 'admin'}
-          onCancel={handleCancel}
-        />
+        {/* Event Form - Only render when data is loaded */}
+        {eventData && (
+          <EventForm
+            initialData={eventData}
+            onSubmit={handleSubmit}
+            isEditMode={true}
+            categories={categories}
+            organizations={organizations}
+            users={users}
+            isAdmin={user?.membershipType === 'admin'}
+            onCancel={handleCancel}
+          />
+        )}
       </div>
     </div>
   );
