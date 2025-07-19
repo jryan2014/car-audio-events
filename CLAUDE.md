@@ -209,8 +209,39 @@ When starting a new session, tell the AI:
   - Updated geocoding to use full street address (not just city/state)
   - Fixed incorrect coordinate lookups
   - Prevented automatic geocoding from overriding saved coordinates
+- **Worldwide Event Support (v1.19.0)**:
+  - Expanded country list from 8 to 75+ countries globally
+  - Removed US-only restrictions from geocoding services
+  - Updated Google Maps to world-centered view
+  - Added Caribbean and Pacific territories (including US Virgin Islands)
+  - Country code to name conversion for accurate geocoding
+- **Directory Navigation Fixes**:
+  - Fixed admin navigation from CreateDirectoryListing
+  - Admin users now redirect to /admin/directory-manager
+  - Regular users continue to /directory as before
+- **Bug Fixes (v1.18.1 - v1.19.1)**:
+  - Fixed infinite loop in Directory component (useCallback)
+  - Fixed TypeScript errors in AdminUsers (delete action)
+  - Corrected admin directory navigation routes
+  - Image position saving issue (ongoing debugging)
 
-### 11. Common Development Patterns
+### 11. Known Issues & Debugging
+
+#### Event Flier Image Position Not Displaying
+**Issue**: The image_position slider value saves to database but doesn't display correctly on EventDetails page
+**Status**: Under investigation
+**Details**:
+- Database column `image_position` exists and stores values correctly
+- Values save properly when editing events
+- EventDetails page may have property name mismatch (image_position vs imagePosition)
+- Attempted fixes:
+  - Removed commented-out image_position fields in Create/EditEvent
+  - Added proper state synchronization in ImageSection
+  - Fixed property reference in EventDetails (event.imagePosition)
+  - Removed exec_sql workarounds
+**Next Steps**: Verify data transformation between database and frontend display
+
+### 12. Common Development Patterns
 
 #### Competition Classes
 ```javascript

@@ -268,4 +268,39 @@ When you (or another AI) return to this project:
    - Clear labeling for pre-registration vs day-of
    - Login prompts should emphasize value
 
+### Recent Updates (January 2025)
+
+1. **Worldwide Event Support (v1.19.0)**
+   - Expanded country support from 8 to 75+ countries
+   - Removed geocoding service restrictions (Nominatim, Mapbox)
+   - Updated Google Maps default view to world-centered
+   - Added proper country code to name conversion
+   - Special focus on Caribbean and Pacific territories
+
+2. **Directory System Improvements**
+   - Fixed admin navigation in CreateDirectoryListing
+   - Admins now properly route to /admin/directory-manager
+   - Fixed infinite loop in Directory component with useCallback
+
+3. **Bug Fixes and Performance**
+   - Fixed TypeScript build errors in AdminUsers component
+   - Resolved event form validation for numeric IDs
+   - Fixed infinite render loops with proper React hooks
+
+4. **Ongoing Issues**
+   - **Event Flier Image Position**: Database saves correctly but display issues persist
+     - Property name mismatch suspected (snake_case vs camelCase)
+     - Multiple debugging attempts made
+     - Requires further investigation of data transformation layer
+
+### Database Schema Updates
+- `events.image_position` column confirmed working (integer type, default 50)
+- No RLS policies blocking updates
+- exec_sql RPC function available for schema cache workarounds
+
+### Testing Notes
+- When debugging image position: check browser console for transformation
+- Country selection now supports global events
+- Geocoding should work for any country (not just US)
+
 The goal is to allow seamless continuation of work without losing the context of what's been built and why certain decisions were made.

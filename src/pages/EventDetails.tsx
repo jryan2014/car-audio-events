@@ -144,6 +144,7 @@ const EventDetails = React.memo(function EventDetails() {
       }
 
       // Format the event data
+      console.log('🎯 Image position from DB:', eventData.image_position);
       const formattedEvent = {
         ...eventData,
         category: eventData.event_categories?.name || 'Event',
@@ -330,6 +331,7 @@ const EventDetails = React.memo(function EventDetails() {
                   style={{
                     objectPosition: `center ${event.imagePosition || 50}%`
                   }}
+                  onLoad={() => console.log('🖼️ Image loaded with position:', event.imagePosition)}
                 />
                 <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                   <ZoomIn className="h-12 w-12 text-white" />
