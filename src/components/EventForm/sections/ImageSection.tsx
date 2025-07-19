@@ -22,12 +22,19 @@ const ImageSection: React.FC<ImageSectionProps> = ({
   const [imagePosition, setImagePosition] = useState<number>(formData.image_position || 50); // Initialize with saved position
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Sync imagePosition when formData changes (e.g., when editing an existing event)
+  // Sync state when formData changes (e.g., when editing an existing event)
   useEffect(() => {
     if (formData.image_position !== undefined) {
       setImagePosition(formData.image_position);
     }
   }, [formData.image_position]);
+
+  // Sync preview URL when formData changes
+  useEffect(() => {
+    if (formData.image_url) {
+      setPreviewUrl(formData.image_url);
+    }
+  }, [formData.image_url]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -101,9 +108,10 @@ const ImageSection: React.FC<ImageSectionProps> = ({
   };
 
   const handlePositionChange = (position: number) => {
+    console.log('Image position changing to:', position);
     setImagePosition(position);
     // Store position in metadata or as a separate field
-    updateField('image_position' as any, position);
+    updateField('image_position', position);
   };
 
   return (

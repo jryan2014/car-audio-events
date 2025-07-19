@@ -115,6 +115,8 @@ const EditEvent = React.memo(function EditEvent() {
 
       if (error) throw error;
 
+      console.log('Loaded event data:', event);
+      console.log('Event image_position from database:', event.image_position);
 
       // Load competition classes for this event
       const { data: competitionClasses, error: classesError } = await supabase
@@ -244,6 +246,8 @@ const EditEvent = React.memo(function EditEvent() {
       // Get category name for legacy category field
       const selectedCategory = categories.find(cat => cat.id === formData.category_id);
 
+      console.log('Saving event with image_position:', formData.image_position);
+      
       const eventUpdateData = {
         id,
         title: formData.title,
@@ -307,21 +311,6 @@ const EditEvent = React.memo(function EditEvent() {
         .eq('id', id);
 
       if (error) throw error;
-      
-      // Try to update image_position separately to avoid schema cache issues
-      if (formData.image_position !== undefined && formData.image_position !== 50) {
-        try {
-          const { error: positionError } = await supabase.rpc('exec_sql', {
-            sql_command: `UPDATE events SET image_position = ${formData.image_position} WHERE id = ${id}`
-          });
-          if (positionError) {
-            console.warn('Could not update image position:', positionError);
-          }
-        } catch (positionError) {
-          console.warn('Could not update image position:', positionError);
-          // Continue anyway - this is not critical
-        }
-      }
 
       // Update competition classes
       // First, delete existing classes
