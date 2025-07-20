@@ -163,7 +163,7 @@ export default function AdminEvents() {
       
       // Organization filter
       const matchesOrganization = selectedOrganization === 'all' || 
-                                 event.organization_id === Number(selectedOrganization);
+                                 event.organization_id === selectedOrganization;
       
       // Location filter
       const matchesLocation = selectedLocation === 'all' || 
