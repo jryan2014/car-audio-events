@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Upload, Link, Image as ImageIcon, Trash2, AlertCircle, Move } from 'lucide-react';
 import { EventFormData } from '../../../types/event';
 import { supabase } from '../../../lib/supabase';
+import { useAuth } from '../../../contexts/AuthContext';
 
 interface ImageSectionProps {
   formData: EventFormData;
@@ -25,6 +26,7 @@ const ImageSection: React.FC<ImageSectionProps> = ({
       : 50
   ); // Initialize with saved position
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user, session } = useAuth();
 
   // Sync state when formData changes (e.g., when editing an existing event)
   useEffect(() => {
@@ -43,6 +45,12 @@ const ImageSection: React.FC<ImageSectionProps> = ({
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Check if user is authenticated
+    if (!user || !session) {
+      alert('Please log in to upload images');
+      return;
+    }
 
     // Validate file type
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
@@ -64,6 +72,12 @@ const ImageSection: React.FC<ImageSectionProps> = ({
       const fileExt = file.name.split('.').pop();
       const fileName = `event-fliers/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
 
+      console.log('Uploading file:', fileName, 'User ID:', user.id);
+      
+      // Get current session to ensure we have the latest auth token
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      console.log('Current session exists:', !!currentSession, 'Session user:', currentSession?.user?.id);
+
       // Upload to Supabase Storage
       const { data, error } = await supabase.storage
         .from('event-images')
@@ -72,7 +86,10 @@ const ImageSection: React.FC<ImageSectionProps> = ({
           upsert: false
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Upload error:', error);
+        throw error;
+      }
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
@@ -90,9 +107,19 @@ const ImageSection: React.FC<ImageSectionProps> = ({
       };
       reader.readAsDataURL(file);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading image:', error);
-      alert('Failed to upload image. Please try again.');
+      
+      // Provide more specific error messages
+      if (error?.statusCode === '403' || error?.message?.includes('row-level security')) {
+        alert('Authentication error: Please try logging out and logging back in, then try uploading again.');
+      } else if (error?.statusCode === '400' && error?.message?.includes('violates row-level security')) {
+        alert('Permission error: Please ensure you are logged in and try again.');
+      } else if (error?.message) {
+        alert(`Failed to upload image: ${error.message}`);
+      } else {
+        alert('Failed to upload image. Please try again.');
+      }
     } finally {
       setIsUploading(false);
     }

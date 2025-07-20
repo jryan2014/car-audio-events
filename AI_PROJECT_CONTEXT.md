@@ -9,6 +9,9 @@ If you're an AI assistant picking up this project, start here:
 
 ## Detailed Context from Current Session
 
+### Project Version
+Current version: 1.19.5 (from 1.19.1)
+
 ### What We Accomplished Recently
 
 1. **Database Security Audit**
@@ -124,6 +127,7 @@ If you're an AI assistant picking up this project, start here:
    - Database uses date-only columns but forms expect datetime
    - Use formatDateForInput() to add noon time for consistency
    - Display dates auto-calculate only when empty, not on every change
+   - Fixed in v1.19.4-v1.19.5: Use parseLocalDate() for all date displays to prevent timezone shifts
 
 7. **Geocoding Accuracy Issues**
    - Geocoding was only using city/state, getting city center coordinates
@@ -136,6 +140,7 @@ Key tables with RLS:
 - `users` - User profiles, RLS enabled
 - `events` - Competition events, RLS enabled
   - Added `image_position` column (integer, default 50)
+  - Fixed falsy value handling in v1.19.3 for position 0 display
 - `event_competition_classes` - Junction table for event classes, RLS enabled
   - Columns: event_id, competition_class, created_at
   - Public read, authenticated write policies
@@ -211,11 +216,11 @@ Critical files for context:
 Key component files:
 - `/src/components/EventForm/sections/ImageSection.tsx` - Event image upload
 - `/src/components/EventForm/sections/CompetitionClassesSection.tsx` - Competition class selection
-- `/src/pages/EventDetails.tsx` - Event details with mobile optimization
+- `/src/pages/EventDetails.tsx` - Event details with mobile optimization (fixed falsy value handling in v1.19.3)
 - `/src/pages/EditEvent.tsx` - Event editing with validation fixes
 - `/src/pages/CreateEvent.tsx` - Event creation with competition classes
 - `/src/types/event.ts` - Event type definitions
-- `/src/utils/dateHelpers.ts` - Date formatting utilities
+- `/src/utils/dateHelpers.ts` - Date formatting utilities (added parseLocalDate in v1.19.4)
 - `/src/services/geocoding.ts` - Geocoding service with full address support
 
 ### Commands to Remember
@@ -282,16 +287,26 @@ When you (or another AI) return to this project:
    - Admins now properly route to /admin/directory-manager
    - Fixed infinite loop in Directory component with useCallback
 
-3. **Bug Fixes and Performance**
+3. **Event Flier Image Position Fix (v1.19.3)**
+   - Fixed JavaScript falsy value handling for position 0
+   - Issue: `event.imagePosition || 50` was treating 0 as false
+   - Solution: Changed to explicit null/undefined checks
+   - `objectPosition: \`center ${event.imagePosition !== null && event.imagePosition !== undefined ? event.imagePosition : 50}%\``
+   - Now correctly displays position 0 images at the top of the header
+
+4. **Date Display Timezone Fixes (v1.19.4-v1.19.5)**
+   - Fixed dates showing one day earlier than selected
+   - Issue: JavaScript `new Date()` was parsing date-only strings as UTC midnight
+   - Created `parseLocalDate()` helper function in dateHelpers.ts
+   - Updated all date displays in EventDetails.tsx to use parseLocalDate()
+   - Fixed 7 instances of registration_deadline showing incorrect dates
+   - Ensures date-only strings are parsed as local midnight, preventing timezone shifts
+
+5. **Bug Fixes and Performance**
    - Fixed TypeScript build errors in AdminUsers component
    - Resolved event form validation for numeric IDs
    - Fixed infinite render loops with proper React hooks
-
-4. **Ongoing Issues**
-   - **Event Flier Image Position**: Database saves correctly but display issues persist
-     - Property name mismatch suspected (snake_case vs camelCase)
-     - Multiple debugging attempts made
-     - Requires further investigation of data transformation layer
+   - Removed debug console.log statements from production code
 
 ### Database Schema Updates
 - `events.image_position` column confirmed working (integer type, default 50)

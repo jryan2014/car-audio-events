@@ -6,6 +6,8 @@ import { AuthProvider } from './contexts/AuthContext';
 import { NotificationProvider } from './components/NotificationSystem';
 import UserBilling from './pages/UserBilling';
 import AdminBilling from './pages/AdminBilling';
+import CookieConsent from './components/CookieConsent';
+import { loadConsentedScripts } from './utils/cookieConsent';
 
 // Convert all page imports to lazy loading for code splitting
 const Home = React.lazy(() => import('./pages/Home'));
@@ -48,6 +50,7 @@ const NavigationManager = React.lazy(() => import('./pages/NavigationManager'));
 const DirectoryManager = React.lazy(() => import('./pages/DirectoryManager'));
 const CreateDirectoryListing = React.lazy(() => import('./pages/CreateDirectoryListing'));
 const DirectoryListingPending = React.lazy(() => import('./pages/DirectoryListingPending'));
+const PrivacyPolicy = React.lazy(() => import('./pages/PrivacyPolicy'));
 const ClaimOrganization = React.lazy(() => import('./pages/ClaimOrganization'));
 const SearchResults = React.lazy(() => import('./pages/SearchResults'));
 const NotificationHistory = React.lazy(() => import('./pages/NotificationHistory'));
@@ -76,6 +79,19 @@ function App() {
     };
 
     initializeBackupSystem();
+
+    // Load consented tracking scripts
+    loadConsentedScripts();
+
+    // Listen for consent changes
+    const handleConsentChange = () => {
+      loadConsentedScripts();
+    };
+
+    window.addEventListener('cookieConsentChanged', handleConsentChange);
+    return () => {
+      window.removeEventListener('cookieConsentChanged', handleConsentChange);
+    };
   }, []);
   
   return (
@@ -116,6 +132,7 @@ function App() {
               <Route path="/events/:id/edit" element={<Layout><EditEvent /></Layout>} />
               <Route path="/ai-configuration" element={<Layout><AIConfiguration /></Layout>} />
               <Route path="/pages/:slug" element={<Layout><DynamicPage /></Layout>} />
+              <Route path="/privacy-policy" element={<Layout><PrivacyPolicy /></Layout>} />
               
               {/* Billing routes with their own layout */}
               <Route path="/billing" element={<Layout><UserBilling /></Layout>} />
@@ -146,6 +163,7 @@ function App() {
               <Route path="/admin/billing-configuration" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminBillingConfiguration /></Suspense></AdminLayout>} />
             </Routes>
           </Suspense>
+          <CookieConsent />
         </Router>
       </NotificationProvider>
     </AuthProvider>

@@ -703,15 +703,40 @@ const EventDetails = React.memo(function EventDetails() {
           <div className="space-y-6">
             {/* Registration/Save Card */}
             <div className="bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700/50 rounded-xl p-6 sticky top-6">
-              {/* Show registration fee only if event has pre-registration and fee > 0 */}
+              {/* Show pricing if event has pre-registration */}
               {event.registration_deadline && 
                parseLocalDate(event.registration_deadline) > new Date() &&
-               event.registrationFee > 0 && (
+               (event.member_price > 0 || event.non_member_price > 0 || event.registrationFee > 0) && (
                 <div className="text-center mb-6">
-                  <div className="text-3xl font-black text-white mb-2">
-                    ${typeof event.registrationFee === 'number' ? event.registrationFee.toFixed(2) : '0.00'}
-                  </div>
-                  <div className="text-gray-400">Pre-Registration Fee</div>
+                  {/* Show member/non-member pricing if available */}
+                  {(event.member_price > 0 || event.non_member_price > 0) ? (
+                    <div>
+                      {event.member_price > 0 && (
+                        <div className="mb-2">
+                          <div className="text-2xl font-black text-white">
+                            ${typeof event.member_price === 'number' ? event.member_price.toFixed(2) : '0.00'}
+                          </div>
+                          <div className="text-gray-400 text-sm">Member Price</div>
+                        </div>
+                      )}
+                      {event.non_member_price > 0 && (
+                        <div>
+                          <div className="text-2xl font-black text-white">
+                            ${typeof event.non_member_price === 'number' ? event.non_member_price.toFixed(2) : '0.00'}
+                          </div>
+                          <div className="text-gray-400 text-sm">Non-Member Price</div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* Fallback to legacy registration fee */
+                    <div>
+                      <div className="text-3xl font-black text-white mb-2">
+                        ${typeof event.registrationFee === 'number' ? event.registrationFee.toFixed(2) : '0.00'}
+                      </div>
+                      <div className="text-gray-400">Pre-Registration Fee</div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -843,27 +868,40 @@ const EventDetails = React.memo(function EventDetails() {
                     </div>
                   )}
                 </div>
-                <div>
-                  <div className="text-gray-400 text-sm">Event Director</div>
-                  <div className="text-white font-medium">{event.eventDirector.name}</div>
-                </div>
-                <div>
-                  <div className="text-gray-400 text-sm">Contact</div>
-                  <div className="text-electric-400 font-medium">{event.eventDirector.phone}</div>
-                  {event.eventDirector.email && (
-                    <div className="text-electric-400 text-sm">{event.eventDirector.email}</div>
-                  )}
-                  {event.website && (
-                    <a 
-                      href={event.website} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-electric-300 text-sm hover:text-electric-200 block"
-                    >
-                      Event Website
-                    </a>
-                  )}
-                </div>
+                {/* Only show Event Director if name exists */}
+                {event.eventDirector?.name && (
+                  <div>
+                    <div className="text-gray-400 text-sm">Event Director</div>
+                    <div className="text-white font-medium">{event.eventDirector.name}</div>
+                  </div>
+                )}
+                
+                {/* Only show Contact section if any contact info exists */}
+                {(event.eventDirector?.phone || event.eventDirector?.email || event.contact_phone || event.contact_email || event.website) && (
+                  <div>
+                    <div className="text-gray-400 text-sm">Contact</div>
+                    {(event.eventDirector?.phone || event.contact_phone) && (
+                      <div className="text-electric-400 font-medium">
+                        {event.eventDirector?.phone || event.contact_phone}
+                      </div>
+                    )}
+                    {(event.eventDirector?.email || event.contact_email) && (
+                      <div className="text-electric-400 text-sm">
+                        {event.eventDirector?.email || event.contact_email}
+                      </div>
+                    )}
+                    {event.website && (
+                      <a 
+                        href={event.website} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-electric-300 text-sm hover:text-electric-200 block"
+                      >
+                        Event Website
+                      </a>
+                    )}
+                  </div>
+                )}
                 <div>
                   <div className="text-gray-400 text-sm">Registration</div>
                   <div className={`font-medium ${

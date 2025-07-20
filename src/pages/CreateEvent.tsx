@@ -124,6 +124,8 @@ export default function CreateEvent() {
         registration_deadline: formData.registration_deadline || null,
         max_participants: formData.max_participants,
         ticket_price: formData.registration_fee,
+        member_price: formData.member_price || 0,
+        non_member_price: formData.non_member_price || 0,
         venue_name: formData.venue_name,
         address: formData.address,
         city: formData.city,

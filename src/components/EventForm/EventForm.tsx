@@ -72,6 +72,8 @@ export const EventForm: React.FC<EventFormProps> = ({
     use_organizer_contact: true,
     max_participants: null,
     registration_fee: 0,
+    member_price: 0,
+    non_member_price: 0,
     early_bird_fee: null,
     early_bird_deadline: '',
     early_bird_name: 'Early Bird Special',

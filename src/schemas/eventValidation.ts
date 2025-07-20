@@ -88,6 +88,16 @@ const baseEventSchema = z.object({
     .min(0, 'Registration fee cannot be negative')
     .max(10000, 'Registration fee seems too high. Please verify.'),
   
+  member_price: z.number()
+    .min(0, 'Member price cannot be negative')
+    .max(10000, 'Member price seems too high. Please verify.')
+    .default(0),
+  
+  non_member_price: z.number()
+    .min(0, 'Non-member price cannot be negative')
+    .max(10000, 'Non-member price seems too high. Please verify.')
+    .default(0),
+  
   early_bird_fee: z.number().nullable()
     .refine((val) => val === null || val >= 0, 'Early bird fee cannot be negative'),
   
@@ -186,16 +196,8 @@ export const eventFormSchema = baseEventSchema.superRefine((data, ctx) => {
     }
   }
   
-  // Event director contact validation
-  if (!data.use_organizer_contact) {
-    if (!data.event_director_email && !data.contact_email) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Either event director email or general contact email is required',
-        path: ['event_director_email']
-      });
-    }
-  }
+  // Event director contact validation - removed required check
+  // Contact information is now optional
 });
 
 // Type inference from schema

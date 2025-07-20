@@ -44,6 +44,8 @@ export interface EventFormData {
   early_bird_fee: number | null;
   early_bird_deadline: string;
   early_bird_name: string;
+  member_price: number;
+  non_member_price: number;
   
   // Details
   rules: string;

@@ -5,7 +5,7 @@ When starting a new session, read this file to understand the project context an
 
 ## Project Overview
 - **Name**: Car Audio Events Competition Platform
-- **Version**: 1.19.1
+- **Version**: 1.19.5
 - **Tech Stack**: React, TypeScript, Supabase, Tailwind CSS, Vite
 - **Database**: Supabase (PostgreSQL)
 - **Deployment**: Netlify
@@ -219,27 +219,26 @@ When starting a new session, tell the AI:
   - Fixed admin navigation from CreateDirectoryListing
   - Admin users now redirect to /admin/directory-manager
   - Regular users continue to /directory as before
-- **Bug Fixes (v1.18.1 - v1.19.1)**:
+- **Bug Fixes (v1.18.1 - v1.19.5)**:
   - Fixed infinite loop in Directory component (useCallback)
   - Fixed TypeScript errors in AdminUsers (delete action)
   - Corrected admin directory navigation routes
-  - Image position saving issue (ongoing debugging)
+  - Fixed image position display issue (v1.19.3) - falsy value handling
+  - Fixed date timezone display issues (v1.19.4-v1.19.5) - dates no longer show one day earlier
 
-### 11. Known Issues & Debugging
+### 11. Recently Fixed Issues (v1.19.3 - v1.19.5)
 
-#### Event Flier Image Position Not Displaying
-**Issue**: The image_position slider value saves to database but doesn't display correctly on EventDetails page
-**Status**: Under investigation
-**Details**:
-- Database column `image_position` exists and stores values correctly
-- Values save properly when editing events
-- EventDetails page may have property name mismatch (image_position vs imagePosition)
-- Attempted fixes:
-  - Removed commented-out image_position fields in Create/EditEvent
-  - Added proper state synchronization in ImageSection
-  - Fixed property reference in EventDetails (event.imagePosition)
-  - Removed exec_sql workarounds
-**Next Steps**: Verify data transformation between database and frontend display
+#### Event Flier Image Position Display (Fixed in v1.19.3)
+**Issue**: Image position slider value was saving but not displaying correctly
+**Root Cause**: JavaScript falsy value handling - position 0 was being treated as falsy and defaulting to 50
+**Solution**: Changed from `event.imagePosition || 50` to proper null/undefined checks
+**Status**: ✅ FIXED - Image positions now save and display correctly at all values (0-100)
+
+#### Date Display Timezone Issue (Fixed in v1.19.4-v1.19.5)
+**Issue**: Dates showing one day earlier (e.g., 07/26/2025 displaying as 07/25/2025)
+**Root Cause**: JavaScript's `new Date()` interprets date-only strings as UTC midnight, causing timezone shifts
+**Solution**: Created `parseLocalDate()` helper function to handle date-only strings as local dates
+**Status**: ✅ FIXED - All dates now display correctly without timezone shifts
 
 ### 12. Common Development Patterns
 
