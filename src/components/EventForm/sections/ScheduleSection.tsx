@@ -1,6 +1,7 @@
 import React from 'react';
 import { Clock, X } from 'lucide-react';
 import { EventFormData, EventScheduleItem } from '../../../types/event';
+import { formatTime12Hour } from '../../../utils/dateHelpers';
 
 interface ScheduleSectionProps {
   formData: EventFormData;
@@ -190,13 +191,18 @@ const ScheduleSection: React.FC<ScheduleSectionProps> = ({
           <div className="space-y-3">
             {formData.schedule.map((item, index) => (
               <div key={index} className="flex items-center space-x-3">
-                <input
-                  type="time"
-                  value={item.time}
-                  onChange={(e) => handleScheduleChange(index, 'time', e.target.value)}
-                  className="w-32 p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                  aria-label={`Time for schedule item ${index + 1}`}
-                />
+                <div className="flex flex-col">
+                  <input
+                    type="time"
+                    value={item.time}
+                    onChange={(e) => handleScheduleChange(index, 'time', e.target.value)}
+                    className="w-32 p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                    aria-label={`Time for schedule item ${index + 1}`}
+                  />
+                  {item.time && (
+                    <span className="text-xs text-electric-400 mt-1">{formatTime12Hour(item.time)}</span>
+                  )}
+                </div>
                 <input
                   type="text"
                   value={item.activity}

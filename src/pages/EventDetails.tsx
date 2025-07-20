@@ -6,7 +6,7 @@ import PaymentForm from '../components/PaymentForm';
 import EventLocationMap from '../components/EventLocationMap';
 import { supabase } from '../lib/supabase';
 import { memoryManager } from '../utils/memoryManager';
-import { parseLocalDate } from '../utils/dateHelpers';
+import { parseLocalDate, formatTime12Hour } from '../utils/dateHelpers';
 import { MemoryTestComponent } from '../components/MemoryTestComponent';
 
 const EventDetails = React.memo(function EventDetails() {
@@ -183,14 +183,29 @@ const EventDetails = React.memo(function EventDetails() {
         imagePosition: eventData.image_position !== null && eventData.image_position !== undefined ? eventData.image_position : 50,
         images: imagesData || [],
         featured: eventData.is_featured,
-        date: `${parseLocalDate(eventData.start_date).toLocaleDateString('en-US', { 
-          month: 'long', 
-          day: 'numeric' 
-        })} - ${parseLocalDate(eventData.end_date).toLocaleDateString('en-US', { 
-          month: 'long', 
-          day: 'numeric', 
-          year: 'numeric' 
-        })}`,
+        date: (() => {
+          const startDateStr = parseLocalDate(eventData.start_date).toLocaleDateString('en-US', { 
+            month: 'long', 
+            day: 'numeric' 
+          });
+          const endDateStr = parseLocalDate(eventData.end_date).toLocaleDateString('en-US', { 
+            month: 'long', 
+            day: 'numeric', 
+            year: 'numeric' 
+          });
+          
+          // Add time if available
+          const startTime = eventData.start_date.includes('T') ? 
+            ` ${formatTime12Hour(eventData.start_date.split('T')[1])}` : '';
+          const endTime = eventData.end_date.includes('T') ? 
+            ` ${formatTime12Hour(eventData.end_date.split('T')[1])}` : '';
+          
+          if (eventData.start_date === eventData.end_date) {
+            return `${startDateStr}${startTime}`;
+          }
+          
+          return `${startDateStr}${startTime} - ${endDateStr}${endTime}`;
+        })(),
         location: `${eventData.city}, ${eventData.state}`,
         venue: eventData.venue_name,
         participants: eventData.current_participants,
@@ -679,7 +694,7 @@ const EventDetails = React.memo(function EventDetails() {
                         <Clock className="h-5 w-5" />
                       </div>
                       <div>
-                        <div className="font-semibold text-electric-400">{item.time}</div>
+                        <div className="font-semibold text-electric-400">{formatTime12Hour(item.time)}</div>
                         <div className="text-white">{item.activity}</div>
                       </div>
                     </div>
@@ -860,6 +875,11 @@ const EventDetails = React.memo(function EventDetails() {
                       month: 'long', 
                       day: 'numeric' 
                     })}
+                    {event.start_date.includes('T') && (
+                      <span className="text-electric-400 ml-2">
+                        {formatTime12Hour(event.start_date.split('T')[1])}
+                      </span>
+                    )}
                   </div>
                   {event.start_date !== event.end_date && (
                     <div className="text-gray-300 text-sm">
@@ -869,6 +889,11 @@ const EventDetails = React.memo(function EventDetails() {
                         month: 'long', 
                         day: 'numeric' 
                       })}
+                      {event.end_date.includes('T') && (
+                        <span className="text-electric-400 ml-2">
+                          {formatTime12Hour(event.end_date.split('T')[1])}
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>

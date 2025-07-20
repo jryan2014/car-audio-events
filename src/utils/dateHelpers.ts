@@ -77,3 +77,39 @@ export function parseLocalDate(dateString: string | null | undefined): Date {
   // Otherwise parse normally
   return new Date(dateString);
 }
+
+/**
+ * Convert 24-hour time format to 12-hour format with AM/PM
+ * @param time24 - Time in 24-hour format (e.g., "14:30", "08:00")
+ * @returns Time in 12-hour format with AM/PM (e.g., "2:30 PM", "8:00 AM")
+ */
+export function formatTime12Hour(time24: string | null | undefined): string {
+  if (!time24) return '';
+  
+  try {
+    // Handle time strings that might have seconds
+    const timeParts = time24.split(':');
+    if (timeParts.length < 2) return time24; // Return original if invalid format
+    
+    let hours = parseInt(timeParts[0], 10);
+    const minutes = timeParts[1];
+    
+    if (isNaN(hours)) return time24; // Return original if invalid
+    
+    // Determine AM/PM
+    const period = hours >= 12 ? 'PM' : 'AM';
+    
+    // Convert to 12-hour format
+    if (hours === 0) {
+      hours = 12; // Midnight
+    } else if (hours > 12) {
+      hours = hours - 12;
+    }
+    
+    // Format the time string
+    return `${hours}:${minutes} ${period}`;
+  } catch (error) {
+    console.error('Error formatting time:', error);
+    return time24; // Return original on error
+  }
+}
