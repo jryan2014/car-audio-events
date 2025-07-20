@@ -22,9 +22,12 @@ const EventDetails = React.memo(function EventDetails() {
   const [showLightbox, setShowLightbox] = useState(false);
   const [memoryInfo, setMemoryInfo] = useState<any>(null);
   const [showMemoryTest, setShowMemoryTest] = useState(false);
+  const [showShareDropdown, setShowShareDropdown] = useState(false);
   
   // Use memory manager for better resource cleanup
   const abortControllerRef = useRef<AbortController | null>(null);
+  const shareDropdownRef = useRef<HTMLDivElement | null>(null);
+  const shareButtonRef = useRef<HTMLButtonElement | null>(null);
 
   // Helper function to get class color based on type
   const getClassColor = (className: string) => {
@@ -92,6 +95,30 @@ const EventDetails = React.memo(function EventDetails() {
       setShowDebug(false);
     };
   }, [id]);
+
+  // Handle click outside for share dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (shareDropdownRef.current && !shareDropdownRef.current.contains(event.target as Node) && 
+          shareButtonRef.current && !shareButtonRef.current.contains(event.target as Node)) {
+        setShowShareDropdown(false);
+      }
+    };
+
+    const handleScroll = () => {
+      // Close dropdown on scroll to prevent positioning issues
+      setShowShareDropdown(false);
+    };
+
+    if (showShareDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      window.addEventListener('scroll', handleScroll);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+        window.removeEventListener('scroll', handleScroll);
+      };
+    }
+  }, [showShareDropdown]);
 
   const loadEventDetails = async () => {
     if (!id) return;
@@ -258,6 +285,9 @@ const EventDetails = React.memo(function EventDetails() {
         }
         break;
     }
+    
+    // Close dropdown after action
+    setShowShareDropdown(false);
   };
 
   const handlePaymentSuccess = (paymentIntentId: string, userInfo?: any) => {
@@ -776,45 +806,15 @@ const EventDetails = React.memo(function EventDetails() {
                         <Heart className={`h-4 w-4 ${isFavorited ? 'fill-current' : ''}`} />
                         <span>{isFavorited ? 'Saved' : 'Save Event'}</span>
                       </button>
-                      <div className="relative group">
-                        <button className="flex items-center justify-center space-x-2 py-2 px-4 bg-gray-700 text-gray-300 rounded-lg font-medium hover:bg-gray-600 transition-all duration-200">
+                      <div className="relative">
+                        <button 
+                          ref={shareButtonRef}
+                          onClick={() => setShowShareDropdown(!showShareDropdown)}
+                          className="flex items-center justify-center space-x-2 py-2 px-4 bg-gray-700 text-gray-300 rounded-lg font-medium hover:bg-gray-600 transition-all duration-200"
+                        >
                           <Share2 className="h-4 w-4" />
                           <span>Share</span>
                         </button>
-                        {/* Share dropdown */}
-                        <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-xl border border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                          <button
-                            onClick={() => handleShare('facebook')}
-                            className="flex items-center space-x-3 w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
-                          >
-                            <span>Facebook</span>
-                          </button>
-                          <button
-                            onClick={() => handleShare('twitter')}
-                            className="flex items-center space-x-3 w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
-                          >
-                            <span>Twitter</span>
-                          </button>
-                          <button
-                            onClick={() => handleShare('linkedin')}
-                            className="flex items-center space-x-3 w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
-                          >
-                            <span>LinkedIn</span>
-                          </button>
-                          <button
-                            onClick={() => handleShare('whatsapp')}
-                            className="flex items-center space-x-3 w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
-                          >
-                            <span>WhatsApp</span>
-                          </button>
-                          <div className="border-t border-gray-700"></div>
-                          <button
-                            onClick={() => handleShare('copy')}
-                            className="flex items-center space-x-3 w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
-                          >
-                            <span>Copy Link</span>
-                          </button>
-                        </div>
                       </div>
                     </div>
                   </>
@@ -992,6 +992,50 @@ const EventDetails = React.memo(function EventDetails() {
       {/* Memory Test Modal */}
       {showMemoryTest && (
         <MemoryTestComponent onClose={() => setShowMemoryTest(false)} />
+      )}
+
+      {/* Share Dropdown Portal */}
+      {showShareDropdown && shareButtonRef.current && (
+        <div 
+          ref={shareDropdownRef}
+          className="fixed w-48 bg-gray-800 rounded-lg shadow-xl border border-gray-700 z-[9999]"
+          style={{
+            top: `${shareButtonRef.current.getBoundingClientRect().bottom + 8}px`,
+            left: `${shareButtonRef.current.getBoundingClientRect().right - 192}px`
+          }}
+        >
+          <button
+            onClick={() => handleShare('facebook')}
+            className="flex items-center space-x-3 w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors rounded-t-lg"
+          >
+            <span>Facebook</span>
+          </button>
+          <button
+            onClick={() => handleShare('twitter')}
+            className="flex items-center space-x-3 w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+          >
+            <span>Twitter</span>
+          </button>
+          <button
+            onClick={() => handleShare('linkedin')}
+            className="flex items-center space-x-3 w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+          >
+            <span>LinkedIn</span>
+          </button>
+          <button
+            onClick={() => handleShare('whatsapp')}
+            className="flex items-center space-x-3 w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+          >
+            <span>WhatsApp</span>
+          </button>
+          <div className="border-t border-gray-700"></div>
+          <button
+            onClick={() => handleShare('copy')}
+            className="flex items-center space-x-3 w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors rounded-b-lg"
+          >
+            <span>Copy Link</span>
+          </button>
+        </div>
       )}
     </div>
   );
