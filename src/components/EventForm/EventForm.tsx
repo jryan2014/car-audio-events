@@ -104,6 +104,7 @@ export const EventForm: React.FC<EventFormProps> = ({
     is_active: true,
     status: 'draft',
     approval_status: 'pending',
+    allows_online_registration: false,
     ...initialData
   }));
   

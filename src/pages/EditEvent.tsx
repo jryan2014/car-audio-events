@@ -228,7 +228,8 @@ const EditEvent = React.memo(function EditEvent() {
         is_active: event.is_active !== false,
         status: event.status || 'draft',
         approval_status: event.approval_status || 'pending',
-        competition_classes: competitionClasses?.map(item => item.competition_class) || []
+        competition_classes: competitionClasses?.map(item => item.competition_class) || [],
+        allows_online_registration: event.allows_online_registration || false
       };
 
 
@@ -307,7 +308,8 @@ const EditEvent = React.memo(function EditEvent() {
         status: formData.status,
         approval_status: formData.approval_status,
         latitude: formData.latitude,
-        longitude: formData.longitude
+        longitude: formData.longitude,
+        allows_online_registration: formData.allows_online_registration || false
       };
 
       

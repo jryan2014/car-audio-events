@@ -77,12 +77,17 @@ export default function AdminEvents() {
         .select(`
           *,
           event_categories(name),
-          users!organizer_id(name, email),
-          organizations(id, name)
+          users:organizer_id(name, email),
+          organizations:organization_id(id, name)
         `)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error loading events:', error);
+        throw error;
+      }
+      
+      console.log('Loaded events:', data?.length || 0, 'events');
 
       const formattedEvents = (data || []).map(event => ({
         id: event.id,
@@ -103,14 +108,14 @@ export default function AdminEvents() {
         organizer_email: event.users?.email || '',
         category_name: event.event_categories?.name || 'Uncategorized',
         organization_name: event.organizations?.name || null,
-        organization_id: event.organizations?.id || null,
+        organization_id: event.organization_id || null,
         created_at: event.created_at,
         rejection_reason: event.rejection_reason
       }));
 
       setEvents(formattedEvents);
       
-      // Extract unique organizations
+      // Extract unique organizations that are actually used in events
       const uniqueOrgs = new Map();
       formattedEvents.forEach(event => {
         if (event.organization_id && event.organization_name) {
@@ -158,7 +163,7 @@ export default function AdminEvents() {
       
       // Organization filter
       const matchesOrganization = selectedOrganization === 'all' || 
-                                 event.organization_id === selectedOrganization;
+                                 event.organization_id === Number(selectedOrganization);
       
       // Location filter
       const matchesLocation = selectedLocation === 'all' || 

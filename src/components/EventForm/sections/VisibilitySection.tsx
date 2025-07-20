@@ -43,6 +43,19 @@ const VisibilitySection: React.FC<VisibilitySectionProps> = ({
             <span className="text-gray-500 text-xs">This event will be displayed prominently on the home page</span>
           </div>
         </label>
+        
+        <label className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            checked={formData.allows_online_registration}
+            onChange={(e) => updateField('allows_online_registration', e.target.checked)}
+            className="rounded border-gray-600 text-electric-500 focus:ring-electric-500"
+          />
+          <div className="flex flex-col">
+            <span className="text-gray-400">Allow online registration</span>
+            <span className="text-gray-500 text-xs">Competitors can register for this event through the website</span>
+          </div>
+        </label>
       </div>
     </div>
   );

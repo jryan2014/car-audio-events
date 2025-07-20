@@ -145,6 +145,7 @@ export default function CreateEvent() {
         status: 'draft',
         is_featured: formData.is_featured,
         is_public: formData.is_public,
+        allows_online_registration: formData.allows_online_registration || false,
         // Event director fields
         event_director_first_name: formData.event_director_first_name,
         event_director_last_name: formData.event_director_last_name,

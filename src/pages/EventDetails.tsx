@@ -750,62 +750,30 @@ const EventDetails = React.memo(function EventDetails() {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Registration/Save Card */}
+            {/* Actions Card */}
             <div className="bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700/50 rounded-xl p-6 sticky top-6">
-              {/* Show pricing if event has pre-registration */}
-              {event.registration_deadline && 
-               parseLocalDate(event.registration_deadline) > new Date() &&
-               (event.member_price > 0 || event.non_member_price > 0 || event.registrationFee > 0) && (
-                <div className="text-center mb-6">
-                  {/* Show member/non-member pricing if available */}
-                  {(event.member_price > 0 || event.non_member_price > 0) ? (
-                    <div>
-                      {event.member_price > 0 && (
-                        <div className="mb-2">
-                          <div className="text-2xl font-black text-white">
-                            ${typeof event.member_price === 'number' ? event.member_price.toFixed(2) : '0.00'}
-                          </div>
-                          <div className="text-gray-400 text-sm">Member Price</div>
-                        </div>
-                      )}
-                      {event.non_member_price > 0 && (
-                        <div>
-                          <div className="text-2xl font-black text-white">
-                            ${typeof event.non_member_price === 'number' ? event.non_member_price.toFixed(2) : '0.00'}
-                          </div>
-                          <div className="text-gray-400 text-sm">Non-Member Price</div>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    /* Fallback to legacy registration fee */
-                    <div>
-                      <div className="text-3xl font-black text-white mb-2">
-                        ${typeof event.registrationFee === 'number' ? event.registrationFee.toFixed(2) : '0.00'}
-                      </div>
-                      <div className="text-gray-400">Pre-Registration Fee</div>
-                    </div>
-                  )}
-                </div>
-              )}
 
               <div className="space-y-4">
                 {isAuthenticated ? (
                   <>
-                    {/* Show Register button only if registration deadline exists and hasn't passed */}
-                    {event.registration_deadline && 
+                    {/* Event Registration - Only show if event allows online registration */}
+                    {event.allows_online_registration && 
+                     event.registration_deadline && 
                      parseLocalDate(event.registration_deadline) > new Date() &&
                      (!event.maxParticipants || event.participants < event.maxParticipants) && (
-                      <button
-                        onClick={handleRegister}
-                        className={`w-full py-3 rounded-lg font-bold text-lg transition-all duration-200 ${
-                          isRegistered
-                            ? 'bg-green-600 text-white hover:bg-green-700'
-                            : 'bg-electric-500 text-white hover:bg-electric-600 shadow-lg'
-                        }`}
-                      >
-                        {isRegistered ? 'Registered ✓' : event.registrationFee > 0 ? 'Pre-Register Now' : 'Register Now'}
-                      </button>
+                      <div className="bg-gray-700/30 border border-gray-600/50 rounded-lg p-4">
+                        <h3 className="text-sm font-semibold text-gray-300 mb-2">Event Registration</h3>
+                        <button
+                          onClick={handleRegister}
+                          className={`w-full py-3 rounded-lg font-bold text-lg transition-all duration-200 ${
+                            isRegistered
+                              ? 'bg-green-600 text-white hover:bg-green-700'
+                              : 'bg-electric-500 text-white hover:bg-electric-600 shadow-lg'
+                          }`}
+                        >
+                          {isRegistered ? 'Registered for Event ✓' : 'Register for This Event'}
+                        </button>
+                      </div>
                     )}
                     
                     {/* Save and Share buttons */}
@@ -835,18 +803,32 @@ const EventDetails = React.memo(function EventDetails() {
                   </>
                 ) : (
                   <div className="space-y-4">
-                    <Link
-                      to="/login"
-                      className="block w-full py-3 bg-electric-500 text-white rounded-lg font-bold text-lg text-center hover:bg-electric-600 transition-all duration-200 shadow-lg"
-                    >
-                      Login to Save Event
-                    </Link>
-                    <p className="text-gray-400 text-sm text-center">
-                      Members can save events to their favorites and get notifications
-                    </p>
-                    <p className="text-gray-400 text-sm text-center">
-                      New to Car Audio Events? <Link to="/register" className="text-electric-400 hover:text-electric-300">Create an account</Link>
-                    </p>
+                    <div className="bg-gray-700/30 border border-gray-600/50 rounded-lg p-4">
+                      <h3 className="text-sm font-semibold text-gray-300 mb-2">Website Membership Required</h3>
+                      <Link
+                        to="/login"
+                        className="block w-full py-3 bg-electric-500 text-white rounded-lg font-bold text-lg text-center hover:bg-electric-600 transition-all duration-200 shadow-lg"
+                      >
+                        Sign In to Your Account
+                      </Link>
+                      <p className="text-gray-400 text-xs text-center mt-2">
+                        Members can save events and access competitor features
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-gray-400 text-sm mb-2">
+                        New to Car Audio Events?
+                      </p>
+                      <Link 
+                        to="/register" 
+                        className="inline-block px-6 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-all duration-200"
+                      >
+                        Create Free Membership
+                      </Link>
+                      <p className="text-gray-500 text-xs mt-2">
+                        Free membership includes event tracking & competitor profile
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -946,6 +928,31 @@ const EventDetails = React.memo(function EventDetails() {
                     </div>
                   )}
                 </div>
+                
+                {/* Event Pricing */}
+                {(event.member_price > 0 || event.non_member_price > 0 || event.registrationFee > 0) && (
+                  <div>
+                    <div className="text-gray-400 text-sm mb-2">Event Pricing</div>
+                    {event.member_price > 0 && (
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-gray-300 text-sm">Member Price:</span>
+                        <span className="text-white font-medium">${event.member_price.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {event.non_member_price > 0 && (
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-gray-300 text-sm">Non-Member Price:</span>
+                        <span className="text-white font-medium">${event.non_member_price.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {!event.member_price && !event.non_member_price && event.registrationFee > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-300 text-sm">Registration Fee:</span>
+                        <span className="text-white font-medium">${event.registrationFee.toFixed(2)}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div>
                   <div className="text-gray-400 text-sm">Participants</div>
                   <div className="text-white font-medium">
@@ -1060,6 +1067,38 @@ const EventDetails = React.memo(function EventDetails() {
           >
             <span>Copy Link</span>
           </button>
+        </div>
+      )}
+      
+      {/* Payment Modal */}
+      {showPayment && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-xl w-full max-w-2xl lg:max-w-4xl p-6 md:p-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl md:text-2xl font-bold text-white">Complete Event Registration</h3>
+              <button
+                onClick={() => setShowPayment(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            
+            <PaymentForm
+              eventId={event.id}
+              eventTitle={event.title}
+              amount={
+                user?.membershipType === 'competitor' && event.member_price > 0
+                  ? event.member_price
+                  : event.non_member_price > 0
+                  ? event.non_member_price
+                  : event.registrationFee || 0
+              }
+              onSuccess={handlePaymentSuccess}
+              onError={handlePaymentError}
+              onCancel={() => setShowPayment(false)}
+            />
+          </div>
         </div>
       )}
     </div>

@@ -80,6 +80,9 @@ export interface EventFormData {
   
   // Competition Classes
   competition_classes?: string[];
+  
+  // Online Registration
+  allows_online_registration?: boolean;
 }
 
 export interface EventScheduleItem {
