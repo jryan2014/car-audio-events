@@ -1085,8 +1085,6 @@ const EventDetails = React.memo(function EventDetails() {
             </div>
             
             <PaymentForm
-              eventId={event.id}
-              eventTitle={event.title}
               amount={
                 user?.membershipType === 'competitor' && event.member_price > 0
                   ? event.member_price
@@ -1094,9 +1092,15 @@ const EventDetails = React.memo(function EventDetails() {
                   ? event.non_member_price
                   : event.registrationFee || 0
               }
+              planName={`Registration for ${event.title}`}
+              description={`Event registration for ${event.title} on ${parseLocalDate(event.start_date).toLocaleDateString()}`}
+              metadata={{
+                eventId: event.id,
+                eventTitle: event.title,
+                eventDate: event.start_date
+              }}
               onSuccess={handlePaymentSuccess}
               onError={handlePaymentError}
-              onCancel={() => setShowPayment(false)}
             />
           </div>
         </div>
