@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import PageHeader from '../components/PageHeader';
 import AdDisplay from '../components/AdDisplay';
+import { parseLocalDate } from '../utils/dateHelpers';
 
 interface Event {
   id: string;
@@ -135,7 +136,7 @@ export default function Events() {
   const getSeasonYears = () => {
     const years = new Set<number>();
     events.forEach(event => {
-      const seasonYear = event.metadata?.season_year || new Date(event.start_date).getFullYear();
+      const seasonYear = event.metadata?.season_year || parseLocalDate(event.start_date).getFullYear();
       years.add(seasonYear);
     });
     return Array.from(years).sort((a, b) => b - a);
@@ -148,14 +149,14 @@ export default function Events() {
     
     const matchesCategory = !selectedCategory || event.event_categories?.name === selectedCategory;
     
-    const eventSeasonYear = event.metadata?.season_year || new Date(event.start_date).getFullYear();
+    const eventSeasonYear = event.metadata?.season_year || parseLocalDate(event.start_date).getFullYear();
     const matchesSeason = !selectedSeason || eventSeasonYear.toString() === selectedSeason;
     
     return matchesSearch && matchesCategory && matchesSeason;
   });
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    return parseLocalDate(dateString).toLocaleDateString('en-US', {
       weekday: 'short',
       year: 'numeric',
       month: 'short',
@@ -164,7 +165,7 @@ export default function Events() {
   };
 
   const isEventPast = (endDate: string) => {
-    return new Date(endDate) < new Date();
+    return parseLocalDate(endDate) < new Date();
   };
 
   if (isLoading) {

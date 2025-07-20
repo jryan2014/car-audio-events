@@ -4,6 +4,7 @@ import { Calendar, MapPin, Trophy, Users, Star, ArrowRight, Volume2, Zap } from 
 import GoogleMap from '../components/GoogleMap';
 import AdDisplay from '../components/AdDisplay';
 import { supabase } from '../lib/supabase';
+import { parseLocalDate } from '../utils/dateHelpers';
 
 interface FeaturedEvent {
   id: string | number;
@@ -142,7 +143,7 @@ export default function Home() {
 
   // Format date for display
   const formatEventDate = (startDate: string, endDate?: string): string => {
-    const start = new Date(startDate);
+    const start = parseLocalDate(startDate);
     const startFormatted = start.toLocaleDateString('en-US', { 
       month: 'long', 
       day: 'numeric',
@@ -150,7 +151,7 @@ export default function Home() {
     });
 
     if (endDate && endDate !== startDate) {
-      const end = new Date(endDate);
+      const end = parseLocalDate(endDate);
       const endFormatted = end.toLocaleDateString('en-US', { 
         month: 'long', 
         day: 'numeric',

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { loadGoogleMapsApi, hasValidApiKey, GOOGLE_MAPS_API_KEY, getMapStyles } from '../lib/googleMaps';
 import { MapPin, AlertCircle, Loader, Key, Map, TouchpadOff } from 'lucide-react';
+import { parseLocalDate } from '../utils/dateHelpers';
 
 // Define the structure of map event data
 interface MapEvent {
@@ -512,7 +513,7 @@ export default function GoogleMap() {
         </div>
         <div style="display: flex; align-items: center; color: #374151; font-size: 14px; margin-bottom: 8px; font-weight: 500;">
           <span style="margin-right: 8px; font-size: 16px;">📅</span>
-          <span>${new Date(event.start_date).toLocaleDateString('en-US', { 
+          <span>${parseLocalDate(event.start_date).toLocaleDateString('en-US', { 
             year: 'numeric', 
             month: 'short', 
             day: 'numeric' 
@@ -543,7 +544,7 @@ export default function GoogleMap() {
     return `
       <div style="padding: 12px; font-family: 'Inter', sans-serif; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
         <div style="font-weight: 700; color: #1f2937; font-size: 16px; margin-bottom: 4px;">${event.title}</div>
-        <div style="color: #6b7280; font-size: 13px; font-weight: 500;">${event.city}, ${event.state} • ${new Date(event.start_date).toLocaleDateString()}</div>
+        <div style="color: #6b7280; font-size: 13px; font-weight: 500;">${event.city}, ${event.state} • ${parseLocalDate(event.start_date).toLocaleDateString()}</div>
         <div style="color: ${event.pin_color}; font-size: 11px; font-weight: 600; margin-top: 4px; text-transform: uppercase;">Click for details</div>
       </div>
     `;

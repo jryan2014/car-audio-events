@@ -145,60 +145,94 @@ const baseEventSchema = z.object({
   approval_status: z.enum(['pending', 'approved', 'rejected'])
 });
 
-// Event form validation schema with refinements
-export const eventFormSchema = baseEventSchema.superRefine((data, ctx) => {
-  // Custom validations that depend on multiple fields
-  
-  // End date must be after start date
-  if (data.start_date && data.end_date) {
-    const start = new Date(data.start_date);
-    const end = new Date(data.end_date);
-    if (end < start) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'End date must be after start date',
-        path: ['end_date']
-      });
-    }
-  }
-  
-  // Registration deadline should be before start date
-  if (data.registration_deadline && data.start_date) {
-    const deadline = new Date(data.registration_deadline);
-    const start = new Date(data.start_date);
-    if (deadline > start) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Registration deadline should be before the event start date',
-        path: ['registration_deadline']
-      });
-    }
-  }
-  
-  // Early bird deadline validation
-  if (data.early_bird_fee !== null && data.early_bird_fee !== undefined) {
-    if (!data.early_bird_deadline) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Early bird deadline is required when early bird fee is set',
-        path: ['early_bird_deadline']
-      });
-    } else if (data.registration_deadline) {
-      const earlyBird = new Date(data.early_bird_deadline);
-      const regular = new Date(data.registration_deadline);
-      if (earlyBird > regular) {
+// Create event form schema with admin-specific validations
+export const createEventFormSchema = (isAdmin: boolean = false) => {
+  return baseEventSchema.superRefine((data, ctx) => {
+    // Custom validations that depend on multiple fields
+    
+    // End date must be after start date
+    if (data.start_date && data.end_date) {
+      const start = new Date(data.start_date);
+      const end = new Date(data.end_date);
+      if (end < start) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: 'Early bird deadline must be before regular registration deadline',
-          path: ['early_bird_deadline']
+          message: 'End date must be after start date',
+          path: ['end_date']
         });
       }
     }
-  }
-  
-  // Event director contact validation - removed required check
-  // Contact information is now optional
-});
+    
+    // Registration deadline should be before start date
+    if (data.registration_deadline && data.start_date) {
+      const deadline = new Date(data.registration_deadline);
+      const start = new Date(data.start_date);
+      if (deadline > start) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Registration deadline should be before the event start date',
+          path: ['registration_deadline']
+        });
+      }
+    }
+    
+    // Early bird deadline validation
+    if (data.early_bird_fee !== null && data.early_bird_fee !== undefined) {
+      if (!data.early_bird_deadline) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Early bird deadline is required when early bird fee is set',
+          path: ['early_bird_deadline']
+        });
+      } else if (data.registration_deadline) {
+        const earlyBird = new Date(data.early_bird_deadline);
+        const regular = new Date(data.registration_deadline);
+        if (earlyBird > regular) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Early bird deadline must be before regular registration deadline',
+            path: ['early_bird_deadline']
+          });
+        }
+      }
+    }
+    
+    // Contact validation - only required for non-admin users
+    if (!isAdmin) {
+      // Require at least one form of general contact
+      if (!data.contact_email && !data.contact_phone) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'At least one general contact method (email or phone) is required',
+          path: ['contact_email']
+        });
+      }
+      
+      // Require event director info if not using organizer contact
+      if (!data.use_organizer_contact) {
+        if (!data.event_director_first_name || !data.event_director_last_name) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Event director name is required',
+            path: ['event_director_first_name']
+          });
+        }
+        
+        if (!data.event_director_email && !data.event_director_phone) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Event director must have at least one contact method (email or phone)',
+            path: ['event_director_email']
+          });
+        }
+      }
+    }
+    // For admin users, all contact info is optional
+  });
+};
+
+// Keep backward compatibility by exporting default schema
+export const eventFormSchema = createEventFormSchema(false);
 
 // Type inference from schema
 export type ValidatedEventFormData = z.infer<typeof eventFormSchema>;
@@ -207,8 +241,9 @@ export type ValidatedEventFormData = z.infer<typeof eventFormSchema>;
 export const eventDraftSchema = baseEventSchema.partial();
 
 // Helper function to validate form data
-export function validateEventForm(data: unknown) {
-  return eventFormSchema.safeParse(data);
+export function validateEventForm(data: unknown, isAdmin: boolean = false) {
+  const schema = createEventFormSchema(isAdmin);
+  return schema.safeParse(data);
 }
 
 // Helper function to validate draft

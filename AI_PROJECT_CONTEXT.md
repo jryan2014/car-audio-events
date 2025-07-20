@@ -10,7 +10,7 @@ If you're an AI assistant picking up this project, start here:
 ## Detailed Context from Current Session
 
 ### Project Version
-Current version: 1.19.5 (from 1.19.1)
+Current version: 1.20.0 (from 1.19.5)
 
 ### What We Accomplished Recently
 
@@ -216,12 +216,20 @@ Critical files for context:
 Key component files:
 - `/src/components/EventForm/sections/ImageSection.tsx` - Event image upload
 - `/src/components/EventForm/sections/CompetitionClassesSection.tsx` - Competition class selection
+- `/src/components/EventForm/sections/ContactSection.tsx` - Contact info with useEffect fix (v1.20.0)
+- `/src/components/EventForm/sections/PricingSection.tsx` - Member/non-member pricing (v1.20.0)
+- `/src/components/CookieConsent.tsx` - Cookie consent banner (v1.20.0)
 - `/src/pages/EventDetails.tsx` - Event details with mobile optimization (fixed falsy value handling in v1.19.3)
 - `/src/pages/EditEvent.tsx` - Event editing with validation fixes
 - `/src/pages/CreateEvent.tsx` - Event creation with competition classes
+- `/src/pages/Events.tsx` - Events listing (fixed date display in v1.20.0)
+- `/src/pages/PrivacyPolicy.tsx` - Privacy policy page (v1.20.0)
 - `/src/types/event.ts` - Event type definitions
 - `/src/utils/dateHelpers.ts` - Date formatting utilities (added parseLocalDate in v1.19.4)
+- `/src/utils/cookieConsent.ts` - Cookie consent management (v1.20.0)
+- `/src/schemas/eventValidation.ts` - Event validation with admin support (v1.20.0)
 - `/src/services/geocoding.ts` - Geocoding service with full address support
+- `/src/hooks/useAnalytics.ts` - Consent-aware analytics tracking (v1.20.0)
 
 ### Commands to Remember
 
@@ -307,6 +315,29 @@ When you (or another AI) return to this project:
    - Resolved event form validation for numeric IDs
    - Fixed infinite render loops with proper React hooks
    - Removed debug console.log statements from production code
+
+6. **Cookie Consent Implementation (v1.20.0)**
+   - Built comprehensive cookie consent system for GDPR/CCPA compliance
+   - Created CookieConsent component with granular category controls
+   - Categories: necessary, analytics, advertising, functional
+   - Scripts only load after user consent via loadConsentedScripts()
+   - Created privacy policy page with detailed cookie information
+   - Integrated consent-aware analytics tracking (useAnalytics hook)
+
+7. **Event Form Improvements (v1.20.0)**
+   - Changed pricing from early bird to member/non-member structure
+   - Updated PricingSection component with new pricing fields
+   - Made contact information optional for administrators only
+   - Created createEventFormSchema() with isAdmin parameter
+   - Fixed phone number persistence bug with useEffect cleanup
+   - Fixed date timezone issue on Events page using parseLocalDate
+
+8. **Validation System Updates (v1.20.0)**
+   - Created conditional validation based on user role
+   - Non-admin users must provide contact information
+   - Admin users have all contact fields optional
+   - Updated validateEventForm() to accept isAdmin parameter
+   - Both CreateEvent and EditEvent pass correct isAdmin prop
 
 ### Database Schema Updates
 - `events.image_position` column confirmed working (integer type, default 50)

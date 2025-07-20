@@ -256,7 +256,7 @@ export const EventForm: React.FC<EventFormProps> = ({
       registration_deadline: formData.registration_deadline ? String(formData.registration_deadline) : ''
     };
     
-    const validation = validateEventForm(cleanedFormData);
+    const validation = validateEventForm(cleanedFormData, isAdmin);
     
     if (!validation.success) {
       setValidationErrors(formatValidationErrors(validation.error));

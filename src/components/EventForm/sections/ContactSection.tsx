@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { User, Mail, Phone, Globe } from 'lucide-react';
 import { EventFormData } from '../../../types/event';
+import { useAuth } from '../../../contexts/AuthContext';
 
 interface ContactSectionProps {
   formData: EventFormData;
@@ -15,6 +16,30 @@ const ContactSection: React.FC<ContactSectionProps> = ({
   getFieldError,
   touchField
 }) => {
+  const { user } = useAuth();
+
+  // Handle the "use organizer contact" checkbox change
+  useEffect(() => {
+    if (formData.use_organizer_contact && user) {
+      // Split the user's name into first and last
+      const nameParts = user.name ? user.name.split(' ') : ['', ''];
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      // Update the form fields with user data
+      updateField('event_director_first_name', firstName);
+      updateField('event_director_last_name', lastName);
+      updateField('event_director_email', user.email || '');
+      updateField('event_director_phone', user.phone || '');
+    } else if (!formData.use_organizer_contact) {
+      // Clear the fields when unchecked
+      updateField('event_director_first_name', '');
+      updateField('event_director_last_name', '');
+      updateField('event_director_email', '');
+      updateField('event_director_phone', '');
+    }
+  }, [formData.use_organizer_contact, user]);
+
   return (
     <>
       {/* Event Director Contact */}

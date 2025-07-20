@@ -5,7 +5,7 @@ When starting a new session, read this file to understand the project context an
 
 ## Project Overview
 - **Name**: Car Audio Events Competition Platform
-- **Version**: 1.19.5
+- **Version**: 1.20.0
 - **Tech Stack**: React, TypeScript, Supabase, Tailwind CSS, Vite
 - **Database**: Supabase (PostgreSQL)
 - **Deployment**: Netlify
@@ -219,14 +219,26 @@ When starting a new session, tell the AI:
   - Fixed admin navigation from CreateDirectoryListing
   - Admin users now redirect to /admin/directory-manager
   - Regular users continue to /directory as before
-- **Bug Fixes (v1.18.1 - v1.19.5)**:
+- **Bug Fixes (v1.18.1 - v1.20.0)**:
   - Fixed infinite loop in Directory component (useCallback)
   - Fixed TypeScript errors in AdminUsers (delete action)
   - Corrected admin directory navigation routes
   - Fixed image position display issue (v1.19.3) - falsy value handling
   - Fixed date timezone display issues (v1.19.4-v1.19.5) - dates no longer show one day earlier
+- **Cookie Consent & Privacy (v1.20.0)**:
+  - Implemented comprehensive cookie consent system
+  - Added granular consent categories (necessary, analytics, advertising, functional)
+  - Created privacy policy page with GDPR/CCPA compliance
+  - Integrated consent-aware analytics tracking
+  - Scripts only load after user consent
+- **Event Form Improvements (v1.20.0)**:
+  - Changed pricing structure from early bird to member/non-member pricing
+  - Made contact information optional for administrators only
+  - Fixed phone number persistence bug in ContactSection
+  - Fixed date display timezone issue on Events page using parseLocalDate helper
+  - Added conditional validation based on user role (admin vs non-admin)
 
-### 11. Recently Fixed Issues (v1.19.3 - v1.19.5)
+### 11. Recently Fixed Issues (v1.19.3 - v1.20.0)
 
 #### Event Flier Image Position Display (Fixed in v1.19.3)
 **Issue**: Image position slider value was saving but not displaying correctly
@@ -234,11 +246,23 @@ When starting a new session, tell the AI:
 **Solution**: Changed from `event.imagePosition || 50` to proper null/undefined checks
 **Status**: ✅ FIXED - Image positions now save and display correctly at all values (0-100)
 
-#### Date Display Timezone Issue (Fixed in v1.19.4-v1.19.5)
+#### Date Display Timezone Issue (Fixed in v1.19.4-v1.20.0)
 **Issue**: Dates showing one day earlier (e.g., 07/26/2025 displaying as 07/25/2025)
 **Root Cause**: JavaScript's `new Date()` interprets date-only strings as UTC midnight, causing timezone shifts
 **Solution**: Created `parseLocalDate()` helper function to handle date-only strings as local dates
-**Status**: ✅ FIXED - All dates now display correctly without timezone shifts
+**Status**: ✅ FIXED - All dates now display correctly without timezone shifts (v1.20.0 fix applied to Events page)
+
+#### Phone Number Persistence Issue (Fixed in v1.20.0)
+**Issue**: Phone numbers from previous events persisting when "use organizer contact" unchecked
+**Root Cause**: Missing useEffect cleanup when checkbox state changed
+**Solution**: Added useEffect hook in ContactSection to clear fields when checkbox is unchecked
+**Status**: ✅ FIXED - Phone fields now properly clear when toggling the checkbox
+
+#### Contact Information Validation (Fixed in v1.20.0)
+**Issue**: Contact information was optional for all users instead of just administrators
+**Root Cause**: Validation schema didn't differentiate between admin and non-admin users
+**Solution**: Created `createEventFormSchema` function that accepts `isAdmin` parameter for conditional validation
+**Status**: ✅ FIXED - Non-admin users must provide contact info, admin users have it optional
 
 ### 12. Common Development Patterns
 
@@ -258,12 +282,14 @@ await supabase.from('event_competition_classes').insert(classesData);
 #### Date Handling
 ```javascript
 // Database stores date-only, show as noon for consistency
-import { formatDateForInput, formatDateForDateInput } from './utils/dateHelpers';
+import { formatDateForInput, formatDateForDateInput, parseLocalDate } from './utils/dateHelpers';
 
 // For datetime inputs
 start_date: formatDateForInput(event.start_date),
 // For date inputs
 display_start_date: formatDateForDateInput(event.display_start_date),
+// For display formatting (prevents timezone issues)
+const displayDate = parseLocalDate(event.start_date).toLocaleDateString();
 ```
 
 #### Geocoding with Full Address
@@ -276,6 +302,32 @@ await geocodingService.geocodeAddress(
 );
 ```
 
+#### Event Form Validation
+```javascript
+// Use admin-specific validation
+import { validateEventForm, createEventFormSchema } from './schemas/eventValidation';
+
+// For validation
+const validation = validateEventForm(formData, isAdmin);
+
+// For direct schema usage
+const schema = createEventFormSchema(isAdmin);
+```
+
+#### Cookie Consent Management
+```javascript
+// Check if category is allowed
+import { isCategoryAllowed } from './utils/cookieConsent';
+
+if (isCategoryAllowed('analytics')) {
+  // Track analytics event
+}
+
+// Load scripts based on consent
+import { loadConsentedScripts } from './utils/cookieConsent';
+loadConsentedScripts();
+```
+
 ---
-Last Updated: January 2025
+Last Updated: January 2025 (v1.20.0)
 Context preserved for AI assistants working on this project.
