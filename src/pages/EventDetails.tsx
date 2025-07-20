@@ -782,7 +782,7 @@ const EventDetails = React.memo(function EventDetails() {
                           <span>Share</span>
                         </button>
                         {/* Share dropdown */}
-                        <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-xl border border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+                        <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-xl border border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                           <button
                             onClick={() => handleShare('facebook')}
                             className="flex items-center space-x-3 w-full px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
