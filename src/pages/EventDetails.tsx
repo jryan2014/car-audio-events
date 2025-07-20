@@ -375,7 +375,7 @@ const EventDetails = React.memo(function EventDetails() {
                   {event.registration_deadline && (
                     <div className="bg-yellow-500/70 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-medium flex items-center space-x-1">
                       <Clock className="h-3 w-3" />
-                      <span>Register by {new Date(event.registration_deadline).toLocaleDateString()}</span>
+                      <span>Register by {parseLocalDate(event.registration_deadline).toLocaleDateString()}</span>
                     </div>
                   )}
                 </div>
@@ -425,7 +425,7 @@ const EventDetails = React.memo(function EventDetails() {
             {event.registration_deadline && (
               <div className="flex items-center space-x-2">
                 <Clock className="h-4 w-4 text-yellow-500" />
-                <span className="text-gray-300">Reg by {new Date(event.registration_deadline).toLocaleDateString()}</span>
+                <span className="text-gray-300">Reg by {parseLocalDate(event.registration_deadline).toLocaleDateString()}</span>
               </div>
             )}
           </div>
@@ -705,7 +705,7 @@ const EventDetails = React.memo(function EventDetails() {
             <div className="bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700/50 rounded-xl p-6 sticky top-6">
               {/* Show registration fee only if event has pre-registration and fee > 0 */}
               {event.registration_deadline && 
-               new Date(event.registration_deadline) > new Date() &&
+               parseLocalDate(event.registration_deadline) > new Date() &&
                event.registrationFee > 0 && (
                 <div className="text-center mb-6">
                   <div className="text-3xl font-black text-white mb-2">
@@ -720,7 +720,7 @@ const EventDetails = React.memo(function EventDetails() {
                   <>
                     {/* Show Register button only if registration deadline exists and hasn't passed */}
                     {event.registration_deadline && 
-                     new Date(event.registration_deadline) > new Date() &&
+                     parseLocalDate(event.registration_deadline) > new Date() &&
                      (!event.maxParticipants || event.participants < event.maxParticipants) && (
                       <button
                         onClick={handleRegister}
@@ -867,15 +867,15 @@ const EventDetails = React.memo(function EventDetails() {
                 <div>
                   <div className="text-gray-400 text-sm">Registration</div>
                   <div className={`font-medium ${
-                    event.registration_deadline && new Date(event.registration_deadline) > new Date() 
+                    event.registration_deadline && parseLocalDate(event.registration_deadline) > new Date() 
                       ? 'text-green-400' 
                       : 'text-red-400'
                   }`}>
-                    {event.registration_deadline && new Date(event.registration_deadline) > new Date() ? 'Open' : 'Closed'}
+                    {event.registration_deadline && parseLocalDate(event.registration_deadline) > new Date() ? 'Open' : 'Closed'}
                   </div>
                   {event.registration_deadline && (
                     <div className="text-gray-300 text-sm">
-                      Deadline: {new Date(event.registration_deadline).toLocaleDateString()}
+                      Deadline: {parseLocalDate(event.registration_deadline).toLocaleDateString()}
                     </div>
                   )}
                 </div>
