@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Search, Filter, Eye, Check, X, Edit, Trash2, MapPin, Users, Clock, DollarSign, Plus, AlertCircle, Globe } from 'lucide-react';
+import { Calendar, Search, Filter, Eye, Check, X, Edit, Trash2, MapPin, Users, Clock, DollarSign, Plus, AlertCircle, Globe, Building2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -7,6 +7,7 @@ import AddCoordinatesModal from '../components/AddCoordinatesModal';
 import WebScraperModal from '../components/WebScraperModal';
 import { scrollToRef, useAutoScrollToForm, useAutoFocusFirstInput } from '../utils/focusUtils';
 import { ActivityLogger } from '../utils/activityLogger';
+import { parseLocalDate } from '../utils/dateHelpers';
 
 interface Event {
   id: string;
@@ -26,6 +27,8 @@ interface Event {
   organizer_name: string;
   organizer_email: string;
   category_name: string;
+  organization_name?: string;
+  organization_id?: string;
   created_at: string;
   rejection_reason?: string;
 }
@@ -37,6 +40,11 @@ export default function AdminEvents() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedApproval, setSelectedApproval] = useState('all');
+  const [selectedTimeFilter, setSelectedTimeFilter] = useState('all');
+  const [selectedOrganization, setSelectedOrganization] = useState('all');
+  const [selectedLocation, setSelectedLocation] = useState('all');
+  const [organizations, setOrganizations] = useState<{id: string, name: string}[]>([]);
+  const [locations, setLocations] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [showEventModal, setShowEventModal] = useState(false);
@@ -58,7 +66,7 @@ export default function AdminEvents() {
 
   useEffect(() => {
     filterEvents();
-  }, [events, searchTerm, selectedStatus, selectedApproval]);
+  }, [events, searchTerm, selectedStatus, selectedApproval, selectedTimeFilter, selectedOrganization, selectedLocation]);
 
   const loadEvents = async () => {
     try {
@@ -69,7 +77,8 @@ export default function AdminEvents() {
         .select(`
           *,
           event_categories(name),
-          users!organizer_id(name, email)
+          users!organizer_id(name, email),
+          organizations(id, name)
         `)
         .order('created_at', { ascending: false });
 
@@ -93,11 +102,31 @@ export default function AdminEvents() {
         organizer_name: event.users?.name || 'Unknown',
         organizer_email: event.users?.email || '',
         category_name: event.event_categories?.name || 'Uncategorized',
+        organization_name: event.organizations?.name || null,
+        organization_id: event.organizations?.id || null,
         created_at: event.created_at,
         rejection_reason: event.rejection_reason
       }));
 
       setEvents(formattedEvents);
+      
+      // Extract unique organizations
+      const uniqueOrgs = new Map();
+      formattedEvents.forEach(event => {
+        if (event.organization_id && event.organization_name) {
+          uniqueOrgs.set(event.organization_id, event.organization_name);
+        }
+      });
+      setOrganizations(Array.from(uniqueOrgs, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name)));
+      
+      // Extract unique locations (city, state combinations)
+      const uniqueLocations = new Set<string>();
+      formattedEvents.forEach(event => {
+        if (event.city && event.state) {
+          uniqueLocations.add(`${event.city}, ${event.state}`);
+        }
+      });
+      setLocations(Array.from(uniqueLocations).sort());
     } catch (error) {
       console.error('Error loading events:', error);
     } finally {
@@ -112,9 +141,30 @@ export default function AdminEvents() {
                            event.city.toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesStatus = selectedStatus === 'all' || event.status === selectedStatus;
-      const matchesApproval = selectedApproval === 'all' || event.approval_status === selectedApproval;
+      const matchesApproval = selectedApproval === 'all' || 
+                             (selectedApproval === 'approved' && (event.approval_status === 'approved' || event.status === 'published')) ||
+                             (selectedApproval !== 'approved' && event.approval_status === selectedApproval);
       
-      return matchesSearch && matchesStatus && matchesApproval;
+      // Time filter
+      const now = new Date();
+      let matchesTime = true;
+      if (selectedTimeFilter === 'past') {
+        matchesTime = parseLocalDate(event.end_date) < now;
+      } else if (selectedTimeFilter === 'future') {
+        matchesTime = parseLocalDate(event.start_date) > now;
+      } else if (selectedTimeFilter === 'ongoing') {
+        matchesTime = parseLocalDate(event.start_date) <= now && parseLocalDate(event.end_date) >= now;
+      }
+      
+      // Organization filter
+      const matchesOrganization = selectedOrganization === 'all' || 
+                                 event.organization_id === selectedOrganization;
+      
+      // Location filter
+      const matchesLocation = selectedLocation === 'all' || 
+                             `${event.city}, ${event.state}` === selectedLocation;
+      
+      return matchesSearch && matchesStatus && matchesApproval && matchesTime && matchesOrganization && matchesLocation;
     });
 
     setFilteredEvents(filtered);
@@ -327,9 +377,9 @@ export default function AdminEvents() {
 
         {/* Filters */}
         <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {/* Search */}
-            <div className="relative">
+            <div className="relative md:col-span-2 xl:col-span-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
               <input
                 type="text"
@@ -371,6 +421,51 @@ export default function AdminEvents() {
                 <option value="rejected">Rejected</option>
               </select>
             </div>
+
+            {/* Time Filter */}
+            <div className="relative">
+              <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <select
+                value={selectedTimeFilter}
+                onChange={(e) => setSelectedTimeFilter(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500 transition-colors appearance-none"
+              >
+                <option value="all">All Events</option>
+                <option value="past">Past Events</option>
+                <option value="ongoing">Ongoing Events</option>
+                <option value="future">Future Events</option>
+              </select>
+            </div>
+
+            {/* Organization Filter */}
+            <div className="relative">
+              <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <select
+                value={selectedOrganization}
+                onChange={(e) => setSelectedOrganization(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500 transition-colors appearance-none"
+              >
+                <option value="all">All Organizations</option>
+                {organizations.map(org => (
+                  <option key={org.id} value={org.id}>{org.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Location Filter */}
+            <div className="relative">
+              <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <select
+                value={selectedLocation}
+                onChange={(e) => setSelectedLocation(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500 transition-colors appearance-none"
+              >
+                <option value="all">All Locations</option>
+                {locations.map(location => (
+                  <option key={location} value={location}>{location}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
@@ -397,8 +492,8 @@ export default function AdminEvents() {
           <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm">Published</p>
-                <p className="text-xl sm:text-2xl font-bold text-green-400">{events.filter(e => e.status === 'published').length}</p>
+                <p className="text-gray-400 text-sm">Published/Approved</p>
+                <p className="text-xl sm:text-2xl font-bold text-green-400">{events.filter(e => e.status === 'published' || e.approval_status === 'approved').length}</p>
               </div>
               <Check className="h-8 w-8 text-green-500" />
             </div>
