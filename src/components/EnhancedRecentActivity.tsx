@@ -154,18 +154,32 @@ export const EnhancedRecentActivity: React.FC<EnhancedRecentActivityProps> = ({
 
   const getActivityIcon = (type: string) => {
     switch (type) {
-      case 'user_management':
+      case 'user_login':
+      case 'user_logout':
+      case 'user_register':
+        return <User className="h-4 w-4" />;
+      case 'profile_update':
         return <Users className="h-4 w-4" />;
-      case 'admin_action':
-        return <Shield className="h-4 w-4" />;
-      case 'event_management':
+      case 'event_create':
+      case 'event_update':
+      case 'event_delete':
+      case 'event_register':
         return <Calendar className="h-4 w-4" />;
-      case 'system_config':
+      case 'payment_success':
+      case 'payment_failed':
+        return <DollarSign className="h-4 w-4" />;
+      case 'refund_request':
+        return <RefreshCw className="h-4 w-4" />;
+      case 'settings_update':
         return <Settings className="h-4 w-4" />;
-      case 'cms_page_created':
-      case 'cms_page_updated':
+      case 'membership_change':
+        return <TrendingUp className="h-4 w-4" />;
+      case 'directory_create':
+      case 'directory_update':
         return <FileText className="h-4 w-4" />;
-      case 'admin_security':
+      case 'system_event':
+        return <Shield className="h-4 w-4" />;
+      case 'error_event':
         return <AlertTriangle className="h-4 w-4" />;
       default:
         return <Activity className="h-4 w-4" />;
@@ -174,19 +188,33 @@ export const EnhancedRecentActivity: React.FC<EnhancedRecentActivityProps> = ({
 
   const getActivityColor = (type: string) => {
     switch (type) {
-      case 'user_management':
+      case 'user_login':
+      case 'user_logout':
+      case 'user_register':
+      case 'profile_update':
         return 'text-blue-400';
-      case 'admin_action':
-        return 'text-purple-400';
-      case 'event_management':
+      case 'event_create':
+      case 'event_update':
+      case 'event_delete':
+      case 'event_register':
         return 'text-green-400';
-      case 'system_config':
-        return 'text-orange-400';
-      case 'cms_page_created':
-      case 'cms_page_updated':
-        return 'text-cyan-400';
-      case 'admin_security':
+      case 'payment_success':
+        return 'text-emerald-400';
+      case 'payment_failed':
         return 'text-red-400';
+      case 'refund_request':
+        return 'text-yellow-400';
+      case 'settings_update':
+        return 'text-orange-400';
+      case 'membership_change':
+        return 'text-purple-400';
+      case 'directory_create':
+      case 'directory_update':
+        return 'text-cyan-400';
+      case 'system_event':
+        return 'text-indigo-400';
+      case 'error_event':
+        return 'text-red-500';
       default:
         return 'text-gray-400';
     }

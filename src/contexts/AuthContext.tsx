@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { supabase } from '../lib/supabase';
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { useInactivityTimer } from '../hooks/useInactivityTimer';
+import { activityLogger } from '../services/activityLogger';
 
 interface User {
   id: string;
@@ -354,6 +355,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               // User is verified and approved - allow access
               console.log('✅ AUTH DEBUG: Setting user and completing login');
               setUser(userProfile);
+              
+              // Log the login activity
+              activityLogger.logLogin(userProfile.id, {
+                method: 'email',
+                email: userProfile.email,
+                membership_type: userProfile.membershipType
+              });
             } else {
               // No profile found for existing auth user - clean up orphaned session
               console.error('❌ Auth user exists but no profile found - cleaning up orphaned session');
@@ -612,6 +620,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log('🚪 Starting logout process...');
       setLoading(true);
+      
+      // Log the logout activity before clearing user
+      if (user) {
+        activityLogger.logLogout(user.id);
+      }
       
       // Clear local state immediately
       setSession(null);
