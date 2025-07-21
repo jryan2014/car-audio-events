@@ -5,6 +5,7 @@ import { Navigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import BannerAICreator from '../components/BannerAICreator';
 import AdvertisementImageManager from '../components/AdvertisementImageManager';
+import AdImageUpload from '../components/AdImageUpload';
 import type { GeneratedImage } from '../lib/imageGeneration';
 import type { AdvertisementImage } from '../types/advertisement';
 
@@ -1121,33 +1122,45 @@ export default function AdManagement() {
                   <div className="mt-6">
                     <label className="block text-gray-400 text-sm mb-2 flex items-center space-x-2">
                       <span>Advertisement Images</span>
-                      <Tooltip content="Manage multiple images, A/B test variants, and track performance for each image">
+                      <Tooltip content="Upload or manage advertisement images">
                         <HelpCircle className="h-4 w-4 text-gray-500" />
                       </Tooltip>
                     </label>
                     
-                    {/* Legacy Image URL field for backward compatibility */}
-                    <div className="mb-4">
+                    {/* New Image Upload Component */}
+                    <AdImageUpload
+                      advertisementId={editingAd?.id}
+                      currentImageUrl={formData.image_url}
+                      onImageUploaded={(imageUrl) => setFormData(prev => ({ ...prev, image_url: imageUrl }))}
+                      size={formData.size}
+                      placement={placementInfo[formData.placement_type]?.name || 'Advertisement'}
+                    />
+                    
+                    {/* URL Input Fallback */}
+                    <div className="mt-4">
+                      <label className="block text-gray-400 text-xs mb-1">Or enter image URL directly:</label>
                       <input
                         type="url"
                         value={formData.image_url}
                         onChange={(e) => setFormData(prev => ({ ...prev, image_url: e.target.value }))}
-                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                        placeholder="Or paste an image URL directly..."
+                        className="w-full p-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:border-electric-500"
+                        placeholder="https://example.com/image.jpg"
                       />
                     </div>
 
-                                         {/* Image Manager Component for new advertisements */}
-                     {editingAd?.id && (
-                       <AdvertisementImageManager
-                         advertisementId={editingAd.id}
-                         onImageSelect={(image: AdvertisementImage) => {
-                           setFormData(prev => ({ ...prev, image_url: image.image_url }));
-                         }}
-                         placement={placementInfo[formData.placement_type]?.name || 'Advertisement'}
-                         size={formData.size}
-                       />
-                     )}
+                    {/* Image Manager Component for existing advertisements */}
+                    {editingAd?.id && (
+                      <div className="mt-4">
+                        <AdvertisementImageManager
+                          advertisementId={editingAd.id}
+                          onImageSelect={(image: AdvertisementImage) => {
+                            setFormData(prev => ({ ...prev, image_url: image.image_url }));
+                          }}
+                          placement={placementInfo[formData.placement_type]?.name || 'Advertisement'}
+                          size={formData.size}
+                        />
+                      </div>
+                    )}
 
                     {/* Simple image preview for direct URLs */}
                     {formData.image_url && !editingAd?.id && (

@@ -105,6 +105,7 @@ export default function AdDisplay({ placement, pageType = 'general', className =
         return;
       }
 
+      console.log('AdDisplay: Loaded ads from database:', data);
       setAds(data || []);
     } catch (err) {
       console.error('Error loading ads:', err);
