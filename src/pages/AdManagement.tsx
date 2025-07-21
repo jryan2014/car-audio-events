@@ -1730,14 +1730,14 @@ export default function AdManagement() {
         {/* AI Banner Creator Modal */}
         {showAIBannerCreator && (
           <BannerAICreator
-            isOpen={showAIBannerCreator}
+            externalOpen={showAIBannerCreator}
             onClose={() => setShowAIBannerCreator(false)}
-            onImageGenerated={(image) => {
+            onImageSelect={(image) => {
               handleAIImageSelect(image);
               setShowAIBannerCreator(false);
             }}
-            placement={formData.placement_type}
-            size={formData.size}
+            initialPlacement={formData.placement_type}
+            initialSize={formData.size}
           />
         )}
       </div>
