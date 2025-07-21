@@ -111,6 +111,7 @@ export const EnhancedRecentActivity: React.FC<EnhancedRecentActivityProps> = ({
 
   const purgeOldActivities = async (days: number) => {
     try {
+      // Call the function with the days_to_keep parameter
       const { data, error } = await supabase.rpc('purge_old_activity_logs', {
         days_to_keep: days
       });
@@ -119,7 +120,7 @@ export const EnhancedRecentActivity: React.FC<EnhancedRecentActivityProps> = ({
         throw error;
       }
 
-      const deletedCount = data || 0;
+      const deletedCount = data?.deleted_count || 0;
       await loadActivities();
       setShowPurgeOptions(false);
       setPurgeConfirm('');
