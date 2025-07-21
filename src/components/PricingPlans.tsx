@@ -144,10 +144,19 @@ export default function PricingPlans({ onPlanSelected, type, preLoadedPlans }: P
         buttonText = `Start ${plan.type.charAt(0).toUpperCase() + plan.type.slice(1)} Plan`;
       }
 
+      // Check if special pricing is active
+      const hasActiveSpecialPrice = plan.special_price !== null && 
+                                   plan.special_price !== undefined && 
+                                   plan.special_price_start_date && 
+                                   new Date(plan.special_price_start_date) <= new Date() &&
+                                   (!plan.special_price_end_date || new Date(plan.special_price_end_date) > new Date());
+
       return {
         id: plan.id,
         name: plan.name,
-        price: plan.price,
+        price: hasActiveSpecialPrice ? plan.special_price : plan.price,
+        originalPrice: hasActiveSpecialPrice ? plan.price : null,
+        specialPriceReason: hasActiveSpecialPrice ? plan.special_price_reason : null,
         period: periodText,
         description: plan.description,
         icon: Icon,
@@ -360,10 +369,25 @@ export default function PricingPlans({ onPlanSelected, type, preLoadedPlans }: P
                   {plan.price === 0 ? (
                     <div className="text-3xl font-black text-white">Free</div>
                   ) : (
-                    <div className="flex items-baseline justify-center">
-                      <span className="text-4xl font-black text-white">${typeof plan.price === 'number' ? plan.price.toFixed(2) : plan.price}</span>
-                      <span className="text-gray-400 ml-2">{plan.period}</span>
-                    </div>
+                    <>
+                      {plan.originalPrice !== null ? (
+                        <div>
+                          <div className="flex items-baseline justify-center">
+                            <span className="text-2xl text-gray-500 line-through mr-3">${plan.originalPrice.toFixed(2)}</span>
+                            <span className="text-4xl font-black text-green-400">${typeof plan.price === 'number' ? plan.price.toFixed(2) : plan.price}</span>
+                            <span className="text-gray-400 ml-2">{plan.period}</span>
+                          </div>
+                          {plan.specialPriceReason && (
+                            <div className="text-sm text-yellow-400 mt-2 font-semibold">{plan.specialPriceReason}</div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex items-baseline justify-center">
+                          <span className="text-4xl font-black text-white">${typeof plan.price === 'number' ? plan.price.toFixed(2) : plan.price}</span>
+                          <span className="text-gray-400 ml-2">{plan.period}</span>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>

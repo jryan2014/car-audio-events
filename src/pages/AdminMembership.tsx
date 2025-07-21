@@ -28,6 +28,11 @@ interface MembershipPlan {
   max_team_members?: number;
   max_listings?: number;
   display_order?: number;
+  special_price?: number | null;
+  special_price_reason?: string | null;
+  special_price_valid_days?: number | null;
+  special_price_start_date?: string | null;
+  special_price_end_date?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -284,6 +289,11 @@ export default function AdminMembership() {
         max_team_members: plan.limits?.max_team_members,
         max_listings: plan.limits?.max_listings,
         display_order: plan.display_order,
+        special_price: plan.special_price,
+        special_price_reason: plan.special_price_reason,
+        special_price_valid_days: plan.special_price_valid_days,
+        special_price_start_date: plan.special_price_start_date,
+        special_price_end_date: plan.special_price_end_date,
         created_at: plan.created_at,
         updated_at: plan.updated_at
       }));
@@ -518,6 +528,10 @@ export default function AdminMembership() {
             trial_period_days: formData.trial_period_days,
             stripe_price_id_monthly: formData.stripe_price_id_monthly,
             stripe_price_id_yearly: formData.stripe_price_id_yearly,
+            special_price: formData.special_price,
+            special_price_reason: formData.special_price_reason,
+            special_price_valid_days: formData.special_price_valid_days,
+            special_price_start_date: formData.special_price ? new Date().toISOString() : null,
             display_order: editingPlan.display_order || 0,
             updated_at: new Date().toISOString()
           })
@@ -564,6 +578,10 @@ export default function AdminMembership() {
             trial_period_days: formData.trial_period_days,
             stripe_price_id_monthly: formData.stripe_price_id_monthly,
             stripe_price_id_yearly: formData.stripe_price_id_yearly,
+            special_price: formData.special_price,
+            special_price_reason: formData.special_price_reason,
+            special_price_valid_days: formData.special_price_valid_days,
+            special_price_start_date: formData.special_price ? new Date().toISOString() : null,
             display_order: maxDisplayOrder + 1
           });
 
@@ -1001,10 +1019,28 @@ export default function AdminMembership() {
                           {plan.price === 0 ? (
                             <div className="text-2xl font-black text-white">Free</div>
                           ) : (
-                            <div className="flex items-baseline">
-                              <span className="text-3xl font-black text-white">${plan.price}</span>
-                              <span className="text-gray-400 ml-2">/{plan.billing_period}</span>
-                            </div>
+                            <>
+                              {plan.special_price !== null && plan.special_price !== undefined && 
+                               plan.special_price_start_date && 
+                               new Date(plan.special_price_start_date) <= new Date() &&
+                               (!plan.special_price_end_date || new Date(plan.special_price_end_date) > new Date()) ? (
+                                <div>
+                                  <div className="flex items-baseline">
+                                    <span className="text-xl text-gray-500 line-through mr-2">${plan.price}</span>
+                                    <span className="text-3xl font-black text-green-400">${plan.special_price}</span>
+                                    <span className="text-gray-400 ml-2">/{plan.billing_period}</span>
+                                  </div>
+                                  {plan.special_price_reason && (
+                                    <div className="text-xs text-yellow-400 mt-1">{plan.special_price_reason}</div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="flex items-baseline">
+                                  <span className="text-3xl font-black text-white">${plan.price}</span>
+                                  <span className="text-gray-400 ml-2">/{plan.billing_period}</span>
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
 
@@ -1467,6 +1503,97 @@ export default function AdminMembership() {
                       <option value="lifetime">Lifetime</option>
                     </select>
                   </div>
+                </div>
+
+                {/* Special Pricing Section */}
+                <div className="bg-gradient-to-br from-yellow-900/20 to-orange-900/20 border border-yellow-600/30 p-4 rounded-lg space-y-4">
+                  <h4 className="text-white font-medium mb-3 flex items-center">
+                    <TrendingUp className="h-5 w-5 mr-2 text-yellow-500" />
+                    Special Limited-Time Pricing
+                    <FieldHelper text="Set up temporary promotional pricing that automatically expires after a specified number of days" />
+                  </h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2 flex items-center">
+                        Special Price ($)
+                        <FieldHelper text="The promotional price during the special period. Leave empty to disable special pricing." />
+                      </label>
+                      <input
+                        type="number"
+                        value={formData.special_price ?? ''}
+                        onChange={(e) => setFormData({ ...formData, special_price: e.target.value ? parseFloat(e.target.value) : null })}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2 flex items-center">
+                        Valid For (Days)
+                        <FieldHelper text="Number of days the special price will be active from the start date" />
+                      </label>
+                      <input
+                        type="number"
+                        value={formData.special_price_valid_days ?? ''}
+                        onChange={(e) => setFormData({ ...formData, special_price_valid_days: e.target.value ? parseInt(e.target.value) : null })}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                        min="1"
+                        placeholder="30"
+                        disabled={!formData.special_price}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2 flex items-center">
+                        Promotion Reason
+                        <FieldHelper text="The reason shown to customers (e.g., 'Limited Time Only', 'Christmas Special', 'Launch Pricing')" />
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.special_price_reason || ''}
+                        onChange={(e) => setFormData({ ...formData, special_price_reason: e.target.value || null })}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                        placeholder="Limited Time Only"
+                        disabled={!formData.special_price}
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2">
+                        Special Price Status
+                      </label>
+                      {formData.special_price && formData.special_price_valid_days ? (
+                        <div className="p-3 bg-green-900/30 border border-green-600/50 rounded-lg">
+                          <p className="text-green-400 text-sm">
+                            Special price will be active immediately upon saving
+                          </p>
+                          <p className="text-gray-400 text-xs mt-1">
+                            Expires after {formData.special_price_valid_days} days
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="p-3 bg-gray-700/30 border border-gray-600/50 rounded-lg">
+                          <p className="text-gray-400 text-sm">
+                            No special pricing configured
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {formData.special_price && (
+                    <div className="bg-yellow-900/20 border border-yellow-600/30 rounded-lg p-3">
+                      <p className="text-yellow-400 text-sm flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-2" />
+                        Special pricing starts immediately when you save the plan
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div>
