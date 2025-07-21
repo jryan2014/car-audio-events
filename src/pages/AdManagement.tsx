@@ -93,6 +93,7 @@ export default function AdManagement() {
   const [showAdModal, setShowAdModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showAIModal, setShowAIModal] = useState(false);
+  const [showAIBannerCreator, setShowAIBannerCreator] = useState(false);
   const [editingAd, setEditingAd] = useState<Advertisement | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -1128,13 +1129,27 @@ export default function AdManagement() {
                     </label>
                     
                     {/* New Image Upload Component */}
-                    <AdImageUpload
-                      advertisementId={editingAd?.id}
-                      currentImageUrl={formData.image_url}
-                      onImageUploaded={(imageUrl) => setFormData(prev => ({ ...prev, image_url: imageUrl }))}
-                      size={formData.size}
-                      placement={placementInfo[formData.placement_type]?.name || 'Advertisement'}
-                    />
+                    <div className="space-y-4">
+                      <AdImageUpload
+                        advertisementId={editingAd?.id}
+                        currentImageUrl={formData.image_url}
+                        onImageUploaded={(imageUrl) => setFormData(prev => ({ ...prev, image_url: imageUrl }))}
+                        size={formData.size}
+                        placement={placementInfo[formData.placement_type]?.name || 'Advertisement'}
+                      />
+                      
+                      {/* AI Banner Creator Button */}
+                      <div className="flex items-center justify-center">
+                        <button
+                          type="button"
+                          onClick={() => setShowAIBannerCreator(true)}
+                          className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-200 flex items-center space-x-2 shadow-lg"
+                        >
+                          <Wand2 className="h-5 w-5" />
+                          <span>Create with AI</span>
+                        </button>
+                      </div>
+                    </div>
                     
                     {/* URL Input Fallback */}
                     <div className="mt-4">
@@ -1710,6 +1725,20 @@ export default function AdManagement() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* AI Banner Creator Modal */}
+        {showAIBannerCreator && (
+          <BannerAICreator
+            isOpen={showAIBannerCreator}
+            onClose={() => setShowAIBannerCreator(false)}
+            onImageGenerated={(image) => {
+              handleAIImageSelect(image);
+              setShowAIBannerCreator(false);
+            }}
+            placement={formData.placement_type}
+            size={formData.size}
+          />
         )}
       </div>
     </div>
