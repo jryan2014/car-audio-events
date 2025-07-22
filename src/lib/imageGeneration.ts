@@ -1,7 +1,7 @@
 // AI Image Generation utility for banner creation
 // Supports DALL-E 3 and other image generation services
 
-import { aiConfigService } from '../services/aiConfigService';
+// import { aiConfigService } from '../services/aiConfigService'; // TODO: Create this service
 
 export interface BannerSize {
   width: number;
@@ -88,30 +88,31 @@ export const BANNER_SIZES: Record<string, BannerSize> = {
 async function getAIServiceConfig(provider: string = 'openai-dalle') {
   console.log('Getting AI service config for provider:', provider);
   
-  try {
-    // First, try to get from database
-    const dbConfig = await aiConfigService.getConfig(provider);
-    
-    if (dbConfig) {
-      console.log('Found config in database for provider:', provider, {
-        hasApiKey: !!dbConfig.apiKey,
-        enabled: dbConfig.enabled
-      });
-      
-      return {
-        provider: dbConfig.provider,
-        apiKey: dbConfig.apiKey,
-        model: dbConfig.model,
-        enabled: dbConfig.enabled,
-        costPerImage: dbConfig.costPerImage,
-        maxImagesPerDay: dbConfig.maxImagesPerDay,
-        quality: dbConfig.quality,
-        style: dbConfig.style
-      };
-    }
-  } catch (error) {
-    console.error('Error fetching config from database:', error);
-  }
+  // TODO: Restore database config when aiConfigService is implemented
+  // try {
+  //   // First, try to get from database
+  //   const dbConfig = await aiConfigService.getConfig(provider);
+  //   
+  //   if (dbConfig) {
+  //     console.log('Found config in database for provider:', provider, {
+  //       hasApiKey: !!dbConfig.apiKey,
+  //       enabled: dbConfig.enabled
+  //     });
+  //     
+  //     return {
+  //       provider: dbConfig.provider,
+  //       apiKey: dbConfig.apiKey,
+  //       model: dbConfig.model,
+  //       enabled: dbConfig.enabled,
+  //       costPerImage: dbConfig.costPerImage,
+  //       maxImagesPerDay: dbConfig.maxImagesPerDay,
+  //       quality: dbConfig.quality,
+  //       style: dbConfig.style
+  //     };
+  //   }
+  // } catch (error) {
+  //   console.error('Error fetching config from database:', error);
+  // }
   
   // Fallback to localStorage (for backward compatibility during migration)
   const savedConfigs = localStorage.getItem('ai-service-configs');
@@ -129,11 +130,11 @@ async function getAIServiceConfig(provider: string = 'openai-dalle') {
           enabled: providerConfig.enabled
         });
         
-        // Trigger migration in background
-        console.log('Triggering migration of localStorage configs to database...');
-        aiConfigService.migrateFromLocalStorage().catch(err => 
-          console.error('Migration error:', err)
-        );
+        // TODO: Trigger migration when aiConfigService is implemented
+        // console.log('Triggering migration of localStorage configs to database...');
+        // aiConfigService.migrateFromLocalStorage().catch(err => 
+        //   console.error('Migration error:', err)
+        // );
         
         return providerConfig;
       } else {

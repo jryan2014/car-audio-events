@@ -37,10 +37,10 @@ const AdminAnalytics = React.lazy(() => import('./pages/AdminAnalytics'));
 const AdminBackup = React.lazy(() => import('./pages/AdminBackup'));
 const AdManagement = React.lazy(() => import('./pages/AdManagement'));
 const AdvertisePage = React.lazy(() => import('./pages/AdvertisePage'));
-const AdDebug = React.lazy(() => import('./pages/AdDebug'));
+// const AdDebug = React.lazy(() => import('./pages/AdDebug')); // TODO: Create this page
 const MemberAdDashboard = React.lazy(() => import('./pages/MemberAdDashboard'));
 const AIConfiguration = React.lazy(() => import('./pages/AIConfiguration'));
-const AIMigration = React.lazy(() => import('./pages/AIMigration'));
+// const AIMigration = React.lazy(() => import('./pages/AIMigration')); // TODO: Create this page
 const CMSPages = React.lazy(() => import('./pages/CMSPages'));
 const DynamicPage = React.lazy(() => import('./pages/DynamicPage'));
 const SystemConfiguration = React.lazy(() => import('./pages/SystemConfiguration'));
@@ -49,7 +49,7 @@ const OrganizationManager = React.lazy(() => import('./pages/OrganizationManager
 const AdminContactSettingsPage = React.lazy(() => import('./pages/AdminContactSettings'));
 const AdminEmailSettingsPage = React.lazy(() => import('./pages/AdminEmailSettings'));
 const NavigationManager = React.lazy(() => import('./pages/NavigationManager'));
-const TestAds = React.lazy(() => import('./pages/TestAds'));
+// const TestAds = React.lazy(() => import('./pages/TestAds')); // TODO: Create this page
 const DirectoryManager = React.lazy(() => import('./pages/DirectoryManager'));
 const CreateDirectoryListing = React.lazy(() => import('./pages/CreateDirectoryListing'));
 const DirectoryListingPending = React.lazy(() => import('./pages/DirectoryListingPending'));
@@ -128,7 +128,7 @@ function App() {
               <Route path="/register" element={<Layout><Register /></Layout>} />
               <Route path="/forgot-password" element={<Layout><ForgotPassword /></Layout>} />
               <Route path="/reset-password" element={<Layout><ResetPassword /></Layout>} />
-              <Route path="/test-ads" element={<Layout><TestAds /></Layout>} />
+              {/* <Route path="/test-ads" element={<Layout><TestAds /></Layout>} /> */}
               <Route path="/pricing" element={<Layout><Pricing /></Layout>} />
               <Route path="/business" element={<Layout><BusinessPricing /></Layout>} />
               <Route path="/organizations" element={<Layout><OrganizationPricing /></Layout>} />
@@ -154,8 +154,8 @@ function App() {
               <Route path="/admin/analytics" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminAnalytics /></Suspense></AdminLayout>} />
               <Route path="/admin/ad-management" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdManagement /></Suspense></AdminLayout>} />
               <Route path="/admin/ai-configuration" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AIConfiguration /></Suspense></AdminLayout>} />
-              <Route path="/ad-debug" element={<AdDebug />} />
-              <Route path="/admin/ai-migration" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AIMigration /></Suspense></AdminLayout>} />
+              {/* <Route path="/ad-debug" element={<AdDebug />} /> */}
+              {/* <Route path="/admin/ai-migration" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AIMigration /></Suspense></AdminLayout>} /> */}
               <Route path="/admin/cms-pages" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><CMSPages /></Suspense></AdminLayout>} />
               <Route path="/admin/system-configuration" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><SystemConfiguration /></Suspense></AdminLayout>} />
               <Route path="/admin/system-configuration-demo" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><SystemConfigurationDemo /></Suspense></AdminLayout>} />
