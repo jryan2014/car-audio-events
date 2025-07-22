@@ -328,6 +328,41 @@ import { loadConsentedScripts } from './utils/cookieConsent';
 loadConsentedScripts();
 ```
 
+### 13. Recent Updates (v1.24.0 - January 2025)
+
+#### Advertisement System Fixes
+- **Fixed frequency cap issues** preventing ads from displaying
+- **Added 1-second delay** before tracking impressions to ensure ads are visible
+- **Implemented impression deduplication** to prevent immediate re-capping
+- **Created FrequencyCapManager component** for admin interface
+  - Shows current frequency cap data
+  - Clear frequency caps button
+  - Clear ALL ad-related data option
+  - Test localStorage functionality
+- **Debug mode added**: Append `?debug=bypass-caps` to URL for testing
+
+#### Home Page Redesign
+- **Moved hero card** from overlaying the map to below the ad section
+- **Redesigned hero section** with integrated design (no more black box)
+- **Updated heading sizes** to match site consistency
+- **Improved button styling** with consistent sizes and colors
+
+#### Google Maps Improvements
+- **Fixed map pin styling**:
+  - Removed white borders (now uses pin color for stroke)
+  - Reduced pin size from scale 12 to 8
+  - Hover state scale reduced from 18 to 10
+- **Fixed map interactivity**:
+  - Removed z-index and overflow issues
+  - Map is now fully draggable and zoomable
+- **Improved info window management**:
+  - Only one window displays at a time
+  - Hover windows don't show when click window is active
+  - Click on map background closes all windows
+- **Updated info window styling**:
+  - Smaller, consistent button shapes
+  - Simplified design with matching colors
+
 ---
-Last Updated: January 2025 (v1.20.0)
+Last Updated: January 2025 (v1.24.0)
 Context preserved for AI assistants working on this project.

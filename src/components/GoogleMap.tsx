@@ -322,6 +322,10 @@ export default function GoogleMap() {
     markersRef.current = [];
     infoWindowsRef.current = [];
     
+    // Track active windows
+    let activeClickWindow: google.maps.InfoWindow | null = null;
+    let activeHoverWindow: google.maps.InfoWindow | null = null;
+    
     // Create marker cluster manager for better performance with many markers
     const markers: google.maps.Marker[] = [];
     
@@ -346,11 +350,12 @@ export default function GoogleMap() {
         title: event.title,
         icon: {
           path: window.google.maps.SymbolPath.CIRCLE,
-          scale: 12,
+          scale: 8,
           fillColor: event.pin_color,
           fillOpacity: 1,
-          strokeColor: '#ffffff',
-          strokeWeight: 3,
+          strokeColor: event.pin_color,
+          strokeWeight: 2,
+          strokeOpacity: 0.8,
         },
         animation: window.google.maps.Animation.DROP,
         clickable: true,
@@ -370,17 +375,31 @@ export default function GoogleMap() {
       infoWindowsRef.current.push(infoWindow);
 
       // Add click listener and track for cleanup
-      const clickListener = marker.addListener('click', (e: any) => {
-        e.stop();
+      const clickListener = marker.addListener('click', () => {
+        console.log(`Marker clicked for event: ${event.title}`);
         
-        // Close any open info windows
-        infoWindowsRef.current.forEach(window => {
-          if (window) {
-            window.close();
+        // Close any active hover window
+        if (activeHoverWindow) {
+          activeHoverWindow.close();
+          activeHoverWindow = null;
+        }
+        
+        // Close any open click windows
+        if (activeClickWindow && activeClickWindow !== infoWindow) {
+          activeClickWindow.close();
+        }
+        
+        // Close all hover windows
+        for (let i = 0; i < events.length; i++) {
+          if (window[`hoverWindow${i}`]) {
+            window[`hoverWindow${i}`].close();
+            delete window[`hoverWindow${i}`];
           }
-        });
+        }
         
+        // Open the click info window
         infoWindow.open(mapInstance, marker);
+        activeClickWindow = infoWindow;
       });
       
       // Track listener for cleanup
@@ -393,7 +412,16 @@ export default function GoogleMap() {
         const mouseoverListener = marker.addListener('mouseover', () => {
           isHovering = true;
           
+          // Don't show hover if there's an active click window for THIS marker
+          if (activeClickWindow && activeClickWindow === infoWindow) {
+            return;
+          }
+          
           // Close any existing hover windows
+          if (activeHoverWindow) {
+            activeHoverWindow.close();
+          }
+          
           for (let i = 0; i < events.length; i++) {
             if (window[`hoverWindow${i}`]) {
               window[`hoverWindow${i}`].close();
@@ -402,11 +430,12 @@ export default function GoogleMap() {
 
           marker.setIcon({
             path: window.google.maps.SymbolPath.CIRCLE,
-            scale: 18,
-            fillColor: '#22d3ee',
+            scale: 10,
+            fillColor: event.pin_color,
             fillOpacity: 1,
-            strokeColor: '#ffffff',
-            strokeWeight: 4,
+            strokeColor: event.pin_color,
+            strokeWeight: 3,
+            strokeOpacity: 0.5,
           });
           
           // Show preview on hover
@@ -417,22 +446,31 @@ export default function GoogleMap() {
           });
           
           hoverWindow.open(mapInstance, marker);
+          activeHoverWindow = hoverWindow;
           window[`hoverWindow${index}`] = hoverWindow;
         });
 
         const mouseoutListener = marker.addListener('mouseout', () => {
           isHovering = false;
           
+          // Reset icon to normal state
           marker.setIcon({
             path: window.google.maps.SymbolPath.CIRCLE,
-            scale: 12,
+            scale: 8,
             fillColor: event.pin_color,
             fillOpacity: 1,
-            strokeColor: '#ffffff',
-            strokeWeight: 3,
+            strokeColor: event.pin_color,
+            strokeWeight: 2,
+            strokeOpacity: 0.8,
           });
           
           setTimeout(() => {
+            // Close hover window
+            if (activeHoverWindow) {
+              activeHoverWindow.close();
+              activeHoverWindow = null;
+            }
+            
             if (window[`hoverWindow${index}`]) {
               window[`hoverWindow${index}`].close();
               delete window[`hoverWindow${index}`];
@@ -450,6 +488,19 @@ export default function GoogleMap() {
       markersRef.current.push(marker);
     });
 
+    // Add map click listener to close all windows
+    const mapClickListener = mapInstance.addListener('click', () => {
+      if (activeClickWindow) {
+        activeClickWindow.close();
+        activeClickWindow = null;
+      }
+      if (activeHoverWindow) {
+        activeHoverWindow.close();
+        activeHoverWindow = null;
+      }
+    });
+    listenersRef.current.push(mapClickListener);
+    
     // Log marker creation summary
     console.log(`Created ${markers.length} markers on map`);
     
@@ -523,17 +574,17 @@ export default function GoogleMap() {
           <span style="margin-right: 8px; font-size: 16px;">👥</span>
           <span>${event.participant_count}${event.max_participants ? `/${event.max_participants}` : ''} participants</span>
         </div>
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span style="background: linear-gradient(135deg, ${event.pin_color}, ${event.category_color}); color: white; padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+          <span style="background: ${event.pin_color}; color: white; padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
             ${event.category_name}
           </span>
           <button 
             onclick="window.navigateToEvent('${event.id}')" 
-            style="background: linear-gradient(135deg, ${event.pin_color}, ${event.category_color}); color: white; border: none; padding: 10px 20px; border-radius: 10px; font-size: 14px; cursor: pointer; font-weight: 700; transition: all 0.3s; box-shadow: 0 4px 12px rgba(14, 165, 233, 0.4); text-transform: uppercase; letter-spacing: 0.5px;"
-            onmouseover="this.style.transform='translateY(-2px) scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(14, 165, 233, 0.6)';"
-            onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 4px 12px rgba(14, 165, 233, 0.4)';"
+            style="background: ${event.pin_color}; color: white; border: none; padding: 6px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 600; transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.5px;"
+            onmouseover="this.style.opacity='0.9'; this.style.transform='translateY(-1px)';"
+            onmouseout="this.style.opacity='1'; this.style.transform='translateY(0)';"
           >
-            View Details →
+            View Details
           </button>
         </div>
       </div>

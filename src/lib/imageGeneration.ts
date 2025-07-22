@@ -1,6 +1,8 @@
 // AI Image Generation utility for banner creation
 // Supports DALL-E 3 and other image generation services
 
+import { aiConfigService } from '../services/aiConfigService';
+
 export interface BannerSize {
   width: number;
   height: number;
@@ -24,6 +26,7 @@ export interface GeneratedImage {
   prompt: string;
   size: BannerSize;
   provider: string;
+  model?: string;
   cost: number;
   timestamp: Date;
 }
@@ -82,20 +85,73 @@ export const BANNER_SIZES: Record<string, BannerSize> = {
 };
 
 // Load AI service configurations
-function getAIServiceConfig(provider: string = 'openai-dalle') {
+async function getAIServiceConfig(provider: string = 'openai-dalle') {
+  console.log('Getting AI service config for provider:', provider);
+  
+  try {
+    // First, try to get from database
+    const dbConfig = await aiConfigService.getConfig(provider);
+    
+    if (dbConfig) {
+      console.log('Found config in database for provider:', provider, {
+        hasApiKey: !!dbConfig.apiKey,
+        enabled: dbConfig.enabled
+      });
+      
+      return {
+        provider: dbConfig.provider,
+        apiKey: dbConfig.apiKey,
+        model: dbConfig.model,
+        enabled: dbConfig.enabled,
+        costPerImage: dbConfig.costPerImage,
+        maxImagesPerDay: dbConfig.maxImagesPerDay,
+        quality: dbConfig.quality,
+        style: dbConfig.style
+      };
+    }
+  } catch (error) {
+    console.error('Error fetching config from database:', error);
+  }
+  
+  // Fallback to localStorage (for backward compatibility during migration)
   const savedConfigs = localStorage.getItem('ai-service-configs');
+  console.log('Checking localStorage fallback, found saved configs:', !!savedConfigs);
+  
   if (savedConfigs) {
-    const configs = JSON.parse(savedConfigs);
-    return configs[provider];
+    try {
+      const configs = JSON.parse(savedConfigs);
+      console.log('Parsed configs from localStorage:', Object.keys(configs));
+      
+      const providerConfig = configs[provider];
+      if (providerConfig) {
+        console.log('Found config in localStorage for provider:', provider, {
+          hasApiKey: !!providerConfig.apiKey,
+          enabled: providerConfig.enabled
+        });
+        
+        // Trigger migration in background
+        console.log('Triggering migration of localStorage configs to database...');
+        aiConfigService.migrateFromLocalStorage().catch(err => 
+          console.error('Migration error:', err)
+        );
+        
+        return providerConfig;
+      } else {
+        console.log('No config found for provider in localStorage:', provider);
+      }
+    } catch (e) {
+      console.error('Error parsing saved configs from localStorage:', e);
+    }
   }
   
   // Default configuration
+  console.log('Using default configuration (no API key)');
   return {
-    provider: 'openai-dalle',
+    provider: provider,
     apiKey: '',
-    model: 'dall-e-3',
-    enabled: true,
-    costPerImage: 0.04,
+    model: provider === 'openai-dalle' ? 'dall-e-3' : 'stable-diffusion-xl-1024-v1-0',
+    enabled: false,
+    costPerImage: provider === 'openai-dalle' ? 0.04 : 0.02,
     maxImagesPerDay: 100,
     quality: 'standard',
     style: 'vivid'
@@ -143,24 +199,43 @@ export async function generateBannerVariations(
   request: ImageGenerationRequest,
   count: number = 3
 ): Promise<GeneratedImage[]> {
-  const config = getAIServiceConfig(request.provider);
+  console.log('Starting generateBannerVariations with request:', {
+    provider: request.provider,
+    prompt: request.prompt,
+    size: request.size,
+    placement: request.placement
+  });
+  
+  const config = await getAIServiceConfig(request.provider);
+  console.log('Retrieved AI config:', {
+    provider: config.provider,
+    hasApiKey: !!config.apiKey,
+    apiKeyLength: config.apiKey?.length || 0,
+    enabled: config.enabled,
+    model: config.model
+  });
   
   if (!config.apiKey) {
+    console.error('No API key found in configuration');
     throw new Error('API key not configured. Please set up your AI service in the configuration page.');
   }
 
   if (!config.enabled) {
+    console.error('AI service is disabled');
     throw new Error('AI service is disabled. Please enable it in the configuration page.');
   }
 
   // Check daily limits
   const usage = getDailyUsage();
+  console.log('Daily usage:', usage);
+  
   if (usage.imagesGenerated >= config.maxImagesPerDay) {
     throw new Error(`Daily limit of ${config.maxImagesPerDay} images reached. Please try again tomorrow.`);
   }
 
   const results: GeneratedImage[] = [];
   const basePrompt = generateBannerPrompt(request.prompt, request.size, request.placement);
+  console.log('Generated base prompt:', basePrompt);
 
   // Create 3 distinct variations with different design approaches
   const variations = [
@@ -195,6 +270,7 @@ export async function generateBannerVariations(
       image.id = `${image.id}-${variation.id}`;
       
       results.push(image);
+      console.log(`Successfully generated variation ${i + 1}:`, image.id);
       
       // Update usage tracking
       updateUsageStats(config.costPerImage);
@@ -206,6 +282,11 @@ export async function generateBannerVariations(
       
     } catch (error) {
       console.error(`Error generating image variation ${i + 1}:`, error);
+      console.error('Full error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        error
+      });
       // Continue with other variations even if one fails
     }
   }
@@ -237,43 +318,84 @@ async function generateWithDALLE(
   request: ImageGenerationRequest,
   config: any
 ): Promise<GeneratedImage> {
-  const response = await fetch('https://api.openai.com/v1/images/generations', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${config.apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: config.model,
-      prompt: request.prompt,
-      n: 1,
-      size: determineDallESize(request.size),
-      quality: request.quality || config.quality || 'standard',
-      style: request.style || config.style || 'vivid',
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(`DALL-E API error: ${error.error?.message || response.statusText}`);
-  }
-
-  const data = await response.json();
-  const imageUrl = data.data[0]?.url;
-
-  if (!imageUrl) {
-    throw new Error('No image URL returned from DALL-E API');
-  }
-
-  return {
-    id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-    url: imageUrl,
+  const apiUrl = 'https://api.openai.com/v1/images/generations';
+  const dalleSize = determineDallESize(request.size);
+  
+  const requestBody = {
+    model: config.model,
     prompt: request.prompt,
-    size: request.size,
-    provider: 'openai-dalle',
-    cost: config.quality === 'hd' ? 0.08 : 0.04,
-    timestamp: new Date()
+    n: 1,
+    size: dalleSize,
+    quality: request.quality || config.quality || 'standard',
+    style: request.style || config.style || 'vivid',
   };
+  
+  console.log('Making DALL-E API request:', {
+    url: apiUrl,
+    model: requestBody.model,
+    size: requestBody.size,
+    quality: requestBody.quality,
+    style: requestBody.style,
+    promptLength: request.prompt.length,
+    apiKeyLength: config.apiKey?.length || 0
+  });
+  
+  try {
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${config.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    console.log('DALL-E API response status:', response.status, response.statusText);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('DALL-E API error response:', errorText);
+      
+      let error;
+      try {
+        error = JSON.parse(errorText);
+      } catch (e) {
+        throw new Error(`DALL-E API error: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+      
+      throw new Error(`DALL-E API error: ${error.error?.message || response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log('DALL-E API response data:', {
+      hasData: !!data.data,
+      dataLength: data.data?.length || 0,
+      firstImage: !!data.data?.[0]?.url
+    });
+    
+    const imageUrl = data.data[0]?.url;
+
+    if (!imageUrl) {
+      console.error('No image URL in response:', data);
+      throw new Error('No image URL returned from DALL-E API');
+    }
+
+    console.log('Successfully generated DALL-E image');
+    
+    return {
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      url: imageUrl,
+      prompt: request.prompt,
+      size: request.size,
+      provider: 'openai-dalle',
+      model: config.model || 'dall-e-3',
+      cost: config.quality === 'hd' ? 0.08 : 0.04,
+      timestamp: new Date()
+    };
+  } catch (error) {
+    console.error('DALL-E generation error:', error);
+    throw error;
+  }
 }
 
 // Stability AI image generation
@@ -335,6 +457,7 @@ async function generateWithStabilityAI(
     prompt: request.prompt,
     size: request.size,
     provider: 'stability-ai',
+    model: config.model || 'stable-diffusion-xl-1024-v1-0',
     cost: 0.02, // Stability AI pricing
     timestamp: new Date()
   };
@@ -463,8 +586,27 @@ function getMonthlyUsage(): number {
 // Utility function to download generated image
 export async function downloadImage(imageUrl: string, filename: string): Promise<void> {
   try {
-    const response = await fetch(imageUrl);
-    const blob = await response.blob();
+    let blob: Blob;
+    
+    // Check if it's a data URL (base64)
+    if (imageUrl.startsWith('data:')) {
+      // Extract the base64 data
+      const base64Data = imageUrl.split(',')[1];
+      const mimeType = imageUrl.match(/data:([^;]+)/)?.[1] || 'image/png';
+      
+      // Convert base64 to binary
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      
+      blob = new Blob([bytes], { type: mimeType });
+    } else {
+      // For regular URLs, fetch the image
+      const response = await fetch(imageUrl);
+      blob = await response.blob();
+    }
     
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');

@@ -38,6 +38,7 @@ const csp = `
     https://fonts.googleapis.com
     https://fonts.gstatic.com
     https://api.openai.com
+    https://api.stability.ai
     https://cdn.tiny.cloud
     https://*.tinymce.com;
   frame-src 'self' 

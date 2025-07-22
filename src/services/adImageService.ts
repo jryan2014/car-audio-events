@@ -28,6 +28,15 @@ export class AdImageService {
       if (!file.type.startsWith('image/')) throw new Error('File must be an image');
       if (file.size > 5 * 1024 * 1024) throw new Error('File size must be less than 5MB');
 
+      // Debug: Check auth status
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      console.log('Auth check:', { 
+        userId: user?.id, 
+        providedUserId: userId,
+        authError,
+        match: user?.id === userId 
+      });
+
       // Generate unique filename
       const timestamp = Date.now();
       const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
@@ -37,6 +46,8 @@ export class AdImageService {
       const storagePath = `${userId}/${fileName}`;
 
       // Upload to Supabase storage
+      console.log('Attempting to upload:', { storagePath, fileName: file.name, fileSize: file.size });
+      
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('ad-images')
         .upload(storagePath, file, {
@@ -48,6 +59,8 @@ export class AdImageService {
         console.error('Upload error:', uploadError);
         throw new Error(`Failed to upload image: ${uploadError.message}`);
       }
+      
+      console.log('Upload successful:', uploadData);
 
       // Get the public URL
       const { data: { publicUrl } } = supabase.storage
@@ -68,19 +81,20 @@ export class AdImageService {
         height: dimensions.height
       };
 
+      // Insert into advertisement_images table with correct columns
       const { data: imageRecord, error: dbError } = await supabase
         .from('advertisement_images')
         .insert({
           advertisement_id: advertisementId,
-          user_id: userId,
           image_url: publicUrl,
-          storage_path: storagePath,
-          file_name: file.name,
-          file_size: file.size,
-          mime_type: file.type,
+          image_title: file.name,
+          status: 'active',
+          variant_type: 'single',
           width: dimensions.width,
           height: dimensions.height,
-          is_primary: true // Set as primary by default
+          file_size: file.size,
+          file_format: file.type,
+          created_by: userId
         })
         .select()
         .single();

@@ -349,4 +349,199 @@ When you (or another AI) return to this project:
 - Country selection now supports global events
 - Geocoding should work for any country (not just US)
 
+### Version 1.24.0 Updates (January 2025)
+
+#### Advertisement Display Fix Session
+**Problem**: Ads were not displaying even after clearing frequency caps. Console showed ads loading but being filtered out.
+
+**Root Cause Analysis**:
+1. Ads were loading successfully from database (3 ads found)
+2. All ads had frequency caps and had reached their daily limits
+3. The impression tracking `useEffect` was firing immediately when ads became eligible
+4. This caused ads to immediately hit their caps again after clearing
+
+**Solution Implemented**:
+1. Added 1-second delay before tracking impressions
+2. Implemented impression deduplication using a Set to track already-counted impressions
+3. Created `FrequencyCapManager` component for admin interface
+4. Added debug mode with `?debug=bypass-caps` URL parameter
+
+**Key Code Changes**:
+- `src/components/AdDisplay.tsx`: Added `trackedImpressions` ref and delayed tracking
+- `src/components/admin-settings/FrequencyCapManager.tsx`: New admin tool
+- `src/pages/AdManagement.tsx`: Integrated frequency cap manager
+
+**Deployment Issue**: Initial deployment failed because `AdRotationSettings.tsx` wasn't added to git. Fixed in follow-up commit.
+
+#### Home Page Hero Section Redesign
+**Problem**: Hero card overlaying the map looked like a "big black box" and felt disconnected from the site design.
+
+**Changes Made**:
+1. Separated map and hero content into distinct sections
+2. Map now displays alone at top without overlays
+3. Hero content moved below the ad section
+4. Redesigned with integrated styling:
+   - Removed heavy black background and borders
+   - Added subtle gradient background
+   - Center-aligned text with decorative elements
+   - Consistent button styling with site theme
+
+**Key Files Modified**:
+- `src/pages/Home.tsx`: Complete restructure of hero section
+
+#### Google Maps Component Improvements
+**Problems Addressed**:
+1. White borders on map pins
+2. Pins too large
+3. Map not interactive (couldn't drag or zoom)
+4. Info windows not displaying on click
+5. Hover and click windows overlapping
+
+**Solutions**:
+1. **Pin Styling**:
+   - Changed stroke color from white to match pin color
+   - Reduced pin scale from 12 to 8
+   - Added stroke opacity for subtle effect
+
+2. **Map Interactivity**:
+   - Removed `overflow-hidden` from map container
+   - Removed `z-0` class that was blocking interactions
+   - Map already had `gestureHandling: 'greedy'` for full control
+
+3. **Info Window Management**:
+   - Implemented `activeClickWindow` and `activeHoverWindow` tracking
+   - Hover windows don't show if click window is active on same pin
+   - Map click closes all windows
+   - Proper cleanup on mouseout
+
+4. **Button Styling in Info Windows**:
+   - Reduced padding and font size
+   - Made both category badge and button same shape (rounded rectangles)
+   - Simplified styling without gradients
+
+**Key Files Modified**:
+- `src/components/GoogleMap.tsx`: Comprehensive updates to marker and window management
+
+### Technical Patterns Established
+
+#### Frequency Cap Management Pattern
+```javascript
+// Check for debug mode
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('debug') === 'bypass-caps') {
+  return false; // Bypass caps
+}
+
+// Track impressions with deduplication
+const trackedImpressions = useRef<Set<string>>(new Set());
+if (!trackedImpressions.current.has(ad.id)) {
+  trackImpression(ad.id);
+  trackedImpressions.current.add(ad.id);
+}
+```
+
+#### Google Maps Window Management Pattern
+```javascript
+// Track active windows
+let activeClickWindow: google.maps.InfoWindow | null = null;
+let activeHoverWindow: google.maps.InfoWindow | null = null;
+
+// Prevent overlap
+if (activeClickWindow && activeClickWindow === infoWindow) {
+  return; // Don't show hover on clicked pin
+}
+```
+
+### Admin Tools Structure
+The admin interface now includes collapsible accordion sections:
+1. Ad Rotation Settings - Control rotation interval
+2. Frequency Cap Manager - Debug and clear frequency data
+
+Both use consistent accordion UI with expand/collapse functionality.
+
 The goal is to allow seamless continuation of work without losing the context of what's been built and why certain decisions were made.
+
+### Version 1.25.0 and Beyond - Future Considerations
+
+#### Areas for Potential Enhancement
+1. **Performance Monitoring**:
+   - Consider implementing performance metrics for ad display
+   - Track frequency cap effectiveness
+   - Monitor map loading times and marker rendering performance
+
+2. **User Experience**:
+   - Mobile map interactions could be enhanced with touch gestures
+   - Info window content could be made more responsive
+   - Consider lazy loading for map markers with many events
+
+3. **Admin Tools**:
+   - Frequency cap analytics dashboard
+   - Ad performance metrics
+   - Map event density visualization
+
+4. **Technical Debt**:
+   - Consider migrating window management to React state
+   - Evaluate marker clustering for high-density areas
+   - Review impression tracking for edge cases
+
+### Development Environment Notes
+
+#### Key Commands
+```bash
+# Development
+npm run dev              # Start development server
+npm run dev:memory       # Start with memory optimization flags
+
+# Building
+npm run build            # Production build
+npm run build:analyze    # Build with bundle analysis
+
+# Version Management
+npm run version:bump:patch  # Bump patch version (1.24.0 -> 1.24.1)
+npm run version:bump:minor  # Bump minor version (1.24.0 -> 1.25.0)
+npm run version:bump:major  # Bump major version (1.24.0 -> 2.0.0)
+```
+
+#### Project Structure Updates
+```
+src/
+├── components/
+│   ├── admin-settings/
+│   │   ├── AdRotationSettings.tsx      # Timer-based rotation settings
+│   │   └── FrequencyCapManager.tsx     # Frequency cap management tool
+│   ├── AdDisplay.tsx                   # Core ad display with frequency tracking
+│   └── GoogleMap.tsx                   # Enhanced map with window management
+├── pages/
+│   ├── Home.tsx                        # Redesigned with separated hero section
+│   └── AdManagement.tsx                # Integrated admin tools
+└── utils/
+    └── version.ts                      # Auto-generated version info
+```
+
+### Deployment Checklist
+1. ✅ Ensure all files are added to git (`git add .`)
+2. ✅ Check for TypeScript errors (`npm run build`)
+3. ✅ Update version number (`npm run version:bump:minor`)
+4. ✅ Commit with descriptive message
+5. ✅ Push to GitHub
+6. ✅ Monitor Netlify deployment
+7. ✅ Test production site functionality
+
+### Known Issues and Resolutions
+- **Issue**: Ads not showing due to frequency caps
+  - **Resolution**: Added 1-second delay and deduplication in impression tracking
+  - **Debug**: Use `?debug=bypass-caps` URL parameter
+
+- **Issue**: Deployment failures due to missing files
+  - **Resolution**: Always run `git status` before deploying
+  - **Prevention**: Add all new files immediately after creation
+
+- **Issue**: Map info windows overlapping
+  - **Resolution**: Implemented window management system
+  - **Pattern**: Track activeClickWindow and activeHoverWindow
+
+### Contact Points
+- **Repository**: GitHub (car-audio-events)
+- **Deployment**: Netlify (caraudioevents.com)
+- **Database**: Supabase (nqvisvranvjaghvrdaaz.supabase.co)
+- **Version**: Currently at 1.24.0

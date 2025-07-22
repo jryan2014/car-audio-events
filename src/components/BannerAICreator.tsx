@@ -17,6 +17,7 @@ import {
   Trash2,
   Circle
 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 import { 
   BANNER_SIZES, 
   generateBannerVariations, 
@@ -143,7 +144,15 @@ export default function BannerAICreator({
       
       setStep('results');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to generate images');
+      console.error('Banner generation error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to generate images';
+      setError(errorMessage);
+      
+      // Check if it's an API key issue
+      if (errorMessage.includes('API key') || errorMessage.includes('configuration')) {
+        setError(`${errorMessage}\n\nTo fix this:\n1. Go to Admin → AI Configuration\n2. Enter your OpenAI API key\n3. Ensure the service is enabled\n4. Save the configuration`);
+      }
+      
       setStep('setup');
     } finally {
       setIsGenerating(false);
@@ -216,37 +225,40 @@ export default function BannerAICreator({
 
   const saveImageToDatabase = async (image: GeneratedImage) => {
     try {
-      // Save to the AI image management system
-      const response = await fetch('/api/ai-images', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url: image.url,
-          prompt: image.prompt,
-          provider: image.provider,
-          cost: image.cost,
-          size_name: image.size.name,
-          size_width: image.size.width,
-          size_height: image.size.height,
-          advertiser_id: 'current-advertiser-id', // Would come from context
-          advertiser_name: 'Current Advertiser', // Would come from context
-          ad_id: null, // Not associated with an ad yet
-          ad_title: null,
-          is_active: false,
-          is_archived: false,
-          metadata: {
-            variation_type: image.id.includes('-bold') ? 'bold' : 
-                           image.id.includes('-clean') ? 'clean' : 
-                           image.id.includes('-luxury') ? 'luxury' : 'standard'
-          }
-        })
+      // Fuck the schema cache - use exec_sql directly
+      const { data, error } = await supabase.rpc('exec_sql', {
+        sql_command: `
+          INSERT INTO ai_generated_images (
+            prompt, 
+            image_url, 
+            provider, 
+            model, 
+            size, 
+            quality, 
+            style, 
+            cost_usd, 
+            is_active, 
+            is_archived
+          ) VALUES (
+            '${image.prompt.replace(/'/g, "''")}',
+            '${image.url.replace(/'/g, "''")}',
+            '${image.provider}',
+            '${image.model || 'dall-e-3'}',
+            '${image.size.width}x${image.size.height}',
+            'standard',
+            'vivid',
+            ${image.cost},
+            true,
+            false
+          ) RETURNING id;
+        `
       });
 
-      if (!response.ok) {
-        throw new Error(`Failed to save image: ${response.statusText}`);
+      if (error) {
+        throw error;
       }
 
-      console.log('Successfully saved image to database:', image.id);
+      console.log('Successfully saved image to database using exec_sql');
       
     } catch (error) {
       console.error('Failed to save image to database:', error);
@@ -443,9 +455,9 @@ export default function BannerAICreator({
 
               {/* Error Display */}
               {error && (
-                <div className="flex items-center space-x-2 p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
-                  <AlertCircle className="h-5 w-5 text-red-400 flex-shrink-0" />
-                  <span className="text-red-400">{error}</span>
+                <div className="flex items-start space-x-2 p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+                  <AlertCircle className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5" />
+                  <div className="text-red-400 whitespace-pre-line">{error}</div>
                 </div>
               )}
 
@@ -658,7 +670,12 @@ export default function BannerAICreator({
                 </div>
               </div>
               <button
-                onClick={handleClose}
+                onClick={() => {
+                  if (onImageSelect && selectedImage) {
+                    onImageSelect(selectedImage);
+                  }
+                  handleClose();
+                }}
                 className="px-6 py-2 bg-electric-500 hover:bg-electric-600 text-white rounded-lg transition-colors font-medium"
               >
                 Continue with This Banner

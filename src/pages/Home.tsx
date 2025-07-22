@@ -172,40 +172,12 @@ export default function Home() {
 
   return (
     <div className="animate-fade-in">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden h-[35vh] sm:h-[40vh] md:h-[45vh] lg:h-[50vh] mt-0">
+      {/* Hero Section - Map Only */}
+      <section className="relative h-[35vh] sm:h-[40vh] md:h-[45vh] lg:h-[50vh] mt-0">
         <div className="h-full relative">
-          {/* World Map Background - NO OVERLAY */}
-          <div className="absolute inset-0 z-0">
+          {/* World Map Background */}
+          <div className="absolute inset-0">
             <GoogleMap />
-          </div>
-          
-          {/* Content positioned on mobile: bottom, desktop: left side */}
-          <div className="absolute bottom-4 left-0 right-0 md:left-0 md:top-1/2 md:transform md:-translate-y-1/2 md:bottom-auto md:right-auto h-auto flex items-center z-10 w-full">
-            <div className="max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg mx-2 sm:mx-4 md:ml-8 animate-slide-up w-full">
-              {/* Clean text container - smaller on mobile, positioned below map */}
-              <div className="bg-black/90 backdrop-blur-md rounded-2xl p-3 sm:p-4 md:p-5 lg:p-6 border border-white/20 shadow-2xl max-w-full">
-              <div className="flex items-center space-x-2 mb-2 md:mb-3">
-                <Volume2 className="h-3 w-3 sm:h-4 sm:w-4 md:h-5 md:w-5 lg:h-6 lg:w-6 text-electric-500 animate-pulse-glow" />
-                <span className="text-electric-400 font-semibold text-xs sm:text-sm">TURN IT UP LOUD</span>
-              </div>
-              <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl font-black text-white mb-2 md:mb-3 leading-tight">
-                Car Audio 
-                <span className="text-electric-400"> 
-                  Competition
-                </span>
-                <br />Events
-              </h1>
-              <p className="text-xs sm:text-sm md:text-base lg:text-lg text-gray-300 mb-3 md:mb-4 leading-relaxed">
-                Connect with the car audio community. Find competitions, track your scores, 
-                showcase your system, and compete with the best sound enthusiasts worldwide.
-              </p>
-              <div className="flex space-x-3">
-                <Link to="/pricing" className="flex-1 bg-electric-500 text-white px-4 py-3 rounded-lg text-sm font-bold hover:bg-electric-600 transition-all duration-200 shadow-lg flex items-center justify-center">Join</Link>
-                <Link to="/events" className="flex-1 bg-white/10 text-white px-4 py-3 rounded-lg text-sm font-bold hover:bg-white/20 transition-all duration-200 border border-white/20 flex items-center justify-center">Events</Link>
-              </div>
-              </div>
-            </div>
           </div>
         </div>
       </section>
@@ -214,6 +186,63 @@ export default function Home() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <AdDisplay placement="header" pageType="home" className="flex justify-center" />
       </div>
+
+      {/* Hero Content - Integrated Design */}
+      <section className="relative py-16 overflow-hidden">
+        {/* Subtle background gradient */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-electric-500/5 to-transparent"></div>
+        
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center animate-slide-up">
+            {/* Accent Line */}
+            <div className="flex items-center justify-center mb-6">
+              <div className="h-px bg-gradient-to-r from-transparent via-electric-500/50 to-transparent w-24"></div>
+              <Volume2 className="h-6 w-6 mx-4 text-electric-500 animate-pulse-glow" />
+              <div className="h-px bg-gradient-to-r from-transparent via-electric-500/50 to-transparent w-24"></div>
+            </div>
+            
+            {/* Tagline */}
+            <div className="text-electric-400 font-bold text-sm sm:text-base uppercase tracking-wider mb-4">
+              Turn It Up Loud
+            </div>
+            
+            {/* Main Heading */}
+            <h1 className="text-4xl lg:text-5xl font-black text-white mb-6 leading-tight">
+              Car Audio <span className="text-electric-400">Competition Events</span>
+            </h1>
+            
+            {/* Description */}
+            <p className="text-lg text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
+              Connect with the car audio community. Find competitions, track your scores, 
+              showcase your system, and compete with the best sound enthusiasts worldwide.
+            </p>
+            
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto">
+              <Link 
+                to="/pricing" 
+                className="group relative px-6 py-3 bg-electric-500 text-white rounded-lg font-bold hover:bg-electric-600 transition-all duration-200 shadow-lg overflow-hidden"
+              >
+                <span className="relative z-10">Join the Community</span>
+                <div className="absolute inset-0 bg-gradient-to-r from-electric-600 to-electric-500 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
+              </Link>
+              
+              <Link 
+                to="/events" 
+                className="group relative px-6 py-3 bg-electric-500 text-white rounded-lg font-bold hover:bg-electric-600 transition-all duration-200 shadow-lg overflow-hidden"
+              >
+                <span className="relative z-10">Browse Events</span>
+                <div className="absolute inset-0 bg-gradient-to-r from-electric-600 to-electric-500 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
+              </Link>
+            </div>
+            
+            {/* Bottom Accent */}
+            <div className="flex items-center justify-center mt-12">
+              <Zap className="h-5 w-5 text-electric-500/50 animate-pulse" />
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Stats Section */}
       <section className="py-12 bg-black/50">
