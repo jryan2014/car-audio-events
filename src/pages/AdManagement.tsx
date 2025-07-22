@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Edit, Trash2, Eye, Target, DollarSign, Calendar, MapPin, Tag, BarChart3, Settings, X, HelpCircle, Info, Sparkles, MessageSquare, Upload, Image as ImageIcon, ExternalLink, Users, Building2, Crown, Wrench, Wand2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Target, DollarSign, Calendar, MapPin, Tag, BarChart3, Settings, X, HelpCircle, Info, Sparkles, MessageSquare, Upload, Image as ImageIcon, ExternalLink, Users, Building2, Crown, Wrench, Wand2, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import BannerAICreator from '../components/BannerAICreator';
 import AdvertisementImageManager from '../components/AdvertisementImageManager';
 import AdImageUpload from '../components/AdImageUpload';
+import AdRotationSettings from '../components/admin-settings/AdRotationSettings';
+import FrequencyCapManager from '../components/admin-settings/FrequencyCapManager';
 import type { GeneratedImage } from '../lib/imageGeneration';
 import type { AdvertisementImage } from '../types/advertisement';
 
@@ -45,6 +47,7 @@ interface Advertisement {
   time_targeting: any;
   a_b_test_variant?: string;
   notes: string;
+  rotation_mode?: 'timer' | 'priority';
 }
 
 interface AdFormData {
@@ -66,12 +69,14 @@ interface AdFormData {
   cost_per_impression: number;
   start_date: string;
   end_date: string;
+  status?: Advertisement['status'];
   pricing_model: 'cpc' | 'cpm' | 'fixed';
   priority: number;
   frequency_cap: number;
   geographic_targeting: string[];
   device_targeting: string[];
   notes: string;
+  rotation_mode?: 'timer' | 'priority';
 }
 
 interface PlacementInfo {
@@ -135,7 +140,8 @@ export default function AdManagement() {
     frequency_cap: 3,
     geographic_targeting: [],
     device_targeting: ['desktop', 'mobile'],
-    notes: ''
+    notes: '',
+    rotation_mode: 'timer'
   });
 
   // Placement information with detailed specs
@@ -274,13 +280,23 @@ export default function AdManagement() {
       
       const adData = {
         ...dbData,
-        status: user?.membershipType === 'admin' ? 'approved' : 'pending',
-        clicks: 0,
-        impressions: 0,
-        spent: 0,
-        conversion_rate: 0,
-        roi: 0,
-        advertiser_user_id: user?.id
+        status: user?.membershipType === 'admin' ? formData.status || 'active' : 'pending',
+        clicks: editingAd?.clicks || 0,
+        impressions: editingAd?.impressions || 0,
+        spent: editingAd?.spent || 0,
+        conversion_rate: editingAd?.conversion_rate || 0,
+        roi: editingAd?.roi || 0,
+        advertiser_user_id: user?.id,
+        // Ensure arrays are properly initialized
+        target_pages: formData.target_pages || [],
+        target_keywords: formData.target_keywords || [],
+        target_categories: formData.target_categories || [],
+        target_user_types: formData.target_user_types || [],
+        geographic_targeting: formData.geographic_targeting || [],
+        // Ensure device_targeting is properly formatted
+        device_targeting: formData.device_targeting || ['desktop', 'mobile'],
+        // Add time_targeting if it exists
+        time_targeting: {}
       };
 
       if (editingAd) {
@@ -347,26 +363,74 @@ export default function AdManagement() {
       end_date: formatDateForInput(ad.end_date),
       pricing_model: ad.cost_per_click > 0 ? 'cpc' : 'cpm',
       priority: ad.priority || 1,
+      status: ad.status,
       frequency_cap: ad.frequency_cap || 3,
       geographic_targeting: ad.geographic_targeting || [],
       device_targeting: ad.device_targeting || ['desktop', 'mobile'],
-      notes: ad.notes || ''
+      notes: ad.notes || '',
+      rotation_mode: ad.rotation_mode || 'timer'
     });
     setShowAdModal(true);
   };
 
   const handleStatusChange = async (adId: string, newStatus: Advertisement['status']) => {
     try {
-      const { error } = await supabase
+      // Check if user is authenticated
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        setError('You must be logged in to update advertisements');
+        setTimeout(() => setError(''), 5000);
+        return;
+      }
+      
+      // For admin users, also update advertiser_user_id if it's null
+      // This ensures the ad can be updated even if it has no owner
+      const updateData: any = { 
+        status: newStatus,
+        updated_at: new Date().toISOString()
+      };
+      
+      // If user is admin and ad might not have an owner, claim it
+      if (user?.membershipType === 'admin') {
+        // First check if the ad has an owner
+        const { data: ad } = await supabase
+          .from('advertisements')
+          .select('advertiser_user_id')
+          .eq('id', adId)
+          .single();
+          
+        if (ad && !ad.advertiser_user_id) {
+          updateData.advertiser_user_id = user.id;
+        }
+      }
+      
+      const { data: updateResult, error } = await supabase
         .from('advertisements')
-        .update({ status: newStatus })
-        .eq('id', adId);
+        .update(updateData)
+        .eq('id', adId)
+        .select();
         
-      if (error) throw error;
+      if (error) {
+        console.error('Detailed update error:', {
+          error,
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          updateData,
+          adId,
+          user: user?.email
+        });
+        throw error;
+      }
+      
+      console.log('Update successful:', updateResult);
+      
       loadAds();
       setSuccess(`Advertisement ${newStatus} successfully`);
       setTimeout(() => setSuccess(''), 3000);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating ad status:', error);
       setError('Failed to update advertisement status');
       setTimeout(() => setError(''), 5000);
@@ -377,6 +441,23 @@ export default function AdManagement() {
     if (!confirm('Are you sure you want to delete this advertisement?')) return;
     
     try {
+      // For admin users deleting ads without owners, first claim ownership
+      if (user?.membershipType === 'admin') {
+        const { data: ad } = await supabase
+          .from('advertisements')
+          .select('advertiser_user_id')
+          .eq('id', adId)
+          .single();
+          
+        if (ad && !ad.advertiser_user_id) {
+          // Claim ownership first
+          await supabase
+            .from('advertisements')
+            .update({ advertiser_user_id: user.id })
+            .eq('id', adId);
+        }
+      }
+      
       const { error } = await supabase
         .from('advertisements')
         .delete()
@@ -418,7 +499,8 @@ export default function AdManagement() {
       frequency_cap: 3,
       geographic_targeting: [],
       device_targeting: ['desktop', 'mobile'],
-      notes: ''
+      notes: '',
+      rotation_mode: 'timer'
     });
   };
 
@@ -687,6 +769,20 @@ export default function AdManagement() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900">
+      {/* Toast Notifications */}
+      {error && (
+        <div className="fixed top-4 right-4 z-50 bg-red-500/90 text-white px-6 py-3 rounded-lg shadow-lg flex items-center space-x-2">
+          <AlertCircle className="h-5 w-5" />
+          <span>{error}</span>
+        </div>
+      )}
+      {success && (
+        <div className="fixed top-4 right-4 z-50 bg-green-500/90 text-white px-6 py-3 rounded-lg shadow-lg flex items-center space-x-2">
+          <CheckCircle className="h-5 w-5" />
+          <span>{success}</span>
+        </div>
+      )}
+      
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -799,6 +895,14 @@ export default function AdManagement() {
             </div>
           </div>
         </div>
+
+        {/* Admin Settings - Only for admins */}
+        {user?.membershipType === 'admin' && (
+          <div className="space-y-4 mb-8">
+            <AdRotationSettings />
+            <FrequencyCapManager />
+          </div>
+        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -1177,8 +1281,8 @@ export default function AdManagement() {
                       </div>
                     )}
 
-                    {/* Simple image preview for direct URLs */}
-                    {formData.image_url && !editingAd?.id && (
+                    {/* Image preview - show for both new and editing if image_url is set */}
+                    {formData.image_url && (
                       <div className="mt-3 p-3 bg-gray-700/30 rounded-lg border border-gray-600/50">
                         <p className="text-sm text-gray-400 mb-2">Banner Preview:</p>
                         <img
@@ -1469,6 +1573,30 @@ export default function AdManagement() {
                       </select>
                     </div>
 
+                    {/* Status field for admin users */}
+                    {user?.membershipType === 'admin' && (
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-2 flex items-center space-x-2">
+                          <span>Ad Status</span>
+                          <Tooltip content="Control the visibility and state of this advertisement">
+                            <HelpCircle className="h-4 w-4 text-gray-500" />
+                          </Tooltip>
+                        </label>
+                        <select
+                          value={formData.status || 'active'}
+                          onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as Advertisement['status'] }))}
+                          className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                        >
+                          <option value="pending">Pending Review</option>
+                          <option value="approved">Approved</option>
+                          <option value="active">Active</option>
+                          <option value="paused">Paused</option>
+                          <option value="completed">Completed</option>
+                          <option value="rejected">Rejected</option>
+                        </select>
+                      </div>
+                    )}
+
                     <div>
                       <label className="block text-gray-400 text-sm mb-2 flex items-center space-x-2">
                         <span>Frequency Cap</span>
@@ -1484,6 +1612,29 @@ export default function AdManagement() {
                         onChange={(e) => setFormData(prev => ({ ...prev, frequency_cap: parseInt(e.target.value) || 3 }))}
                         className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
                       />
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2 flex items-center space-x-2">
+                        <span>Rotation Mode</span>
+                        <Tooltip content="Timer: Rotates based on time interval. Priority: Shows ads based on priority weight and frequency cap.">
+                          <HelpCircle className="h-4 w-4 text-gray-500" />
+                        </Tooltip>
+                      </label>
+                      <select
+                        value={formData.rotation_mode || 'timer'}
+                        onChange={(e) => setFormData(prev => ({ ...prev, rotation_mode: e.target.value as 'timer' | 'priority' }))}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                      >
+                        <option value="timer">Timer-Based (Simple Rotation)</option>
+                        <option value="priority">Priority-Based (Weighted Selection)</option>
+                      </select>
+                      <div className="mt-2 text-xs text-gray-500">
+                        {formData.rotation_mode === 'priority' 
+                          ? '📊 Ad will be shown based on priority weight (1-10) and frequency cap limits'
+                          : '⏱️ Ad will rotate evenly with others based on the global timer setting'
+                        }
+                      </div>
                     </div>
                   </div>
 
