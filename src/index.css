@@ -42,6 +42,56 @@
   animation: pulse-glow 2s ease-in-out infinite;
 }
 
+/* Ad display mobile fixes */
+.ad-display {
+  position: relative;
+  display: block;
+}
+
+.ad-container {
+  position: relative;
+  display: block;
+}
+
+/* Mobile-specific fixes */
+@media (max-width: 640px) {
+  .ad-display {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+  
+  .ad-container {
+    max-width: calc(100vw - 2rem);
+    margin: 0 auto;
+  }
+}
+
+/* Ensure map section is properly contained */
+section {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Force block layout for sections to prevent overlap */
+section.block {
+  display: block !important;
+  position: relative !important;
+}
+
+/* Ensure absolute positioned elements stay within their containers */
+.absolute {
+  position: absolute;
+}
+
+/* Mobile-specific map containment */
+@media (max-width: 768px) {
+  section:has(.GoogleMap), section:has([class*="GoogleMap"]) {
+    height: 35vh !important;
+    max-height: 35vh !important;
+    overflow: hidden !important;
+  }
+}
+
 /* Line clamp utilities */
 .line-clamp-2 {
   display: -webkit-box;

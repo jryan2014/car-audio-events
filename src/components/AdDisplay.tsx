@@ -613,11 +613,12 @@ export default function AdDisplay({ placement, pageType = 'general', className =
     return (
       <div className={`ad-display ${className}`} key={`ad-display-${currentAdIndex}`}>
         <div
-          className="ad-container relative cursor-pointer group"
+          className="ad-container relative cursor-pointer group overflow-hidden mx-auto"
           style={{
-            width: `${dimensions.width}px`,
-            height: `${dimensions.height}px`,
-            maxWidth: '100%'
+            width: window.innerWidth < 640 ? '100%' : `${dimensions.width}px`,
+            height: window.innerWidth < 640 ? 'auto' : `${dimensions.height}px`,
+            maxWidth: '100%',
+            aspectRatio: window.innerWidth < 640 ? `${dimensions.width}/${dimensions.height}` : 'auto'
           }}
           onClick={() => handleAdClick(ad)}
           title={`${ad.title} - ${ad.advertiser_name}`}
@@ -634,8 +635,10 @@ export default function AdDisplay({ placement, pageType = 'general', className =
             alt={ad.title}
             className="w-full h-full object-cover rounded border border-gray-600/50 group-hover:border-electric-500/50 transition-colors"
             style={{
-              width: `${dimensions.width}px`,
-              height: `${dimensions.height}px`
+              width: '100%',
+              height: '100%',
+              maxWidth: `${dimensions.width}px`,
+              maxHeight: `${dimensions.height}px`
             }}
             onError={(e) => {
               const target = e.target as HTMLImageElement;
@@ -675,11 +678,12 @@ export default function AdDisplay({ placement, pageType = 'general', className =
         return (
           <div
             key={ad.id}
-            className="ad-container relative cursor-pointer group"
+            className="ad-container relative cursor-pointer group overflow-hidden mx-auto"
             style={{
-              width: `${dimensions.width}px`,
-              height: `${dimensions.height}px`,
-              maxWidth: '100%'
+              width: window.innerWidth < 640 ? '100%' : `${dimensions.width}px`,
+              height: window.innerWidth < 640 ? 'auto' : `${dimensions.height}px`,
+              maxWidth: '100%',
+              aspectRatio: window.innerWidth < 640 ? `${dimensions.width}/${dimensions.height}` : 'auto'
             }}
             onClick={() => handleAdClick(ad)}
             title={`${ad.title} - ${ad.advertiser_name}`}
@@ -695,8 +699,10 @@ export default function AdDisplay({ placement, pageType = 'general', className =
               alt={ad.title}
               className="w-full h-full object-cover rounded border border-gray-600/50 group-hover:border-electric-500/50 transition-colors"
               style={{
-                width: `${dimensions.width}px`,
-                height: `${dimensions.height}px`
+                width: '100%',
+                height: '100%',
+                maxWidth: `${dimensions.width}px`,
+                maxHeight: `${dimensions.height}px`
               }}
               onError={(e) => {
                 const target = e.target as HTMLImageElement;

@@ -173,19 +173,23 @@ export default function Home() {
   return (
     <div className="animate-fade-in">
       {/* Hero Section - Map Only */}
-      <section className="relative h-[35vh] sm:h-[40vh] md:h-[45vh] lg:h-[50vh] mt-0">
-        <div className="h-full relative">
-          {/* World Map Background */}
-          <div className="absolute inset-0">
+      <section className="block relative" style={{ height: '35vh' }}>
+        <div className="h-full w-full relative">
+          {/* World Map Background - contained within section */}
+          <div className="absolute inset-0" style={{ zIndex: 0 }}>
             <GoogleMap />
           </div>
         </div>
       </section>
 
-      {/* Header Advertisement */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <AdDisplay placement="header" pageType="home" className="flex justify-center" />
-      </div>
+      {/* Header Advertisement - completely separate section */}
+      <section className="block relative bg-gray-900" style={{ zIndex: 10 }}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="min-w-0">
+            <AdDisplay placement="header" pageType="home" className="flex justify-center" />
+          </div>
+        </div>
+      </section>
 
       {/* Hero Content - Integrated Design */}
       <section className="relative py-16 overflow-hidden">

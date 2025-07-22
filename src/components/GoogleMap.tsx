@@ -630,9 +630,9 @@ export default function GoogleMap() {
   }
 
   return (
-    <div className="w-full h-full relative" style={{ minHeight: mapHeight }}>
+    <div className="w-full h-full relative overflow-hidden" style={{ height: '100%', minHeight: mapHeight }}>
       {/* Map container is always rendered, with a fallback background color */}
-      <div ref={mapRef} className="w-full h-full" style={{ minHeight: '100%', backgroundColor: '#e5e7eb' }} />
+      <div ref={mapRef} className="w-full h-full" style={{ height: '100%', minHeight: '100%', backgroundColor: '#e5e7eb' }} />
 
       {/* Unified loading overlay */}
       {(!isLoaded || loading) && (
@@ -669,7 +669,7 @@ export default function GoogleMap() {
 
       {/* Map legend */}
       {isLoaded && (
-        <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm rounded-xl p-3 shadow-2xl border border-gray-200 z-10 text-xs sm:text-sm">
+        <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm rounded-xl p-3 shadow-2xl border border-gray-200 text-xs sm:text-sm">
           <div className="flex items-center space-x-3 text-gray-800 text-sm mb-2">
             <div className="w-5 h-5 bg-electric-500 rounded-full border-2 border-white shadow-sm animate-pulse"></div>
             <span className="font-bold">Car Audio Events</span>
@@ -687,7 +687,7 @@ export default function GoogleMap() {
 
       {/* Stats overlay */}
       {isLoaded && (
-        <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm rounded-xl p-3 border border-gray-200 shadow-2xl z-10">
+        <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm rounded-xl p-3 border border-gray-200 shadow-2xl">
           <div className="text-gray-800 font-bold text-xs sm:text-sm mb-1">
             Active Events
           </div>
@@ -698,7 +698,7 @@ export default function GoogleMap() {
       
       {/* Touch hint for mobile */}
       {isLoaded && window.innerWidth <= 768 && (
-        <div className="absolute bottom-4 right-4 bg-black/70 backdrop-blur-sm text-white rounded-full p-2 z-10 animate-pulse">
+        <div className="absolute bottom-4 right-4 bg-black/70 backdrop-blur-sm text-white rounded-full p-2 animate-pulse">
           <TouchpadOff className="h-5 w-5" />
         </div>
       )}
