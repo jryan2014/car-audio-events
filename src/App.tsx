@@ -57,6 +57,7 @@ const PrivacyPolicy = React.lazy(() => import('./pages/PrivacyPolicy'));
 const ClaimOrganization = React.lazy(() => import('./pages/ClaimOrganization'));
 const SearchResults = React.lazy(() => import('./pages/SearchResults'));
 const NotificationHistory = React.lazy(() => import('./pages/NotificationHistory'));
+const NotificationDetail = React.lazy(() => import('./pages/NotificationDetail'));
 const JudgeScoring = React.lazy(() => import('./components/JudgeScoring'));
 const CompetitionManagement = React.lazy(() => import('./pages/CompetitionManagement'));
 const AdminBillingConfiguration = React.lazy(() => import('./pages/AdminBillingConfiguration'));
@@ -118,6 +119,7 @@ function App() {
               <Route path="/resources" element={<Layout><Resources /></Layout>} />
               <Route path="/search" element={<Layout><SearchResults /></Layout>} />
               <Route path="/notifications" element={<Layout><NotificationHistory /></Layout>} />
+              <Route path="/notifications/:id" element={<Layout><NotificationDetail /></Layout>} />
               <Route path="/judge-scoring" element={<Layout><JudgeScoring /></Layout>} />
               <Route path="/advertise" element={<Layout><AdvertisePage /></Layout>} />
               <Route path="/my-ads" element={<Layout><MemberAdDashboard /></Layout>} />

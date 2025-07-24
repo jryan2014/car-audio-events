@@ -35,15 +35,10 @@ export const SessionSettings: React.FC = () => {
       const { data, error } = await supabase
         .from('admin_settings')
         .select('key, value')
-        .in('key', [
-          'session_timeout_minutes',
-          'max_login_attempts',
-          'lockout_duration_minutes',
-          'require_password_change_days',
-          'enable_session_tracking',
-          'enable_activity_logging',
-        ]);
+        .eq('category', 'session');
+      
       if (error) throw error;
+      
       if (data) {
         const keyMap: { [key: string]: string } = {};
         data.forEach((item: any) => {
@@ -59,6 +54,7 @@ export const SessionSettings: React.FC = () => {
         });
       }
     } catch (err: any) {
+      console.error('Error loading session settings:', err);
       setError('Database Error: Failed to load session settings. Please try again.');
     } finally {
       setLoading(false);
@@ -74,20 +70,62 @@ export const SessionSettings: React.FC = () => {
     setSaveStatus('saving');
     setError(null);
     try {
-      const settingsToUpdate = Object.entries(settings).map(([key, value]) => ({
-        key,
-        value: String(value),
-        is_sensitive: false,
-        updated_at: new Date().toISOString(),
-      }));
-      const { error } = await supabase
-        .from('admin_settings')
-        .upsert(settingsToUpdate, { onConflict: 'key' });
-      if (error) throw error;
+      // Save each setting individually using check-then-insert/update approach
+      for (const [key, value] of Object.entries(settings)) {
+        // Check if record exists
+        const { data: existing, error: checkError } = await supabase
+          .from('admin_settings')
+          .select('*')
+          .eq('category', 'session')
+          .eq('key', key)
+          .maybeSingle();
+
+        if (checkError && checkError.code !== 'PGRST116') {
+          console.error(`Error checking setting ${key}:`, checkError);
+          throw checkError;
+        }
+
+        if (existing) {
+          // Update existing record
+          const { error: updateError } = await supabase
+            .from('admin_settings')
+            .update({
+              value: String(value),
+              is_sensitive: false,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existing.id);
+
+          if (updateError) {
+            console.error(`Error updating setting ${key}:`, updateError);
+            throw updateError;
+          }
+        } else {
+          // Insert new record
+          const { error: insertError } = await supabase
+            .from('admin_settings')
+            .insert({
+              category: 'session',
+              key: key,
+              value: String(value),
+              is_sensitive: false,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+
+          if (insertError) {
+            console.error(`Error inserting setting ${key}:`, insertError);
+            throw insertError;
+          }
+        }
+      }
+
       setSaveStatus('success');
       setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (err: any) {
-      setError('Database Error: Failed to save session settings. Please try again.');
+      console.error('Session settings save error:', err);
+      const errorMessage = err.message || 'Failed to save session settings. Please try again.';
+      setError(`Database Error: ${errorMessage}`);
       setSaveStatus('error');
       setTimeout(() => setSaveStatus('idle'), 3000);
     } finally {

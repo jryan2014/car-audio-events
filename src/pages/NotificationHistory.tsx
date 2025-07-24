@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   Bell, 
   Search, 
@@ -15,13 +16,38 @@ import {
   RefreshCw,
   Archive,
   Download,
-  MoreVertical
+  MoreVertical,
+  Info,
+  CheckCircle,
+  AlertTriangle
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   notificationService, 
   NotificationWithType 
 } from '../services/notificationService';
+import { 
+  simpleNotificationService, 
+  SimpleNotification 
+} from '../services/simpleNotificationService';
+
+// ================================
+// TYPES
+// ================================
+
+interface CombinedNotification {
+  id: string | number;
+  title: string;
+  message: string;
+  type: string;
+  icon?: string;
+  color?: string;
+  is_read: boolean;
+  priority: number;
+  sent_at: string;
+  action_url?: string;
+  source: 'complex' | 'simple';
+}
 
 // ================================
 // NOTIFICATION HISTORY PAGE
@@ -29,9 +55,9 @@ import {
 
 export default function NotificationHistory() {
   const { user } = useAuth();
-  const [notifications, setNotifications] = useState<NotificationWithType[]>([]);
+  const [notifications, setNotifications] = useState<CombinedNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'priority'>('newest');
@@ -41,39 +67,80 @@ export default function NotificationHistory() {
   const [unreadCount, setUnreadCount] = useState(0);
   const itemsPerPage = 25;
 
+  // Combine notifications from both sources
+  const combineNotifications = (
+    complex: NotificationWithType[], 
+    simple: SimpleNotification[]
+  ): CombinedNotification[] => {
+    const combined: CombinedNotification[] = [];
+
+    // Add complex notifications
+    complex.forEach(n => {
+      combined.push({
+        id: `complex_${n.id}`,
+        title: n.title,
+        message: n.message,
+        type: n.notification_type,
+        icon: n.notification_icon,
+        color: n.notification_color,
+        is_read: n.is_read,
+        priority: n.priority,
+        sent_at: n.sent_at,
+        action_url: n.action_url,
+        source: 'complex'
+      });
+    });
+
+    // Add simple notifications
+    simple.forEach(n => {
+      combined.push({
+        id: `simple_${n.id}`,
+        title: n.title,
+        message: n.message,
+        type: n.type,
+        is_read: n.read,
+        priority: n.type === 'error' ? 5 : n.type === 'warning' ? 4 : n.type === 'success' ? 2 : 3,
+        sent_at: n.created_at,
+        action_url: n.link,
+        source: 'simple'
+      });
+    });
+
+    return combined;
+  };
+
   // Load notifications
   const loadNotifications = useCallback(async () => {
     if (!user) return;
 
     setIsLoading(true);
     try {
-      const [notificationsData, count] = await Promise.all([
-        notificationService.getUserNotifications(
-          user.id, 
-          filter === 'unread',
-          itemsPerPage,
-          (currentPage - 1) * itemsPerPage
-        ),
-        notificationService.getUnreadCount(user.id)
+      const [complexNotifs, simpleNotifs, complexUnread, simpleUnread] = await Promise.all([
+        notificationService.getUserNotifications(user.id, false, 50, 0),
+        simpleNotificationService.getUserNotifications(user.id, false, 50),
+        notificationService.getUnreadCount(user.id),
+        simpleNotificationService.getUnreadCount(user.id)
       ]);
 
-      let filteredData = notificationsData;
+      let combined = combineNotifications(complexNotifs, simpleNotifs);
 
       // Apply search filter
       if (searchTerm) {
-        filteredData = notificationsData.filter(n => 
+        combined = combined.filter(n => 
           n.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
           n.message.toLowerCase().includes(searchTerm.toLowerCase())
         );
       }
 
       // Apply read/unread filter
-      if (filter === 'read') {
-        filteredData = filteredData.filter(n => n.is_read);
+      if (filter === 'unread') {
+        combined = combined.filter(n => !n.is_read);
+      } else if (filter === 'read') {
+        combined = combined.filter(n => n.is_read);
       }
 
       // Apply sorting
-      filteredData.sort((a, b) => {
+      combined.sort((a, b) => {
         switch (sortBy) {
           case 'oldest':
             return new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime();
@@ -84,9 +151,14 @@ export default function NotificationHistory() {
         }
       });
 
-      setNotifications(filteredData);
-      setTotalCount(filteredData.length);
-      setUnreadCount(count);
+      // Paginate
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const endIndex = startIndex + itemsPerPage;
+      const paginatedNotifications = combined.slice(startIndex, endIndex);
+
+      setNotifications(paginatedNotifications);
+      setTotalCount(combined.length);
+      setUnreadCount(complexUnread + simpleUnread);
     } catch (error) {
       console.error('Error loading notifications:', error);
     } finally {
@@ -98,16 +170,33 @@ export default function NotificationHistory() {
     loadNotifications();
   }, [loadNotifications]);
 
+  // Real-time subscription for simple notifications
+  useEffect(() => {
+    if (!user) return;
+
+    const subscription = simpleNotificationService.subscribeToNotifications(
+      user.id,
+      () => {
+        // Reload notifications when a new one arrives
+        loadNotifications();
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [user, loadNotifications]);
+
   // Bulk actions
   const handleSelectAll = () => {
     if (selectedIds.size === notifications.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(notifications.map(n => n.id)));
+      setSelectedIds(new Set(notifications.map(n => String(n.id))));
     }
   };
 
-  const handleSelectOne = (id: number) => {
+  const handleSelectOne = (id: string) => {
     const newSelected = new Set(selectedIds);
     if (newSelected.has(id)) {
       newSelected.delete(id);
@@ -120,9 +209,17 @@ export default function NotificationHistory() {
   const handleBulkMarkAsRead = async () => {
     if (!user || selectedIds.size === 0) return;
 
-    const promises = Array.from(selectedIds).map(id => 
-      notificationService.markAsRead(id, user.id)
-    );
+    const promises: Promise<boolean>[] = [];
+    
+    selectedIds.forEach(id => {
+      if (id.startsWith('complex_')) {
+        const numId = Number(id.replace('complex_', ''));
+        promises.push(notificationService.markAsRead(numId, user.id));
+      } else if (id.startsWith('simple_')) {
+        const simpleId = id.replace('simple_', '');
+        promises.push(simpleNotificationService.markAsRead(simpleId));
+      }
+    });
 
     try {
       await Promise.all(promises);
@@ -136,9 +233,17 @@ export default function NotificationHistory() {
   const handleBulkDelete = async () => {
     if (!user || selectedIds.size === 0) return;
 
-    const promises = Array.from(selectedIds).map(id => 
-      notificationService.dismissNotification(id, user.id)
-    );
+    const promises: Promise<boolean>[] = [];
+    
+    selectedIds.forEach(id => {
+      if (id.startsWith('complex_')) {
+        const numId = Number(id.replace('complex_', ''));
+        promises.push(notificationService.dismissNotification(numId, user.id));
+      } else if (id.startsWith('simple_')) {
+        const simpleId = id.replace('simple_', '');
+        promises.push(simpleNotificationService.deleteNotification(simpleId));
+      }
+    });
 
     try {
       await Promise.all(promises);
@@ -153,7 +258,10 @@ export default function NotificationHistory() {
     if (!user) return;
 
     try {
-      await notificationService.markAllAsRead(user.id);
+      await Promise.all([
+        notificationService.markAllAsRead(user.id),
+        simpleNotificationService.markAllAsRead(user.id)
+      ]);
       loadNotifications();
     } catch (error) {
       console.error('Error marking all as read:', error);
@@ -161,22 +269,34 @@ export default function NotificationHistory() {
   };
 
   // Individual actions
-  const handleMarkAsRead = async (id: number) => {
+  const handleMarkAsRead = async (notification: CombinedNotification) => {
     if (!user) return;
 
     try {
-      await notificationService.markAsRead(id, user.id);
+      if (notification.source === 'complex' && typeof notification.id === 'string') {
+        const numId = Number(notification.id.replace('complex_', ''));
+        await notificationService.markAsRead(numId, user.id);
+      } else if (notification.source === 'simple' && typeof notification.id === 'string') {
+        const simpleId = notification.id.replace('simple_', '');
+        await simpleNotificationService.markAsRead(simpleId);
+      }
       loadNotifications();
     } catch (error) {
       console.error('Error marking notification as read:', error);
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (notification: CombinedNotification) => {
     if (!user) return;
 
     try {
-      await notificationService.dismissNotification(id, user.id);
+      if (notification.source === 'complex' && typeof notification.id === 'string') {
+        const numId = Number(notification.id.replace('complex_', ''));
+        await notificationService.dismissNotification(numId, user.id);
+      } else if (notification.source === 'simple' && typeof notification.id === 'string') {
+        const simpleId = notification.id.replace('simple_', '');
+        await simpleNotificationService.deleteNotification(simpleId);
+      }
       loadNotifications();
     } catch (error) {
       console.error('Error deleting notification:', error);
@@ -184,7 +304,22 @@ export default function NotificationHistory() {
   };
 
   // Utility functions
-  const getIcon = (iconName: string) => {
+  const getIcon = (notification: CombinedNotification) => {
+    // For simple notifications
+    if (notification.source === 'simple') {
+      switch (notification.type) {
+        case 'success':
+          return <CheckCircle className="h-4 w-4" />;
+        case 'warning':
+          return <AlertTriangle className="h-4 w-4" />;
+        case 'error':
+          return <AlertCircle className="h-4 w-4" />;
+        default:
+          return <Info className="h-4 w-4" />;
+      }
+    }
+
+    // For complex notifications
     const iconMap: Record<string, React.ComponentType<any>> = {
       Megaphone: Bell,
       Calendar,
@@ -196,8 +331,20 @@ export default function NotificationHistory() {
       AlertCircle
     };
     
-    const IconComponent = iconMap[iconName] || Bell;
+    const IconComponent = iconMap[notification.icon || 'Bell'] || Bell;
     return <IconComponent className="h-4 w-4" />;
+  };
+
+  const getNotificationColor = (notification: CombinedNotification) => {
+    if (notification.source === 'simple') {
+      switch (notification.type) {
+        case 'success': return '#10b981';
+        case 'warning': return '#f59e0b';
+        case 'error': return '#ef4444';
+        default: return '#3b82f6';
+      }
+    }
+    return notification.color || '#6366f1';
   };
 
   const formatTimeAgo = (timestamp: string) => {
@@ -284,6 +431,22 @@ export default function NotificationHistory() {
             </div>
           </div>
         </div>
+
+        {/* Settings Panel */}
+        {showSettings && (
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 mb-6">
+            <h3 className="text-lg font-semibold text-white mb-4">Notification Settings</h3>
+            <p className="text-gray-400 text-sm">
+              Notification preferences can be managed from your profile settings.
+            </p>
+            <a
+              href="/profile"
+              className="inline-block mt-4 text-electric-400 hover:text-electric-300 text-sm"
+            >
+              Go to Profile Settings →
+            </a>
+          </div>
+        )}
 
         {/* Filters and Search */}
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 mb-6">
@@ -428,10 +591,10 @@ export default function NotificationHistory() {
                   <div className="flex items-start space-x-4">
                     {/* Selection Checkbox */}
                     <button
-                      onClick={() => handleSelectOne(notification.id)}
+                      onClick={() => handleSelectOne(String(notification.id))}
                       className="mt-1 w-4 h-4 border border-gray-500 rounded flex items-center justify-center hover:border-electric-500 transition-colors"
                     >
-                      {selectedIds.has(notification.id) && (
+                      {selectedIds.has(String(notification.id)) && (
                         <Check className="h-3 w-3 text-electric-500" />
                       )}
                     </button>
@@ -440,11 +603,11 @@ export default function NotificationHistory() {
                     <div 
                       className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center mt-1"
                       style={{ 
-                        backgroundColor: `${notification.notification_color}20`, 
-                        color: notification.notification_color 
+                        backgroundColor: `${getNotificationColor(notification)}20`, 
+                        color: getNotificationColor(notification)
                       }}
                     >
-                      {getIcon(notification.notification_icon)}
+                      {getIcon(notification)}
                     </div>
 
                     {/* Content */}
@@ -460,7 +623,13 @@ export default function NotificationHistory() {
                             {!notification.is_read && (
                               <span className="w-2 h-2 bg-electric-500 rounded-full"></span>
                             )}
-                            <span className={`text-xs px-2 py-1 rounded-full ${getPriorityColor(notification.priority)} bg-current bg-opacity-20`}>
+                            <span className={`text-xs px-2 py-1 rounded-full text-black ${
+                              notification.priority === 5 ? 'bg-red-500' :
+                              notification.priority === 4 ? 'bg-orange-500' :
+                              notification.priority === 3 ? 'bg-yellow-500' :
+                              notification.priority === 2 ? 'bg-blue-500' :
+                              'bg-gray-500'
+                            } bg-opacity-20`}>
                               {getPriorityLabel(notification.priority)}
                             </span>
                           </div>
@@ -473,8 +642,8 @@ export default function NotificationHistory() {
                               <span>{formatTimeAgo(notification.sent_at)}</span>
                             </span>
                             <span className="flex items-center space-x-1">
-                              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: notification.notification_color }}></span>
-                              <span>{notification.notification_type.replace('_', ' ')}</span>
+                              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getNotificationColor(notification) }}></span>
+                              <span>{notification.type.replace('_', ' ')}</span>
                             </span>
                           </div>
                         </div>
@@ -483,24 +652,22 @@ export default function NotificationHistory() {
                         <div className="flex items-center space-x-2 ml-4">
                           {!notification.is_read && (
                             <button
-                              onClick={() => handleMarkAsRead(notification.id)}
+                              onClick={() => handleMarkAsRead(notification)}
                               className="p-2 text-gray-500 hover:text-green-500 transition-colors"
                               title="Mark as read"
                             >
-                              <Eye className="h-4 w-4" />
+                              <Check className="h-4 w-4" />
                             </button>
                           )}
-                          {notification.action_url && (
-                            <a
-                              href={notification.action_url}
-                              className="p-2 text-gray-500 hover:text-electric-500 transition-colors"
-                              title="View details"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </a>
-                          )}
+                          <Link
+                            to={`/notifications/${notification.id}`}
+                            className="p-2 text-gray-500 hover:text-electric-500 transition-colors"
+                            title="View details"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Link>
                           <button
-                            onClick={() => handleDelete(notification.id)}
+                            onClick={() => handleDelete(notification)}
                             className="p-2 text-gray-500 hover:text-red-500 transition-colors"
                             title="Delete"
                           >
@@ -547,4 +714,4 @@ export default function NotificationHistory() {
       </div>
     </div>
   );
-} 
+}

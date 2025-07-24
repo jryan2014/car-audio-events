@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import MegaMenu from './MegaMenu';
 import MobileMegaMenu from './MobileMegaMenu';
 import { GlobalSearch } from './GlobalSearch';
-import NotificationCenter from './NotificationCenter';
+import NotificationBell from './NotificationBell';
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -55,7 +55,7 @@ export default function Header() {
 
             {/* User & Auth Controls */}
             <div className="flex items-center space-x-4">
-              {isAuthenticated && <NotificationCenter />}
+              {isAuthenticated && <NotificationBell />}
               
               {isAuthenticated ? (
                 <div className="relative">

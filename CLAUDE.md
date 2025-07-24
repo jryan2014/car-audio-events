@@ -5,7 +5,7 @@ When starting a new session, read this file to understand the project context an
 
 ## Project Overview
 - **Name**: Car Audio Events Competition Platform
-- **Version**: 1.20.0
+- **Version**: 1.26.0
 - **Tech Stack**: React, TypeScript, Supabase, Tailwind CSS, Vite
 - **Database**: Supabase (PostgreSQL)
 - **Deployment**: Netlify
@@ -237,6 +237,28 @@ When starting a new session, tell the AI:
   - Fixed phone number persistence bug in ContactSection
   - Fixed date display timezone issue on Events page using parseLocalDate helper
   - Added conditional validation based on user role (admin vs non-admin)
+- **Advertisement System (v1.21.0-v1.25.1)**:
+  - Implemented banner AI creator with DALL-E integration
+  - Added ad image upload system via Supabase Edge Function
+  - Fixed mobile ad overlap issues with map components
+  - Created member ad dashboard for managing advertisements
+  - Added ad rotation and frequency cap settings
+- **Audio System Profile Feature (v1.26.0)**:
+  - Created comprehensive audio system management in member profiles
+  - Supports components: amplifiers, subwoofers, speakers, head units, processors, etc.
+  - Dynamic component forms with category-specific fields
+  - System links feature for showcasing builds with external URLs
+  - Competitions section displaying event results and statistics
+  - Fixed session settings persistence issues in admin panel
+- **Manual Notification System (v1.26.0)**:
+  - Created new simplified notifications table with RLS policies
+  - Built NotificationManager for admins to send targeted notifications
+  - Implemented NotificationBell component with real-time updates
+  - Created individual notification detail pages (/notifications/:id)
+  - Updated /notifications page to combine both notification systems
+  - Fixed notification subscription errors and improved cleanup
+  - Added proper UX flow: bell → notification list → notification detail → optional link
+  - Differentiated action icons: ✓ for mark as read, 👁️ for view details
 
 ### 11. Recently Fixed Issues (v1.19.3 - v1.20.0)
 
@@ -364,5 +386,5 @@ loadConsentedScripts();
   - Simplified design with matching colors
 
 ---
-Last Updated: January 2025 (v1.24.0)
+Last Updated: July 2025 (v1.26.0)
 Context preserved for AI assistants working on this project.

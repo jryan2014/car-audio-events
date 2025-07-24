@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { User, Car, Trophy, Star, Calendar, Edit, Save, X, Upload, Users, Settings, Plus, Trash2, Award, Target, Shield, AlertTriangle, CheckCircle, FileCheck, MapPin, Phone, Globe, Wrench, Search, UserPlus, Crown, Building, HelpCircle, Camera, UserCheck, UserX, Zap, DollarSign } from 'lucide-react';
+import { User, Car, Trophy, Star, Calendar, Edit, Save, X, Upload, Users, Settings, Plus, Trash2, Award, Target, Shield, AlertTriangle, CheckCircle, FileCheck, MapPin, Phone, Globe, Wrench, Search, UserPlus, Crown, Building, HelpCircle, Camera, UserCheck, UserX, Zap, DollarSign, ExternalLink, Bell } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import { useNotifications } from '../components/NotificationSystem';
+import { Link } from 'react-router-dom';
 
 interface AudioSystem {
   id: string;
@@ -17,11 +19,14 @@ interface AudioSystem {
 
 interface AudioComponent {
   id: string;
-  category: string;
+  component_type?: string;
+  category?: string; // For backward compatibility
   brand: string;
   model: string;
-  description?: string;
-  power_watts?: number;
+  notes?: string;
+  description?: string; // For backward compatibility
+  specifications?: any;
+  power_watts?: number; // For backward compatibility
   price?: number;
 }
 
@@ -94,6 +99,7 @@ interface TeamRole {
 
 export default function Profile() {
   const { user, refreshUser } = useAuth();
+  const { showSuccess, showError, showInfo } = useNotifications();
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -223,6 +229,34 @@ export default function Profile() {
   const [editingSystem, setEditingSystem] = useState<AudioSystem | null>(null);
   const [showComponentModal, setShowComponentModal] = useState(false);
   const [selectedSystemId, setSelectedSystemId] = useState<string | null>(null);
+  const [showSystemLinksModal, setShowSystemLinksModal] = useState(false);
+  const [systemLinks, setSystemLinks] = useState<any[]>([]);
+  const [linkFormData, setLinkFormData] = useState({
+    title: '',
+    url: '',
+    link_type: 'build_thread'
+  });
+  const [systemFormData, setSystemFormData] = useState({
+    name: '',
+    description: '',
+    vehicle_year: '' as string | number,
+    vehicle_make: '',
+    vehicle_model: '',
+    system_type: 'spl',
+    is_primary: false
+  });
+  const [componentFormData, setComponentFormData] = useState({
+    category: '',
+    brand: '',
+    model: '',
+    description: '',
+    power_watts: '' as string | number,
+    rms_watts: '' as string | number,
+    impedance: '',
+    size: '',
+    quantity: 1,
+    price: '' as string | number
+  });
   const [selectedTeamForManagement, setSelectedTeamForManagement] = useState<Team | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [showMemberManagementModal, setShowMemberManagementModal] = useState(false);
@@ -294,7 +328,7 @@ export default function Profile() {
     try {
       // Only load data that exists in current database schema
       await Promise.all([
-        // loadAudioSystems(), // Skip - table may not exist
+        loadAudioSystems(), // Load audio systems
         // loadCompetitionResults(), // Skip - table doesn't exist
         // loadTeams(), // Skip - table may not exist  
         // loadUserStats() // Skip - function doesn't exist
@@ -308,21 +342,26 @@ export default function Profile() {
   };
 
   const loadAudioSystems = async () => {
-    const { data: systems, error } = await supabase
-      .from('user_audio_systems')
-      .select(`
-        *,
-        audio_components (*)
-      `)
-      .eq('user_id', user!.id)
-      .order('is_primary', { ascending: false });
+    try {
+      const { data: systems, error } = await supabase
+        .from('user_audio_systems')
+        .select('*')
+        .eq('user_id', user!.id)
+        .order('is_primary', { ascending: false });
 
-    if (error) {
-      console.error('Error loading audio systems:', error);
-      return;
+      if (error) {
+        console.error('Error loading audio systems:', error);
+        return;
+      }
+
+      // Ensure components array exists for each system
+      setAudioSystems((systems || []).map(system => ({
+        ...system,
+        components: Array.isArray(system.components) ? system.components : []
+      })));
+    } catch (error) {
+      console.error('Error in loadAudioSystems:', error);
     }
-
-    setAudioSystems(systems || []);
   };
 
   const loadCompetitionResults = async () => {
@@ -462,7 +501,8 @@ export default function Profile() {
     }
   };
 
-  const handleCreateAudioSystem = async (systemData: any) => {
+  const handleAddSystem = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!user) return;
 
     try {
@@ -470,7 +510,7 @@ export default function Profile() {
         .from('user_audio_systems')
         .insert({
           user_id: user.id,
-          ...systemData
+          ...systemFormData
         })
         .select()
         .single();
@@ -479,28 +519,169 @@ export default function Profile() {
 
       await loadAudioSystems();
       setShowSystemModal(false);
-    } catch (error) {
+      showSuccess('System Added', `${systemFormData.name} has been added to your profile.`);
+      // Reset form
+      setSystemFormData({
+        name: '',
+        description: '',
+        vehicle_year: '',
+        vehicle_make: '',
+        vehicle_model: '',
+        system_type: 'spl',
+        is_primary: false
+      });
+    } catch (error: any) {
       console.error('Error creating audio system:', error);
+      showError('Failed to Add System', error.message || 'Please try again later.');
     }
   };
 
-  const handleAddComponent = async (componentData: any) => {
+  const handleAddComponent = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!selectedSystemId) return;
 
     try {
+      // Build component object
+      const newComponent = {
+        id: crypto.randomUUID(),
+        category: componentFormData.category,
+        brand: componentFormData.brand,
+        model: componentFormData.model,
+        description: componentFormData.description,
+        specifications: {
+          power_watts: componentFormData.power_watts || null,
+          rms_watts: componentFormData.rms_watts || null,
+          impedance: componentFormData.impedance || null,
+          size: componentFormData.size || null,
+          quantity: componentFormData.quantity || 1
+        },
+        price: componentFormData.price || null,
+        created_at: new Date().toISOString()
+      };
+
+      // Find the system and update its components
+      const system = audioSystems.find(s => s.id === selectedSystemId);
+      if (!system) throw new Error('System not found');
+
+      // Get existing components or initialize empty array
+      const existingComponents = system.components || [];
+      const updatedComponents = [...existingComponents, newComponent];
+
+      // Update the system with new components array
       const { error } = await supabase
-        .from('audio_components')
-        .insert({
-          system_id: selectedSystemId,
-          ...componentData
-        });
+        .from('user_audio_systems')
+        .update({
+          components: updatedComponents,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', selectedSystemId);
+
+      if (error) throw error;
+
+      showSuccess('Component Added', `${componentFormData.brand} ${componentFormData.model} has been added to your system.`);
+
+      await loadAudioSystems();
+      setShowComponentModal(false);
+      setSelectedSystemId(null);
+      // Reset form
+      setComponentFormData({
+        category: '',
+        brand: '',
+        model: '',
+        description: '',
+        power_watts: '',
+        rms_watts: '',
+        impedance: '',
+        size: '',
+        quantity: 1,
+        price: ''
+      });
+    } catch (error: any) {
+      console.error('Error adding component:', error);
+      showError('Failed to Add Component', error.message || 'Please try again later.');
+    }
+  };
+
+  const handleDeleteSystem = async (systemId: string) => {
+    if (!confirm('Are you sure you want to delete this audio system? This will also delete all components and links.')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('user_audio_systems')
+        .delete()
+        .eq('id', systemId);
 
       if (error) throw error;
 
       await loadAudioSystems();
-      setShowComponentModal(false);
     } catch (error) {
-      console.error('Error adding component:', error);
+      console.error('Error deleting system:', error);
+      alert('Error deleting system. Please try again.');
+    }
+  };
+
+  const handleAddSystemLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSystemId) return;
+
+    try {
+      const { error } = await supabase
+        .from('audio_system_links')
+        .insert({
+          system_id: selectedSystemId,
+          ...linkFormData
+        });
+
+      if (error) throw error;
+
+      await loadSystemLinks(selectedSystemId);
+      showSuccess('Link Added', 'System link has been added successfully.');
+      // Reset form
+      setLinkFormData({
+        title: '',
+        url: '',
+        link_type: 'build_thread'
+      });
+    } catch (error: any) {
+      console.error('Error adding link:', error);
+      showError('Failed to Add Link', error.message || 'Please try again later.');
+    }
+  };
+
+  const handleDeleteSystemLink = async (linkId: string) => {
+    try {
+      const { error } = await supabase
+        .from('audio_system_links')
+        .delete()
+        .eq('id', linkId);
+
+      if (error) throw error;
+
+      if (selectedSystemId) {
+        await loadSystemLinks(selectedSystemId);
+      }
+    } catch (error) {
+      console.error('Error deleting link:', error);
+      alert('Error deleting link. Please try again.');
+    }
+  };
+
+  const loadSystemLinks = async (systemId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('audio_system_links')
+        .select('*')
+        .eq('system_id', systemId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      setSystemLinks(data || []);
+    } catch (error) {
+      console.error('Error loading system links:', error);
+      setSystemLinks([]);
     }
   };
 
@@ -1003,40 +1184,49 @@ export default function Profile() {
               </div>
               <p className="text-gray-300 max-w-2xl leading-relaxed">{user?.bio || 'No bio provided'}</p>
             </div>
-            <button
-              onClick={() => setIsEditing(!isEditing)}
-              className="bg-electric-500 text-white px-6 py-2 rounded-lg font-medium hover:bg-electric-600 transition-all duration-200 flex items-center space-x-2"
-            >
-              {isEditing ? <Save className="h-4 w-4" /> : <Edit className="h-4 w-4" />}
-              <span>{isEditing ? 'Save' : 'Edit'}</span>
-            </button>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Link
+                to="/notifications"
+                className="bg-gray-700 text-white px-6 py-2 rounded-lg font-medium hover:bg-gray-600 transition-all duration-200 flex items-center justify-center space-x-2"
+              >
+                <Bell className="h-4 w-4" />
+                <span>Notifications</span>
+              </Link>
+              <button
+                onClick={() => setIsEditing(!isEditing)}
+                className="bg-electric-500 text-white px-6 py-2 rounded-lg font-medium hover:bg-electric-600 transition-all duration-200 flex items-center space-x-2"
+              >
+                {isEditing ? <Save className="h-4 w-4" /> : <Edit className="h-4 w-4" />}
+                <span>{isEditing ? 'Save' : 'Edit'}</span>
+              </button>
+            </div>
           </div>
 
           {/* Stats */}
           {userStats && (
             <div className="grid grid-cols-2 md:grid-cols-6 gap-6 mt-8 pt-8 border-t border-gray-700/50">
               <div className="text-center">
-                <div className="text-2xl font-bold text-white mb-1">{userStats.total_competitions}</div>
+                <div className="text-2xl font-bold text-white mb-1">{userStats?.total_competitions || 0}</div>
                 <div className="text-gray-400 text-sm">Competitions</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-electric-400 mb-1">{userStats.total_points}</div>
+                <div className="text-2xl font-bold text-electric-400 mb-1">{userStats?.total_points || 0}</div>
                 <div className="text-gray-400 text-sm">Total Points</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-accent-400 mb-1">{userStats.average_score}</div>
+                <div className="text-2xl font-bold text-accent-400 mb-1">{userStats?.average_score || 0}</div>
                 <div className="text-gray-400 text-sm">Avg Score</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-white mb-1">#{userStats.best_placement || 'N/A'}</div>
+                <div className="text-2xl font-bold text-white mb-1">#{userStats?.best_placement || 'N/A'}</div>
                 <div className="text-gray-400 text-sm">Best Rank</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-yellow-400 mb-1">{userStats.wins}</div>
+                <div className="text-2xl font-bold text-yellow-400 mb-1">{userStats?.wins || 0}</div>
                 <div className="text-gray-400 text-sm">Wins</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-purple-400 mb-1">{userStats.podium_finishes}</div>
+                <div className="text-2xl font-bold text-purple-400 mb-1">{userStats?.podium_finishes || 0}</div>
                 <div className="text-gray-400 text-sm">Podiums</div>
               </div>
             </div>
@@ -1358,36 +1548,106 @@ export default function Profile() {
                         <p className="text-gray-300 mt-2">{system.description}</p>
                       )}
                     </div>
-                    <button
-                      onClick={() => {
-                        setSelectedSystemId(system.id);
-                        setShowComponentModal(true);
-                      }}
-                      className="bg-gray-700 text-white px-3 py-1 rounded hover:bg-gray-600 transition-colors flex items-center space-x-1"
-                    >
-                      <Plus className="h-3 w-3" />
-                      <span>Add Component</span>
-                    </button>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={async () => {
+                          setSelectedSystemId(system.id);
+                          await loadSystemLinks(system.id);
+                          setShowSystemLinksModal(true);
+                        }}
+                        className="bg-electric-500/20 text-electric-400 px-3 py-1 rounded hover:bg-electric-500/30 transition-colors flex items-center space-x-1"
+                        title="Manage system links"
+                      >
+                        <Globe className="h-3 w-3" />
+                        <span>Links</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedSystemId(system.id);
+                          setShowComponentModal(true);
+                        }}
+                        className="bg-gray-700 text-white px-3 py-1 rounded hover:bg-gray-600 transition-colors flex items-center space-x-1"
+                      >
+                        <Plus className="h-3 w-3" />
+                        <span>Add Component</span>
+                      </button>
+                      <button
+                        onClick={() => handleDeleteSystem(system.id)}
+                        className="bg-red-500/20 text-red-400 px-3 py-1 rounded hover:bg-red-500/30 transition-colors"
+                        title="Delete system"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {system.components.map((component) => (
+                    {(system.components || []).map((component) => (
                       <div key={component.id} className="bg-gray-700/30 p-4 rounded-lg">
                         <div className="flex justify-between items-start mb-2">
                           <h4 className="text-white font-semibold capitalize">
-                            {component.category.replace('_', ' ')}
+                            {(component.category || '').replace('_', ' ')}
                           </h4>
                           <button className="text-gray-400 hover:text-red-400">
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
                         <p className="text-electric-400 font-medium">{component.brand} {component.model}</p>
-                        {component.description && (
-                          <p className="text-gray-400 text-sm mt-1">{component.description}</p>
+                        {(component.notes || component.description) && (
+                          <p className="text-gray-400 text-sm mt-1">{component.notes || component.description}</p>
                         )}
-                        <div className="flex justify-between items-center mt-2 text-xs text-gray-500">
-                          {component.power_watts && <span>{component.power_watts}W</span>}
-                          {component.price && <span>${component.price}</span>}
+                        <div className="mt-2 text-xs text-gray-500 space-y-1">
+                          {(() => {
+                            const type = component.category;
+                            const specs = component.specifications || {};
+                            
+                            if (type === 'amplifier') {
+                              return (
+                                <div>
+                                  {specs.rms_watts && `RMS: ${specs.rms_watts}W`}
+                                  {specs.size && ` • ${specs.size}`}
+                                </div>
+                              );
+                            }
+                            if (type === 'subwoofer') {
+                              return (
+                                <div>
+                                  {specs.size && `${specs.size}"`} 
+                                  {specs.quantity && specs.quantity > 1 && ` x${specs.quantity}`}
+                                  {specs.rms_watts && ` • ${specs.rms_watts}W RMS`}
+                                  {specs.impedance && ` • ${specs.impedance}`}
+                                </div>
+                              );
+                            }
+                            if (type === 'speakers') {
+                              return (
+                                <div>
+                                  {specs.size && specs.size} 
+                                  {specs.quantity && specs.quantity > 1 && ` • ${specs.quantity} pairs`}
+                                </div>
+                              );
+                            }
+                            if (type === 'battery') {
+                              return (
+                                <div>
+                                  {specs.size && specs.size}
+                                  {specs.impedance && ` • ${specs.impedance}`}
+                                </div>
+                              );
+                            }
+                            if (type === 'alternator') {
+                              return (
+                                <div>
+                                  {specs.power_watts && `${specs.power_watts}A output`}
+                                  {specs.quantity && specs.quantity > 1 && ` x${specs.quantity}`}
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
+                          {component.price && (
+                            <div className="text-electric-400">${component.price}</div>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -1412,51 +1672,107 @@ export default function Profile() {
           )}
 
           {activeTab === 'competitions' && (
-            <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-              <h2 className="text-2xl font-bold text-white mb-6">Competition History</h2>
-              
-              {competitionResults.length > 0 ? (
-                <div className="space-y-4">
-                  {competitionResults.map((result) => (
-                    <div key={result.id} className="bg-gray-700/30 p-4 rounded-lg flex items-center justify-between">
-                      <div className="flex-1">
-                        <h3 className="text-white font-semibold">{result.event_title}</h3>
-                        <div className="text-gray-400 text-sm flex items-center space-x-4 mt-1">
-                          <span className="flex items-center space-x-1">
-                            <Calendar className="h-4 w-4" />
-                            <span>{new Date(result.competed_at).toLocaleDateString()}</span>
-                          </span>
-                          <span className="bg-gray-600 px-2 py-1 rounded text-xs">{result.category}</span>
-                        </div>
-                      </div>
-                      <div className="text-right space-y-1">
-                        {result.placement && (
-                          <div className="flex items-center space-x-2">
-                            <Award className="h-4 w-4 text-yellow-400" />
-                            <span className="text-yellow-400 font-bold">#{result.placement}</span>
-                            {result.total_participants && (
-                              <span className="text-gray-400 text-sm">of {result.total_participants}</span>
+            <div className="space-y-6">
+              {/* Stats Overview */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 text-center">
+                  <Trophy className="h-8 w-8 text-yellow-500 mx-auto mb-2" />
+                  <div className="text-2xl font-bold text-white">{userStats?.total_competitions || 0}</div>
+                  <div className="text-gray-400 text-sm">Total Events</div>
+                </div>
+                <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 text-center">
+                  <Star className="h-8 w-8 text-electric-500 mx-auto mb-2" />
+                  <div className="text-2xl font-bold text-white">{userStats?.total_points || 0}</div>
+                  <div className="text-gray-400 text-sm">Total Points</div>
+                </div>
+                <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 text-center">
+                  <Award className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                  <div className="text-2xl font-bold text-white">{userStats?.wins || 0}</div>
+                  <div className="text-gray-400 text-sm">Wins</div>
+                </div>
+                <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 text-center">
+                  <Target className="h-8 w-8 text-purple-500 mx-auto mb-2" />
+                  <div className="text-2xl font-bold text-white">{userStats?.average_score?.toFixed(1) || '0.0'}</div>
+                  <div className="text-gray-400 text-sm">Avg Score</div>
+                </div>
+              </div>
+
+              {/* Competition History */}
+              <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold text-white">Competition History</h2>
+                  <Link
+                    to="/events"
+                    className="bg-electric-500 text-white px-4 py-2 rounded-lg hover:bg-electric-600 transition-colors flex items-center space-x-2"
+                  >
+                    <Calendar className="h-4 w-4" />
+                    <span>Find Events</span>
+                  </Link>
+                </div>
+                
+                {competitionResults.length > 0 ? (
+                  <div className="space-y-4">
+                    {competitionResults.map((result) => (
+                      <div key={result.id} className="bg-gray-700/30 p-6 rounded-lg">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex-1">
+                            <h3 className="text-xl font-bold text-white mb-2">{result.event_title}</h3>
+                            <div className="flex flex-wrap gap-4 text-sm text-gray-400">
+                              <div className="flex items-center space-x-1">
+                                <Calendar className="h-4 w-4" />
+                                <span>{new Date(result.competed_at).toLocaleDateString()}</span>
+                              </div>
+                              <div className="flex items-center space-x-1">
+                                <Trophy className="h-4 w-4" />
+                                <span>{result.category}</span>
+                              </div>
+                              {result.placement && (
+                                <div className="flex items-center space-x-1">
+                                  <Award className="h-4 w-4" />
+                                  <span>Placed {result.placement}{result.total_participants ? ` of ${result.total_participants}` : ''}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            {result.placement && result.placement <= 3 && (
+                              <div className={`inline-flex items-center justify-center w-12 h-12 rounded-full mb-2 ${
+                                result.placement === 1 ? 'bg-yellow-500' :
+                                result.placement === 2 ? 'bg-gray-400' :
+                                'bg-orange-600'
+                              }`}>
+                                <Trophy className="h-6 w-6 text-white" />
+                              </div>
                             )}
+                            <div className="text-2xl font-bold text-electric-400">{result.points_earned}</div>
+                            <div className="text-xs text-gray-400">Points</div>
                           </div>
-                        )}
+                        </div>
                         {result.overall_score && (
-                          <div className="flex items-center space-x-2">
-                            <Target className="h-4 w-4 text-electric-400" />
-                            <span className="text-electric-400 font-medium">{result.overall_score}/10</span>
+                          <div className="mt-4 pt-4 border-t border-gray-700">
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-400">Score</span>
+                              <span className="text-xl font-bold text-white">{result.overall_score.toFixed(2)}</span>
+                            </div>
                           </div>
                         )}
-                        <div className="text-purple-400 font-medium">{result.points_earned} pts</div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <Trophy className="h-16 w-16 text-gray-600 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-400 mb-2">No Competition Results</h3>
-                  <p className="text-gray-500">Your competition results will appear here once you participate in events</p>
-                </div>
-              )}
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <Trophy className="h-16 w-16 text-gray-600 mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-gray-400 mb-2">No Competition History</h3>
+                    <p className="text-gray-500 mb-4">Start competing to build your track record!</p>
+                    <Link 
+                      to="/events"
+                      className="bg-electric-500 text-white px-6 py-2 rounded-lg hover:bg-electric-600 transition-colors"
+                    >
+                      Find Competitions
+                    </Link>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -2516,6 +2832,520 @@ export default function Profile() {
       )}
 
       {/* Browse Teams Modal */}
+      {/* Add Audio System Modal */}
+      {showSystemModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-xl max-w-2xl w-full">
+            <div className="p-6 border-b border-gray-700">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-white">Add Audio System</h3>
+                <button
+                  onClick={() => setShowSystemModal(false)}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+            
+            <form onSubmit={handleAddSystem} className="p-6 space-y-4">
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">System Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={systemFormData.name}
+                  onChange={(e) => setSystemFormData({ ...systemFormData, name: e.target.value })}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  placeholder="e.g., Daily Driver System, Competition Build"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Description</label>
+                <textarea
+                  value={systemFormData.description}
+                  onChange={(e) => setSystemFormData({ ...systemFormData, description: e.target.value })}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  rows={3}
+                  placeholder="Describe your system setup..."
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">Vehicle Year</label>
+                  <input
+                    type="number"
+                    min="1900"
+                    max={new Date().getFullYear() + 1}
+                    value={systemFormData.vehicle_year || ''}
+                    onChange={(e) => setSystemFormData({ ...systemFormData, vehicle_year: parseInt(e.target.value) })}
+                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                    placeholder="2023"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">Make</label>
+                  <input
+                    type="text"
+                    value={systemFormData.vehicle_make}
+                    onChange={(e) => setSystemFormData({ ...systemFormData, vehicle_make: e.target.value })}
+                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                    placeholder="Honda"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">Model</label>
+                  <input
+                    type="text"
+                    value={systemFormData.vehicle_model}
+                    onChange={(e) => setSystemFormData({ ...systemFormData, vehicle_model: e.target.value })}
+                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                    placeholder="Civic"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">System Type</label>
+                <select
+                  value={systemFormData.system_type}
+                  onChange={(e) => setSystemFormData({ ...systemFormData, system_type: e.target.value })}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                >
+                  <option value="spl">SPL (Sound Pressure Level)</option>
+                  <option value="sql">SQL (Sound Quality Loud)</option>
+                  <option value="sq">SQ (Sound Quality)</option>
+                  <option value="daily">Daily Driver</option>
+                  <option value="demo">Demo Vehicle</option>
+                </select>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="is_primary"
+                  checked={systemFormData.is_primary}
+                  onChange={(e) => setSystemFormData({ ...systemFormData, is_primary: e.target.checked })}
+                  className="w-4 h-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500"
+                />
+                <label htmlFor="is_primary" className="text-gray-300">
+                  Set as primary system
+                </label>
+              </div>
+
+              <div className="flex justify-end space-x-4 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowSystemModal(false)}
+                  className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="bg-electric-500 text-white px-6 py-2 rounded-lg hover:bg-electric-600 transition-colors"
+                >
+                  Add System
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* System Links Modal */}
+      {showSystemLinksModal && selectedSystemId && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-700">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-white">System Links</h3>
+                <button
+                  onClick={() => {
+                    setShowSystemLinksModal(false);
+                    setSelectedSystemId(null);
+                  }}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              {/* Add Link Form */}
+              <form onSubmit={handleAddSystemLink} className="mb-6 bg-gray-700/30 p-4 rounded-lg">
+                <h4 className="text-white font-semibold mb-4">Add New Link</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Link Type</label>
+                    <select
+                      value={linkFormData.link_type}
+                      onChange={(e) => setLinkFormData({ ...linkFormData, link_type: e.target.value })}
+                      className="w-full p-2 bg-gray-700/50 border border-gray-600 rounded text-white focus:outline-none focus:border-electric-500"
+                    >
+                      <option value="build_thread">Build Thread</option>
+                      <option value="youtube">YouTube Video</option>
+                      <option value="instagram">Instagram</option>
+                      <option value="facebook">Facebook</option>
+                      <option value="forum">Forum Post</option>
+                      <option value="gallery">Photo Gallery</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Title</label>
+                    <input
+                      type="text"
+                      required
+                      value={linkFormData.title}
+                      onChange={(e) => setLinkFormData({ ...linkFormData, title: e.target.value })}
+                      className="w-full p-2 bg-gray-700/50 border border-gray-600 rounded text-white focus:outline-none focus:border-electric-500"
+                      placeholder="Build Progress 2024"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">URL</label>
+                    <input
+                      type="url"
+                      required
+                      value={linkFormData.url}
+                      onChange={(e) => setLinkFormData({ ...linkFormData, url: e.target.value })}
+                      className="w-full p-2 bg-gray-700/50 border border-gray-600 rounded text-white focus:outline-none focus:border-electric-500"
+                      placeholder="https://..."
+                    />
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  className="mt-4 bg-electric-500 text-white px-4 py-2 rounded hover:bg-electric-600 transition-colors"
+                >
+                  Add Link
+                </button>
+              </form>
+
+              {/* Existing Links */}
+              <div className="space-y-3">
+                <h4 className="text-white font-semibold">Current Links</h4>
+                {systemLinks.length > 0 ? (
+                  systemLinks.map((link) => (
+                    <div key={link.id} className="bg-gray-700/30 p-4 rounded-lg flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <ExternalLink className="h-5 w-5 text-electric-400" />
+                        <div>
+                          <a
+                            href={link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-electric-400 hover:text-electric-300 font-medium"
+                          >
+                            {link.title}
+                          </a>
+                          <p className="text-gray-400 text-sm">{link.link_type.replace('_', ' ')}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteSystemLink(link.id)}
+                        className="text-red-400 hover:text-red-300"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-center py-8">No links added yet. Add links to showcase your build!</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Component Modal */}
+      {showComponentModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-xl max-w-2xl w-full">
+            <div className="p-6 border-b border-gray-700">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-white">Add Component</h3>
+                <button
+                  onClick={() => setShowComponentModal(false)}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+            
+            <form onSubmit={handleAddComponent} className="p-6 space-y-4">
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Component Category *</label>
+                <select
+                  value={componentFormData.category}
+                  onChange={(e) => setComponentFormData({ ...componentFormData, category: e.target.value })}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  required
+                >
+                  <option value="">Select category...</option>
+                  <option value="head_unit">Head Unit</option>
+                  <option value="amplifier">Amplifier</option>
+                  <option value="subwoofer">Subwoofer</option>
+                  <option value="speakers">Speakers</option>
+                  <option value="dsp">DSP (Digital Signal Processor)</option>
+                  <option value="wiring">Wiring</option>
+                  <option value="alternator">Alternator</option>
+                  <option value="battery">Battery</option>
+                  <option value="capacitor">Capacitor</option>
+                  <option value="sound_dampening">Sound Dampening</option>
+                  <option value="enclosure">Enclosure</option>
+                  <option value="accessories">Accessories</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">Brand *</label>
+                  <input
+                    type="text"
+                    required
+                    value={componentFormData.brand}
+                    onChange={(e) => setComponentFormData({ ...componentFormData, brand: e.target.value })}
+                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                    placeholder="e.g., Alpine, JL Audio"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">Model *</label>
+                  <input
+                    type="text"
+                    required
+                    value={componentFormData.model}
+                    onChange={(e) => setComponentFormData({ ...componentFormData, model: e.target.value })}
+                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                    placeholder="e.g., 12W7AE-3"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Description</label>
+                <textarea
+                  value={componentFormData.description}
+                  onChange={(e) => setComponentFormData({ ...componentFormData, description: e.target.value })}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  rows={2}
+                  placeholder="Additional details about this component..."
+                />
+              </div>
+
+              {/* Dynamic fields based on component category */}
+              {componentFormData.category === 'amplifier' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">RMS Power @ Impedance</label>
+                    <input
+                      type="text"
+                      value={componentFormData.rms_watts || ''}
+                      onChange={(e) => setComponentFormData({ ...componentFormData, rms_watts: parseInt(e.target.value) || undefined })}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                      placeholder="e.g., 1000W @ 1Ω"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Channels</label>
+                    <input
+                      type="text"
+                      value={componentFormData.size}
+                      onChange={(e) => setComponentFormData({ ...componentFormData, size: e.target.value })}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                      placeholder="e.g., Monoblock, 2-Channel, 4-Channel"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {componentFormData.category === 'subwoofer' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Size</label>
+                    <select
+                      value={componentFormData.size}
+                      onChange={(e) => setComponentFormData({ ...componentFormData, size: e.target.value })}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                    >
+                      <option value="">Select size...</option>
+                      <option value="8">8"</option>
+                      <option value="10">10"</option>
+                      <option value="12">12"</option>
+                      <option value="15">15"</option>
+                      <option value="18">18"</option>
+                      <option value="21">21"</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Quantity</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={componentFormData.quantity}
+                      onChange={(e) => setComponentFormData({ ...componentFormData, quantity: parseInt(e.target.value) || 1 })}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">RMS Power (per sub)</label>
+                    <input
+                      type="number"
+                      value={componentFormData.rms_watts || ''}
+                      onChange={(e) => setComponentFormData({ ...componentFormData, rms_watts: parseInt(e.target.value) || undefined })}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                      placeholder="e.g., 1000"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Impedance</label>
+                    <select
+                      value={componentFormData.impedance}
+                      onChange={(e) => setComponentFormData({ ...componentFormData, impedance: e.target.value })}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                    >
+                      <option value="">Select impedance...</option>
+                      <option value="1">1 Ohm</option>
+                      <option value="2">2 Ohm</option>
+                      <option value="4">4 Ohm</option>
+                      <option value="DVC 1">DVC 1 Ohm</option>
+                      <option value="DVC 2">DVC 2 Ohm</option>
+                      <option value="DVC 4">DVC 4 Ohm</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {componentFormData.category === 'speakers' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Type</label>
+                    <select
+                      value={componentFormData.size}
+                      onChange={(e) => setComponentFormData({ ...componentFormData, size: e.target.value })}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                    >
+                      <option value="">Select type...</option>
+                      <option value="component">Component Set</option>
+                      <option value="coaxial">Coaxial</option>
+                      <option value="tweeter">Tweeter</option>
+                      <option value="midrange">Midrange</option>
+                      <option value="midbass">Midbass</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Quantity (pairs)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={componentFormData.quantity}
+                      onChange={(e) => setComponentFormData({ ...componentFormData, quantity: parseInt(e.target.value) || 1 })}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {componentFormData.category === 'battery' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Type</label>
+                    <select
+                      value={componentFormData.size}
+                      onChange={(e) => setComponentFormData({ ...componentFormData, size: e.target.value })}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                    >
+                      <option value="">Select type...</option>
+                      <option value="agm">AGM</option>
+                      <option value="lithium">Lithium</option>
+                      <option value="super_capacitor">Super Capacitor</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Capacity</label>
+                    <input
+                      type="text"
+                      value={componentFormData.impedance}
+                      onChange={(e) => setComponentFormData({ ...componentFormData, impedance: e.target.value })}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                      placeholder="e.g., 100Ah, 3000 Farad"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {componentFormData.category === 'alternator' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Output (Amps)</label>
+                    <input
+                      type="number"
+                      value={componentFormData.power_watts || ''}
+                      onChange={(e) => setComponentFormData({ ...componentFormData, power_watts: parseInt(e.target.value) || undefined })}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                      placeholder="e.g., 320"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Quantity</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={componentFormData.quantity}
+                      onChange={(e) => setComponentFormData({ ...componentFormData, quantity: parseInt(e.target.value) || 1 })}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Price field for all components */}
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Price ($)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={componentFormData.price || ''}
+                  onChange={(e) => setComponentFormData({ ...componentFormData, price: parseFloat(e.target.value) || undefined })}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  placeholder="499.99"
+                />
+              </div>
+
+              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 mt-4">
+                <p className="text-yellow-400 text-sm">
+                  <strong>Pro Tip:</strong> Add system links to showcase build photos, videos, and forum threads about your setup!
+                </p>
+              </div>
+
+              <div className="flex justify-end space-x-4 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowComponentModal(false)}
+                  className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="bg-electric-500 text-white px-6 py-2 rounded-lg hover:bg-electric-600 transition-colors"
+                >
+                  Add Component
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {showBrowseTeamsModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-gray-800 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">

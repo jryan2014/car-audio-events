@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Ad Rotation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        #console {
+            background: #000;
+            border: 1px solid #333;
+            padding: 10px;
+            height: 400px;
+            overflow-y: scroll;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+        .log-entry {
+            margin: 2px 0;
+            padding: 2px 5px;
+        }
+        .log-rotation { color: #00ff00; }
+        .log-filter { color: #ffff00; }
+        .log-error { color: #ff0000; }
+        .log-info { color: #00ffff; }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .status {
+            background: #333;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        iframe {
+            width: 100%;
+            height: 200px;
+            border: 2px solid #555;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Ad Rotation Test Console</h1>
+        
+        <div class="status">
+            <h3>Status</h3>
+            <p>Current Time: <span id="current-time"></span></p>
+            <p>Rotation Interval: <span id="rotation-interval">Loading...</span> seconds</p>
+            <p>Frequency Cap Data: <pre id="freq-data">Loading...</pre></p>
+        </div>
+        
+        <div>
+            <button onclick="clearFrequencyCaps()">Clear Frequency Caps</button>
+            <button onclick="clearConsole()">Clear Console</button>
+            <button onclick="refreshFrame()">Refresh Ad Frame</button>
+            <button onclick="setRotationInterval(5)">Set 5s Interval</button>
+            <button onclick="setRotationInterval(10)">Set 10s Interval</button>
+        </div>
+        
+        <h3>Ad Display Frame</h3>
+        <iframe id="ad-frame" src="/" sandbox="allow-same-origin allow-scripts"></iframe>
+        
+        <h3>Console Output</h3>
+        <div id="console"></div>
+    </div>
+    
+    <script>
+    let consoleDiv = document.getElementById('console');
+    let originalConsoleLog = console.log;
+    let originalConsoleError = console.error;
+    
+    // Override console.log to capture logs
+    console.log = function(...args) {
+        originalConsoleLog.apply(console, args);
+        
+        const message = args.join(' ');
+        if (message.includes('[AdDisplay]')) {
+            let className = 'log-info';
+            if (message.includes('Rotation timer fired') || message.includes('rotating')) {
+                className = 'log-rotation';
+            } else if (message.includes('filter') || message.includes('Eligible ads')) {
+                className = 'log-filter';
+            }
+            
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${className}`;
+            entry.textContent = `${new Date().toLocaleTimeString()} - ${message}`;
+            consoleDiv.appendChild(entry);
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        }
+    };
+    
+    console.error = function(...args) {
+        originalConsoleError.apply(console, args);
+        
+        const entry = document.createElement('div');
+        entry.className = 'log-entry log-error';
+        entry.textContent = `${new Date().toLocaleTimeString()} - ERROR: ${args.join(' ')}`;
+        consoleDiv.appendChild(entry);
+        consoleDiv.scrollTop = consoleDiv.scrollHeight;
+    };
+    
+    function updateTime() {
+        document.getElementById('current-time').textContent = new Date().toLocaleTimeString();
+    }
+    
+    function updateFreqData() {
+        const data = localStorage.getItem('ad_frequency_caps');
+        document.getElementById('freq-data').textContent = data ? JSON.stringify(JSON.parse(data), null, 2) : 'No data';
+    }
+    
+    function clearFrequencyCaps() {
+        localStorage.removeItem('ad_frequency_caps');
+        updateFreqData();
+        console.log('[Test] Cleared frequency cap data');
+        refreshFrame();
+    }
+    
+    function clearConsole() {
+        consoleDiv.innerHTML = '';
+    }
+    
+    function refreshFrame() {
+        document.getElementById('ad-frame').src = document.getElementById('ad-frame').src;
+    }
+    
+    async function loadRotationInterval() {
+        try {
+            const response = await fetch('/api/site-settings/ad_rotation_interval');
+            if (response.ok) {
+                const data = await response.json();
+                document.getElementById('rotation-interval').textContent = data.value || '10';
+            }
+        } catch (err) {
+            document.getElementById('rotation-interval').textContent = 'Error loading';
+        }
+    }
+    
+    async function setRotationInterval(seconds) {
+        console.log(`[Test] Setting rotation interval to ${seconds} seconds`);
+        // This would need an API endpoint to actually update the database
+        alert(`To set rotation interval, use the admin panel. (Would set to ${seconds}s)`);
+    }
+    
+    // Listen for messages from iframe
+    window.addEventListener('message', function(event) {
+        if (event.data && event.data.type === 'console.log') {
+            console.log(...event.data.args);
+        }
+    });
+    
+    // Update displays
+    setInterval(updateTime, 1000);
+    setInterval(updateFreqData, 2000);
+    updateTime();
+    updateFreqData();
+    loadRotationInterval();
+    
+    console.log('[Test] Ad rotation test console initialized');
+    </script>
+</body>
+</html>

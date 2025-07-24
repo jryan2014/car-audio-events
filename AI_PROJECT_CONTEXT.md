@@ -10,7 +10,7 @@ If you're an AI assistant picking up this project, start here:
 ## Detailed Context from Current Session
 
 ### Project Version
-Current version: 1.20.0 (from 1.19.5)
+Current version: 1.26.0 (from 1.25.1)
 
 ### What We Accomplished Recently
 
@@ -79,6 +79,33 @@ Current version: 1.20.0 (from 1.19.5)
     - Prevented automatic geocoding from overriding saved coordinates
     - Added proper null checks before geocoding
     - Updated from city/state only to full address geocoding
+
+12. **Advertisement System (v1.21.0-v1.25.1)**
+    - Implemented banner AI creator with DALL-E integration  
+    - Added ad image upload system via Supabase Edge Function
+    - Fixed mobile ad overlay issues with map components
+    - Created member ad dashboard for managing advertisements
+    - Added ad rotation and frequency cap settings
+    - Built comprehensive ad debugging tools in admin panel
+
+13. **Audio System Profile Feature (v1.26.0)**
+    - Created comprehensive audio system management in member profiles
+    - Supports components: amplifiers, subwoofers, speakers, head units, processors
+    - Dynamic component forms with category-specific fields
+    - System links feature for showcasing builds with external URLs
+    - Competitions section displaying event results and statistics
+    - Fixed session settings persistence issues in admin panel
+    - Stored components as JSONB in user_audio_systems table
+
+14. **Manual Notification System (v1.26.0)**
+    - Created new simplified notifications table with RLS policies
+    - Built NotificationManager for admins to send targeted notifications
+    - Implemented NotificationBell component with real-time updates
+    - Created individual notification detail pages (/notifications/:id)
+    - Updated /notifications page to combine both notification systems
+    - Fixed notification subscription errors with proper cleanup
+    - Implemented proper UX flow: bell → notification list → notification detail → optional link
+    - Differentiated action icons: ✓ for mark as read, 👁️ for view details
 
 ### Key Technical Decisions
 
@@ -544,4 +571,8 @@ src/
 - **Repository**: GitHub (car-audio-events)
 - **Deployment**: Netlify (caraudioevents.com)
 - **Database**: Supabase (nqvisvranvjaghvrdaaz.supabase.co)
-- **Version**: Currently at 1.24.0
+- **Version**: Currently at 1.26.0
+
+---
+Last Updated: July 2025
+Context preserved for AI assistants working on this project.
