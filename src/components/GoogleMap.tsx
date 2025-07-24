@@ -669,7 +669,7 @@ export default function GoogleMap() {
 
       {/* Map legend */}
       {isLoaded && (
-        <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm rounded-xl p-3 shadow-2xl border border-gray-200 text-xs sm:text-sm">
+        <div className="absolute bottom-20 left-4 bg-white/95 backdrop-blur-sm rounded-xl p-3 shadow-2xl border border-gray-200 text-xs sm:text-sm z-50">
           <div className="flex items-center space-x-3 text-gray-800 text-sm mb-2">
             <div className="w-5 h-5 bg-electric-500 rounded-full border-2 border-white shadow-sm animate-pulse"></div>
             <span className="font-bold">Car Audio Events</span>

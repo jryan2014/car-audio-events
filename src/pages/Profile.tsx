@@ -330,7 +330,7 @@ export default function Profile() {
       await Promise.all([
         loadAudioSystems(), // Load audio systems
         // loadCompetitionResults(), // Skip - table doesn't exist
-        // loadTeams(), // Skip - table may not exist  
+        loadTeams(), // Load teams data
         // loadUserStats() // Skip - function doesn't exist
       ]);
       console.log('✅ User data loaded (limited to available features)');
@@ -400,7 +400,7 @@ export default function Profile() {
         .select(`
           team_id,
           role,
-          teams!team_members_team_id_fkey(
+          teams (
             id,
             name,
             description,
@@ -699,7 +699,7 @@ export default function Profile() {
           total_points,
           is_public,
           requires_approval,
-          users!teams_owner_id_fkey(name),
+          users (name),
           team_members(count)
         `)
         .eq('is_public', true)
@@ -733,7 +733,7 @@ export default function Profile() {
         .from('team_members')
         .select(`
           *,
-          users!team_members_user_id_fkey(name, email)
+          users (name, email)
         `)
         .eq('team_id', teamId)
         .eq('is_active', true)
@@ -1092,8 +1092,8 @@ export default function Profile() {
         .from('team_invitations')
         .select(`
           *,
-          invited_user:users!team_invitations_invited_user_id_fkey(name, email),
-          invited_by:users!team_invitations_invited_by_user_id_fkey(name)
+          invited_user:users!invited_user_id(name, email),
+          invited_by:users!invited_by_user_id(name)
         `)
         .eq('team_id', teamId)
         .eq('status', 'pending')
