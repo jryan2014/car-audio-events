@@ -1884,27 +1884,27 @@ export default function Profile() {
               
               <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
                 <h2 className="text-xl font-bold text-white mb-6">Other Settings</h2>
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-semibold text-white mb-4">Notifications</h3>
-                  <div className="space-y-3">
-                    <label className="flex items-center space-x-3">
-                      <input type="checkbox" className="w-4 h-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500" defaultChecked />
-                      <span className="text-gray-300">Event reminders</span>
-                    </label>
-                    <label className="flex items-center space-x-3">
-                      <input type="checkbox" className="w-4 h-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500" defaultChecked />
-                      <span className="text-gray-300">Competition results</span>
-                    </label>
-                    <label className="flex items-center space-x-3">
-                      <input type="checkbox" className="w-4 h-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500" />
-                      <span className="text-gray-300">Team invitations</span>
-                    </label>
-                    <label className="flex items-center space-x-3">
-                      <input type="checkbox" className="w-4 h-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500" />
-                      <span className="text-gray-300">Marketing emails</span>
-                    </label>
-                  </div>
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-4">Notifications</h3>
+                    <div className="space-y-3">
+                      <label className="flex items-center space-x-3">
+                        <input type="checkbox" className="w-4 h-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500" defaultChecked />
+                        <span className="text-gray-300">Event reminders</span>
+                      </label>
+                      <label className="flex items-center space-x-3">
+                        <input type="checkbox" className="w-4 h-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500" defaultChecked />
+                        <span className="text-gray-300">Competition results</span>
+                      </label>
+                      <label className="flex items-center space-x-3">
+                        <input type="checkbox" className="w-4 h-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500" />
+                        <span className="text-gray-300">Team invitations</span>
+                      </label>
+                      <label className="flex items-center space-x-3">
+                        <input type="checkbox" className="w-4 h-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500" />
+                        <span className="text-gray-300">Marketing emails</span>
+                      </label>
+                    </div>
                 </div>
                 
                 <div>
@@ -1940,6 +1940,7 @@ export default function Profile() {
                   </div>
                 </div>
               </div>
+            </div>
             </div>
           )}
         </div>
