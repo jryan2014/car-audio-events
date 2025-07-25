@@ -126,6 +126,7 @@ export const EmailSettings: React.FC = () => {
 
   // Add filter state
   const [templateCategoryFilter, setTemplateCategoryFilter] = useState<string>('all');
+  const [templateSearchQuery, setTemplateSearchQuery] = useState<string>('');
 
   // Add debug toggle state
   const [showCategoryDebug, setShowCategoryDebug] = useState(false);
@@ -1354,32 +1355,96 @@ export const EmailSettings: React.FC = () => {
           </button>
         </div>
 
-        {/* Add filter dropdown above the template list */}
-        <div className="flex items-center space-x-4 mb-4">
-          <label className="text-gray-300 text-sm font-medium">Filter by Category:</label>
-          <select
-            value={templateCategoryFilter}
-            onChange={e => setTemplateCategoryFilter(e.target.value)}
-            className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-          >
-            <option value="all">All Categories</option>
-            {categories.map(category => (
-              <option key={category.id} value={category.id}>{category.name}</option>
-            ))}
-          </select>
-          <label className="flex items-center space-x-2 ml-6">
-            <input
-              type="checkbox"
-              checked={showCategoryDebug}
-              onChange={e => setShowCategoryDebug(e.target.checked)}
-              className="rounded border-gray-600 bg-gray-700 text-electric-500"
-            />
-            <span className="text-sm text-gray-300">Show Debug: Loaded Categories</span>
-          </label>
+        {/* Add search and filter controls */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-4">
+          <div className="flex-1">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                value={templateSearchQuery}
+                onChange={e => setTemplateSearchQuery(e.target.value)}
+                placeholder="Search templates by name, subject, or content..."
+                className="w-full pl-10 pr-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-electric-500 focus:ring-electric-500/20"
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <label className="text-gray-300 text-sm font-medium">Category:</label>
+              <select
+                value={templateCategoryFilter}
+                onChange={e => setTemplateCategoryFilter(e.target.value)}
+                className="px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:border-electric-500 focus:ring-electric-500/20"
+              >
+                <option value="all">All Categories</option>
+                {categories.map(category => (
+                  <option key={category.id} value={category.id}>{category.name}</option>
+                ))}
+              </select>
+            </div>
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={showCategoryDebug}
+                onChange={e => setShowCategoryDebug(e.target.checked)}
+                className="rounded border-gray-600 bg-gray-700 text-electric-500 focus:ring-electric-500"
+              />
+              <span className="text-sm text-gray-300">Debug</span>
+            </label>
+          </div>
         </div>
 
+        {/* Debug section - show loaded categories */}
+        {showCategoryDebug && (
+          <div className="mb-4 p-4 bg-gray-900/50 rounded-lg border border-gray-700">
+            <h4 className="text-sm font-medium text-gray-300 mb-2">Debug: Loaded Categories</h4>
+            <div className="space-y-1">
+              {categories.length > 0 ? (
+                categories.map(cat => (
+                  <div key={cat.id} className="text-xs text-gray-400">
+                    <span className="text-electric-400">{cat.name}</span> (ID: {cat.id}, Order: {cat.display_order}, Active: {cat.is_active ? 'Yes' : 'No'})
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-gray-500">No categories loaded</p>
+              )}
+            </div>
+            <div className="mt-2 pt-2 border-t border-gray-700">
+              <p className="text-xs text-gray-400">Total Templates: {templates.length}</p>
+              <p className="text-xs text-gray-400">Filtered Templates: {templates.filter(template => {
+                if (templateCategoryFilter !== 'all' && template.category_id !== templateCategoryFilter) return false;
+                if (templateSearchQuery.trim()) {
+                  const searchLower = templateSearchQuery.toLowerCase();
+                  return template.name.toLowerCase().includes(searchLower) ||
+                         template.subject.toLowerCase().includes(searchLower) ||
+                         template.body.toLowerCase().includes(searchLower);
+                }
+                return true;
+              }).length}</p>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {templates.filter(template => templateCategoryFilter === 'all' || template.category_id === templateCategoryFilter).map((template) => (
+          {templates
+            .filter(template => {
+              // Category filter
+              if (templateCategoryFilter !== 'all' && template.category_id !== templateCategoryFilter) {
+                return false;
+              }
+              // Search filter
+              if (templateSearchQuery.trim()) {
+                const searchLower = templateSearchQuery.toLowerCase();
+                return (
+                  template.name.toLowerCase().includes(searchLower) ||
+                  template.subject.toLowerCase().includes(searchLower) ||
+                  template.body.toLowerCase().includes(searchLower)
+                );
+              }
+              return true;
+            })
+            .map((template) => (
             <div
               key={template.id}
               className="bg-gray-700/50 rounded-lg p-4 border border-gray-600 hover:border-electric-500/50 transition-colors cursor-pointer"
@@ -1434,6 +1499,30 @@ export const EmailSettings: React.FC = () => {
             </div>
           ))}
         </div>
+        
+        {/* No results message */}
+        {templates.filter(template => {
+          if (templateCategoryFilter !== 'all' && template.category_id !== templateCategoryFilter) return false;
+          if (templateSearchQuery.trim()) {
+            const searchLower = templateSearchQuery.toLowerCase();
+            return template.name.toLowerCase().includes(searchLower) ||
+                   template.subject.toLowerCase().includes(searchLower) ||
+                   template.body.toLowerCase().includes(searchLower);
+          }
+          return true;
+        }).length === 0 && (
+          <div className="text-center py-8">
+            <p className="text-gray-400">No templates found matching your search criteria.</p>
+            {templateSearchQuery && (
+              <button
+                onClick={() => setTemplateSearchQuery('')}
+                className="mt-2 text-electric-400 hover:text-electric-300 text-sm"
+              >
+                Clear search
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Template Editor */}

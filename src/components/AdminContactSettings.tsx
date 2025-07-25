@@ -7,6 +7,7 @@ interface ContactSettings {
   contact_phone: string;
   support_email: string;
   business_email: string;
+  show_phone_in_footer: boolean;
 }
 
 // Helper component to show where fields are used
@@ -47,7 +48,8 @@ export default function AdminContactSettings() {
     contact_email: '',
     contact_phone: '',
     support_email: '',
-    business_email: ''
+    business_email: '',
+    show_phone_in_footer: true
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -76,7 +78,8 @@ export default function AdminContactSettings() {
           contact_email: config.contact_email || '',
           contact_phone: config.contact_phone || '',
           support_email: config.support_email || '',
-          business_email: config.business_email || ''
+          business_email: config.business_email || '',
+          show_phone_in_footer: config.show_phone_in_footer !== false
         });
       }
     } catch (error) {
@@ -108,6 +111,7 @@ export default function AdminContactSettings() {
         contact_phone: settings.contact_phone,
         support_email: settings.support_email,
         business_email: settings.business_email,
+        show_phone_in_footer: settings.show_phone_in_footer,
         updated_at: new Date().toISOString()
       };
 
@@ -193,7 +197,7 @@ export default function AdminContactSettings() {
               </label>
               <FieldLocationHelper 
                 locations={[
-                  { icon: Globe, text: "Footer Contact Section", color: "text-blue-400" }
+                  { icon: Globe, text: "Footer Contact Section (if enabled)", color: "text-blue-400" }
                 ]}
               />
             </div>
@@ -205,8 +209,20 @@ export default function AdminContactSettings() {
               className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
             />
             <p className="text-xs text-gray-500 mt-1">
-              Phone number displayed in the footer contact section
+              Phone number for contact purposes (only displayed if enabled below)
             </p>
+            <div className="mt-3 flex items-center">
+              <input
+                type="checkbox"
+                id="show_phone_in_footer"
+                checked={settings.show_phone_in_footer}
+                onChange={(e) => setSettings(prev => ({ ...prev, show_phone_in_footer: e.target.checked }))}
+                className="h-4 w-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500 focus:ring-offset-gray-800"
+              />
+              <label htmlFor="show_phone_in_footer" className="ml-2 text-sm text-gray-400">
+                Display phone number in footer
+              </label>
+            </div>
           </div>
 
           <div>

@@ -61,6 +61,9 @@ const NotificationDetail = React.lazy(() => import('./pages/NotificationDetail')
 const JudgeScoring = React.lazy(() => import('./components/JudgeScoring'));
 const CompetitionManagement = React.lazy(() => import('./pages/CompetitionManagement'));
 const AdminBillingConfiguration = React.lazy(() => import('./pages/AdminBillingConfiguration'));
+const NewsletterConfirm = React.lazy(() => import('./pages/NewsletterConfirm'));
+const NewsletterUnsubscribe = React.lazy(() => import('./pages/NewsletterUnsubscribe'));
+const AdminNewsletterManager = React.lazy(() => import('./pages/AdminNewsletterManager'));
 
 // Loading component for Suspense fallback
 const LoadingSpinner = () => (
@@ -139,6 +142,8 @@ function App() {
               <Route path="/ai-configuration" element={<Layout><AIConfiguration /></Layout>} />
               <Route path="/pages/:slug" element={<Layout><DynamicPage /></Layout>} />
               <Route path="/privacy-policy" element={<Layout><PrivacyPolicy /></Layout>} />
+              <Route path="/newsletter/confirm/:token" element={<Layout><NewsletterConfirm /></Layout>} />
+              <Route path="/newsletter/unsubscribe/:token" element={<Layout><NewsletterUnsubscribe /></Layout>} />
               
               {/* Billing routes with their own layout */}
               <Route path="/billing" element={<Layout><UserBilling /></Layout>} />
@@ -169,6 +174,7 @@ function App() {
               <Route path="/admin/competition-management" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><CompetitionManagement /></Suspense></AdminLayout>} />
               <Route path="/admin/billing" element={<AdminLayout><AdminBilling /></AdminLayout>} />
               <Route path="/admin/billing-configuration" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminBillingConfiguration /></Suspense></AdminLayout>} />
+              <Route path="/admin/newsletter" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminNewsletterManager /></Suspense></AdminLayout>} />
             </Routes>
           </Suspense>
           <CookieConsent />

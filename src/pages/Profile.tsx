@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { useNotifications } from '../components/NotificationSystem';
 import { Link } from 'react-router-dom';
+import NewsletterPreferences from '../components/NewsletterPreferences';
 
 interface AudioSystem {
   id: string;
@@ -1878,8 +1879,11 @@ export default function Profile() {
           )}
 
           {activeTab === 'settings' && (
-            <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-              <h2 className="text-2xl font-bold text-white mb-6">Account Settings</h2>
+            <div className="space-y-6">
+              <NewsletterPreferences />
+              
+              <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+                <h2 className="text-xl font-bold text-white mb-6">Other Settings</h2>
               <div className="space-y-6">
                 <div>
                   <h3 className="text-lg font-semibold text-white mb-4">Notifications</h3>

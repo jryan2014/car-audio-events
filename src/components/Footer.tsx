@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Facebook, Twitter, Instagram, Youtube, Mail, Phone } from 'lucide-react';
+import { Facebook, Twitter, Instagram, Youtube, Mail, Phone, CheckCircle, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { CreditCardLogos } from './CreditCardLogos';
 
@@ -70,7 +70,19 @@ export default function Footer() {
   const [contactInfo, setContactInfo] = useState<{
     contact_email?: string;
     contact_phone?: string;
+    show_phone_in_footer?: boolean;
   }>({});
+
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterStatus, setNewsletterStatus] = useState<{
+    loading: boolean;
+    message: string;
+    type: 'success' | 'error' | '';
+  }>({
+    loading: false,
+    message: '',
+    type: ''
+  });
 
   useEffect(() => {
     loadFooterPages();
@@ -136,7 +148,8 @@ export default function Footer() {
       if (data?.system_config) {
         setContactInfo({
           contact_email: data.system_config.contact_email,
-          contact_phone: data.system_config.contact_phone
+          contact_phone: data.system_config.contact_phone,
+          show_phone_in_footer: data.system_config.show_phone_in_footer !== false
         });
       }
     } catch (error) {
@@ -230,6 +243,52 @@ export default function Footer() {
     );
   };
 
+  const handleNewsletterSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!newsletterEmail || !newsletterEmail.includes('@')) {
+      setNewsletterStatus({
+        loading: false,
+        message: 'Please enter a valid email address',
+        type: 'error'
+      });
+      return;
+    }
+
+    setNewsletterStatus({ loading: true, message: '', type: '' });
+
+    try {
+      const { data, error } = await supabase.rpc('subscribe_to_newsletter', {
+        p_email: newsletterEmail,
+        p_source: 'website_footer'
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        setNewsletterStatus({
+          loading: false,
+          message: 'Success! Please check your email to confirm subscription.',
+          type: 'success'
+        });
+        setNewsletterEmail('');
+      } else {
+        setNewsletterStatus({
+          loading: false,
+          message: data?.message || 'Failed to subscribe. Please try again.',
+          type: 'error'
+        });
+      }
+    } catch (error) {
+      console.error('Newsletter signup error:', error);
+      setNewsletterStatus({
+        loading: false,
+        message: 'An error occurred. Please try again later.',
+        type: 'error'
+      });
+    }
+  };
+
   return (
     <footer className="bg-black border-t border-electric-500/20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -301,10 +360,10 @@ export default function Footer() {
                   )}
                 </span>
               </div>
-              <div className="flex items-center space-x-2 text-gray-400 text-sm">
-                <Phone className="h-4 w-4" />
-                <span>
-                  {contactInfo.contact_phone ? (
+              {contactInfo.contact_phone && contactInfo.show_phone_in_footer && (
+                <div className="flex items-center space-x-2 text-gray-400 text-sm">
+                  <Phone className="h-4 w-4" />
+                  <span>
                     <a 
                       {...createProtectedPhoneLink(contactInfo.contact_phone)} 
                       className="text-gray-400 hover:text-electric-500 transition-colors"
@@ -312,26 +371,42 @@ export default function Footer() {
                     >
                       {contactInfo.contact_phone}
                     </a>
-                  ) : (
-                    <span className="text-gray-500 italic">
-                      Configure contact phone in admin settings
-                    </span>
-                  )}
-                </span>
-              </div>
+                  </span>
+                </div>
+              )}
             </div>
             <div className="pt-4">
               <h5 className="text-white font-medium text-sm mb-2">Newsletter</h5>
-              <div className="flex">
-                <input
-                  type="email"
-                  placeholder="Your email"
-                  className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-l-lg text-white text-sm focus:outline-none focus:border-electric-500"
-                />
-                <button className="px-4 py-2 bg-electric-500 text-white rounded-r-lg hover:bg-electric-600 transition-all duration-200 text-sm font-medium">
-                  Subscribe
-                </button>
-              </div>
+              <form onSubmit={handleNewsletterSignup} className="space-y-2">
+                <div className="flex">
+                  <input
+                    type="email"
+                    value={newsletterEmail}
+                    onChange={(e) => setNewsletterEmail(e.target.value)}
+                    placeholder="Your email"
+                    className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-l-lg text-white text-sm focus:outline-none focus:border-electric-500 disabled:opacity-50"
+                    disabled={newsletterStatus.loading}
+                  />
+                  <button 
+                    type="submit"
+                    disabled={newsletterStatus.loading}
+                    className="px-4 py-2 bg-electric-500 text-white rounded-r-lg hover:bg-electric-600 transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {newsletterStatus.loading ? 'Subscribing...' : 'Subscribe'}
+                  </button>
+                </div>
+                {newsletterStatus.message && (
+                  <div className={`flex items-start space-x-1 text-xs ${
+                    newsletterStatus.type === 'success' ? 'text-green-400' : 'text-red-400'
+                  }`}>
+                    {newsletterStatus.type === 'success' ? 
+                      <CheckCircle className="h-3 w-3 mt-0.5 flex-shrink-0" /> : 
+                      <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                    }
+                    <span>{newsletterStatus.message}</span>
+                  </div>
+                )}
+              </form>
             </div>
           </div>
         </div>

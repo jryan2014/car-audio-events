@@ -17,7 +17,8 @@ import {
   UserCheck,
   Megaphone,
   Cog,
-  CreditCard
+  CreditCard,
+  Mail
 } from 'lucide-react';
 
 interface AdminNavItem {
@@ -121,6 +122,12 @@ const adminNavGroups: AdminNavGroup[] = [
         href: '/admin/email-settings',
         icon: Settings,
         description: 'Email configuration'
+      },
+      {
+        name: 'Newsletter',
+        href: '/admin/newsletter',
+        icon: Mail,
+        description: 'Newsletter management'
       }
     ]
   },
