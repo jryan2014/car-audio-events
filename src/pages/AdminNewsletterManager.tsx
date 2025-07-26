@@ -26,7 +26,7 @@ interface NewsletterCampaign {
   subject: string;
   content: string;
   html_content?: string;
-  status: 'draft' | 'scheduled' | 'sending' | 'sent' | 'cancelled' | 'queued';
+  status: 'draft' | 'scheduled' | 'sending' | 'sent' | 'cancelled';
   scheduled_for?: string;
   sent_at?: string;
   sent_count: number;
@@ -375,8 +375,8 @@ export default function AdminNewsletterManager() {
       case 'sent': return 'text-green-400';
       case 'draft': return 'text-gray-400';
       case 'scheduled': return 'text-purple-400';
-      case 'queued': return 'text-yellow-400';
       case 'sending': return 'text-blue-400';
+      case 'cancelled': return 'text-red-400';
       default: return 'text-gray-400';
     }
   };
@@ -450,7 +450,7 @@ export default function AdminNewsletterManager() {
         content: composeData.content,
         html_content: composeData.html_content,
         tags: composeData.tags,
-        status: sendNow ? 'queued' : (composeData.scheduled_for ? 'scheduled' : 'draft'),
+        status: sendNow ? 'sending' : (composeData.scheduled_for ? 'scheduled' : 'draft'),
         created_by: userData.user.id
       };
 
@@ -478,7 +478,7 @@ export default function AdminNewsletterManager() {
               content = '${escapedContent}',
               html_content = '${escapedHtmlContent}',
               tags = ${tagsArray},
-              status = '${sendNow ? 'queued' : (composeData.scheduled_for ? 'scheduled' : 'draft')}',
+              status = '${sendNow ? 'sending' : (composeData.scheduled_for ? 'scheduled' : 'draft')}',
               scheduled_for = ${scheduledForValue},
               updated_at = NOW()
           WHERE id = '${editingCampaignId}'
@@ -495,7 +495,7 @@ export default function AdminNewsletterManager() {
             '${escapedContent}',
             '${escapedHtmlContent}',
             ${tagsArray},
-            '${sendNow ? 'queued' : (composeData.scheduled_for ? 'scheduled' : 'draft')}',
+            '${sendNow ? 'sending' : (composeData.scheduled_for ? 'scheduled' : 'draft')}',
             '${userData.user.id}',
             ${scheduledForValue}
           ) RETURNING id, name, subject, status
@@ -587,11 +587,11 @@ export default function AdminNewsletterManager() {
           return;
         }
 
-        // Update campaign status to queued (not sent yet!) using exec_sql
+        // Update campaign status to sending using exec_sql
         await supabase.rpc('exec_sql', {
           sql_command: `
             UPDATE newsletter_campaigns 
-            SET status = 'queued', 
+            SET status = 'sending', 
                 metadata = jsonb_build_object('queued_count', ${targetSubscribers.length})
             WHERE id = '${data.id}'
           `
@@ -976,8 +976,8 @@ export default function AdminNewsletterManager() {
                                 <span>{campaign.click_count} clicks</span>
                               </>
                             )}
-                            {campaign.status === 'queued' && campaign.metadata?.queued_count && (
-                              <span className="text-yellow-400">{campaign.metadata.queued_count} emails queued</span>
+                            {campaign.status === 'sending' && campaign.metadata?.queued_count && (
+                              <span className="text-blue-400">{campaign.metadata.queued_count} emails queued</span>
                             )}
                           </div>
                         </div>
