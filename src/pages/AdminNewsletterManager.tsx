@@ -630,57 +630,88 @@ export default function AdminNewsletterManager() {
       padding: 0;
       font-family: Arial, sans-serif;
       background-color: #f4f4f4;
+      -webkit-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+    }
+    table {
+      border-collapse: collapse;
+      mso-table-lspace: 0pt;
+      mso-table-rspace: 0pt;
+    }
+    .email-wrapper {
+      background-color: #f4f4f4;
+      padding: 20px;
     }
     .email-container {
       max-width: 600px;
       margin: 0 auto;
       background-color: #ffffff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     .header {
       background-color: #1a1a2e;
-      padding: 20px;
+      padding: 30px 20px;
       text-align: center;
     }
     .logo {
       max-width: 200px;
       height: auto;
+      display: block;
+      margin: 0 auto;
     }
     .content {
-      padding: 30px;
+      padding: 40px 30px;
       font-size: 16px;
       line-height: 1.6;
       color: #333333;
     }
+    .content p {
+      margin: 0 0 16px 0;
+    }
     .footer {
       background-color: #f8f8f8;
-      padding: 20px;
+      padding: 30px 20px;
       text-align: center;
       font-size: 12px;
       color: #666666;
+      border-top: 1px solid #e5e5e5;
+    }
+    .footer p {
+      margin: 0 0 8px 0;
     }
     .footer a {
       color: #00D4FF;
       text-decoration: none;
     }
+    .footer a:hover {
+      text-decoration: underline;
+    }
     @media only screen and (max-width: 600px) {
+      .email-wrapper {
+        padding: 0 !important;
+      }
       .email-container {
         width: 100% !important;
+        border-radius: 0 !important;
       }
       .content {
-        padding: 20px !important;
+        padding: 30px 20px !important;
       }
     }
   </style>
 </head>
 <body>
-  <div class="email-container">
-    <div class="header">
-      <img src="https://caraudioevents.com/assets/logos/CAE_Logo_V2-email-logo.png" alt="Car Audio Events" class="logo">
-    </div>
-    <div class="content">
-      ${composeData.html_content || composeData.content.replace(/\n/g, '<br>')}
-    </div>
-    <div class="footer">
+  <div class="email-wrapper">
+    <div class="email-container">
+      <div class="header">
+        <img src="https://caraudioevents.com/assets/logos/CAE_Logo_V2-email-logo.png" alt="Car Audio Events" class="logo">
+      </div>
+      <div class="content">
+        ${composeData.html_content || composeData.content.replace(/\n/g, '<br>')}
+      </div>
+      <div class="footer">
       <p>Car Audio Events - Your Premier Competition Platform</p>
       <p>
         <a href="${unsubscribeUrl}">Unsubscribe</a> | 
@@ -689,6 +720,7 @@ export default function AdminNewsletterManager() {
       </p>
       <p>1600 South Jefferson, Perry, FL 32348 #31</p>
       <p>&copy; 2025 Car Audio Events. All rights reserved.</p>
+      </div>
     </div>
   </div>
 </body>
