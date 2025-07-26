@@ -79,6 +79,9 @@ export default function AdminNewsletterManager() {
     tags: [] as string[],
     scheduled_for: ''
   });
+  
+  // Track which campaign is being edited
+  const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -378,6 +381,51 @@ export default function AdminNewsletterManager() {
     }
   };
 
+  const editCampaign = (campaign: NewsletterCampaign) => {
+    setEditingCampaignId(campaign.id);
+    setComposeData({
+      name: campaign.name,
+      subject: campaign.subject,
+      content: campaign.content || '',
+      html_content: campaign.html_content || '',
+      tags: campaign.tags || [],
+      scheduled_for: campaign.scheduled_for || ''
+    });
+    setActiveTab('compose');
+  };
+
+  const cancelEdit = () => {
+    setEditingCampaignId(null);
+    setComposeData({
+      name: '',
+      subject: '',
+      content: '',
+      html_content: '',
+      tags: [],
+      scheduled_for: ''
+    });
+  };
+
+  const deleteCampaign = async (campaignId: string) => {
+    if (!window.confirm('Are you sure you want to delete this campaign?')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase.rpc('exec_sql', {
+        sql_command: `DELETE FROM newsletter_campaigns WHERE id = '${campaignId}'`
+      });
+
+      if (error) throw error;
+
+      showSuccess('Campaign deleted successfully');
+      loadCampaigns();
+    } catch (error) {
+      console.error('Error deleting campaign:', error);
+      showError('Failed to delete campaign');
+    }
+  };
+
   const createCampaign = async (sendNow = false) => {
     try {
       // Validate required fields
@@ -388,6 +436,7 @@ export default function AdminNewsletterManager() {
 
       console.log('Creating campaign with sendNow:', sendNow);
       console.log('Compose data:', composeData);
+      console.log('Editing campaign ID:', editingCampaignId);
 
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) {
@@ -419,8 +468,25 @@ export default function AdminNewsletterManager() {
       
       const scheduledForValue = composeData.scheduled_for ? `'${composeData.scheduled_for}'` : 'NULL';
       
-      const { data: insertResult, error: insertError } = await supabase.rpc('exec_sql', {
-        sql_command: `
+      let sqlCommand;
+      if (editingCampaignId) {
+        // Update existing campaign
+        sqlCommand = `
+          UPDATE newsletter_campaigns 
+          SET name = '${escapedName}',
+              subject = '${escapedSubject}',
+              content = '${escapedContent}',
+              html_content = '${escapedHtmlContent}',
+              tags = ${tagsArray},
+              status = '${sendNow ? 'queued' : (composeData.scheduled_for ? 'scheduled' : 'draft')}',
+              scheduled_for = ${scheduledForValue},
+              updated_at = NOW()
+          WHERE id = '${editingCampaignId}'
+          RETURNING id, name, subject, status
+        `;
+      } else {
+        // Create new campaign
+        sqlCommand = `
           INSERT INTO newsletter_campaigns (
             name, subject, content, html_content, tags, status, created_by, scheduled_for
           ) VALUES (
@@ -433,7 +499,11 @@ export default function AdminNewsletterManager() {
             '${userData.user.id}',
             ${scheduledForValue}
           ) RETURNING id, name, subject, status
-        `
+        `;
+      }
+      
+      const { data: insertResult, error: insertError } = await supabase.rpc('exec_sql', {
+        sql_command: sqlCommand
       });
 
       console.log('Insert result:', insertResult);
@@ -441,8 +511,8 @@ export default function AdminNewsletterManager() {
 
       if (insertError) throw insertError;
 
-      // Get the inserted campaign ID
-      const campaignId = insertResult?.result?.[0]?.id || insertResult?.id;
+      // Get the campaign ID (use existing ID for updates, or get from result for new campaigns)
+      const campaignId = editingCampaignId || insertResult?.result?.[0]?.id || insertResult?.id;
       if (!campaignId) {
         console.error('No campaign ID returned:', insertResult);
         throw new Error('Failed to get campaign ID after creation');
@@ -527,11 +597,12 @@ export default function AdminNewsletterManager() {
           `
         });
 
-        showSuccess(`Campaign created and ${targetSubscribers.length} emails queued! Go to Email Settings to process the queue.`);
+        showSuccess(`Campaign ${editingCampaignId ? 'updated' : 'created'} and ${targetSubscribers.length} emails queued! Go to Email Settings to process the queue.`);
       } else {
-        showSuccess('Campaign saved as draft!');
+        showSuccess(`Campaign ${editingCampaignId ? 'updated' : 'saved'} as draft!`);
       }
 
+      // Reset form and editing state
       setComposeData({
         name: '',
         subject: '',
@@ -540,6 +611,7 @@ export default function AdminNewsletterManager() {
         tags: [],
         scheduled_for: ''
       });
+      setEditingCampaignId(null);
       setActiveTab('campaigns');
       loadCampaigns();
     } catch (error) {
@@ -900,9 +972,22 @@ export default function AdminNewsletterManager() {
                           </div>
                         </div>
                         {campaign.status === 'draft' && (
-                          <button className="px-4 py-2 bg-electric-500 text-white rounded-lg hover:bg-electric-600 transition-colors text-sm">
-                            Edit
-                          </button>
+                          <div className="flex items-center space-x-2">
+                            <button 
+                              onClick={() => editCampaign(campaign)}
+                              className="px-4 py-2 bg-electric-500 text-white rounded-lg hover:bg-electric-600 transition-colors text-sm flex items-center space-x-1"
+                            >
+                              <Edit className="h-4 w-4" />
+                              <span>Edit</span>
+                            </button>
+                            <button 
+                              onClick={() => deleteCampaign(campaign.id)}
+                              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm flex items-center space-x-1"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span>Delete</span>
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -915,6 +1000,11 @@ export default function AdminNewsletterManager() {
           {/* Compose Tab */}
           {activeTab === 'compose' && (
             <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-6">
+              {editingCampaignId && (
+                <div className="mb-6 bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+                  <p className="text-blue-400 font-medium">Editing campaign</p>
+                </div>
+              )}
               <div className="space-y-6">
                 <div>
                   <label className="block text-gray-300 text-sm font-medium mb-2">
@@ -961,7 +1051,7 @@ export default function AdminNewsletterManager() {
                       onClick={() => createCampaign(false)}
                       className="px-6 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
                     >
-                      Save as Draft
+                      {editingCampaignId ? 'Update Draft' : 'Save as Draft'}
                     </button>
                     <button
                       onClick={() => createCampaign(true)}
@@ -970,6 +1060,14 @@ export default function AdminNewsletterManager() {
                       <Send className="h-4 w-4" />
                       <span>Send Now</span>
                     </button>
+                    {editingCampaignId && (
+                      <button
+                        onClick={cancelEdit}
+                        className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    )}
                   </div>
                   
                   <div className="text-sm text-gray-400">
