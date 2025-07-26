@@ -82,6 +82,9 @@ export default function AdminNewsletterManager() {
   
   // Track which campaign is being edited
   const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
+  
+  // Track if we just saved a newsletter
+  const [justSavedNewsletter, setJustSavedNewsletter] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -128,7 +131,7 @@ export default function AdminNewsletterManager() {
     setAvailableTags(Array.from(tags));
   };
 
-  const loadNewsletters = async () => {
+  const loadNewsletters = async (retryCount = 0) => {
     // Try regular query first
     const { data, error } = await supabase
       .from('newsletter_campaigns')
@@ -137,16 +140,35 @@ export default function AdminNewsletterManager() {
 
     if (error) {
       console.error('Error loading newsletters:', error);
-      // If schema cache issue, just show empty for now
-      if (error.code === 'PGRST204' || error.message?.includes('schema cache')) {
-        console.log('Schema cache issue - newsletters exist but cannot be displayed yet');
-        showInfo('Newsletters are being synced. Please refresh the page in a moment.');
+      // If schema cache issue, retry a few times
+      if ((error.code === 'PGRST204' || error.message?.includes('schema cache')) && retryCount < 3) {
+        console.log(`Schema cache issue - retrying in 1 second (attempt ${retryCount + 1}/3)`);
+        
+        // Show message only on first retry
+        if (retryCount === 0) {
+          showInfo('Loading newsletters...');
+        }
+        
+        // Retry after a delay
+        setTimeout(() => {
+          loadNewsletters(retryCount + 1);
+        }, 1000);
+        
+        return;
+      } else if (error.code === 'PGRST204' || error.message?.includes('schema cache')) {
+        // After 3 retries, show manual refresh message
+        showWarning('Newsletter saved but not visible yet. Please refresh the page to see it.');
         setNewsletters([]);
       }
       return;
     }
 
     setNewsletters(data || []);
+    
+    // Reset the flag if we have newsletters
+    if (data && data.length > 0) {
+      setJustSavedNewsletter(false);
+    }
   };
 
   const loadEmailQueue = async () => {
@@ -728,8 +750,15 @@ export default function AdminNewsletterManager() {
         scheduled_for: ''
       });
       setEditingCampaignId(null);
+      setJustSavedNewsletter(true);
       setActiveTab('campaigns');
+      
+      // Force multiple reload attempts
       loadNewsletters();
+      
+      // Try loading again after a delay
+      setTimeout(() => loadNewsletters(), 2000);
+      setTimeout(() => loadNewsletters(), 5000);
     } catch (error) {
       console.error('Error creating newsletter:', error);
       showError('Failed to create newsletter');
@@ -1051,23 +1080,38 @@ export default function AdminNewsletterManager() {
             <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-6">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-semibold text-white">All Newsletters</h2>
-                <button
-                  onClick={() => setActiveTab('compose')}
-                  className="px-4 py-2 bg-electric-500 text-white rounded-lg hover:bg-electric-600 transition-colors flex items-center space-x-2"
-                >
-                  <Send className="h-4 w-4" />
-                  <span>Create Newsletter</span>
-                </button>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => loadNewsletters()}
+                    className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors flex items-center space-x-2"
+                    title="Refresh newsletter list"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    <span>Refresh</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('compose')}
+                    className="px-4 py-2 bg-electric-500 text-white rounded-lg hover:bg-electric-600 transition-colors flex items-center space-x-2"
+                  >
+                    <Send className="h-4 w-4" />
+                    <span>Create Newsletter</span>
+                  </button>
+                </div>
               </div>
               {newsletters.length === 0 ? (
                 <div className="text-center py-12">
                   <Mail className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-                  <p className="text-gray-400 mb-4">No newsletters created yet</p>
+                  <p className="text-gray-400 mb-4">
+                    {justSavedNewsletter 
+                      ? 'Your newsletter was saved! It may take a moment to appear. Try clicking Refresh.'
+                      : 'No newsletters created yet'
+                    }
+                  </p>
                   <button
-                    onClick={() => setActiveTab('compose')}
+                    onClick={() => justSavedNewsletter ? loadNewsletters() : setActiveTab('compose')}
                     className="px-6 py-2 bg-electric-500 text-white rounded-lg hover:bg-electric-600 transition-colors"
                   >
-                    Create Your First Newsletter
+                    {justSavedNewsletter ? 'Refresh List' : 'Create Your First Newsletter'}
                   </button>
                 </div>
               ) : (
