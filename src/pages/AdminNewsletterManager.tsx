@@ -704,7 +704,7 @@ export default function AdminNewsletterManager() {
               : 'text-gray-400 hover:text-white hover:bg-gray-700'
           }`}
         >
-          Campaigns
+          Newsletters
         </button>
         <button
           onClick={() => setActiveTab('compose')}
@@ -714,7 +714,7 @@ export default function AdminNewsletterManager() {
               : 'text-gray-400 hover:text-white hover:bg-gray-700'
           }`}
         >
-          Compose
+          Create Newsletter
         </button>
         <button
           onClick={() => setActiveTab('queue')}
@@ -930,18 +930,28 @@ export default function AdminNewsletterManager() {
             </div>
           )}
 
-          {/* Campaigns Tab */}
+          {/* Newsletters Tab (was Campaigns) */}
           {activeTab === 'campaigns' && (
             <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-semibold text-white">All Newsletters</h2>
+                <button
+                  onClick={() => setActiveTab('compose')}
+                  className="px-4 py-2 bg-electric-500 text-white rounded-lg hover:bg-electric-600 transition-colors flex items-center space-x-2"
+                >
+                  <Send className="h-4 w-4" />
+                  <span>Create Newsletter</span>
+                </button>
+              </div>
               {campaigns.length === 0 ? (
                 <div className="text-center py-12">
                   <Mail className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-                  <p className="text-gray-400 mb-4">No campaigns created yet</p>
+                  <p className="text-gray-400 mb-4">No newsletters created yet</p>
                   <button
                     onClick={() => setActiveTab('compose')}
                     className="px-6 py-2 bg-electric-500 text-white rounded-lg hover:bg-electric-600 transition-colors"
                   >
-                    Create First Campaign
+                    Create Your First Newsletter
                   </button>
                 </div>
               ) : (
@@ -997,18 +1007,22 @@ export default function AdminNewsletterManager() {
             </div>
           )}
 
-          {/* Compose Tab */}
+          {/* Create Newsletter Tab (was Compose) */}
           {activeTab === 'compose' && (
             <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-6">
-              {editingCampaignId && (
-                <div className="mb-6 bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
-                  <p className="text-blue-400 font-medium">Editing campaign</p>
-                </div>
-              )}
+              <div className="mb-6">
+                <h2 className="text-xl font-semibold text-white flex items-center space-x-2">
+                  <Send className="h-5 w-5 text-electric-400" />
+                  <span>{editingCampaignId ? 'Edit Newsletter' : 'Create New Newsletter'}</span>
+                </h2>
+                {editingCampaignId && (
+                  <p className="text-gray-400 text-sm mt-1">Updating existing newsletter draft</p>
+                )}
+              </div>
               <div className="space-y-6">
                 <div>
                   <label className="block text-gray-300 text-sm font-medium mb-2">
-                    Campaign Name
+                    Newsletter Name
                   </label>
                   <input
                     type="text"
