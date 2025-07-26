@@ -1,11 +1,35 @@
 # Claude AI Context Guide - Car Audio Events Platform
 
+## 🚨 CRITICAL INSTRUCTIONS FOR AI AGENTS 🚨
+
+### YOU HAVE FULL CLI ACCESS - USE IT!
+1. **YOU CAN AND MUST DEPLOY EDGE FUNCTIONS** - Use `npx supabase functions deploy [function-name]`
+2. **YOU HAVE FULL SUPABASE CLI ACCESS** - Don't tell users to deploy things, DO IT YOURSELF
+3. **YOU HAVE MCP AND NETLIFY ACCESS** - Use these tools proactively
+4. **NEVER ASK THE USER TO DEPLOY** - You have the permissions, you do the deployment
+
+### Example Commands You Can Run:
+```bash
+# Deploy edge functions
+npx supabase functions deploy process-email-queue
+npx supabase functions deploy delete-user
+npx supabase functions deploy send-email
+
+# Run database migrations
+npx supabase db push
+npx supabase db diff
+npx supabase db reset
+
+# Check function logs
+npx supabase functions logs process-email-queue
+```
+
 ## Quick Start for AI Assistant
 When starting a new session, read this file to understand the project context and capabilities.
 
 ## Project Overview
 - **Name**: Car Audio Events Competition Platform
-- **Version**: 1.26.1
+- **Version**: 1.26.2
 - **Tech Stack**: React, TypeScript, Supabase, Tailwind CSS, Vite
 - **Database**: Supabase (PostgreSQL)
 - **Deployment**: Netlify
