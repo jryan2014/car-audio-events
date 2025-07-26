@@ -8,6 +8,7 @@ import UserBilling from './pages/UserBilling';
 import AdminBilling from './pages/AdminBilling';
 import CookieConsent from './components/CookieConsent';
 import { loadConsentedScripts } from './utils/cookieConsent';
+import ScrollToTop from './components/ScrollToTop';
 
 // Convert all page imports to lazy loading for code splitting
 const Home = React.lazy(() => import('./pages/Home'));
@@ -110,6 +111,7 @@ function App() {
             v7_relativeSplatPath: true
           }}
         >
+          <ScrollToTop />
           <Suspense fallback={<LoadingSpinner />}>
             <Routes>
               {/* Routes with Layout wrapper */}
