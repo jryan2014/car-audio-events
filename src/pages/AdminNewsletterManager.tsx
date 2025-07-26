@@ -26,7 +26,7 @@ interface NewsletterCampaign {
   subject: string;
   content: string;
   html_content?: string;
-  status: 'draft' | 'scheduled' | 'sending' | 'sent' | 'cancelled';
+  status: 'draft' | 'scheduled' | 'sending' | 'sent' | 'cancelled' | 'queued';
   scheduled_for?: string;
   sent_at?: string;
   sent_count: number;
@@ -35,6 +35,9 @@ interface NewsletterCampaign {
   unsubscribe_count: number;
   tags: string[];
   created_at: string;
+  metadata?: {
+    queued_count?: number;
+  };
 }
 
 interface EmailQueueItem {
