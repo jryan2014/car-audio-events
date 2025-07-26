@@ -126,15 +126,20 @@ export default function AdminNewsletterManager() {
   };
 
   const loadCampaigns = async () => {
-    const { data, error } = await supabase
-      .from('newsletter_campaigns')
-      .select('*')
-      .order('created_at', { ascending: false });
+    // Use exec_sql to bypass schema cache
+    const { data: result, error } = await supabase.rpc('exec_sql', {
+      sql_command: `
+        SELECT * FROM newsletter_campaigns 
+        ORDER BY created_at DESC
+      `
+    });
 
     if (error) {
       console.error('Error loading campaigns:', error);
       return;
     }
+
+    const data = result?.result || [];
 
     setCampaigns(data || []);
   };
@@ -375,6 +380,21 @@ export default function AdminNewsletterManager() {
 
   const createCampaign = async (sendNow = false) => {
     try {
+      // Validate required fields
+      if (!composeData.name || !composeData.subject || !composeData.content) {
+        showError('Please fill in all required fields (name, subject, and content)');
+        return;
+      }
+
+      console.log('Creating campaign with sendNow:', sendNow);
+      console.log('Compose data:', composeData);
+
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) {
+        showError('You must be logged in to create campaigns');
+        return;
+      }
+
       const campaignData = {
         name: composeData.name,
         subject: composeData.subject,
@@ -382,7 +402,7 @@ export default function AdminNewsletterManager() {
         html_content: composeData.html_content,
         tags: composeData.tags,
         status: sendNow ? 'queued' : (composeData.scheduled_for ? 'scheduled' : 'draft'),
-        created_by: (await supabase.auth.getUser()).data.user?.id
+        created_by: userData.user.id
       };
 
       // Only add scheduled_for if it has a value
@@ -390,13 +410,45 @@ export default function AdminNewsletterManager() {
         (campaignData as any).scheduled_for = composeData.scheduled_for;
       }
 
-      const { data, error } = await supabase
-        .from('newsletter_campaigns')
-        .insert(campaignData)
-        .select()
-        .single();
+      // Use exec_sql to bypass schema cache issues
+      const escapedName = composeData.name.replace(/'/g, "''");
+      const escapedSubject = composeData.subject.replace(/'/g, "''");
+      const escapedContent = composeData.content.replace(/'/g, "''");
+      const escapedHtmlContent = (composeData.html_content || composeData.content).replace(/'/g, "''");
+      const tagsArray = composeData.tags.length > 0 ? `ARRAY[${composeData.tags.map(t => `'${t.replace(/'/g, "''")}'`).join(',')}]` : 'NULL';
+      
+      const scheduledForValue = composeData.scheduled_for ? `'${composeData.scheduled_for}'` : 'NULL';
+      
+      const { data: insertResult, error: insertError } = await supabase.rpc('exec_sql', {
+        sql_command: `
+          INSERT INTO newsletter_campaigns (
+            name, subject, content, html_content, tags, status, created_by, scheduled_for
+          ) VALUES (
+            '${escapedName}',
+            '${escapedSubject}',
+            '${escapedContent}',
+            '${escapedHtmlContent}',
+            ${tagsArray},
+            '${sendNow ? 'queued' : (composeData.scheduled_for ? 'scheduled' : 'draft')}',
+            '${userData.user.id}',
+            ${scheduledForValue}
+          ) RETURNING id, name, subject, status
+        `
+      });
 
-      if (error) throw error;
+      console.log('Insert result:', insertResult);
+      console.log('Insert error:', insertError);
+
+      if (insertError) throw insertError;
+
+      // Get the inserted campaign ID
+      const campaignId = insertResult?.result?.[0]?.id || insertResult?.id;
+      if (!campaignId) {
+        console.error('No campaign ID returned:', insertResult);
+        throw new Error('Failed to get campaign ID after creation');
+      }
+
+      const data = { id: campaignId, name: composeData.name };
 
       if (sendNow && data) {
         // Create emails in the queue for all confirmed subscribers
@@ -435,19 +487,18 @@ export default function AdminNewsletterManager() {
           const fullHtmlContent = (composeData.html_content || composeData.content) + footerHtml;
           
           return {
-            recipient: subscriber.email,
+            to_email: subscriber.email,  // Changed from 'recipient'
             subject: composeData.subject,
-            body: fullHtmlContent,
-            html_content: fullHtmlContent,
+            body: composeData.content,  // Plain text version
+            html_body: fullHtmlContent,  // HTML version
             template_id: null,
-            status: 'pending',
-            attempts: 0,
-            error_message: null,
-            metadata: {
+            template_variables: {
+              unsubscribe_url: unsubscribeUrl,
               campaign_id: data.id,
               campaign_name: data.name,
               subscriber_id: subscriber.id
-            }
+            },
+            status: 'pending'
           };
         });
 
@@ -459,22 +510,22 @@ export default function AdminNewsletterManager() {
           console.error('Error creating email queue entries:', queueError);
           showError('Failed to queue emails for sending');
           
-          // Update campaign status back to draft
-          await supabase
-            .from('newsletter_campaigns')
-            .update({ status: 'draft' })
-            .eq('id', data.id);
+          // Update campaign status back to draft using exec_sql
+          await supabase.rpc('exec_sql', {
+            sql_command: `UPDATE newsletter_campaigns SET status = 'draft' WHERE id = '${data.id}'`
+          });
           return;
         }
 
-        // Update campaign status to queued (not sent yet!)
-        await supabase
-          .from('newsletter_campaigns')
-          .update({ 
-            status: 'queued',
-            metadata: { queued_count: targetSubscribers.length }
-          })
-          .eq('id', data.id);
+        // Update campaign status to queued (not sent yet!) using exec_sql
+        await supabase.rpc('exec_sql', {
+          sql_command: `
+            UPDATE newsletter_campaigns 
+            SET status = 'queued', 
+                metadata = jsonb_build_object('queued_count', ${targetSubscribers.length})
+            WHERE id = '${data.id}'
+          `
+        });
 
         showSuccess(`Campaign created and ${targetSubscribers.length} emails queued! Go to Email Settings to process the queue.`);
       } else {
