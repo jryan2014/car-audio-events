@@ -56,7 +56,7 @@ export default function AdminNewsletterManager() {
   const { showSuccess, showError, showWarning, showInfo } = useNotifications();
   const [activeTab, setActiveTab] = useState<'subscribers' | 'campaigns' | 'compose' | 'queue'>('subscribers');
   const [subscribers, setSubscribers] = useState<NewsletterSubscriber[]>([]);
-  const [campaigns, setCampaigns] = useState<NewsletterCampaign[]>([]);
+  const [newsletters, setNewsletters] = useState<NewsletterCampaign[]>([]);
   const [emailQueue, setEmailQueue] = useState<EmailQueueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -93,7 +93,7 @@ export default function AdminNewsletterManager() {
       if (activeTab === 'subscribers') {
         await loadSubscribers();
       } else if (activeTab === 'campaigns') {
-        await loadCampaigns();
+        await loadNewsletters();
       } else if (activeTab === 'queue') {
         await loadEmailQueue();
       }
@@ -128,7 +128,7 @@ export default function AdminNewsletterManager() {
     setAvailableTags(Array.from(tags));
   };
 
-  const loadCampaigns = async () => {
+  const loadNewsletters = async () => {
     // Use exec_sql to bypass schema cache
     const { data: result, error } = await supabase.rpc('exec_sql', {
       sql_command: `
@@ -138,13 +138,13 @@ export default function AdminNewsletterManager() {
     });
 
     if (error) {
-      console.error('Error loading campaigns:', error);
+      console.error('Error loading newsletters:', error);
       return;
     }
 
     const data = result?.result || [];
 
-    setCampaigns(data || []);
+    setNewsletters(data || []);
   };
 
   const loadEmailQueue = async () => {
@@ -381,15 +381,15 @@ export default function AdminNewsletterManager() {
     }
   };
 
-  const editCampaign = (campaign: NewsletterCampaign) => {
-    setEditingCampaignId(campaign.id);
+  const editNewsletter = (newsletter: NewsletterCampaign) => {
+    setEditingCampaignId(newsletter.id);
     setComposeData({
-      name: campaign.name,
-      subject: campaign.subject,
-      content: campaign.content || '',
-      html_content: campaign.html_content || '',
-      tags: campaign.tags || [],
-      scheduled_for: campaign.scheduled_for || ''
+      name: newsletter.name,
+      subject: newsletter.subject,
+      content: newsletter.content || '',
+      html_content: newsletter.html_content || '',
+      tags: newsletter.tags || [],
+      scheduled_for: newsletter.scheduled_for || ''
     });
     setActiveTab('compose');
   };
@@ -406,27 +406,27 @@ export default function AdminNewsletterManager() {
     });
   };
 
-  const deleteCampaign = async (campaignId: string) => {
-    if (!window.confirm('Are you sure you want to delete this campaign?')) {
+  const deleteNewsletter = async (newsletterId: string) => {
+    if (!window.confirm('Are you sure you want to delete this newsletter?')) {
       return;
     }
 
     try {
       const { error } = await supabase.rpc('exec_sql', {
-        sql_command: `DELETE FROM newsletter_campaigns WHERE id = '${campaignId}'`
+        sql_command: `DELETE FROM newsletter_campaigns WHERE id = '${newsletterId}'`
       });
 
       if (error) throw error;
 
-      showSuccess('Campaign deleted successfully');
-      loadCampaigns();
+      showSuccess('Newsletter deleted successfully');
+      loadNewsletters();
     } catch (error) {
-      console.error('Error deleting campaign:', error);
-      showError('Failed to delete campaign');
+      console.error('Error deleting newsletter:', error);
+      showError('Failed to delete newsletter');
     }
   };
 
-  const createCampaign = async (sendNow = false) => {
+  const createNewsletter = async (sendNow = false) => {
     try {
       // Validate required fields
       if (!composeData.name || !composeData.subject || !composeData.content) {
@@ -434,13 +434,13 @@ export default function AdminNewsletterManager() {
         return;
       }
 
-      console.log('Creating campaign with sendNow:', sendNow);
+      console.log('Creating newsletter with sendNow:', sendNow);
       console.log('Compose data:', composeData);
-      console.log('Editing campaign ID:', editingCampaignId);
+      console.log('Editing newsletter ID:', editingCampaignId);
 
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) {
-        showError('You must be logged in to create campaigns');
+        showError('You must be logged in to create newsletters');
         return;
       }
 
@@ -515,7 +515,7 @@ export default function AdminNewsletterManager() {
       const campaignId = editingCampaignId || insertResult?.result?.[0]?.id || insertResult?.id;
       if (!campaignId) {
         console.error('No campaign ID returned:', insertResult);
-        throw new Error('Failed to get campaign ID after creation');
+        throw new Error('Failed to get newsletter ID after creation');
       }
 
       const data = { id: campaignId, name: composeData.name };
@@ -597,9 +597,9 @@ export default function AdminNewsletterManager() {
           `
         });
 
-        showSuccess(`Campaign ${editingCampaignId ? 'updated' : 'created'} and ${targetSubscribers.length} emails queued! Go to Email Settings to process the queue.`);
+        showSuccess(`Newsletter ${editingCampaignId ? 'updated' : 'created'} and ${targetSubscribers.length} emails queued! Go to Email Settings to process the queue.`);
       } else {
-        showSuccess(`Campaign ${editingCampaignId ? 'updated' : 'saved'} as draft!`);
+        showSuccess(`Newsletter ${editingCampaignId ? 'updated' : 'saved'} as draft!`);
       }
 
       // Reset form and editing state
@@ -613,10 +613,10 @@ export default function AdminNewsletterManager() {
       });
       setEditingCampaignId(null);
       setActiveTab('campaigns');
-      loadCampaigns();
+      loadNewsletters();
     } catch (error) {
-      console.error('Error creating campaign:', error);
-      showError('Failed to create campaign');
+      console.error('Error creating newsletter:', error);
+      showError('Failed to create newsletter');
     }
   };
 
@@ -943,7 +943,7 @@ export default function AdminNewsletterManager() {
                   <span>Create Newsletter</span>
                 </button>
               </div>
-              {campaigns.length === 0 ? (
+              {newsletters.length === 0 ? (
                 <div className="text-center py-12">
                   <Mail className="h-12 w-12 text-gray-600 mx-auto mb-4" />
                   <p className="text-gray-400 mb-4">No newsletters created yet</p>
@@ -956,42 +956,42 @@ export default function AdminNewsletterManager() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {campaigns.map((campaign) => (
-                    <div key={campaign.id} className="bg-gray-700/30 rounded-lg p-4">
+                  {newsletters.map((newsletter) => (
+                    <div key={newsletter.id} className="bg-gray-700/30 rounded-lg p-4">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <h3 className="text-white font-medium mb-1">{campaign.name}</h3>
-                          <p className="text-gray-400 text-sm mb-2">{campaign.subject}</p>
+                          <h3 className="text-white font-medium mb-1">{newsletter.name}</h3>
+                          <p className="text-gray-400 text-sm mb-2">{newsletter.subject}</p>
                           <div className="flex items-center space-x-4 text-xs text-gray-500">
-                            <span className={`capitalize ${getStatusColor(campaign.status)}`}>
-                              {campaign.status}
+                            <span className={`capitalize ${getStatusColor(newsletter.status)}`}>
+                              {newsletter.status}
                             </span>
-                            {campaign.sent_at && (
-                              <span>Sent {format(new Date(campaign.sent_at), 'MMM d, yyyy')}</span>
+                            {newsletter.sent_at && (
+                              <span>Sent {format(new Date(newsletter.sent_at), 'MMM d, yyyy')}</span>
                             )}
-                            {campaign.status === 'sent' && campaign.sent_count > 0 && (
+                            {newsletter.status === 'sent' && newsletter.sent_count > 0 && (
                               <>
-                                <span>{campaign.sent_count} sent</span>
-                                <span>{campaign.open_count} opens</span>
-                                <span>{campaign.click_count} clicks</span>
+                                <span>{newsletter.sent_count} sent</span>
+                                <span>{newsletter.open_count} opens</span>
+                                <span>{newsletter.click_count} clicks</span>
                               </>
                             )}
-                            {campaign.status === 'sending' && campaign.metadata?.queued_count && (
-                              <span className="text-blue-400">{campaign.metadata.queued_count} emails queued</span>
+                            {newsletter.status === 'sending' && newsletter.metadata?.queued_count && (
+                              <span className="text-blue-400">{newsletter.metadata.queued_count} emails queued</span>
                             )}
                           </div>
                         </div>
-                        {campaign.status === 'draft' && (
+                        {newsletter.status === 'draft' && (
                           <div className="flex items-center space-x-2">
                             <button 
-                              onClick={() => editCampaign(campaign)}
+                              onClick={() => editNewsletter(newsletter)}
                               className="px-4 py-2 bg-electric-500 text-white rounded-lg hover:bg-electric-600 transition-colors text-sm flex items-center space-x-1"
                             >
                               <Edit className="h-4 w-4" />
                               <span>Edit</span>
                             </button>
                             <button 
-                              onClick={() => deleteCampaign(campaign.id)}
+                              onClick={() => deleteNewsletter(newsletter.id)}
                               className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm flex items-center space-x-1"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -1062,13 +1062,13 @@ export default function AdminNewsletterManager() {
                 <div className="flex items-center justify-between pt-4 border-t border-gray-700">
                   <div className="flex items-center space-x-4">
                     <button
-                      onClick={() => createCampaign(false)}
+                      onClick={() => createNewsletter(false)}
                       className="px-6 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
                     >
                       {editingCampaignId ? 'Update Draft' : 'Save as Draft'}
                     </button>
                     <button
-                      onClick={() => createCampaign(true)}
+                      onClick={() => createNewsletter(true)}
                       className="px-6 py-2 bg-electric-500 text-white rounded-lg hover:bg-electric-600 transition-colors flex items-center space-x-2"
                     >
                       <Send className="h-4 w-4" />
