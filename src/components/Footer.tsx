@@ -267,6 +267,8 @@ export default function Footer() {
 
       if (error) throw error;
 
+      console.log('Newsletter response:', data); // Debug log
+
       if (data?.success) {
         setNewsletterStatus({
           loading: false,
@@ -398,14 +400,19 @@ export default function Footer() {
                   </button>
                 </div>
                 {newsletterStatus.message && (
-                  <div className={`flex items-start space-x-1 text-xs ${
-                    newsletterStatus.type === 'success' ? 'text-green-400' : 'text-red-400'
+                  <div className={`flex items-start space-x-1 text-xs transition-all duration-300 ${
+                    newsletterStatus.type === 'success' 
+                      ? 'text-green-500' 
+                      : 'text-red-500'
                   }`}>
-                    {newsletterStatus.type === 'success' ? 
-                      <CheckCircle className="h-3 w-3 mt-0.5 flex-shrink-0" /> : 
-                      <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                    }
-                    <span>{newsletterStatus.message}</span>
+                    {newsletterStatus.type === 'success' ? (
+                      <CheckCircle className="h-3 w-3 mt-0.5 flex-shrink-0 text-green-500" />
+                    ) : (
+                      <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0 text-red-500" />
+                    )}
+                    <span className={newsletterStatus.type === 'success' ? 'text-green-500' : 'text-red-500'}>
+                      {newsletterStatus.message}
+                    </span>
                   </div>
                 )}
               </form>

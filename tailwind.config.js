@@ -6,6 +6,7 @@ export default {
     'bg-blue-500', 'bg-purple-500', 'bg-orange-500', 'bg-green-500',
     'bg-blue-500/20', 'bg-purple-500/20', 'bg-orange-500/20', 'bg-green-500/20',
     'text-blue-400', 'text-purple-400', 'text-orange-400', 'text-green-400',
+    'text-green-500', 'text-red-500', // Added for newsletter status messages
     'border-blue-500', 'border-purple-500', 'border-orange-500', 'border-green-500',
     // Common dynamic classes that might be missed
     'opacity-0', 'opacity-100', 'scale-95', 'scale-100',
