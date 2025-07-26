@@ -588,7 +588,7 @@ export default function AdminNewsletterManager() {
             to_email: subscriber.email,  // Changed from 'recipient'
             subject: composeData.subject,
             body: composeData.content,  // Plain text version
-            html_body: fullHtmlContent,  // HTML version
+            html_content: fullHtmlContent,  // HTML version (column is html_content, not html_body)
             template_id: null,
             template_variables: {
               unsubscribe_url: unsubscribeUrl,
