@@ -520,7 +520,7 @@ Newsletter system includes:
 - Double opt-in (email confirmation required)
 - Unsubscribe links in all emails
 - Privacy policy links
-- Physical address in footer (123 Main Street, Perry, FL 32347)
+- Physical address in footer (1600 South Jefferson, Perry, FL 32348 #31)
 - GDPR/CAN-SPAM compliant
 
 ---
