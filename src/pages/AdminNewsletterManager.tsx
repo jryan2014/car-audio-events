@@ -594,16 +594,83 @@ export default function AdminNewsletterManager() {
         const emailQueueEntries = targetSubscribers.map(subscriber => {
           // Add unsubscribe footer to the email content
           const unsubscribeUrl = `https://caraudioevents.com/newsletter/unsubscribe/${subscriber.unsubscribe_token || subscriber.id}`;
-          const footerHtml = `
-            <hr style="margin-top: 40px; border: 1px solid #e5e5e5;">
-            <p style="text-align: center; color: #666; font-size: 12px; margin-top: 20px;">
-              You're receiving this email because you subscribed to Car Audio Events newsletter.<br>
-              <a href="${unsubscribeUrl}" style="color: #0080ff;">Unsubscribe</a> | 
-              <a href="https://caraudioevents.com/profile" style="color: #0080ff;">Update Preferences</a>
-            </p>
-          `;
           
-          const fullHtmlContent = (composeData.html_content || composeData.content) + footerHtml;
+          // Create full HTML email with header, logo, and responsive design
+          const fullHtmlContent = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${composeData.subject}</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+    }
+    .email-container {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #ffffff;
+    }
+    .header {
+      background-color: #1a1a2e;
+      padding: 20px;
+      text-align: center;
+    }
+    .logo {
+      max-width: 200px;
+      height: auto;
+    }
+    .content {
+      padding: 30px;
+      font-size: 16px;
+      line-height: 1.6;
+      color: #333333;
+    }
+    .footer {
+      background-color: #f8f8f8;
+      padding: 20px;
+      text-align: center;
+      font-size: 12px;
+      color: #666666;
+    }
+    .footer a {
+      color: #00D4FF;
+      text-decoration: none;
+    }
+    @media only screen and (max-width: 600px) {
+      .email-container {
+        width: 100% !important;
+      }
+      .content {
+        padding: 20px !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="email-container">
+    <div class="header">
+      <img src="https://caraudioevents.com/assets/logos/CAE_Logo_V2-email-logo.png" alt="Car Audio Events" class="logo">
+    </div>
+    <div class="content">
+      ${composeData.html_content || composeData.content.replace(/\n/g, '<br>')}
+    </div>
+    <div class="footer">
+      <p>Car Audio Events - Your Premier Competition Platform</p>
+      <p>
+        <a href="${unsubscribeUrl}">Unsubscribe</a> | 
+        <a href="https://caraudioevents.com/profile">Update Preferences</a> | 
+        <a href="https://caraudioevents.com/privacy">Privacy Policy</a>
+      </p>
+      <p>1600 South Jefferson, Perry, FL 32348 #31</p>
+      <p>&copy; 2025 Car Audio Events. All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>`;
           
           return {
             to_email: subscriber.email,  // Changed from 'recipient'
