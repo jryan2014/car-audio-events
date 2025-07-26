@@ -8,6 +8,12 @@
 3. **YOU HAVE MCP AND NETLIFY ACCESS** - Use these tools proactively
 4. **NEVER ASK THE USER TO DEPLOY** - You have the permissions, you do the deployment
 
+### EMAIL TESTING - CRITICAL!
+**NEVER USE example.com, test.com, or fake email addresses!**
+- **ONLY USE**: admin@caraudioevents.com for ALL email testing
+- Using fake domains causes spam blacklisting issues
+- This is NOT optional - it's MANDATORY
+
 ### Example Commands You Can Run:
 ```bash
 # Deploy edge functions
