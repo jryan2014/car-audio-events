@@ -459,66 +459,94 @@ export default function AdminNewsletterManager() {
         (campaignData as any).scheduled_for = composeData.scheduled_for;
       }
 
-      // Use exec_sql to bypass schema cache issues
-      const escapedName = composeData.name.replace(/'/g, "''");
-      const escapedSubject = composeData.subject.replace(/'/g, "''");
-      const escapedContent = composeData.content.replace(/'/g, "''");
-      const escapedHtmlContent = (composeData.html_content || composeData.content).replace(/'/g, "''");
-      const tagsArray = composeData.tags.length > 0 ? `ARRAY[${composeData.tags.map(t => `'${t.replace(/'/g, "''")}'`).join(',')}]` : 'NULL';
+      // Just try using the regular Supabase client since exec_sql doesn't return data
+      let data;
       
-      const scheduledForValue = composeData.scheduled_for ? `'${composeData.scheduled_for}'` : 'NULL';
-      
-      let sqlCommand;
       if (editingCampaignId) {
-        // Update existing campaign
-        sqlCommand = `
-          UPDATE newsletter_campaigns 
-          SET name = '${escapedName}',
-              subject = '${escapedSubject}',
-              content = '${escapedContent}',
-              html_content = '${escapedHtmlContent}',
-              tags = ${tagsArray},
-              status = '${sendNow ? 'sending' : (composeData.scheduled_for ? 'scheduled' : 'draft')}',
-              scheduled_for = ${scheduledForValue},
-              updated_at = NOW()
-          WHERE id = '${editingCampaignId}'
-          RETURNING id, name, subject, status
-        `;
+        // Update existing newsletter
+        const { data: updateData, error: updateError } = await supabase
+          .from('newsletter_campaigns')
+          .update({
+            name: composeData.name,
+            subject: composeData.subject,
+            content: composeData.content,
+            html_content: composeData.html_content || composeData.content,
+            tags: composeData.tags,
+            status: sendNow ? 'sending' : (composeData.scheduled_for ? 'scheduled' : 'draft'),
+            scheduled_for: composeData.scheduled_for || null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', editingCampaignId)
+          .select()
+          .single();
+          
+        if (updateError) throw updateError;
+        data = updateData;
       } else {
-        // Create new campaign
-        sqlCommand = `
-          INSERT INTO newsletter_campaigns (
-            name, subject, content, html_content, tags, status, created_by, scheduled_for
-          ) VALUES (
-            '${escapedName}',
-            '${escapedSubject}',
-            '${escapedContent}',
-            '${escapedHtmlContent}',
-            ${tagsArray},
-            '${sendNow ? 'sending' : (composeData.scheduled_for ? 'scheduled' : 'draft')}',
-            '${userData.user.id}',
-            ${scheduledForValue}
-          ) RETURNING id, name, subject, status
-        `;
+        // Create new newsletter
+        const { data: insertData, error: insertError } = await supabase
+          .from('newsletter_campaigns')
+          .insert({
+            name: composeData.name,
+            subject: composeData.subject,
+            content: composeData.content,
+            html_content: composeData.html_content || composeData.content,
+            tags: composeData.tags,
+            status: sendNow ? 'sending' : (composeData.scheduled_for ? 'scheduled' : 'draft'),
+            created_by: userData.user.id,
+            scheduled_for: composeData.scheduled_for || null
+          })
+          .select()
+          .single();
+          
+        if (insertError) {
+          console.error('Insert error:', insertError);
+          // If it's still a schema cache issue, try exec_sql as fallback
+          if (insertError.code === 'PGRST204') {
+            const { error: execError } = await supabase.rpc('exec_sql', {
+              sql_command: `
+                INSERT INTO newsletter_campaigns (
+                  name, subject, content, html_content, tags, status, created_by, scheduled_for
+                ) VALUES (
+                  '${composeData.name.replace(/'/g, "''")}',
+                  '${composeData.subject.replace(/'/g, "''")}',
+                  '${composeData.content.replace(/'/g, "''")}',
+                  '${(composeData.html_content || composeData.content).replace(/'/g, "''")}',
+                  ${composeData.tags.length > 0 ? `ARRAY[${composeData.tags.map(t => `'${t.replace(/'/g, "''")}'`).join(',')}]` : 'NULL'},
+                  '${sendNow ? 'sending' : (composeData.scheduled_for ? 'scheduled' : 'draft')}',
+                  '${userData.user.id}',
+                  ${composeData.scheduled_for ? `'${composeData.scheduled_for}'` : 'NULL'}
+                )
+              `
+            });
+            
+            if (execError) throw execError;
+            
+            // Get the ID manually
+            const { data: newsletters } = await supabase
+              .from('newsletter_campaigns')
+              .select('id, name')
+              .eq('name', composeData.name)
+              .eq('created_by', userData.user.id)
+              .order('created_at', { ascending: false })
+              .limit(1);
+              
+            if (!newsletters || newsletters.length === 0) {
+              throw new Error('Failed to create newsletter');
+            }
+            
+            data = newsletters[0];
+          } else {
+            throw insertError;
+          }
+        } else {
+          data = insertData;
+        }
       }
-      
-      const { data: insertResult, error: insertError } = await supabase.rpc('exec_sql', {
-        sql_command: sqlCommand
-      });
 
-      console.log('Insert result:', insertResult);
-      console.log('Insert error:', insertError);
-
-      if (insertError) throw insertError;
-
-      // Get the campaign ID (use existing ID for updates, or get from result for new campaigns)
-      const campaignId = editingCampaignId || insertResult?.result?.[0]?.id || insertResult?.id;
-      if (!campaignId) {
-        console.error('No campaign ID returned:', insertResult);
-        throw new Error('Failed to get newsletter ID after creation');
+      if (!data) {
+        throw new Error('Failed to create or update newsletter');
       }
-
-      const data = { id: campaignId, name: composeData.name };
 
       if (sendNow && data) {
         // Create emails in the queue for all confirmed subscribers
@@ -580,22 +608,22 @@ export default function AdminNewsletterManager() {
           console.error('Error creating email queue entries:', queueError);
           showError('Failed to queue emails for sending');
           
-          // Update campaign status back to draft using exec_sql
-          await supabase.rpc('exec_sql', {
-            sql_command: `UPDATE newsletter_campaigns SET status = 'draft' WHERE id = '${data.id}'`
-          });
+          // Update newsletter status back to draft
+          await supabase
+            .from('newsletter_campaigns')
+            .update({ status: 'draft' })
+            .eq('id', data.id);
           return;
         }
 
-        // Update campaign status to sending using exec_sql
-        await supabase.rpc('exec_sql', {
-          sql_command: `
-            UPDATE newsletter_campaigns 
-            SET status = 'sending', 
-                metadata = jsonb_build_object('queued_count', ${targetSubscribers.length})
-            WHERE id = '${data.id}'
-          `
-        });
+        // Update newsletter status to sending
+        await supabase
+          .from('newsletter_campaigns')
+          .update({ 
+            status: 'sending',
+            metadata: { queued_count: targetSubscribers.length }
+          })
+          .eq('id', data.id);
 
         showSuccess(`Newsletter ${editingCampaignId ? 'updated' : 'created'} and ${targetSubscribers.length} emails queued! Go to Email Settings to process the queue.`);
       } else {
