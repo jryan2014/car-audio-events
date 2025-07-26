@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Key, Save, Eye, EyeOff, Shield, AlertCircle, CheckCircle, Settings, Database, CreditCard, Map, Mail, Bug, TestTube, ExternalLink, HardDrive, Bell } from 'lucide-react';
+import { Key, Save, Eye, EyeOff, Shield, AlertCircle, CheckCircle, Settings, Database, CreditCard, Map, Mail, Bug, TestTube, ExternalLink, HardDrive, Bell, Clock } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -13,6 +13,7 @@ import { SessionSettings } from '../components/admin-settings/SessionSettings';
 import { EmailSettings } from '../components/admin-settings/EmailSettings';
 import { CacheSettings } from '../components/admin-settings/CacheSettings';
 import { DebugSettings } from '../components/admin-settings/DebugSettings';
+import { CronSettings } from '../components/admin-settings/CronSettings';
 import PaymentSettings from '../components/admin-settings/PaymentSettings';
 import NotificationManager from '../components/admin-settings/NotificationManager';
 
@@ -43,6 +44,7 @@ const sections = [
       { id: 'hcaptcha', label: 'hCaptcha', icon: <Shield className="h-5 w-5" /> },
   { id: 'session', label: 'Session', icon: <Settings className="h-5 w-5" /> },
   { id: 'email', label: 'Email', icon: <Mail className="h-5 w-5" /> },
+  { id: 'cron', label: 'Email Scheduler', icon: <Clock className="h-5 w-5" /> },
   { id: 'notifications', label: 'Notifications', icon: <Bell className="h-5 w-5" /> },
   { id: 'cache', label: 'Cache', icon: <HardDrive className="h-5 w-5" /> },
   { id: 'debug', label: 'Debug', icon: <Bug className="h-5 w-5" /> },
@@ -339,6 +341,7 @@ export default function AdminSettings() {
               case 'hcaptcha': return <HCaptchaSettings />;
       case 'session': return <SessionSettings />;
       case 'email': return <EmailSettings />;
+      case 'cron': return <CronSettings />;
       case 'notifications': return <NotificationManager />;
       case 'cache': return <CacheSettings />;
       case 'debug': return <DebugSettings />;

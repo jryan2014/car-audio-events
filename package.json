@@ -1,7 +1,7 @@
 {
   "name": "car-audio-competition-platform",
   "private": true,
-  "version": "1.26.1",
+  "version": "1.26.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -28,7 +28,6 @@
     "@paypal/react-paypal-js": "^8.8.3",
     "@stripe/react-stripe-js": "^3.7.0",
     "@stripe/stripe-js": "^2.4.0",
-    "@supabase/supabase-js": "^2.39.0",
     "@tinymce/tinymce-react": "^6.2.1",
     "@types/jszip": "^3.4.0",
     "date-fns": "^4.1.0",
@@ -48,6 +47,7 @@
   "devDependencies": {
     "@eslint/js": "^9.9.1",
     "@fullhuman/postcss-purgecss": "^7.0.2",
+    "@supabase/supabase-js": "^2.52.1",
     "@types/google.maps": "^3.58.1",
     "@types/node": "^20.0.0",
     "@types/react": "^18.3.5",

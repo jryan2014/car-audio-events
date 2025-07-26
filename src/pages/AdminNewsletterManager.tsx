@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, Send, Users, Eye, MousePointer, X, Search, Download, Filter, Calendar, Tag, Clock, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
+import { Mail, Send, Users, Eye, MousePointer, X, Search, Download, Filter, Calendar, Tag, Clock, CheckCircle, AlertCircle, RefreshCw, Trash2, Edit, RotateCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
+import { useNotifications } from '../components/NotificationSystem';
 
 interface NewsletterSubscriber {
   id: string;
@@ -12,6 +13,7 @@ interface NewsletterSubscriber {
   source: string;
   tags: string[];
   created_at: string;
+  unsubscribe_token?: string;
   user?: {
     name: string;
     membership_type: string;
@@ -48,6 +50,7 @@ interface EmailQueueItem {
 }
 
 export default function AdminNewsletterManager() {
+  const { showSuccess, showError, showWarning, showInfo } = useNotifications();
   const [activeTab, setActiveTab] = useState<'subscribers' | 'campaigns' | 'compose' | 'queue'>('subscribers');
   const [subscribers, setSubscribers] = useState<NewsletterSubscriber[]>([]);
   const [campaigns, setCampaigns] = useState<NewsletterCampaign[]>([]);
@@ -58,6 +61,11 @@ export default function AdminNewsletterManager() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [processingEmail, setProcessingEmail] = useState<string | null>(null);
+  const [selectedSubscribers, setSelectedSubscribers] = useState<Set<string>>(new Set());
+  const [editingSubscriber, setEditingSubscriber] = useState<string | null>(null);
+  const [resendingConfirmation, setResendingConfirmation] = useState<string | null>(null);
+  const [showAddSubscriber, setShowAddSubscriber] = useState(false);
+  const [newSubscriberEmail, setNewSubscriberEmail] = useState('');
   
   // Compose state
   const [composeData, setComposeData] = useState({
@@ -158,7 +166,7 @@ export default function AdminNewsletterManager() {
       if (confirmProcess) {
         window.location.href = '/admin/settings';
       } else {
-        alert('Your email will be sent automatically within the next minute.');
+        showInfo('Your email will be sent automatically within the next minute.');
       }
 
       // Reload the queue after a short delay
@@ -168,7 +176,7 @@ export default function AdminNewsletterManager() {
       
     } catch (error) {
       console.error('Error:', error);
-      alert('The email will be sent automatically when the queue runs (usually within a minute).');
+      showInfo('The email will be sent automatically when the queue runs (usually within a minute).');
     } finally {
       setProcessingEmail(null);
     }
@@ -196,6 +204,140 @@ export default function AdminNewsletterManager() {
     a.click();
   };
 
+  const deleteSubscribers = async (subscriberIds: string[]) => {
+    if (!window.confirm(`Are you sure you want to delete ${subscriberIds.length} subscriber(s)?`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('newsletter_subscribers')
+        .delete()
+        .in('id', subscriberIds);
+
+      if (error) throw error;
+
+      showSuccess(`Successfully deleted ${subscriberIds.length} subscriber(s)`);
+      setSelectedSubscribers(new Set());
+      loadSubscribers();
+    } catch (error) {
+      console.error('Error deleting subscribers:', error);
+      showError('Failed to delete subscribers');
+    }
+  };
+
+  const resendConfirmation = async (subscriberId: string) => {
+    setResendingConfirmation(subscriberId);
+    try {
+      // Get subscriber details
+      const subscriber = subscribers.find(s => s.id === subscriberId);
+      if (!subscriber) {
+        showError('Subscriber not found');
+        return;
+      }
+
+      // Generate new confirmation token
+      const confirmationToken = crypto.randomUUID();
+      
+      // Update subscriber with new token
+      const { error: updateError } = await supabase
+        .from('newsletter_subscribers')
+        .update({ 
+          confirmation_token: confirmationToken,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', subscriberId);
+
+      if (updateError) throw updateError;
+
+      // Queue confirmation email
+      const { error: emailError } = await supabase
+        .from('email_queue')
+        .insert({
+          recipient: subscriber.email,
+          subject: 'Confirm Your Newsletter Subscription',
+          body: `Please confirm your subscription to Car Audio Events newsletter.`,
+          html_content: `<h2>Welcome to Car Audio Events Newsletter!</h2>
+            <p>Thank you for subscribing. Please confirm your subscription by clicking the link below:</p>
+            <p><a href="https://caraudioevents.com/newsletter/confirm/${confirmationToken}" style="display: inline-block; padding: 10px 20px; background-color: #0080ff; color: white; text-decoration: none; border-radius: 5px;">Confirm Subscription</a></p>
+            <p>Or copy and paste this link: https://caraudioevents.com/newsletter/confirm/${confirmationToken}</p>
+            <p>If you did not subscribe, you can safely ignore this email.</p>`,
+          status: 'pending',
+          metadata: {
+            type: 'newsletter_confirmation_resend',
+            subscriber_id: subscriberId
+          }
+        });
+
+      if (emailError) throw emailError;
+
+      showSuccess('Confirmation email has been resent! It will be delivered within a minute.');
+      
+    } catch (error) {
+      console.error('Error resending confirmation:', error);
+      showError('Failed to resend confirmation email');
+    } finally {
+      setResendingConfirmation(null);
+    }
+  };
+
+  const updateSubscriberStatus = async (subscriberId: string, newStatus: 'confirmed' | 'pending' | 'unsubscribed') => {
+    try {
+      const updates: any = {
+        status: newStatus,
+        updated_at: new Date().toISOString()
+      };
+
+      if (newStatus === 'confirmed' && !subscribers.find(s => s.id === subscriberId)?.confirmed_at) {
+        updates.confirmed_at = new Date().toISOString();
+      } else if (newStatus === 'unsubscribed') {
+        updates.unsubscribed_at = new Date().toISOString();
+      }
+
+      const { error } = await supabase
+        .from('newsletter_subscribers')
+        .update(updates)
+        .eq('id', subscriberId);
+
+      if (error) throw error;
+
+      showSuccess(`Subscriber status updated to ${newStatus}`);
+      loadSubscribers();
+    } catch (error) {
+      console.error('Error updating subscriber:', error);
+      showError('Failed to update subscriber status');
+    }
+  };
+
+  const addSubscriber = async () => {
+    if (!newSubscriberEmail || !newSubscriberEmail.includes('@')) {
+      showError('Please enter a valid email address');
+      return;
+    }
+
+    try {
+      // Call the subscribe function
+      const { data, error } = await supabase.rpc('subscribe_to_newsletter', {
+        p_email: newSubscriberEmail,
+        p_source: 'admin_manual'
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        showSuccess(`Subscriber added! ${data.message}`);
+        setNewSubscriberEmail('');
+        setShowAddSubscriber(false);
+        loadSubscribers();
+      } else {
+        showError(data?.message || 'Failed to add subscriber');
+      }
+    } catch (error) {
+      console.error('Error adding subscriber:', error);
+      showError('Failed to add subscriber');
+    }
+  };
+
   const getFilteredSubscribers = () => {
     return subscribers.filter(sub => {
       const matchesSearch = sub.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -213,32 +355,121 @@ export default function AdminNewsletterManager() {
       case 'confirmed': return 'text-green-400';
       case 'pending': return 'text-yellow-400';
       case 'unsubscribed': return 'text-gray-400';
-      case 'sent': return 'text-blue-400';
+      case 'sent': return 'text-green-400';
       case 'draft': return 'text-gray-400';
       case 'scheduled': return 'text-purple-400';
+      case 'queued': return 'text-yellow-400';
+      case 'sending': return 'text-blue-400';
       default: return 'text-gray-400';
     }
   };
 
   const createCampaign = async (sendNow = false) => {
     try {
+      const campaignData = {
+        name: composeData.name,
+        subject: composeData.subject,
+        content: composeData.content,
+        html_content: composeData.html_content,
+        tags: composeData.tags,
+        status: sendNow ? 'queued' : (composeData.scheduled_for ? 'scheduled' : 'draft'),
+        created_by: (await supabase.auth.getUser()).data.user?.id
+      };
+
+      // Only add scheduled_for if it has a value
+      if (composeData.scheduled_for) {
+        (campaignData as any).scheduled_for = composeData.scheduled_for;
+      }
+
       const { data, error } = await supabase
         .from('newsletter_campaigns')
-        .insert({
-          ...composeData,
-          status: sendNow ? 'sending' : (composeData.scheduled_for ? 'scheduled' : 'draft'),
-          created_by: (await supabase.auth.getUser()).data.user?.id
-        })
+        .insert(campaignData)
         .select()
         .single();
 
       if (error) throw error;
 
-      if (sendNow) {
-        // TODO: Implement actual sending logic
-        alert('Campaign created! Sending functionality will be implemented with email service integration.');
+      if (sendNow && data) {
+        // Create emails in the queue for all confirmed subscribers
+        const confirmedSubscribers = subscribers.filter(s => s.status === 'confirmed');
+        
+        if (confirmedSubscribers.length === 0) {
+          showWarning('No confirmed subscribers to send to!');
+          return;
+        }
+
+        // Apply tag filtering if tags are specified
+        const targetSubscribers = composeData.tags.length > 0
+          ? confirmedSubscribers.filter(sub => 
+              composeData.tags.some(tag => sub.tags?.includes(tag))
+            )
+          : confirmedSubscribers;
+
+        if (targetSubscribers.length === 0) {
+          showWarning('No subscribers match the selected tags!');
+          return;
+        }
+
+        // Create email queue entries for each subscriber
+        const emailQueueEntries = targetSubscribers.map(subscriber => {
+          // Add unsubscribe footer to the email content
+          const unsubscribeUrl = `https://caraudioevents.com/newsletter/unsubscribe/${subscriber.unsubscribe_token || subscriber.id}`;
+          const footerHtml = `
+            <hr style="margin-top: 40px; border: 1px solid #e5e5e5;">
+            <p style="text-align: center; color: #666; font-size: 12px; margin-top: 20px;">
+              You're receiving this email because you subscribed to Car Audio Events newsletter.<br>
+              <a href="${unsubscribeUrl}" style="color: #0080ff;">Unsubscribe</a> | 
+              <a href="https://caraudioevents.com/profile" style="color: #0080ff;">Update Preferences</a>
+            </p>
+          `;
+          
+          const fullHtmlContent = (composeData.html_content || composeData.content) + footerHtml;
+          
+          return {
+            recipient: subscriber.email,
+            subject: composeData.subject,
+            body: fullHtmlContent,
+            html_content: fullHtmlContent,
+            template_id: null,
+            status: 'pending',
+            attempts: 0,
+            error_message: null,
+            metadata: {
+              campaign_id: data.id,
+              campaign_name: data.name,
+              subscriber_id: subscriber.id
+            }
+          };
+        });
+
+        const { error: queueError } = await supabase
+          .from('email_queue')
+          .insert(emailQueueEntries);
+
+        if (queueError) {
+          console.error('Error creating email queue entries:', queueError);
+          showError('Failed to queue emails for sending');
+          
+          // Update campaign status back to draft
+          await supabase
+            .from('newsletter_campaigns')
+            .update({ status: 'draft' })
+            .eq('id', data.id);
+          return;
+        }
+
+        // Update campaign status to queued (not sent yet!)
+        await supabase
+          .from('newsletter_campaigns')
+          .update({ 
+            status: 'queued',
+            metadata: { queued_count: targetSubscribers.length }
+          })
+          .eq('id', data.id);
+
+        showSuccess(`Campaign created and ${targetSubscribers.length} emails queued! Go to Email Settings to process the queue.`);
       } else {
-        alert('Campaign saved as draft!');
+        showSuccess('Campaign saved as draft!');
       }
 
       setComposeData({
@@ -253,7 +484,7 @@ export default function AdminNewsletterManager() {
       loadCampaigns();
     } catch (error) {
       console.error('Error creating campaign:', error);
-      alert('Failed to create campaign');
+      showError('Failed to create campaign');
     }
   };
 
@@ -361,7 +592,7 @@ export default function AdminNewsletterManager() {
               : 'text-gray-400 hover:text-white hover:bg-gray-700'
           }`}
         >
-          Email Queue
+          Newsletter Emails
         </button>
       </div>
 
@@ -401,6 +632,16 @@ export default function AdminNewsletterManager() {
                   <option value="unsubscribed">Unsubscribed</option>
                 </select>
                 
+                {selectedSubscribers.size > 0 && (
+                  <button
+                    onClick={() => deleteSubscribers(Array.from(selectedSubscribers))}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-2"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    <span>Delete ({selectedSubscribers.size})</span>
+                  </button>
+                )}
+                
                 <button
                   onClick={exportSubscribers}
                   className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors flex items-center space-x-2"
@@ -408,28 +649,107 @@ export default function AdminNewsletterManager() {
                   <Download className="h-4 w-4" />
                   <span>Export CSV</span>
                 </button>
+                
+                <button
+                  onClick={() => setShowAddSubscriber(true)}
+                  className="px-4 py-2 bg-electric-500 text-white rounded-lg hover:bg-electric-600 transition-colors flex items-center space-x-2"
+                >
+                  <Mail className="h-4 w-4" />
+                  <span>Add Subscriber</span>
+                </button>
               </div>
+
+              {/* Add Subscriber Form */}
+              {showAddSubscriber && (
+                <div className="mb-6 p-4 bg-gray-700/30 rounded-lg">
+                  <div className="flex items-center space-x-4">
+                    <input
+                      type="email"
+                      value={newSubscriberEmail}
+                      onChange={(e) => setNewSubscriberEmail(e.target.value)}
+                      placeholder="Enter email address"
+                      className="flex-1 px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500"
+                      onKeyPress={(e) => e.key === 'Enter' && addSubscriber()}
+                    />
+                    <button
+                      onClick={addSubscriber}
+                      className="px-4 py-2 bg-electric-500 text-white rounded-lg hover:bg-electric-600 transition-colors"
+                    >
+                      Add
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowAddSubscriber(false);
+                        setNewSubscriberEmail('');
+                      }}
+                      className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  <p className="text-sm text-gray-400 mt-2">
+                    This will send a confirmation email to the subscriber.
+                  </p>
+                </div>
+              )}
 
               {/* Subscribers Table */}
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-700">
+                      <th className="text-left py-3 px-4 text-gray-400 font-medium w-10">
+                        <input
+                          type="checkbox"
+                          checked={getFilteredSubscribers().length > 0 && getFilteredSubscribers().every(s => selectedSubscribers.has(s.id))}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedSubscribers(new Set(getFilteredSubscribers().map(s => s.id)));
+                            } else {
+                              setSelectedSubscribers(new Set());
+                            }
+                          }}
+                          className="rounded bg-gray-700 border-gray-600 text-electric-500 focus:ring-electric-500"
+                        />
+                      </th>
                       <th className="text-left py-3 px-4 text-gray-400 font-medium">Email</th>
                       <th className="text-left py-3 px-4 text-gray-400 font-medium">Status</th>
                       <th className="text-left py-3 px-4 text-gray-400 font-medium">User</th>
                       <th className="text-left py-3 px-4 text-gray-400 font-medium">Source</th>
                       <th className="text-left py-3 px-4 text-gray-400 font-medium">Date</th>
+                      <th className="text-left py-3 px-4 text-gray-400 font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {getFilteredSubscribers().map((subscriber) => (
                       <tr key={subscriber.id} className="border-b border-gray-700/50 hover:bg-gray-700/30">
+                        <td className="py-3 px-4">
+                          <input
+                            type="checkbox"
+                            checked={selectedSubscribers.has(subscriber.id)}
+                            onChange={(e) => {
+                              const newSelected = new Set(selectedSubscribers);
+                              if (e.target.checked) {
+                                newSelected.add(subscriber.id);
+                              } else {
+                                newSelected.delete(subscriber.id);
+                              }
+                              setSelectedSubscribers(newSelected);
+                            }}
+                            className="rounded bg-gray-700 border-gray-600 text-electric-500 focus:ring-electric-500"
+                          />
+                        </td>
                         <td className="py-3 px-4 text-white">{subscriber.email}</td>
                         <td className="py-3 px-4">
-                          <span className={`capitalize ${getStatusColor(subscriber.status)}`}>
-                            {subscriber.status}
-                          </span>
+                          <select
+                            value={subscriber.status}
+                            onChange={(e) => updateSubscriberStatus(subscriber.id, e.target.value as any)}
+                            className={`bg-transparent border-none text-sm capitalize ${getStatusColor(subscriber.status)} cursor-pointer hover:opacity-80`}
+                          >
+                            <option value="pending" className="bg-gray-800 text-yellow-400">Pending</option>
+                            <option value="confirmed" className="bg-gray-800 text-green-400">Confirmed</option>
+                            <option value="unsubscribed" className="bg-gray-800 text-gray-400">Unsubscribed</option>
+                          </select>
                         </td>
                         <td className="py-3 px-4 text-gray-400">
                           {subscriber.user ? (
@@ -444,6 +764,31 @@ export default function AdminNewsletterManager() {
                         <td className="py-3 px-4 text-gray-400">{subscriber.source}</td>
                         <td className="py-3 px-4 text-gray-400">
                           {format(new Date(subscriber.created_at), 'MMM d, yyyy')}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center space-x-2">
+                            {subscriber.status === 'pending' && (
+                              <button
+                                onClick={() => resendConfirmation(subscriber.id)}
+                                disabled={resendingConfirmation === subscriber.id}
+                                className="p-1 text-blue-400 hover:text-blue-300 disabled:opacity-50"
+                                title="Resend confirmation email"
+                              >
+                                {resendingConfirmation === subscriber.id ? (
+                                  <RefreshCw className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <RotateCw className="h-4 w-4" />
+                                )}
+                              </button>
+                            )}
+                            <button
+                              onClick={() => deleteSubscribers([subscriber.id])}
+                              className="p-1 text-red-400 hover:text-red-300"
+                              title="Delete subscriber"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -482,12 +827,15 @@ export default function AdminNewsletterManager() {
                             {campaign.sent_at && (
                               <span>Sent {format(new Date(campaign.sent_at), 'MMM d, yyyy')}</span>
                             )}
-                            {campaign.sent_count > 0 && (
+                            {campaign.status === 'sent' && campaign.sent_count > 0 && (
                               <>
                                 <span>{campaign.sent_count} sent</span>
                                 <span>{campaign.open_count} opens</span>
                                 <span>{campaign.click_count} clicks</span>
                               </>
+                            )}
+                            {campaign.status === 'queued' && campaign.metadata?.queued_count && (
+                              <span className="text-yellow-400">{campaign.metadata.queued_count} emails queued</span>
                             )}
                           </div>
                         </div>
@@ -578,7 +926,7 @@ export default function AdminNewsletterManager() {
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-semibold text-white flex items-center space-x-2">
                   <Mail className="h-5 w-5 text-electric-400" />
-                  <span>Newsletter Email Queue</span>
+                  <span>Newsletter-Related Emails</span>
                 </h2>
                 <div className="flex items-center space-x-2">
                   <button
@@ -601,15 +949,15 @@ export default function AdminNewsletterManager() {
               {emailQueue.length === 0 ? (
                 <div className="text-center py-12">
                   <Clock className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-                  <p className="text-gray-400 mb-4">No newsletter emails in queue</p>
-                  <p className="text-gray-500 text-sm">Newsletter confirmation and welcome emails will appear here</p>
+                  <p className="text-gray-400 mb-4">No newsletter-related emails found</p>
+                  <p className="text-gray-500 text-sm">This shows emails with 'newsletter' in the subject from the main email queue</p>
                 </div>
               ) : (
                 <>
                   <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-4">
                     <p className="text-blue-400 text-sm">
-                      <strong>Note:</strong> Emails are automatically processed every minute. Click "Send Now" to trigger immediate sending, 
-                      or use "Process All Emails" to go to the main email queue processor.
+                      <strong>Note:</strong> This shows newsletter-related emails from the main email queue. 
+                      To process all emails, use "Process All Emails" to go to the main email processor.
                     </p>
                   </div>
                 <div className="space-y-4">

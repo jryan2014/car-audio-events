@@ -13,6 +13,24 @@ export interface SimpleNotification {
   read_at?: string;
 }
 
+export interface NotificationPreference {
+  id: string;
+  user_id: string;
+  preference_type: string;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export const NOTIFICATION_TYPES = {
+  EVENT_REMINDERS: 'event_reminders',
+  COMPETITION_RESULTS: 'competition_results',
+  TEAM_INVITATIONS: 'team_invitations',
+  SYSTEM_UPDATES: 'system_updates',
+  MARKETING: 'marketing',
+  NEWSLETTER: 'newsletter'
+} as const;
+
 class SimpleNotificationService {
   private activeSubscriptions = new Map<string, any>();
   /**
@@ -187,6 +205,129 @@ class SimpleNotificationService {
       subscription.unsubscribe();
     });
     this.activeSubscriptions.clear();
+  }
+
+  /**
+   * Get user notification preferences
+   */
+  async getUserPreferences(userId: string): Promise<NotificationPreference[]> {
+    try {
+      const { data, error } = await supabase
+        .from('notification_preferences')
+        .select('*')
+        .eq('user_id', userId)
+        .order('preference_type');
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching notification preferences:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Update user notification preference
+   */
+  async updatePreference(userId: string, preferenceType: string, enabled: boolean): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('notification_preferences')
+        .upsert({
+          user_id: userId,
+          preference_type: preferenceType,
+          enabled: enabled
+        }, {
+          onConflict: 'user_id,preference_type'
+        });
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Error updating notification preference:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Check if user wants specific notification type
+   */
+  async checkUserWantsNotification(userId: string, notificationType: string): Promise<boolean> {
+    try {
+      const { data, error } = await supabase
+        .rpc('user_wants_notification', {
+          user_id: userId,
+          notification_type: notificationType
+        });
+
+      if (error) throw error;
+      return data ?? true; // Default to true if no preference
+    } catch (error) {
+      console.error('Error checking notification preference:', error);
+      return true; // Default to true on error
+    }
+  }
+
+  /**
+   * Create notification with preference check (admin only)
+   */
+  async createNotificationWithPreferenceCheck(
+    notification: Omit<SimpleNotification, 'id' | 'created_at' | 'read_at'>, 
+    notificationType?: string
+  ): Promise<boolean> {
+    try {
+      // If notification type is provided, check user preference
+      if (notificationType) {
+        const userWants = await this.checkUserWantsNotification(notification.user_id, notificationType);
+        if (!userWants) {
+          console.log(`User ${notification.user_id} has opted out of ${notificationType} notifications`);
+          return true; // Return success but don't create notification
+        }
+      }
+
+      // Create the notification
+      return await this.createNotification(notification);
+    } catch (error) {
+      console.error('Error creating notification with preference check:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get notification statistics
+   */
+  async getNotificationStats(userId?: string): Promise<any> {
+    try {
+      let query = supabase.from('notification_statistics').select('*');
+      
+      if (userId) {
+        query = query.eq('user_id', userId);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching notification statistics:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Archive old notifications manually
+   */
+  async archiveOldNotifications(): Promise<number> {
+    try {
+      const { data, error } = await supabase
+        .rpc('archive_old_notifications');
+
+      if (error) throw error;
+      return data || 0;
+    } catch (error) {
+      console.error('Error archiving old notifications:', error);
+      return 0;
+    }
   }
 }
 

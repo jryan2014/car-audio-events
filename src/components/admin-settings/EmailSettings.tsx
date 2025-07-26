@@ -104,7 +104,7 @@ export const EmailSettings: React.FC = () => {
     competition_score: '145.2 dB'
   });
   const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile' | 'text'>('desktop');
-  const [queueFilter, setQueueFilter] = useState<'all' | 'pending' | 'failed' | 'sent'>('all');
+  const [queueFilter, setQueueFilter] = useState<'all' | 'pending' | 'failed' | 'sent'>('pending');
   const [queueLoading, setQueueLoading] = useState(false);
   const editorRef = useRef<any>(null);
   const [testEmail, setTestEmail] = useState('');
@@ -783,6 +783,7 @@ export const EmailSettings: React.FC = () => {
       const { error } = await supabase
         .from('email_queue')
         .insert({
+          to_email: testEmail,
           recipient: testEmail,
           subject,
           body: cleanEmailFormat,

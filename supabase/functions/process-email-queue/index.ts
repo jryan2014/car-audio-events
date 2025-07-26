@@ -98,13 +98,71 @@ serve(async (req) => {
       console.log(`Email details:`, { 
         recipient: email.recipient || email.to_email,
         subject: email.subject,
-        hasBody: !!(email.body || email.html_content)
+        hasBody: !!(email.body || email.html_content),
+        hasTemplate: !!email.template_id,
+        templateVars: email.template_variables
       });
+      
+      let finalHtmlBody = '';
+      let finalTextBody = '';
+      let finalSubject = email.subject;
+      
+      // Determine initial content based on what's in the email record
+      if (email.html_content) {
+        finalHtmlBody = email.html_content;
+        finalTextBody = email.body || '';
+      } else if (email.body) {
+        // Check if body contains HTML
+        if (email.body.includes('<!DOCTYPE') || email.body.includes('<html')) {
+          finalHtmlBody = email.body;
+          finalTextBody = '';
+        } else {
+          finalTextBody = email.body;
+          finalHtmlBody = '';
+        }
+      }
+      
+      // If email has a template, fetch and process it
+      if (email.template_id) {
+        console.log(`Fetching template ${email.template_id}...`);
+        const { data: template, error: templateError } = await supabaseAdmin
+          .from('email_templates')
+          .select('subject, body, html_body, text_body, variables')
+          .eq('id', email.template_id)
+          .single();
+          
+        if (template && !templateError) {
+          console.log('Template found, processing variables...');
+          // Use template content
+          finalHtmlBody = template.html_body || finalHtmlBody;
+          finalTextBody = template.text_body || template.body || finalTextBody;
+          finalSubject = template.subject || finalSubject;
+          
+          // Replace template variables
+          if (email.template_variables) {
+            const vars = typeof email.template_variables === 'string' 
+              ? JSON.parse(email.template_variables) 
+              : email.template_variables;
+              
+            Object.entries(vars).forEach(([key, value]) => {
+              const regex = new RegExp(`{{${key}}}`, 'g');
+              finalHtmlBody = finalHtmlBody.replace(regex, String(value));
+              finalTextBody = finalTextBody.replace(regex, String(value));
+              finalSubject = finalSubject.replace(regex, String(value));
+            });
+            console.log('Template variables replaced');
+          }
+        } else {
+          console.error('Failed to fetch template:', templateError);
+        }
+      }
+      
       try {
         const result = await sendEmail({
           recipient: email.recipient || email.to_email,
-          subject: email.subject,
-          body: email.body || email.html_content,
+          subject: finalSubject,
+          body: finalHtmlBody,
+          textBody: finalTextBody,
         });
 
         console.log(`Email send result for ${email.id}:`, result);
@@ -122,6 +180,47 @@ serve(async (req) => {
             })
             .eq('id', email.id);
           console.log(`Email ${email.id} sent successfully with message ID: ${result.messageId}`);
+          
+          // If this email is part of a newsletter campaign, update the campaign stats
+          if (email.metadata?.campaign_id) {
+            console.log(`Updating campaign ${email.metadata.campaign_id} stats...`);
+            
+            // Get current campaign stats
+            const { data: campaign } = await supabaseAdmin
+              .from('newsletter_campaigns')
+              .select('sent_count, status')
+              .eq('id', email.metadata.campaign_id)
+              .single();
+            
+            if (campaign) {
+              // Increment sent count
+              const updates: any = {
+                sent_count: (campaign.sent_count || 0) + 1
+              };
+              
+              // If this is the first email sent, update status and sent_at
+              if (campaign.sent_count === 0) {
+                updates.status = 'sending';
+                updates.sent_at = new Date().toISOString();
+              }
+              
+              // Check if all emails have been sent
+              const { data: pendingCount } = await supabaseAdmin
+                .from('email_queue')
+                .select('id', { count: 'exact' })
+                .eq('status', 'pending')
+                .eq('metadata->>campaign_id', email.metadata.campaign_id);
+              
+              if (pendingCount && pendingCount.length === 0) {
+                updates.status = 'sent';
+              }
+              
+              await supabaseAdmin
+                .from('newsletter_campaigns')
+                .update(updates)
+                .eq('id', email.metadata.campaign_id);
+            }
+          }
         } else {
           // If send result doesn't indicate success, mark as failed
           await supabaseAdmin

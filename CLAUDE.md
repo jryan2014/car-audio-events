@@ -5,7 +5,7 @@ When starting a new session, read this file to understand the project context an
 
 ## Project Overview
 - **Name**: Car Audio Events Competition Platform
-- **Version**: 1.26.0
+- **Version**: 1.26.1
 - **Tech Stack**: React, TypeScript, Supabase, Tailwind CSS, Vite
 - **Database**: Supabase (PostgreSQL)
 - **Deployment**: Netlify
@@ -385,6 +385,114 @@ loadConsentedScripts();
   - Smaller, consistent button shapes
   - Simplified design with matching colors
 
+### 14. Newsletter System Implementation (v1.26.1)
+
+#### Overview
+Implemented a complete newsletter system with email confirmation, template support, and automated sending via Supabase Edge Functions.
+
+#### Key Components
+1. **Newsletter Subscribers Management**:
+   - Full CRUD operations in AdminNewsletterManager
+   - Checkbox selection for bulk operations
+   - Status management (pending, confirmed, unsubscribed)
+   - Resend confirmation functionality
+   - Uses toast notifications (useNotifications hook)
+
+2. **Email Queue System**:
+   - Integrated with existing email_queue table
+   - Template-based email sending
+   - Automated processing via cron job (every 2 minutes)
+   - Supports both Supabase pg_cron and Netlify scheduled functions
+
+3. **Email Templates**:
+   - Database stores 86 email templates
+   - Newsletter templates: newsletter_confirmation, newsletter_welcome, newsletter_unsubscribe
+   - Templates use variables like {{confirmationUrl}}, {{unsubscribeUrl}}
+   - HTML templates stored in `html_body` column (NOT `html_content`)
+
+#### Critical Issues & Solutions
+
+##### Newsletter Template Display Issue
+**Problem**: Newsletter emails showing plain text instead of formatted HTML with logo/header/footer
+**Root Cause**: 
+- Email templates table uses `html_body` column, not `html_content`
+- Edge function was looking for wrong column name
+- Template had plain text instead of full HTML
+
+**Solution Applied**:
+1. Updated newsletter_confirmation template with full HTML including:
+   - Car Audio Events logo: `https://caraudioevents.com/assets/logos/CAE_Logo_V2-email-logo.png`
+   - Professional header with dark blue (#1a1a2e) background
+   - Electric blue (#00D4FF) accent colors
+   - Footer with unsubscribe link, privacy policy, and physical address
+
+2. Fixed edge function (process-email-queue/index.ts):
+   - Changed line 114 to select `html_body, text_body`
+   - Changed line 121 to use `template.html_body`
+
+3. Updated subscribe_to_newsletter function to include both:
+   - `confirmationUrl` variable for confirmation link
+   - `unsubscribeUrl` variable for unsubscribe link
+
+##### Function Overloading Errors
+**Problem**: Multiple versions of subscribe_to_newsletter function causing PGRST203 errors
+**Solution**: Dropped all versions and created single clean function with 2 parameters
+
+##### Token Generation Issues
+**Problem**: gen_random_bytes() function not found, then uuid_generate_v4() not found
+**Solution**: Enabled pgcrypto and uuid-ossp extensions, function now uses gen_random_uuid()
+
+##### Schema Cache Issues
+**Problem**: PostgREST not recognizing updated functions (PGRST202 errors)
+**Solution**: 
+- Used exec_sql to create functions
+- Forced schema reload with NOTIFY pgrst
+- Functions exist but PostgREST cache can be slow to update
+
+#### Email Processing Configuration
+1. **Cron Job Settings** (Admin Panel):
+   - Located in Email Settings under "Email Processing Scheduler"
+   - Default: Runs every 2 minutes
+   - Can be configured with custom cron expressions
+   - Shows last run time and next scheduled run
+
+2. **Email Queue Management**:
+   - Filter now defaults to "pending" instead of "all"
+   - Shows status, recipient, subject, attempts
+   - Process Queue button for manual processing
+
+#### Deployment Requirements
+**CRITICAL**: The edge function changes need to be deployed to Supabase:
+```bash
+cd E:/2025-car-audio-events/car-audio-events
+npx supabase functions deploy process-email-queue
+```
+
+**Note**: Deployment requires Docker Desktop to be running. Current issue: Docker returning 500 Internal Server Error.
+
+#### Database Functions Created/Updated
+- `subscribe_to_newsletter(p_email text, p_source text)` - Handles newsletter signup
+- `confirm_newsletter_subscription(p_confirmation_token uuid)` - Confirms subscription
+- `unsubscribe_from_newsletter(p_unsubscribe_token uuid)` - Handles unsubscribe
+- `get_cron_jobs()` - Returns cron job configuration
+- `update_cron_schedule(schedule text)` - Updates cron schedule
+- `toggle_cron_job(enabled boolean)` - Enables/disables cron job
+
+#### Files Modified
+- `/src/pages/AdminNewsletterManager.tsx` - Added CRUD operations, bulk actions
+- `/src/components/admin-settings/EmailSettings.tsx` - Fixed to_email column, defaulted filter to pending
+- `/src/components/admin-settings/CronSettings.tsx` - New component for cron configuration
+- `/supabase/functions/process-email-queue/index.ts` - Updated to use html_body column
+- `/src/components/Footer.tsx` - Newsletter signup form (unchanged, works correctly)
+
+#### Compliance Notes
+Newsletter system includes:
+- Double opt-in (email confirmation required)
+- Unsubscribe links in all emails
+- Privacy policy links
+- Physical address in footer (123 Main Street, Perry, FL 32347)
+- GDPR/CAN-SPAM compliant
+
 ---
-Last Updated: July 2025 (v1.26.0)
+Last Updated: January 2025 (v1.26.1)
 Context preserved for AI assistants working on this project.

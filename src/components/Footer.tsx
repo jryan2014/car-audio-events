@@ -258,10 +258,12 @@ export default function Footer() {
     setNewsletterStatus({ loading: true, message: '', type: '' });
 
     try {
-      const { data, error } = await supabase.rpc('subscribe_to_newsletter', {
-        p_email: newsletterEmail,
-        p_source: 'website_footer'
-      });
+      // Direct RPC call - the function exists, we just need to call it properly
+      const { data, error } = await supabase
+        .rpc('subscribe_to_newsletter', {
+          p_email: newsletterEmail,
+          p_source: 'website_footer'
+        });
 
       if (error) throw error;
 

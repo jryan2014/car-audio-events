@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { User, Car, Trophy, Star, Calendar, Edit, Save, X, Upload, Users, Settings, Plus, Trash2, Award, Target, Shield, AlertTriangle, CheckCircle, FileCheck, MapPin, Phone, Globe, Wrench, Search, UserPlus, Crown, Building, HelpCircle, Camera, UserCheck, UserX, Zap, DollarSign, ExternalLink, Bell } from 'lucide-react';
+import { User, Car, Trophy, Star, Calendar, Edit, Save, X, Upload, Users, Settings, Plus, Trash2, Award, Target, Shield, AlertTriangle, CheckCircle, FileCheck, MapPin, Phone, Globe, Wrench, Search, UserPlus, Crown, Building, HelpCircle, Camera, UserCheck, UserX, Zap, DollarSign, ExternalLink, Bell, Mail, Lock, Eye, Download } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { useNotifications } from '../components/NotificationSystem';
 import { Link } from 'react-router-dom';
 import NewsletterPreferences from '../components/NewsletterPreferences';
+import NotificationPreferences from '../components/NotificationPreferences';
+import Accordion from '../components/ui/Accordion';
 
 interface AudioSystem {
   id: string;
@@ -1879,68 +1881,113 @@ export default function Profile() {
           )}
 
           {activeTab === 'settings' && (
-            <div className="space-y-6">
-              <NewsletterPreferences />
-              
-              <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-                <h2 className="text-xl font-bold text-white mb-6">Other Settings</h2>
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="text-lg font-semibold text-white mb-4">Notifications</h3>
-                    <div className="space-y-3">
-                      <label className="flex items-center space-x-3">
-                        <input type="checkbox" className="w-4 h-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500" defaultChecked />
-                        <span className="text-gray-300">Event reminders</span>
-                      </label>
-                      <label className="flex items-center space-x-3">
-                        <input type="checkbox" className="w-4 h-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500" defaultChecked />
-                        <span className="text-gray-300">Competition results</span>
-                      </label>
-                      <label className="flex items-center space-x-3">
-                        <input type="checkbox" className="w-4 h-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500" />
-                        <span className="text-gray-300">Team invitations</span>
-                      </label>
-                      <label className="flex items-center space-x-3">
-                        <input type="checkbox" className="w-4 h-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500" />
-                        <span className="text-gray-300">Marketing emails</span>
-                      </label>
-                    </div>
-                </div>
-                
-                <div>
-                  <h3 className="text-lg font-semibold text-white mb-4">Privacy</h3>
-                  <div className="space-y-3">
-                    <label className="flex items-center space-x-3">
-                      <input type="checkbox" className="w-4 h-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500" defaultChecked />
-                      <span className="text-gray-300">Show profile in directory</span>
-                    </label>
-                    <label className="flex items-center space-x-3">
-                      <input type="checkbox" className="w-4 h-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500" defaultChecked />
-                      <span className="text-gray-300">Show competition results</span>
-                    </label>
-                    <label className="flex items-center space-x-3">
-                      <input type="checkbox" className="w-4 h-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500" defaultChecked />
-                      <span className="text-gray-300">Show audio system details</span>
-                    </label>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-lg font-semibold text-white mb-4">Account Actions</h3>
-                  <div className="space-y-3">
-                    <button className="bg-electric-500 text-white px-4 py-2 rounded-lg hover:bg-electric-600 transition-colors">
-                      Change Password
-                    </button>
-                    <button className="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors">
-                      Download Data
-                    </button>
-                    <button className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors">
-                      Delete Account
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <div>
+              <Accordion
+                items={[
+                  {
+                    id: 'notifications',
+                    title: 'Notification Preferences',
+                    icon: <Bell className="h-5 w-5" />,
+                    content: <NotificationPreferences />,
+                    defaultOpen: true
+                  },
+                  {
+                    id: 'email',
+                    title: 'Email & Newsletter',
+                    icon: <Mail className="h-5 w-5" />,
+                    content: <NewsletterPreferences />
+                  },
+                  {
+                    id: 'privacy',
+                    title: 'Privacy Settings',
+                    icon: <Eye className="h-5 w-5" />,
+                    content: (
+                      <div className="space-y-3">
+                        <label className="flex items-center space-x-3">
+                          <input type="checkbox" className="w-4 h-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500" defaultChecked />
+                          <span className="text-gray-300">Show profile in member directory</span>
+                        </label>
+                        <label className="flex items-center space-x-3">
+                          <input type="checkbox" className="w-4 h-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500" defaultChecked />
+                          <span className="text-gray-300">Display competition results publicly</span>
+                        </label>
+                        <label className="flex items-center space-x-3">
+                          <input type="checkbox" className="w-4 h-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500" defaultChecked />
+                          <span className="text-gray-300">Show audio system details to other members</span>
+                        </label>
+                        <label className="flex items-center space-x-3">
+                          <input type="checkbox" className="w-4 h-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500" />
+                          <span className="text-gray-300">Allow other members to contact me</span>
+                        </label>
+                      </div>
+                    )
+                  },
+                  {
+                    id: 'security',
+                    title: 'Security',
+                    icon: <Lock className="h-5 w-5" />,
+                    content: (
+                      <div className="space-y-4">
+                        <div>
+                          <h4 className="text-white font-medium mb-3">Two-Factor Authentication</h4>
+                          <p className="text-gray-400 text-sm mb-3">
+                            Add an extra layer of security to your account
+                          </p>
+                          <button className="bg-electric-500 text-white px-4 py-2 rounded-lg hover:bg-electric-600 transition-colors">
+                            Enable 2FA
+                          </button>
+                        </div>
+                        
+                        <div className="pt-4 border-t border-gray-700">
+                          <h4 className="text-white font-medium mb-3">Password</h4>
+                          <button className="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors">
+                            Change Password
+                          </button>
+                        </div>
+                        
+                        <div className="pt-4 border-t border-gray-700">
+                          <h4 className="text-white font-medium mb-3">Active Sessions</h4>
+                          <p className="text-gray-400 text-sm mb-3">
+                            Manage devices where you're signed in
+                          </p>
+                          <button className="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors">
+                            View Sessions
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  },
+                  {
+                    id: 'data',
+                    title: 'Data & Account',
+                    icon: <Download className="h-5 w-5" />,
+                    content: (
+                      <div className="space-y-4">
+                        <div>
+                          <h4 className="text-white font-medium mb-3">Export Your Data</h4>
+                          <p className="text-gray-400 text-sm mb-3">
+                            Download a copy of your data including profile, events, and audio system information
+                          </p>
+                          <button className="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors">
+                            Request Data Export
+                          </button>
+                        </div>
+                        
+                        <div className="pt-4 border-t border-gray-700">
+                          <h4 className="text-white font-medium mb-3">Account Deletion</h4>
+                          <p className="text-gray-400 text-sm mb-3">
+                            Permanently delete your account and all associated data. This action cannot be undone.
+                          </p>
+                          <button className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors">
+                            Delete Account
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  }
+                ]}
+                allowMultiple={true}
+              />
             </div>
           )}
         </div>

@@ -13,7 +13,15 @@
       "Bash(tail:*)",
       "Bash(del add-components-column.js)",
       "Bash(npm install:*)",
-      "Bash(npx supabase db remote-query:*)"
+      "Bash(npx supabase db remote-query:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx supabase db dump:*)",
+      "Bash(mkdir:*)",
+      "WebFetch(domain:supabase.com)",
+      "Bash(del count-email-templates.js)",
+      "Bash(npx supabase functions deploy:*)",
+      "Bash(npx supabase:*)",
+      "Bash(find:*)"
     ],
     "deny": []
   }

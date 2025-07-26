@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Send, Users, User, Trash2, AlertCircle, CheckCircle, Info, AlertTriangle } from 'lucide-react';
+import { Bell, Send, Users, User, Trash2, AlertCircle, CheckCircle, Info, AlertTriangle, Archive } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useNotifications } from '../NotificationSystem';
+import { simpleNotificationService, NOTIFICATION_TYPES } from '../../services/simpleNotificationService';
+import NotificationRateLimitStatus from './NotificationRateLimitStatus';
 
 interface NotificationTarget {
   type: 'all' | 'user' | 'membership';
@@ -19,12 +21,16 @@ export default function NotificationManager() {
     title: '',
     message: '',
     type: 'info' as 'info' | 'success' | 'warning' | 'error',
-    link: ''
+    link: '',
+    notificationType: '' // For preference checking
   });
   
   const [target, setTarget] = useState<NotificationTarget>({
     type: 'all'
   });
+  
+  const [archiveLoading, setArchiveLoading] = useState(false);
+  const [stats, setStats] = useState<any>(null);
 
   useEffect(() => {
     loadUsers();
@@ -105,34 +111,57 @@ export default function NotificationManager() {
       const { data: currentUserData } = await supabase.auth.getUser();
       const createdBy = currentUserData.user?.id;
 
-      // Create notifications for all target users
-      const notifications = targetUsers.map(userId => ({
-        user_id: userId,
-        title: notification.title,
-        message: notification.message,
-        type: notification.type,
-        link: notification.link || null,
-        read: false,
-        created_by: createdBy
-      }));
+      // Create notifications for all target users with preference checking
+      let sentCount = 0;
+      let skippedCount = 0;
 
-      const { error } = await supabase
-        .from('notifications')
-        .insert(notifications);
+      for (const userId of targetUsers) {
+        const notificationData = {
+          user_id: userId,
+          title: notification.title,
+          message: notification.message,
+          type: notification.type,
+          link: notification.link || null,
+          read: false,
+          created_by: createdBy
+        };
 
-      if (error) throw error;
+        if (notification.notificationType) {
+          // Check user preference before sending
+          const userWants = await simpleNotificationService.checkUserWantsNotification(
+            userId,
+            notification.notificationType
+          );
+          
+          if (!userWants) {
+            skippedCount++;
+            continue;
+          }
+        }
 
-      showSuccess(
-        'Notifications Sent',
-        `Successfully sent notification to ${targetUsers.length} user${targetUsers.length > 1 ? 's' : ''}`
-      );
+        const { error } = await supabase
+          .from('notifications')
+          .insert(notificationData);
+
+        if (!error) {
+          sentCount++;
+        }
+      }
+
+      let message = `Sent to ${sentCount} user${sentCount !== 1 ? 's' : ''}`;
+      if (skippedCount > 0) {
+        message += ` (${skippedCount} opted out)`;
+      }
+      
+      showSuccess('Notifications Sent', message);
 
       // Reset form
       setNotification({
         title: '',
         message: '',
         type: 'info',
-        link: ''
+        link: '',
+        notificationType: ''
       });
       setTarget({ type: 'all' });
       
@@ -170,12 +199,31 @@ export default function NotificationManager() {
     }
   };
 
+  const handleArchiveOldNotifications = async () => {
+    setArchiveLoading(true);
+    try {
+      const archivedCount = await simpleNotificationService.archiveOldNotifications();
+      showSuccess(
+        'Archive Complete',
+        `Archived ${archivedCount} old notification${archivedCount !== 1 ? 's' : ''}`
+      );
+      loadRecentNotifications();
+    } catch (error: any) {
+      showError('Archive Failed', error.message);
+    } finally {
+      setArchiveLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center space-x-2 mb-6">
         <Bell className="h-6 w-6 text-electric-500" />
         <h2 className="text-2xl font-bold text-white">Notification Manager</h2>
       </div>
+
+      {/* Rate Limit Status */}
+      <NotificationRateLimitStatus />
 
       {/* Create Notification Form */}
       <div className="bg-gray-800/50 rounded-lg p-6">
@@ -301,6 +349,27 @@ export default function NotificationManager() {
             </p>
           </div>
 
+          {/* Notification Category (for preferences) */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Notification Category (optional)</label>
+            <select
+              value={notification.notificationType}
+              onChange={(e) => setNotification({ ...notification, notificationType: e.target.value })}
+              className="w-full p-2 bg-gray-700 border border-gray-600 rounded-lg text-white"
+            >
+              <option value="">No category (always send)</option>
+              <option value={NOTIFICATION_TYPES.EVENT_REMINDERS}>Event Reminders</option>
+              <option value={NOTIFICATION_TYPES.COMPETITION_RESULTS}>Competition Results</option>
+              <option value={NOTIFICATION_TYPES.TEAM_INVITATIONS}>Team Invitations</option>
+              <option value={NOTIFICATION_TYPES.SYSTEM_UPDATES}>System Updates</option>
+              <option value={NOTIFICATION_TYPES.MARKETING}>Marketing</option>
+              <option value={NOTIFICATION_TYPES.NEWSLETTER}>Newsletter</option>
+            </select>
+            <p className="text-xs text-gray-400 mt-1">
+              If selected, only users who have opted in to this category will receive the notification
+            </p>
+          </div>
+
           {/* Send Button */}
           <button
             onClick={handleSendNotification}
@@ -315,7 +384,17 @@ export default function NotificationManager() {
 
       {/* Recent Notifications */}
       <div className="bg-gray-800/50 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-white mb-4">Recent Notifications</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-white">Recent Notifications</h3>
+          <button
+            onClick={handleArchiveOldNotifications}
+            disabled={archiveLoading}
+            className="bg-gray-700 text-gray-300 px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 text-sm"
+          >
+            <Archive className="h-4 w-4" />
+            <span>{archiveLoading ? 'Archiving...' : 'Archive Old'}</span>
+          </button>
+        </div>
         
         {recentNotifications.length > 0 ? (
           <div className="space-y-3">

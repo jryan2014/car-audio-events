@@ -5,6 +5,7 @@ interface EmailPayload {
   recipient: string;
   subject: string;
   body: string; // HTML body
+  textBody?: string; // Optional text body
 }
 
 interface MailgunConfig {
@@ -16,7 +17,7 @@ interface MailgunConfig {
 
 // Reusable email sending service for Mailgun
 export async function sendEmail(payload: EmailPayload) {
-  const { recipient, subject, body } = payload;
+  const { recipient, subject, body, textBody } = payload;
 
   // Get Mailgun configuration from environment variables
   const apiKey = Deno.env.get('MAILGUN_API_KEY');
@@ -25,7 +26,12 @@ export async function sendEmail(payload: EmailPayload) {
   const fromName = Deno.env.get('MAILGUN_FROM_NAME') || 'Car Audio Events';
 
   if (!apiKey || !domain) {
-    throw new Error('Mailgun API credentials are not configured in secrets.');
+    console.error('Mailgun configuration missing:', {
+      hasApiKey: !!apiKey,
+      hasDomain: !!domain,
+      availableEnvVars: Object.keys(Deno.env.toObject()).filter(k => k.includes('MAILGUN'))
+    });
+    throw new Error(`Mailgun API credentials are not configured. Please set MAILGUN_API_KEY and MAILGUN_DOMAIN in Supabase Edge Function secrets. Current status: API Key: ${apiKey ? 'Set' : 'Missing'}, Domain: ${domain ? 'Set' : 'Missing'}`);
   }
 
   console.log('Mailgun Config:', { domain, fromEmail, fromName, recipient });
@@ -36,6 +42,11 @@ export async function sendEmail(payload: EmailPayload) {
   formData.append('to', recipient);
   formData.append('subject', subject);
   formData.append('html', body);
+  
+  // Add text version if provided
+  if (textBody) {
+    formData.append('text', textBody);
+  }
 
   // Send email via Mailgun API
   const response = await fetch(`https://api.mailgun.net/v3/${domain}/messages`, {
@@ -66,7 +77,7 @@ export async function sendEmail(payload: EmailPayload) {
 
 // Alternative function that accepts Mailgun config as parameter
 export async function sendEmailWithConfig(payload: EmailPayload, config: MailgunConfig) {
-  const { recipient, subject, body } = payload;
+  const { recipient, subject, body, textBody } = payload;
 
   // Create form data for Mailgun API
   const formData = new FormData();
@@ -74,6 +85,11 @@ export async function sendEmailWithConfig(payload: EmailPayload, config: Mailgun
   formData.append('to', recipient);
   formData.append('subject', subject);
   formData.append('html', body);
+  
+  // Add text version if provided
+  if (textBody) {
+    formData.append('text', textBody);
+  }
 
   // Send email via Mailgun API
   const response = await fetch(`https://api.mailgun.net/v3/${config.domain}/messages`, {
