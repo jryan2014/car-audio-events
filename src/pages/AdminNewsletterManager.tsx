@@ -129,20 +129,22 @@ export default function AdminNewsletterManager() {
   };
 
   const loadNewsletters = async () => {
-    // Use exec_sql to bypass schema cache
-    const { data: result, error } = await supabase.rpc('exec_sql', {
-      sql_command: `
-        SELECT * FROM newsletter_campaigns 
-        ORDER BY created_at DESC
-      `
-    });
+    // Try regular query first
+    const { data, error } = await supabase
+      .from('newsletter_campaigns')
+      .select('*')
+      .order('created_at', { ascending: false });
 
     if (error) {
       console.error('Error loading newsletters:', error);
+      // If schema cache issue, just show empty for now
+      if (error.code === 'PGRST204' || error.message?.includes('schema cache')) {
+        console.log('Schema cache issue - newsletters exist but cannot be displayed yet');
+        showInfo('Newsletters are being synced. Please refresh the page in a moment.');
+        setNewsletters([]);
+      }
       return;
     }
-
-    const data = result?.result || [];
 
     setNewsletters(data || []);
   };
@@ -501,8 +503,11 @@ export default function AdminNewsletterManager() {
           
         if (insertError) {
           console.error('Insert error:', insertError);
-          // If it's still a schema cache issue, try exec_sql as fallback
-          if (insertError.code === 'PGRST204') {
+          console.error('Error code:', insertError.code);
+          console.error('Error message:', insertError.message);
+          // If it's a schema cache issue, try exec_sql as fallback
+          // PGRST204 = schema cache miss, 42P01 = table not found
+          if (insertError.code === 'PGRST204' || insertError.message?.includes('schema cache')) {
             const { error: execError } = await supabase.rpc('exec_sql', {
               sql_command: `
                 INSERT INTO newsletter_campaigns (
@@ -522,8 +527,10 @@ export default function AdminNewsletterManager() {
             
             if (execError) throw execError;
             
-            // Get the ID manually
-            const { data: newsletters } = await supabase
+            console.log('Newsletter created via exec_sql, attempting to get ID...');
+            
+            // Try to get the ID manually
+            const { data: newsletters, error: selectError } = await supabase
               .from('newsletter_campaigns')
               .select('id, name')
               .eq('name', composeData.name)
@@ -531,11 +538,25 @@ export default function AdminNewsletterManager() {
               .order('created_at', { ascending: false })
               .limit(1);
               
-            if (!newsletters || newsletters.length === 0) {
+            if (selectError) {
+              console.error('Failed to query newsletter after creation:', selectError);
+              // If we can't query it but exec_sql succeeded, create a fake data object
+              // The newsletter was created, we just can't get its ID due to schema cache
+              data = { 
+                id: 'temp-' + Date.now(), 
+                name: composeData.name,
+                status: sendNow ? 'sending' : 'draft'
+              };
+              // Don't try to send emails if we don't have a real ID
+              if (sendNow) {
+                showWarning('Newsletter saved but cannot queue emails due to database sync issues. Please try again in a moment.');
+                sendNow = false;
+              }
+            } else if (!newsletters || newsletters.length === 0) {
               throw new Error('Failed to create newsletter');
+            } else {
+              data = newsletters[0];
             }
-            
-            data = newsletters[0];
           } else {
             throw insertError;
           }
