@@ -253,23 +253,29 @@ export default function AdminNewsletterManager() {
 
       if (updateError) throw updateError;
 
-      // Queue confirmation email
+      // Get newsletter confirmation template
+      const { data: template } = await supabase
+        .from('email_templates')
+        .select('id')
+        .eq('template_name', 'newsletter_confirmation')
+        .single();
+
+      if (!template) {
+        throw new Error('Newsletter confirmation template not found');
+      }
+
+      // Queue confirmation email using the correct column names
       const { error: emailError } = await supabase
         .from('email_queue')
         .insert({
-          recipient: subscriber.email,
+          to_email: subscriber.email,  // Changed from 'recipient'
           subject: 'Confirm Your Newsletter Subscription',
-          body: `Please confirm your subscription to Car Audio Events newsletter.`,
-          html_content: `<h2>Welcome to Car Audio Events Newsletter!</h2>
-            <p>Thank you for subscribing. Please confirm your subscription by clicking the link below:</p>
-            <p><a href="https://caraudioevents.com/newsletter/confirm/${confirmationToken}" style="display: inline-block; padding: 10px 20px; background-color: #0080ff; color: white; text-decoration: none; border-radius: 5px;">Confirm Subscription</a></p>
-            <p>Or copy and paste this link: https://caraudioevents.com/newsletter/confirm/${confirmationToken}</p>
-            <p>If you did not subscribe, you can safely ignore this email.</p>`,
-          status: 'pending',
-          metadata: {
-            type: 'newsletter_confirmation_resend',
-            subscriber_id: subscriberId
-          }
+          template_id: template.id,
+          template_variables: {
+            confirmationUrl: `https://caraudioevents.com/newsletter/confirm/${confirmationToken}`,
+            unsubscribeUrl: `https://caraudioevents.com/newsletter/unsubscribe/${subscriber.unsubscribe_token || confirmationToken}`
+          },
+          status: 'pending'
         });
 
       if (emailError) throw emailError;
