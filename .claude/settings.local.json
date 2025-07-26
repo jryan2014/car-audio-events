@@ -21,7 +21,8 @@
       "Bash(del count-email-templates.js)",
       "Bash(npx supabase functions deploy:*)",
       "Bash(npx supabase:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(git tag:*)"
     ],
     "deny": []
   }

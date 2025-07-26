@@ -293,26 +293,6 @@ class SimpleNotificationService {
     }
   }
 
-  /**
-   * Get notification statistics
-   */
-  async getNotificationStats(userId?: string): Promise<any> {
-    try {
-      let query = supabase.from('notification_statistics').select('*');
-      
-      if (userId) {
-        query = query.eq('user_id', userId);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      
-      return data || [];
-    } catch (error) {
-      console.error('Error fetching notification statistics:', error);
-      return [];
-    }
-  }
 
   /**
    * Archive old notifications manually
