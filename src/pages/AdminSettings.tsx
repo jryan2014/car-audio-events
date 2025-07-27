@@ -1,14 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Key, Save, Eye, EyeOff, Shield, AlertCircle, CheckCircle, Settings, Database, CreditCard, Map, Mail, Bug, TestTube, ExternalLink, HardDrive, Bell, Clock } from 'lucide-react';
+import { Key, Save, Eye, EyeOff, Shield, AlertCircle, CheckCircle, Settings, CreditCard, Mail, Bug, TestTube, ExternalLink, HardDrive, Bell, Clock } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import AdminEmailSettings from '../components/AdminEmailSettings';
+// AdminEmailSettings component removed - using modular EmailSettings instead
 import { ServiceWorkerManager } from '../components/ServiceWorkerManager';
 
-import { SupabaseSettings } from '../components/admin-settings/SupabaseSettings';
-import { GoogleMapsSettings } from '../components/admin-settings/GoogleMapsSettings';
-import { HCaptchaSettings } from '../components/admin-settings/HCaptchaSettings';
 import { SessionSettings } from '../components/admin-settings/SessionSettings';
 import { EmailSettings } from '../components/admin-settings/EmailSettings';
 import { CacheSettings } from '../components/admin-settings/CacheSettings';
@@ -39,9 +36,6 @@ interface IntegrationKeys {
 
 const sections = [
   { id: 'payments', label: 'Payment Providers', icon: <CreditCard className="h-5 w-5" /> },
-  { id: 'supabase', label: 'Supabase', icon: <Database className="h-5 w-5" /> },
-  { id: 'google', label: 'Google Maps', icon: <Map className="h-5 w-5" /> },
-      { id: 'hcaptcha', label: 'hCaptcha', icon: <Shield className="h-5 w-5" /> },
   { id: 'session', label: 'Session', icon: <Settings className="h-5 w-5" /> },
   { id: 'email', label: 'Email', icon: <Mail className="h-5 w-5" /> },
   { id: 'cron', label: 'Email Scheduler', icon: <Clock className="h-5 w-5" /> },
@@ -336,9 +330,6 @@ export default function AdminSettings() {
   const renderSection = () => {
     switch (activeSection) {
       case 'payments': return <PaymentSettings />;
-      case 'supabase': return <SupabaseSettings />;
-      case 'google': return <GoogleMapsSettings />;
-              case 'hcaptcha': return <HCaptchaSettings />;
       case 'session': return <SessionSettings />;
       case 'email': return <EmailSettings />;
       case 'cron': return <CronSettings />;
@@ -357,17 +348,6 @@ export default function AdminSettings() {
           <p className="text-gray-400">Manage system configuration and integration settings</p>
         </div>
 
-        {/* Security Notice */}
-        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-6">
-          <div className="flex items-center space-x-2">
-            <Shield className="h-5 w-5 text-red-400" />
-            <h3 className="text-red-400 font-medium">Security Notice</h3>
-          </div>
-          <p className="text-red-300 text-sm mt-2">
-            This page contains sensitive configuration data. Ensure you're on a secure connection and 
-            that only authorized administrators have access to these settings.
-          </p>
-        </div>
 
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Sidebar Navigation */}

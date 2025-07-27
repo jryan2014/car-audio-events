@@ -118,12 +118,6 @@ const adminNavGroups: AdminNavGroup[] = [
         description: 'Contact configuration'
       },
       {
-        name: 'Email Settings',
-        href: '/admin/email-settings',
-        icon: Settings,
-        description: 'Email configuration'
-      },
-      {
         name: 'Newsletter',
         href: '/admin/newsletter',
         icon: Mail,

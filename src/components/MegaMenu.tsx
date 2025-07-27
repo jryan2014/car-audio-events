@@ -304,11 +304,20 @@ export default function MegaMenu({ isAuthenticated, user, onLinkClick }: MegaMen
     return baseItems;
   };
 
-  const handleLinkClick = (href: string) => {
+  const handleLinkClick = (href: string, event?: React.MouseEvent) => {
+    // Immediately close the dropdown
+    setOpenDropdown(null);
+    
+    // Clear any pending timeouts
+    if (mouseLeaveTimeout) {
+      clearTimeout(mouseLeaveTimeout);
+      setMouseLeaveTimeout(null);
+    }
+    
+    // Call the parent's onLinkClick if provided
     if (onLinkClick) {
       onLinkClick();
     }
-    setOpenDropdown(null);
   };
 
   const handleMouseEnter = (itemId: string) => {
@@ -320,9 +329,12 @@ export default function MegaMenu({ isAuthenticated, user, onLinkClick }: MegaMen
   };
 
   const handleMouseLeave = () => {
+    if (mouseLeaveTimeout) {
+      clearTimeout(mouseLeaveTimeout);
+    }
     const timeout = setTimeout(() => {
       setOpenDropdown(null);
-    }, 150);
+    }, 200);
     setMouseLeaveTimeout(timeout);
   };
 
@@ -352,9 +364,9 @@ export default function MegaMenu({ isAuthenticated, user, onLinkClick }: MegaMen
           const isOpen = openDropdown === item.id;
 
           return (
-            <div
+            <li
               key={item.id}
-              className="relative"
+              className="relative group"
               onMouseEnter={() => hasChildren && handleMouseEnter(item.id)}
               onMouseLeave={() => hasChildren && handleMouseLeave()}
             >
@@ -363,7 +375,10 @@ export default function MegaMenu({ isAuthenticated, user, onLinkClick }: MegaMen
                   to={item.href}
                   target={item.target_blank ? '_blank' : undefined}
                   rel={item.target_blank ? 'noopener noreferrer' : undefined}
-                  onClick={() => handleLinkClick(item.href!)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleLinkClick(item.href!);
+                  }}
                   className="flex items-center space-x-2 text-gray-300 hover:text-electric-400 transition-colors duration-200 font-medium py-2 group"
                 >
                   {renderIcon(item.icon)}
@@ -387,9 +402,14 @@ export default function MegaMenu({ isAuthenticated, user, onLinkClick }: MegaMen
               {/* Dropdown Menu */}
               {hasChildren && isOpen && (
                 <div
-                  className="absolute left-0 top-full mt-2 w-80 bg-gray-800/95 backdrop-blur-sm border border-gray-700/50 rounded-xl shadow-2xl z-50"
-                  onMouseEnter={() => handleMouseEnter(item.id)}
-                  onMouseLeave={handleMouseLeave}
+                  className="absolute left-0 top-full -mt-1 pt-3 w-80 bg-gray-800/95 backdrop-blur-sm border border-gray-700/50 rounded-xl shadow-2xl z-50"
+                  onMouseEnter={() => {
+                    if (mouseLeaveTimeout) {
+                      clearTimeout(mouseLeaveTimeout);
+                      setMouseLeaveTimeout(null);
+                    }
+                  }}
+                  onMouseLeave={() => handleMouseLeave()}
                 >
                   <div className="p-4">
                     <div className="space-y-1">
@@ -399,7 +419,10 @@ export default function MegaMenu({ isAuthenticated, user, onLinkClick }: MegaMen
                           to={child.href || '#'}
                           target={child.target_blank ? '_blank' : undefined}
                           rel={child.target_blank ? 'noopener noreferrer' : undefined}
-                          onClick={() => handleLinkClick(child.href || '#')}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleLinkClick(child.href || '#');
+                          }}
                           className="flex items-start space-x-3 px-3 py-3 text-gray-300 hover:text-white hover:bg-gray-700/50 rounded-lg transition-colors duration-200 group"
                         >
                           {renderIcon(child.icon)}
@@ -417,7 +440,7 @@ export default function MegaMenu({ isAuthenticated, user, onLinkClick }: MegaMen
                   </div>
                 </div>
               )}
-            </div>
+            </li>
           );
         })}
       </ul>

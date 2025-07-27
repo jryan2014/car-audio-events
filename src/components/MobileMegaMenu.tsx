@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight, Calendar, MapPin, Users, FileText, Home, Building2, Settings, BarChart3, User, Crown, BookOpen, HelpCircle, MessageSquare, Lightbulb, Search } from 'lucide-react';
+import { ChevronRight, Calendar, MapPin, Users, FileText, Home, Building2, Settings, BarChart3, User, Crown, BookOpen, HelpCircle, MessageSquare, Lightbulb, Search, LogOut, CreditCard } from 'lucide-react';
 import Badge from './Badge';
 import { GlobalSearch } from './GlobalSearch';
 import { supabase } from '../lib/supabase';
@@ -361,7 +361,81 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, onL
         {loading ? (
           <div className="text-center text-gray-400">Loading navigation...</div>
         ) : (
-          renderNavigationItems(navigationItems)
+          <>
+            {/* User Profile Section for logged-in users */}
+            {isAuthenticated && user && (
+              <div className="mb-6 pb-6 border-b border-gray-700">
+                <div className="flex items-center mb-4">
+                  {user.profileImage ? (
+                    <img 
+                      src={user.profileImage} 
+                      alt={user.name}
+                      className="w-12 h-12 rounded-full border-2 border-electric-500 mr-3"
+                    />
+                  ) : (
+                    <User className="h-12 w-12 p-2 bg-electric-500 rounded-full text-white mr-3" />
+                  )}
+                  <div>
+                    <div className="text-white font-semibold">{user.name}</div>
+                    <div className="text-gray-400 text-sm">{user.email}</div>
+                  </div>
+                </div>
+                
+                {/* User Navigation Links */}
+                <div className="space-y-2">
+                  <Link
+                    to={user.membershipType === 'admin' ? '/admin/dashboard' : '/dashboard'}
+                    onClick={onLinkClick}
+                    className="flex items-center text-gray-300 hover:text-white py-2 transition-colors"
+                  >
+                    <BarChart3 className="w-5 h-5 mr-3" />
+                    Dashboard
+                  </Link>
+                  
+                  <Link
+                    to="/profile"
+                    onClick={onLinkClick}
+                    className="flex items-center text-gray-300 hover:text-white py-2 transition-colors"
+                  >
+                    <User className="w-5 h-5 mr-3" />
+                    Profile
+                  </Link>
+                  
+                  <Link
+                    to="/profile?tab=settings"
+                    onClick={onLinkClick}
+                    className="flex items-center text-gray-300 hover:text-white py-2 transition-colors"
+                  >
+                    <Settings className="w-5 h-5 mr-3" />
+                    Settings
+                  </Link>
+                  
+                  <Link
+                    to="/billing"
+                    onClick={onLinkClick}
+                    className="flex items-center text-gray-300 hover:text-white py-2 transition-colors"
+                  >
+                    <CreditCard className="w-5 h-5 mr-3" />
+                    Billing & Subscription
+                  </Link>
+                  
+                  {user.membershipType && ['retailer', 'manufacturer', 'organization'].includes(user.membershipType) && (
+                    <Link
+                      to="/my-ads"
+                      onClick={onLinkClick}
+                      className="flex items-center text-gray-300 hover:text-white py-2 transition-colors"
+                    >
+                      <MessageSquare className="w-5 h-5 mr-3" />
+                      My Ads
+                    </Link>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {/* Regular Navigation Items */}
+            {renderNavigationItems(navigationItems)}
+          </>
         )}
       </nav>
       
@@ -372,7 +446,7 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, onL
             onClick={onLogout}
             className="w-full text-left flex items-center p-3 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors duration-200"
           >
-            <Users className="mr-3 h-5 w-5" />
+            <LogOut className="mr-3 h-5 w-5" />
             <span className="font-semibold">Logout</span>
           </button>
         ) : (

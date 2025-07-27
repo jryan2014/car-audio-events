@@ -48,7 +48,6 @@ const SystemConfiguration = React.lazy(() => import('./pages/SystemConfiguration
 const SystemConfigurationDemo = React.lazy(() => import('./pages/SystemConfigurationDemo'));
 const OrganizationManager = React.lazy(() => import('./pages/OrganizationManager'));
 const AdminContactSettingsPage = React.lazy(() => import('./pages/AdminContactSettings'));
-const AdminEmailSettingsPage = React.lazy(() => import('./pages/AdminEmailSettings'));
 const NavigationManager = React.lazy(() => import('./pages/NavigationManager'));
 // const TestAds = React.lazy(() => import('./pages/TestAds')); // TODO: Create this page
 const DirectoryManager = React.lazy(() => import('./pages/DirectoryManager'));
@@ -170,7 +169,6 @@ function App() {
               <Route path="/admin/system-configuration-demo" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><SystemConfigurationDemo /></Suspense></AdminLayout>} />
               <Route path="/admin/organizations" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><OrganizationManager /></Suspense></AdminLayout>} />
               <Route path="/admin/contact-settings" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminContactSettingsPage /></Suspense></AdminLayout>} />
-              <Route path="/admin/email-settings" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminEmailSettingsPage /></Suspense></AdminLayout>} />
               <Route path="/admin/navigation-manager" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><NavigationManager /></Suspense></AdminLayout>} />
               <Route path="/admin/directory-manager" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><DirectoryManager /></Suspense></AdminLayout>} />
               <Route path="/admin/competition-management" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><CompetitionManagement /></Suspense></AdminLayout>} />

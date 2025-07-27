@@ -4,6 +4,9 @@ import { Mail, Save, CheckCircle, AlertCircle, FileText, Code, HelpCircle, Setti
 import { Editor } from '@tinymce/tinymce-react';
 import { useNotifications } from '../NotificationSystem';
 import { useAuth } from '../../contexts/AuthContext';
+import { getTinyMCEScriptUrl } from '../../config/tinymce';
+import { EmailTemplatesAccordion } from './EmailTemplatesAccordion';
+import { EmailTemplateEditModal } from './EmailTemplateEditModal';
 
 
 interface EmailSettingsState {
@@ -130,6 +133,9 @@ export const EmailSettings: React.FC = () => {
 
   // Add debug toggle state
   const [showCategoryDebug, setShowCategoryDebug] = useState(false);
+  
+  // Add modal state for template editing
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
 
   // Bulletproof email header and footer templates
   const defaultEmailHeader = `
@@ -1427,79 +1433,18 @@ export const EmailSettings: React.FC = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {templates
-            .filter(template => {
-              // Category filter
-              if (templateCategoryFilter !== 'all' && template.category_id !== templateCategoryFilter) {
-                return false;
-              }
-              // Search filter
-              if (templateSearchQuery.trim()) {
-                const searchLower = templateSearchQuery.toLowerCase();
-                return (
-                  template.name.toLowerCase().includes(searchLower) ||
-                  template.subject.toLowerCase().includes(searchLower) ||
-                  template.body.toLowerCase().includes(searchLower)
-                );
-              }
-              return true;
-            })
-            .map((template) => (
-            <div
-              key={template.id}
-              className="bg-gray-700/50 rounded-lg p-4 border border-gray-600 hover:border-electric-500/50 transition-colors cursor-pointer"
-              onClick={() => setSelectedTemplate(template)}
-            >
-              <h4 className="font-medium text-white mb-2">{template.name}</h4>
-              <p className="text-gray-400 text-sm mb-2">{template.subject}</p>
-              <p className="text-gray-500 text-xs">
-                Updated: {new Date(template.updated_at).toLocaleDateString()}
-              </p>
-              {template.category_id && (
-                <span className="text-xs px-2 py-1 rounded bg-orange-500/20 text-orange-400 ml-2">
-                  {categories.find(cat => cat.id === template.category_id)?.name}
-                </span>
-              )}
-              <div className="flex items-center space-x-2 mt-2">
-                <span className={`text-xs px-2 py-1 rounded ${template.is_active ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}`}>{template.is_active ? 'Active' : 'Inactive'}</span>
-                <label className="flex items-center space-x-1 text-xs">
-                  <input
-                    type="checkbox"
-                    checked={template.is_active}
-                    onChange={async (e) => {
-                      if (e.target.checked) {
-                        // Deactivate all other templates with same name/category
-                        const { data, error } = await supabase
-                          .from('email_templates')
-                          .update({ is_active: false })
-                          .eq('name', template.name)
-                          .eq('category_id', template.category_id)
-                          .neq('id', template.id);
-                        // Activate this template
-                        await supabase
-                          .from('email_templates')
-                          .update({ is_active: true })
-                          .eq('id', template.id);
-                        // Update local state
-                        setTemplates(templates.map(t => t.id === template.id ? { ...t, is_active: true } : (t.name === template.name && t.category_id === template.category_id ? { ...t, is_active: false } : t)));
-                      } else {
-                        // Just deactivate this template
-                        await supabase
-                          .from('email_templates')
-                          .update({ is_active: false })
-                          .eq('id', template.id);
-                        setTemplates(templates.map(t => t.id === template.id ? { ...t, is_active: false } : t));
-                      }
-                    }}
-                    className="w-4 h-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500"
-                  />
-                  <span>{template.is_active ? 'On' : 'Off'}</span>
-                </label>
-              </div>
-            </div>
-          ))}
-        </div>
+        {/* Templates Accordion */}
+        <EmailTemplatesAccordion
+          templates={templates}
+          categories={categories}
+          onSelectTemplate={(template) => {
+            setSelectedTemplate(template);
+            setIsTemplateModalOpen(true);
+          }}
+          selectedTemplateId={selectedTemplate?.id}
+          searchQuery={templateSearchQuery}
+          categoryFilter={templateCategoryFilter}
+        />
         
         {/* No results message */}
         {templates.filter(template => {
@@ -1671,7 +1616,7 @@ export const EmailSettings: React.FC = () => {
                         </button>
                       </div>
                       <Editor
-                        tinymceScriptSrc={`https://cdn.tiny.cloud/1/${import.meta.env.VITE_TINYMCE_API_KEY}/tinymce/6/tinymce.min.js`}
+                        tinymceScriptSrc={getTinyMCEScriptUrl()}
                         onInit={(evt, editor) => editorRef.current = editor}
                         value={selectedTemplate.body}
                         onEditorChange={handleEditorChange}
@@ -2165,7 +2110,24 @@ The {{organization_name}} Team"
           </div>
         </div>
 
-        {selectedTemplate ? (
+        {/* Email Template Edit Modal */}
+        <EmailTemplateEditModal
+          template={selectedTemplate}
+          categories={categories}
+          isOpen={isTemplateModalOpen}
+          onClose={() => {
+            setIsTemplateModalOpen(false);
+            setSelectedTemplate(null);
+          }}
+          onSave={handleSaveTemplate}
+          onDelete={async (templateId) => {
+            await supabase.from('email_templates').delete().eq('id', templateId);
+            await loadEmailTemplates();
+            showSuccess('Template deleted successfully');
+          }}
+        />
+        
+        {selectedTemplate && false ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Preview Data Configuration */}
             <div className="space-y-4">

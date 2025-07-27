@@ -24,8 +24,7 @@ import {
 import { Editor } from '@tinymce/tinymce-react';
 import { supabase } from '../lib/supabase';
 import { EMAIL_VARIABLES, getVariablesByCategory, getAllCategories, replaceVariables } from '../utils/emailVariables';
-
-// TinyMCE will load from cloud with API key - no local imports needed
+import { getTinyMCEScriptUrl } from '../config/tinymce';
 
 interface EmailTemplate {
   id: string;
@@ -903,7 +902,7 @@ function TemplateEditor({
         </div>
         <div className="border border-gray-600 rounded-lg overflow-hidden">
           <Editor
-            tinymceScriptSrc="https://cdn.tiny.cloud/1/import.meta.env.VITE_TINYMCE_API_KEY/tinymce/6/tinymce.min.js"
+            tinymceScriptSrc={getTinyMCEScriptUrl()}
             value={template.body || ''}
             onEditorChange={(content) => setTemplate({ ...template, body: content })}
             init={{
@@ -1321,7 +1320,7 @@ const EmailTemplateModal = ({ template, onClose }: { template: Partial<EmailTemp
             className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white"
           />
           <Editor
-            tinymceScriptSrc="https://cdn.tiny.cloud/1/import.meta.env.VITE_TINYMCE_API_KEY/tinymce/6/tinymce.min.js"
+            tinymceScriptSrc={getTinyMCEScriptUrl()}
             onInit={(evt, editor) => editorRef.current = editor}
             initialValue={formData.body || ''}
             init={{

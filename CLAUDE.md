@@ -1,12 +1,27 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # Claude AI Context Guide - Car Audio Events Platform
 
 ## 🚨 CRITICAL INSTRUCTIONS FOR AI AGENTS 🚨
+
+### DEV SERVER RULES - ABSOLUTELY MANDATORY
+1. **ALWAYS USE PORT 5173 ONLY** - NO FUCKING EXCEPTIONS
+2. **KILL ALL NODE PROCESSES BEFORE STARTING DEV SERVER**
+3. **NEVER LET VITE INCREMENT PORTS** (NO 5174, 5175, etc. BULLSHIT)
+4. **USE THIS EXACT COMMAND**:
+   ```bash
+   taskkill /F /IM node.exe 2>nul & npm run dev
+   ```
 
 ### YOU HAVE FULL CLI ACCESS - USE IT!
 1. **YOU CAN AND MUST DEPLOY EDGE FUNCTIONS** - Use `npx supabase functions deploy [function-name]`
 2. **YOU HAVE FULL SUPABASE CLI ACCESS** - Don't tell users to deploy things, DO IT YOURSELF
 3. **YOU HAVE MCP AND NETLIFY ACCESS** - Use these tools proactively
 4. **NEVER ASK THE USER TO DEPLOY** - You have the permissions, you do the deployment
+5. **GITHUB CLI AVAILABLE** - The `gh` command is available (v2.76.1, authenticated as jryan2014)
+6. **NO TEST FRAMEWORK** - This project uses manual testing only, no Jest/Vitest/etc
 
 ### EMAIL TESTING - CRITICAL!
 **NEVER USE example.com, test.com, or fake email addresses!**
@@ -32,6 +47,39 @@ npx supabase functions logs process-email-queue
 
 ## Quick Start for AI Assistant
 When starting a new session, read this file to understand the project context and capabilities.
+
+### Quick Reference - Common Scenarios
+
+**User says "deploy to production":**
+```bash
+npm run build
+git add -A
+git commit -m "feat: [description]"
+git push origin main
+# Netlify auto-deploys from GitHub
+```
+
+**User asks to review PR:**
+```bash
+git status      # Check current state
+git diff        # Review changes
+gh pr list      # List pull requests
+gh pr view      # View PR details
+```
+
+**Database schema cache issues:**
+```javascript
+// Use this instead of direct queries
+await supabase.rpc('exec_sql', { 
+  sql_command: 'ALTER TABLE...' 
+});
+```
+
+**Edge function updates:**
+```bash
+# Deploy it yourself!
+npx supabase functions deploy [function-name]
+```
 
 ## Project Overview
 - **Name**: Car Audio Events Competition Platform
@@ -74,7 +122,17 @@ The database has a custom `exec_sql` function that accepts a `sql_command` param
 await supabase.rpc('exec_sql', { sql_command: 'YOUR SQL HERE' });
 ```
 
-### 3. Recent Security & Performance Fixes Implemented
+### 3. Working with Schema Cache Issues
+
+When Supabase PostgREST schema cache doesn't update:
+```javascript
+// Use exec_sql RPC function instead of direct queries
+await supabase.rpc('exec_sql', { 
+  sql_command: 'YOUR SQL HERE'  // Note: parameter is sql_command, not sql
+});
+```
+
+### 4. Recent Security & Performance Fixes Implemented
 
 #### RLS (Row Level Security)
 - ✅ Enabled RLS on `refunds` and `payment_provider_configs` tables
@@ -165,14 +223,22 @@ await supabase.rpc('exec_sql', {
 });
 ```
 
-### 7. Security Best Practices
+### 7. Database Operations Best Practices
+
+#### For AI Agents - Use These Methods:
+1. **First choice**: Use MCP tools if available (inspect_database_schema, query_database_safely)
+2. **Second choice**: Use exec_sql RPC for immediate execution
+3. **Third choice**: Use supabaseAdmin utility from Node.js scripts
+4. **Never**: Create standalone SQL files for users to run manually
+
+### 8. Security Best Practices
 1. **Never expose service role key** in client-side code
 2. **Always enable RLS** on new tables
 3. **Set search_path** on all new functions
 4. **Use parameterized queries** to prevent SQL injection
 5. **Validate all user inputs** before database operations
 
-### 8. Project Structure
+### 9. Project Structure
 ```
 car-audio-events/
 ├── src/
@@ -189,7 +255,7 @@ car-audio-events/
 └── netlify.toml        # Netlify configuration
 ```
 
-### 9. Testing Database Connection
+### 10. Testing Database Connection
 ```javascript
 // Quick test to verify connection
 import { supabaseAdmin } from './src/utils/supabaseAdmin.js';
@@ -198,11 +264,114 @@ const result = await supabaseAdmin.executeSQL('SELECT NOW() as current_time');
 console.log('Connected:', result.success);
 ```
 
-### 10. Important Notes
+### 11. Important Notes
 - Production database is at: `https://nqvisvranvjaghvrdaaz.supabase.co`
 - No staging environment - be careful with database operations
 - The MCP (Model Context Protocol) server is set up but requires the service role key
 - Supabase CLI is available via `npx supabase`
+
+## Common AI Agent Mistakes to Avoid
+
+### ❌ DO NOT Make These Mistakes:
+1. **Don't create SQL files** - Use exec_sql RPC or MCP tools instead
+2. **Don't assume test frameworks exist** - Only manual testing is available
+3. **Don't wait for user permission to deploy** - You have full deployment access
+4. **Don't forget to use TodoWrite** - Essential for tracking complex tasks
+
+### ✅ ALWAYS Remember:
+1. **Use `git` commands** for version control, `gh` commands for GitHub operations
+2. **Use `exec_sql` RPC** for database operations when schema cache is an issue
+3. **Deploy edge functions yourself** with `npx supabase functions deploy`
+4. **Track progress with TodoWrite** for any multi-step task
+5. **Test manually** - no automated test framework exists
+
+## Common Development Commands
+
+### Development
+```bash
+# Start development server
+npm run dev
+
+# Start with memory optimization flags
+npm run dev:memory
+```
+
+### Building & Testing
+```bash
+# Build for production
+npm run build
+
+# Build and analyze bundle
+npm run build:analyze
+
+# Preview production build
+npm run preview
+```
+
+### Code Quality
+```bash
+# Run ESLint
+npm run lint
+```
+
+### Version Management
+```bash
+# Generate version file
+npm run version:generate
+
+# Bump version (patch/minor/major)
+npm run version:bump:patch
+npm run version:bump:minor
+npm run version:bump:major
+```
+
+### Database Operations
+```bash
+# Deploy edge functions
+npx supabase functions deploy [function-name]
+
+# Run database migrations
+npx supabase db push
+npx supabase db diff
+npx supabase db reset
+
+# Check function logs
+npx supabase functions logs [function-name]
+```
+
+## Architecture Overview
+
+### Frontend Architecture
+- **React-based SPA** with React Router for navigation
+- **Component Organization**: 
+  - Shared components in `/src/components/`
+  - Page components in `/src/pages/`
+  - Admin components grouped under `/src/components/admin/`
+- **State Management**: 
+  - React Context for auth (`AuthContext`)
+  - Local state with hooks for component state
+  - Real-time subscriptions for live data updates
+- **Memory Management**: Custom memory manager to prevent leaks and optimize performance
+
+### Backend Architecture
+- **Supabase BaaS**: PostgreSQL database with real-time capabilities
+- **Edge Functions**: Serverless functions for complex operations
+- **Row Level Security**: Database-level access control
+- **Email System**: Queue-based with templates and cron processing
+
+### Key Integrations
+- **Payment Processing**: Stripe and PayPal with webhook handling
+- **Maps**: Google Maps for event locations and geocoding
+- **AI Services**: OpenAI (DALL-E, GPT), Stability AI for content generation
+- **Email**: Edge functions process email queue with template support
+- **Storage**: Supabase Storage for images and documents
+
+### Security Architecture
+- **Authentication**: Supabase Auth with JWT tokens
+- **Authorization**: Role-based (admin, organizer, competitor, sponsor)
+- **RLS Policies**: Every table has appropriate Row Level Security
+- **API Security**: Service role key never exposed to client
+- **Input Validation**: Zod schemas for form validation
 
 ## How to Restore Context
 When starting a new session, tell the AI:
@@ -654,6 +823,57 @@ npx supabase functions deploy process-email-queue
 - Updated success/error message colors in Footer newsletter signup
 - Changed newsletter terminology from "campaign" throughout UI
 - Added helpful user messages for schema cache delays
+
+## AI Agent Workflow Reminders
+
+### When Asked to Review PRs:
+1. Check if changes are already committed with `git status`
+2. Review uncommitted changes with `git diff`
+3. Use `gh pr list` to see open pull requests
+4. Use `gh pr view [number]` to review specific PRs
+5. Use `gh pr create` to create new pull requests
+
+### When Making Database Changes:
+1. Always use exec_sql RPC or MCP tools
+2. Never create SQL files for users to execute
+3. Handle schema cache delays gracefully
+4. Deploy edge functions yourself when needed
+
+### When Implementing Features:
+1. Use TodoWrite to track all subtasks
+2. Mark tasks as in_progress before starting
+3. Update task status immediately upon completion
+4. Only mark completed when fully done (not partially)
+
+## Development Best Practices
+
+### Performance Optimization
+- Use React.memo() for expensive components
+- Implement lazy loading for routes
+- Optimize database queries with proper indexes
+- Use the memory manager for large data operations
+- Clean up subscriptions in useEffect cleanup functions
+
+### Database Conventions
+- Always enable RLS on new tables
+- Include created_at and updated_at timestamps
+- Use UUIDs for primary keys
+- Set proper search_path on functions
+- Use the exec_sql RPC function when schema cache issues occur
+
+### Error Handling
+- Wrap async operations in try-catch blocks
+- Provide user-friendly error messages via toast notifications
+- Log errors to console for debugging
+- Handle edge cases gracefully
+- Use the notification system for user feedback
+
+### Testing Approach
+- Manual testing is primary approach (no test framework configured)
+- Test all CRUD operations thoroughly
+- Verify RLS policies work correctly
+- Test edge functions with various inputs
+- Always test on both desktop and mobile viewports
 
 ---
 Last Updated: January 2025 (v1.26.15)

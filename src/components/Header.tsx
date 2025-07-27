@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Menu, X, User, Calendar, MapPin, Users, LogOut, Settings, Shield, Package, BarChart3, Target, FileText, Building2, ChevronDown, Search, CreditCard } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,13 +10,31 @@ import NotificationBell from './NotificationBell';
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const [userDropdownTimeout, setUserDropdownTimeout] = useState<NodeJS.Timeout | null>(null);
   const { user, logout, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (userDropdownTimeout) {
+        clearTimeout(userDropdownTimeout);
+      }
+    };
+  }, [userDropdownTimeout]);
 
   const handleLogout = () => {
     logout();
     navigate('/');
     setIsMenuOpen(false);
+    setIsUserDropdownOpen(false);
+  };
+
+  const handleDropdownLinkClick = () => {
+    if (userDropdownTimeout) {
+      clearTimeout(userDropdownTimeout);
+      setUserDropdownTimeout(null);
+    }
     setIsUserDropdownOpen(false);
   };
 
@@ -58,10 +76,24 @@ export default function Header() {
               {isAuthenticated && <NotificationBell />}
               
               {isAuthenticated ? (
-                <div className="relative">
+                <div 
+                  className="relative hidden lg:block"
+                  onMouseEnter={() => {
+                    if (userDropdownTimeout) {
+                      clearTimeout(userDropdownTimeout);
+                      setUserDropdownTimeout(null);
+                    }
+                    setIsUserDropdownOpen(true);
+                  }}
+                  onMouseLeave={() => {
+                    const timeout = setTimeout(() => {
+                      setIsUserDropdownOpen(false);
+                    }, 200);
+                    setUserDropdownTimeout(timeout);
+                  }}
+                >
                   <button
                     onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
-                    onMouseEnter={() => setIsUserDropdownOpen(true)}
                     className="flex items-center space-x-2 text-gray-300 hover:text-electric-400 transition-colors duration-200 max-w-[200px] min-w-0"
                   >
                     {user?.profileImage ? (
@@ -79,13 +111,12 @@ export default function Header() {
                   {isUserDropdownOpen && (
                     <div 
                       className="absolute right-0 top-full mt-2 w-64 max-w-[95vw] sm:max-w-[90vw] bg-gray-800/95 backdrop-blur-sm border border-gray-700/50 rounded-xl shadow-2xl z-50"
-                      onMouseLeave={() => setIsUserDropdownOpen(false)}
                     >
                       <div className="p-2">
                         {/* Standard Member Links - Available to ALL authenticated users */}
                         <Link
                           to={user?.membershipType === 'admin' ? '/admin/dashboard' : '/dashboard'}
-                          onClick={() => setIsUserDropdownOpen(false)}
+                          onClick={handleDropdownLinkClick}
                           className="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700/50 rounded-lg transition-colors duration-200"
                         >
                           <BarChart3 className="h-4 w-4" />
@@ -94,7 +125,7 @@ export default function Header() {
                         
                         <Link
                           to="/profile"
-                          onClick={() => setIsUserDropdownOpen(false)}
+                          onClick={handleDropdownLinkClick}
                           className="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700/50 rounded-lg transition-colors duration-200"
                         >
                           <User className="h-4 w-4" />
@@ -103,7 +134,7 @@ export default function Header() {
                         
                         <Link
                           to="/profile?tab=settings"
-                          onClick={() => setIsUserDropdownOpen(false)}
+                          onClick={handleDropdownLinkClick}
                           className="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700/50 rounded-lg transition-colors duration-200"
                         >
                           <Settings className="h-4 w-4" />
@@ -112,7 +143,7 @@ export default function Header() {
                         
                         <Link
                           to="/billing"
-                          onClick={() => setIsUserDropdownOpen(false)}
+                          onClick={handleDropdownLinkClick}
                           className="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700/50 rounded-lg transition-colors duration-200"
                         >
                           <CreditCard className="h-4 w-4" />
@@ -128,7 +159,7 @@ export default function Header() {
                               
                               <Link
                                 to="/my-ads"
-                                onClick={() => setIsUserDropdownOpen(false)}
+                                onClick={handleDropdownLinkClick}
                                 className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
                               >
                                 <Target className="h-3 w-3" />
@@ -138,7 +169,7 @@ export default function Header() {
                               {user.membershipType === 'organization' && (
                                 <Link
                                   to="/admin/organizations"
-                                  onClick={() => setIsUserDropdownOpen(false)}
+                                  onClick={handleDropdownLinkClick}
                                   className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
                                 >
                                   <Building2 className="h-3 w-3" />
@@ -158,7 +189,7 @@ export default function Header() {
                               
                               <Link
                                 to="/admin/users"
-                                onClick={() => setIsUserDropdownOpen(false)}
+                                onClick={handleDropdownLinkClick}
                                 className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
                               >
                                 <Users className="h-3 w-3" />
@@ -167,7 +198,7 @@ export default function Header() {
                               
                               <Link
                                 to="/admin/events"
-                                onClick={() => setIsUserDropdownOpen(false)}
+                                onClick={handleDropdownLinkClick}
                                 className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
                               >
                                 <Calendar className="h-3 w-3" />
@@ -176,7 +207,7 @@ export default function Header() {
                               
                               <Link
                                 to="/admin/cms-pages"
-                                onClick={() => setIsUserDropdownOpen(false)}
+                                onClick={handleDropdownLinkClick}
                                 className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
                               >
                                 <FileText className="h-3 w-3" />
@@ -185,7 +216,7 @@ export default function Header() {
                               
                               <Link
                                 to="/admin/ad-management"
-                                onClick={() => setIsUserDropdownOpen(false)}
+                                onClick={handleDropdownLinkClick}
                                 className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
                               >
                                 <Target className="h-3 w-3" />
@@ -194,7 +225,7 @@ export default function Header() {
                               
                               <Link
                                 to="/admin/organizations"
-                                onClick={() => setIsUserDropdownOpen(false)}
+                                onClick={handleDropdownLinkClick}
                                 className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
                               >
                                 <Building2 className="h-3 w-3" />
@@ -203,7 +234,7 @@ export default function Header() {
                               
                               <Link
                                 to="/admin/navigation-manager"
-                                onClick={() => setIsUserDropdownOpen(false)}
+                                onClick={handleDropdownLinkClick}
                                 className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
                               >
                                 <Menu className="h-3 w-3" />
@@ -212,7 +243,7 @@ export default function Header() {
                               
                               <Link
                                 to="/admin/system-configuration"
-                                onClick={() => setIsUserDropdownOpen(false)}
+                                onClick={handleDropdownLinkClick}
                                 className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
                               >
                                 <Settings className="h-3 w-3" />
@@ -221,7 +252,7 @@ export default function Header() {
                               
                               <Link
                                 to="/admin/analytics"
-                                onClick={() => setIsUserDropdownOpen(false)}
+                                onClick={handleDropdownLinkClick}
                                 className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
                               >
                                 <BarChart3 className="h-3 w-3" />
@@ -277,7 +308,7 @@ export default function Header() {
 
       {/* Mobile Menu - Show for ALL users */}
       {isMenuOpen && (
-        <div className="lg:hidden absolute top-full left-0 w-full bg-black/90 backdrop-blur-md z-40">
+        <div className="lg:hidden fixed top-[104px] left-0 right-0 bottom-0 bg-black/95 backdrop-blur-md z-40 overflow-hidden">
           <MobileMegaMenu
             isAuthenticated={isAuthenticated}
             user={user || undefined}

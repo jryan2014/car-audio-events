@@ -22,7 +22,20 @@
       "Bash(npx supabase functions deploy:*)",
       "Bash(npx supabase:*)",
       "Bash(find:*)",
-      "Bash(git tag:*)"
+      "Bash(git tag:*)",
+      "Bash(wsl:*)",
+      "Bash(taskkill:*)",
+      "Bash(powershell:*)",
+      "Bash(python:*)",
+      "Bash(curl:*)",
+      "Bash(start ~/Downloads/python-3.11.9-amd64.exe /quiet InstallAllUsers=0 PrependPath=1)",
+      "Bash(py:*)",
+      "Bash(PYTHONPATH=. py -3.11 -m SuperClaude install)",
+      "Bash(PYTHONPATH=. py -3.11 -m SuperClaude install --profile quick)",
+      "Bash(PYTHONPATH=. py -3.11 -m SuperClaude install --profile quick --yes)",
+      "Bash(PYTHONPATH=. py -3.11 -m SuperClaude install --component mcp --yes)",
+      "Bash(cp:*)",
+      "WebFetch(domain:localhost)"
     ],
     "deny": []
   }
