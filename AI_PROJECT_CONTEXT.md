@@ -10,7 +10,7 @@ If you're an AI assistant picking up this project, start here:
 ## Detailed Context from Current Session
 
 ### Project Version
-Current version: 1.26.0 (from 1.25.1)
+Current version: 1.26.15 (from 1.26.0)
 
 ### What We Accomplished Recently
 
@@ -571,8 +571,83 @@ src/
 - **Repository**: GitHub (car-audio-events)
 - **Deployment**: Netlify (caraudioevents.com)
 - **Database**: Supabase (nqvisvranvjaghvrdaaz.supabase.co)
-- **Version**: Currently at 1.26.0
+- **Version**: Currently at 1.26.15
+
+### Version 1.26.2 - 1.26.15 Updates - Newsletter System Complete Overhaul
+
+#### Newsletter System Implementation
+**Major Work**: Complete implementation and debugging of newsletter system with email confirmation, template support, and automated sending.
+
+**Problems Encountered and Fixed**:
+
+1. **Email Templates Not Working**
+   - Issue: Emails showing "null" in body, not using templates
+   - Root Cause: Edge function needed deployment, wrong column names
+   - Solution: Deployed edge function, fixed column mappings
+
+2. **Schema Cache Issues**
+   - Issue: PostgREST not recognizing updated database functions
+   - Solution: Used exec_sql RPC function to bypass cache
+   - Added retry mechanisms and user-friendly messages
+
+3. **Column Name Mismatches**
+   - Email queue uses `to_email` NOT `recipient`
+   - Email queue uses `html_content` NOT `html_body`
+   - Email templates table uses `html_body` column
+   - Fixed all references throughout the codebase
+
+4. **Newsletter Status Constraints**
+   - Issue: "queued" is not a valid status
+   - Allowed values: draft, scheduled, sending, sent, cancelled
+   - Changed to use "sending" status
+
+5. **Scroll Position Bug**
+   - Issue: Admin pages starting halfway down
+   - Solution: Created ScrollToTop component
+   - Resets all scrollable containers on navigation
+
+**Critical Implementation Notes**:
+
+1. **Email Testing**
+   - NEVER use example.com or fake emails
+   - ONLY use admin@caraudioevents.com
+   - Fake domains cause spam blacklisting
+
+2. **Edge Function Deployment**
+   - AI agents MUST deploy edge functions themselves
+   - Command: `npx supabase functions deploy process-email-queue`
+   - Don't ask users to deploy - you have the permissions
+
+3. **Newsletter HTML Template**
+   - Full HTML with proper email-safe CSS
+   - Logo: https://caraudioevents.com/assets/logos/CAE_Logo_V2-email-logo.png
+   - Header: Dark blue (#1a1a2e) background
+   - Accent: Electric blue (#00D4FF)
+   - Footer: Physical address 1600 South Jefferson, Perry, FL 32348 #31
+
+4. **Newsletter Terminology**
+   - UI shows "newsletter" not "campaign"
+   - Database still uses "campaign" tables
+   - All user-facing text updated
+
+**Files Created/Modified**:
+- `/src/components/ScrollToTop.tsx` - New component for scroll fixes
+- `/src/pages/AdminNewsletterManager.tsx` - Major updates for all fixes
+- `/src/components/admin-settings/EmailSettings.tsx` - Column fixes
+- `/src/components/Footer.tsx` - Success/error color fixes
+- `/supabase/functions/process-email-queue/index.ts` - Column mapping fixes
+
+**Database Functions**:
+- `subscribe_to_newsletter(email, source)`
+- `confirm_newsletter_subscription(token)`
+- `unsubscribe_from_newsletter(token)`
+- All include proper error handling for schema cache
+
+**Security Fixes**:
+- Removed unused `notification_statistics` view
+- Fixed 5 function search_path warnings
+- All security warnings resolved
 
 ---
-Last Updated: July 2025
+Last Updated: January 2025 (v1.26.15)
 Context preserved for AI assistants working on this project.

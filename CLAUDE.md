@@ -35,7 +35,7 @@ When starting a new session, read this file to understand the project context an
 
 ## Project Overview
 - **Name**: Car Audio Events Competition Platform
-- **Version**: 1.26.2
+- **Version**: 1.26.15
 - **Tech Stack**: React, TypeScript, Supabase, Tailwind CSS, Vite
 - **Database**: Supabase (PostgreSQL)
 - **Deployment**: Netlify
@@ -523,6 +523,138 @@ Newsletter system includes:
 - Physical address in footer (1600 South Jefferson, Perry, FL 32348 #31)
 - GDPR/CAN-SPAM compliant
 
+### 15. Newsletter System Complete Implementation (v1.26.2 - v1.26.15)
+
+#### Major Issues Fixed
+
+##### 1. Schema Cache Issues with Newsletter Functions
+**Problem**: Supabase PostgREST schema cache not recognizing updated database functions
+**Solution**: 
+- Use `exec_sql` RPC function to bypass schema cache
+- Added retry mechanism in AdminNewsletterManager for loading newsletters
+- Fallback to exec_sql when regular operations fail
+
+##### 2. Email Queue Column Mapping Issues
+**Problem**: Email queue table uses different column names than expected
+**Key Mappings**:
+- Use `to_email` NOT `recipient`
+- Use `html_content` NOT `html_body` for email queue
+- Email templates table uses `html_body` column
+- Newsletter campaigns uses `status` with specific allowed values
+
+##### 3. Newsletter Campaign Status Constraints
+**Problem**: "queued" is not a valid status for newsletter_campaigns
+**Allowed Values**: draft, scheduled, sending, sent, cancelled
+**Solution**: Changed status to "sending" when processing newsletters
+
+##### 4. Newsletter Template HTML Issues
+**Problem**: Newsletter emails not showing proper HTML template with logo/header
+**Solution**: Created full HTML template with:
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    /* Email-safe CSS */
+    body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+    .container { width: 100%; max-width: 600px; margin: 0 auto; }
+    /* More styles... */
+  </style>
+</head>
+<body>
+  <!-- Header with logo -->
+  <div style="background-color: #1a1a2e; padding: 20px; text-align: center;">
+    <img src="https://caraudioevents.com/assets/logos/CAE_Logo_V2-email-logo.png" 
+         alt="Car Audio Events" style="max-width: 200px;">
+  </div>
+  <!-- Content -->
+  <!-- Footer with unsubscribe link -->
+</body>
+</html>
+```
+
+##### 5. Scroll Position Issues on Navigation
+**Problem**: Admin pages starting halfway down the page
+**Solution**: Created ScrollToTop component that:
+- Resets window scroll position on route changes
+- Handles main content containers
+- Resets all scrollable containers with overflow-y-auto/scroll
+
+#### Key Implementation Details
+
+##### Newsletter Terminology Change
+- Changed all "campaign" references to "newsletter" in UI
+- Database tables still use "campaign" naming for backward compatibility
+- UI shows: "Create Newsletter", "Newsletter Manager", etc.
+
+##### Newsletter Compose Workflow
+1. Create newsletter with name, subject, content
+2. Save as draft or Send Now
+3. Send Now creates email_queue entries for all confirmed subscribers
+4. Each email includes unsubscribe link with unique token
+
+##### Edge Function Deployment
+```bash
+# Deploy edge function (AI agents must do this automatically)
+npx supabase functions deploy process-email-queue
+```
+
+##### Newsletter Testing Rules
+- **NEVER use example.com or fake emails**
+- **ONLY use admin@caraudioevents.com for testing**
+- Fake domains cause spam blacklisting
+
+#### Database Schema Updates
+
+##### Newsletter Tables
+- `newsletter_subscribers` - Stores subscriber info
+- `newsletter_campaigns` - Stores newsletter drafts/sent campaigns
+- `email_queue` - Processes all system emails
+- `email_templates` - HTML email templates
+
+##### Key Functions
+- `subscribe_to_newsletter(email, source)` - Handle signups
+- `confirm_newsletter_subscription(token)` - Confirm subscription
+- `unsubscribe_from_newsletter(token)` - Handle unsubscribes
+
+#### Common Troubleshooting
+
+##### Newsletter Not Showing After Save
+**Cause**: Schema cache not updated
+**Solution**: 
+1. Wait a moment and refresh
+2. Use fallback exec_sql method
+3. Shows helpful message to user
+
+##### Email Not Sending
+**Cause**: Edge function not deployed or email queue column mismatch
+**Solution**: Deploy edge function and ensure correct column mapping
+
+##### Template Not Displaying
+**Cause**: Wrong column name or missing HTML
+**Solution**: Use html_body for templates, html_content for queue
+
+### 16. Recent Bug Fixes (v1.26.2 - v1.26.15)
+
+#### Security Warning Fixes
+- Removed unused `notification_statistics` view causing SECURITY DEFINER warnings
+- Fixed 5 function search_path warnings by adding proper search_path
+- All database objects now properly secured
+
+#### Newsletter System Stabilization
+- Fixed resend confirmation using correct email_queue columns
+- Fixed "Send Now" functionality with proper status values
+- Added comprehensive error handling for schema cache issues
+- Implemented retry mechanisms for database operations
+
+#### UI/UX Improvements
+- Fixed scroll position reset on navigation
+- Updated success/error message colors in Footer newsletter signup
+- Changed newsletter terminology from "campaign" throughout UI
+- Added helpful user messages for schema cache delays
+
 ---
-Last Updated: January 2025 (v1.26.1)
+Last Updated: January 2025 (v1.26.15)
 Context preserved for AI assistants working on this project.
