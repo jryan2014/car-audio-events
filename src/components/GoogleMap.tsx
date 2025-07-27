@@ -369,7 +369,8 @@ export default function GoogleMap() {
       const infoWindow = new window.google.maps.InfoWindow({
         content: createInfoWindowContent(event),
         maxWidth: 320,
-        pixelOffset: new window.google.maps.Size(0, -10)
+        pixelOffset: new window.google.maps.Size(0, -20), // Increased offset to push window higher
+        disableAutoPan: false // Ensure map pans to show full window
       });
       
       infoWindowsRef.current.push(infoWindow);
@@ -442,7 +443,7 @@ export default function GoogleMap() {
           const hoverWindow = new window.google.maps.InfoWindow({
             content: createHoverContent(event),
             maxWidth: 250,
-            pixelOffset: new window.google.maps.Size(0, -15)
+            pixelOffset: new window.google.maps.Size(0, -25) // Increased offset to push window higher
           });
           
           hoverWindow.open(mapInstance, marker);
