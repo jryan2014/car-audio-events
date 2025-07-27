@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Edit, Ban, UserCheck, Trash2, Check, X, AlertTriangle, CheckCircle, Mail, Phone, MapPin, Building, Calendar, Activity, Shield, Users, User, CreditCard, Trophy, Settings } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import { getCountryByCode, getStateLabel, getPostalCodeLabel } from '../data/countries';
 
 interface User {
   id: string;
@@ -457,18 +458,24 @@ export default function UserDetails() {
                         <p className="text-white">{user.city || <span className="text-red-400">Not provided</span>}</p>
                       </div>
                       <div>
-                        <label className="block text-gray-400 text-sm mb-1">State</label>
+                        <label className="block text-gray-400 text-sm mb-1">
+                          {user.country ? getStateLabel(user.country) : 'State'}
+                        </label>
                         <p className="text-white">{user.state || <span className="text-red-400">Not provided</span>}</p>
                       </div>
                       <div>
-                        <label className="block text-gray-400 text-sm mb-1">ZIP Code</label>
+                        <label className="block text-gray-400 text-sm mb-1">
+                          {user.country ? getPostalCodeLabel(user.country) : 'ZIP Code'}
+                        </label>
                         <p className="text-white">{user.zip || <span className="text-red-400">Not provided</span>}</p>
                       </div>
                     </div>
                     
                     <div>
                       <label className="block text-gray-400 text-sm mb-1">Country</label>
-                      <p className="text-white">{user.country || 'United States'}</p>
+                      <p className="text-white">
+                        {user.country ? (getCountryByCode(user.country)?.name || user.country) : 'United States'}
+                      </p>
                     </div>
                   </div>
                 </div>

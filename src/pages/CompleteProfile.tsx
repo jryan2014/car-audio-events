@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { User, MapPin, Phone, Building, AlertTriangle, CheckCircle, Loader } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { states } from '../data/states';
+import { COUNTRIES, getCountryByCode, getStatesForCountry, getPostalCodeLabel, getStateLabel, validatePostalCode } from '../data/countries';
 
 interface ProfileFormData {
   first_name: string;
@@ -35,7 +35,7 @@ export default function CompleteProfile() {
     city: '',
     state: '',
     zip: '',
-    country: 'United States',
+    country: 'US',
     company_name: '',
     company_website: '',
     tax_id: ''
@@ -55,7 +55,7 @@ export default function CompleteProfile() {
         city: user.city || prev.city,
         state: user.state || prev.state,
         zip: user.zip || prev.zip,
-        country: user.country || prev.country,
+        country: user.country || 'US',
         company_name: user.companyName || prev.company_name,
         company_website: user.website || prev.company_website,
         tax_id: user.taxId || prev.tax_id
@@ -70,13 +70,23 @@ export default function CompleteProfile() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // If country changes, reset state field
+    if (name === 'country' && value !== formData.country) {
+      setFormData(prev => ({ ...prev, [name]: value, state: '' }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
   };
 
   const validateForm = (): boolean => {
     // Required fields for all users
+    const states = getStatesForCountry(formData.country);
+    const stateRequired = states && states.length > 0;
+    
     if (!formData.first_name || !formData.last_name || !formData.phone || 
-        !formData.address || !formData.city || !formData.state || !formData.zip) {
+        !formData.address || !formData.city || !formData.zip || 
+        (stateRequired && !formData.state)) {
       setError('Please fill in all required fields');
       return false;
     }
@@ -94,10 +104,10 @@ export default function CompleteProfile() {
       return false;
     }
 
-    // Zip code validation
-    const zipRegex = /^\d{5}(-\d{4})?$/;
-    if (!zipRegex.test(formData.zip)) {
-      setError('Please enter a valid ZIP code');
+    // Postal code validation
+    if (!validatePostalCode(formData.zip, formData.country)) {
+      const postalLabel = getPostalCodeLabel(formData.country);
+      setError(`Please enter a valid ${postalLabel}`);
       return false;
     }
 
@@ -290,6 +300,25 @@ export default function CompleteProfile() {
                   />
                 </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Country <span className="text-red-400">*</span>
+                  </label>
+                  <select
+                    name="country"
+                    value={formData.country}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-electric-500 focus:border-transparent"
+                  >
+                    {COUNTRIES.map(country => (
+                      <option key={country.code} value={country.code}>
+                        {country.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="md:col-span-1">
                     <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -305,29 +334,50 @@ export default function CompleteProfile() {
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      State <span className="text-red-400">*</span>
-                    </label>
-                    <select
-                      name="state"
-                      value={formData.state}
-                      onChange={handleChange}
-                      required
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-electric-500 focus:border-transparent"
-                    >
-                      <option value="">Select State</option>
-                      {states.map(state => (
-                        <option key={state.code} value={state.code}>
-                          {state.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  {(() => {
+                    const states = getStatesForCountry(formData.country);
+                    const stateLabel = getStateLabel(formData.country);
+                    
+                    return states ? (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          {stateLabel} <span className="text-red-400">*</span>
+                        </label>
+                        <select
+                          name="state"
+                          value={formData.state}
+                          onChange={handleChange}
+                          required
+                          className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-electric-500 focus:border-transparent"
+                        >
+                          <option value="">Select {stateLabel}</option>
+                          {states.map(state => (
+                            <option key={state.code} value={state.code}>
+                              {state.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          {stateLabel}
+                        </label>
+                        <input
+                          type="text"
+                          name="state"
+                          value={formData.state}
+                          onChange={handleChange}
+                          placeholder={`Enter ${stateLabel}`}
+                          className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-electric-500 focus:border-transparent"
+                        />
+                      </div>
+                    );
+                  })()}
 
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
-                      ZIP Code <span className="text-red-400">*</span>
+                      {getPostalCodeLabel(formData.country)} <span className="text-red-400">*</span>
                     </label>
                     <input
                       type="text"
@@ -335,8 +385,7 @@ export default function CompleteProfile() {
                       value={formData.zip}
                       onChange={handleChange}
                       required
-                      pattern="[0-9]{5}(-[0-9]{4})?"
-                      placeholder="12345"
+                      placeholder={getCountryByCode(formData.country)?.postalCodeFormat?.replace(/#/g, '0').replace(/A/g, 'A') || ''}
                       className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-electric-500 focus:border-transparent"
                     />
                   </div>
