@@ -21,7 +21,7 @@ interface ProfileFormData {
 }
 
 export default function CompleteProfile() {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, loading, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -181,15 +181,29 @@ export default function CompleteProfile() {
     }
   };
 
-  if (!user) {
+  // Handle authentication states
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      // User is not authenticated, redirect to login
+      navigate('/login');
+    }
+  }, [loading, isAuthenticated, navigate]);
+
+  // Show loading state while auth is being checked
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
         <div className="text-center">
           <Loader className="h-8 w-8 animate-spin mx-auto mb-4 text-electric-500" />
-          <p>Loading profile...</p>
+          <p>Loading...</p>
         </div>
       </div>
     );
+  }
+
+  // If not authenticated after loading, don't render (useEffect will redirect)
+  if (!isAuthenticated || !user) {
+    return null;
   }
 
   return (
