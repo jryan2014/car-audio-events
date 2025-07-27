@@ -20,6 +20,17 @@ interface User {
   subscriptionPlan?: string;
   requiresPasswordChange?: boolean;
   passwordChangedAt?: string;
+  // New fields for complete profile
+  firstName?: string;
+  lastName?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  country?: string;
+  taxId?: string;
+  registrationProvider?: string;
+  registrationCompleted?: boolean;
 }
 
 interface AuthContextType {
@@ -113,13 +124,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             id,
             email,
             name,
+            first_name,
+            last_name,
             membership_type,
             status,
             location,
             phone,
+            address,
+            city,
+            state,
+            zip,
+            country,
             company_name,
+            tax_id,
             verification_status,
             subscription_plan,
+            registration_provider,
+            registration_completed,
             last_login_at,
             created_at,
             login_count,
@@ -193,7 +214,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           companyName: data.company_name || '',
           subscriptionPlan: data.subscription_plan || 'basic',
           requiresPasswordChange: false,
-          passwordChangedAt: undefined
+          passwordChangedAt: undefined,
+          // New profile fields
+          firstName: data.first_name || '',
+          lastName: data.last_name || '',
+          address: data.address || '',
+          city: data.city || '',
+          state: data.state || '',
+          zip: data.zip || '',
+          country: data.country || 'United States',
+          taxId: data.tax_id || '',
+          registrationProvider: data.registration_provider || 'email',
+          registrationCompleted: data.registration_completed || false
         };
         
 
@@ -350,6 +382,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 console.log('⏳ Business account pending manual approval - allowing limited access');
                 // Don't block access - set user and continue
                 // The Dashboard component will handle showing limited features
+              }
+              
+              // Check if user has completed their profile
+              if (!userProfile.registrationCompleted) {
+                console.log('📝 User needs to complete profile');
+                setUser(userProfile);
+                setLoading(false);
+                
+                // Redirect to complete profile page
+                if (window.location.pathname !== '/complete-profile') {
+                  window.location.href = '/complete-profile';
+                }
+                return;
               }
               
               // User is verified and approved - allow access

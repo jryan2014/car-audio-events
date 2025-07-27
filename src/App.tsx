@@ -48,6 +48,7 @@ const SystemConfiguration = React.lazy(() => import('./pages/SystemConfiguration
 const SystemConfigurationDemo = React.lazy(() => import('./pages/SystemConfigurationDemo'));
 const OrganizationManager = React.lazy(() => import('./pages/OrganizationManager'));
 const AdminContactSettingsPage = React.lazy(() => import('./pages/AdminContactSettings'));
+const CompleteProfile = React.lazy(() => import('./pages/CompleteProfile'));
 const NavigationManager = React.lazy(() => import('./pages/NavigationManager'));
 // const TestAds = React.lazy(() => import('./pages/TestAds')); // TODO: Create this page
 const DirectoryManager = React.lazy(() => import('./pages/DirectoryManager'));
@@ -116,6 +117,7 @@ function App() {
               {/* Routes with Layout wrapper */}
               <Route path="/" element={<Layout><Home /></Layout>} />
               <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
+              <Route path="/complete-profile" element={<Layout><CompleteProfile /></Layout>} />
               <Route path="/events" element={<Layout><Events /></Layout>} />
               <Route path="/events/:id" element={<Layout><EventDetails /></Layout>} />
               <Route path="/profile" element={<Layout><Profile /></Layout>} />
