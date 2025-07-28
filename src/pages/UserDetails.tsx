@@ -4,6 +4,7 @@ import { ArrowLeft, Edit, Ban, UserCheck, Trash2, Check, X, AlertTriangle, Check
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { getCountryByCode, getStateLabel, getPostalCodeLabel } from '../data/countries';
+import { getMembershipDisplayName } from '../utils/membershipUtils';
 
 interface User {
   id: string;
@@ -46,7 +47,7 @@ export default function UserDetails() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabType>('personal');
+  const [activeTab, setActiveTab] = useState<TabType>('system');
 
   // Check if current user is admin
   if (!currentUser || currentUser.membershipType !== 'admin') {
@@ -258,7 +259,7 @@ export default function UserDetails() {
 
   return (
     <div className="min-h-screen py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center space-x-4">
@@ -332,9 +333,9 @@ export default function UserDetails() {
                 <h2 className="text-2xl font-bold text-white">{user.name}</h2>
                 <p className="text-gray-400">{user.email}</p>
                 <div className="flex items-center space-x-3 mt-2">
-                  {getMembershipTypeBadge(user.membership_type)}
-                  {getStatusBadge(user.status)}
-                  {getVerificationBadge(user.verification_status)}
+                  <span className="text-sm text-gray-500">
+                    {getMembershipDisplayName(user.membership_type, user.subscription_plan)}
+                  </span>
                 </div>
               </div>
             </div>
@@ -345,6 +346,17 @@ export default function UserDetails() {
         <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl mb-6">
           <div className="border-b border-gray-700">
             <nav className="flex -mb-px">
+              <button
+                onClick={() => setActiveTab('system')}
+                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'system'
+                    ? 'text-electric-400 border-electric-400'
+                    : 'text-gray-400 border-transparent hover:text-white hover:border-gray-600'
+                }`}
+              >
+                <Settings className="inline-block h-4 w-4 mr-2" />
+                System Details
+              </button>
               <button
                 onClick={() => setActiveTab('personal')}
                 className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
@@ -369,17 +381,6 @@ export default function UserDetails() {
                   Company Details
                 </button>
               )}
-              <button
-                onClick={() => setActiveTab('system')}
-                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === 'system'
-                    ? 'text-electric-400 border-electric-400'
-                    : 'text-gray-400 border-transparent hover:text-white hover:border-gray-600'
-                }`}
-              >
-                <Settings className="inline-block h-4 w-4 mr-2" />
-                System Details
-              </button>
               <button
                 onClick={() => setActiveTab('competitions')}
                 className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
@@ -502,11 +503,6 @@ export default function UserDetails() {
                   </div>
                   
                   <div>
-                    <label className="block text-gray-400 text-sm mb-1">Membership Type</label>
-                    {getMembershipTypeBadge(user.membership_type)}
-                  </div>
-                  
-                  <div>
                     <label className="block text-gray-400 text-sm mb-1">Location</label>
                     <p className="text-white">{user.location || `${user.city}, ${user.state}` || <span className="text-red-400">Not provided</span>}</p>
                   </div>
@@ -582,8 +578,14 @@ export default function UserDetails() {
                     </div>
                     
                     <div>
-                      <label className="block text-gray-400 text-sm mb-1">Subscription Plan</label>
-                      <p className="text-white capitalize">{user.subscription_plan}</p>
+                      <label className="block text-gray-400 text-sm mb-1">Membership Plan</label>
+                      <p className="text-white">
+                        {user.membership_type === 'competitor' && 'Free Competitor'}
+                        {user.membership_type === 'retailer' && 'Retailer'}
+                        {user.membership_type === 'manufacturer' && 'Manufacturer'}
+                        {user.membership_type === 'organization' && 'Organization'}
+                        {user.membership_type === 'admin' && 'Administrator'}
+                      </p>
                     </div>
                   </div>
                 </div>

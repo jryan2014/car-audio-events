@@ -9,6 +9,7 @@ import AdminBilling from './pages/AdminBilling';
 import CookieConsent from './components/CookieConsent';
 import { loadConsentedScripts } from './utils/cookieConsent';
 import ScrollToTop from './components/ScrollToTop';
+import ProtectedRoute from './components/ProtectedRoute';
 
 // Convert all page imports to lazy loading for code splitting
 const Home = React.lazy(() => import('./pages/Home'));
@@ -116,20 +117,20 @@ function App() {
             <Routes>
               {/* Routes with Layout wrapper */}
               <Route path="/" element={<Layout><Home /></Layout>} />
-              <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
+              <Route path="/dashboard" element={<Layout><ProtectedRoute requireProfileComplete={true}><Dashboard /></ProtectedRoute></Layout>} />
               <Route path="/complete-profile" element={<Layout><CompleteProfile /></Layout>} />
               <Route path="/events" element={<Layout><Events /></Layout>} />
               <Route path="/events/:id" element={<Layout><EventDetails /></Layout>} />
-              <Route path="/profile" element={<Layout><Profile /></Layout>} />
+              <Route path="/profile" element={<Layout><ProtectedRoute requireProfileComplete={true}><Profile /></ProtectedRoute></Layout>} />
               <Route path="/directory" element={<Layout><Directory /></Layout>} />
               <Route path="/resources" element={<Layout><Resources /></Layout>} />
               <Route path="/search" element={<Layout><SearchResults /></Layout>} />
-              <Route path="/notifications" element={<Layout><NotificationHistory /></Layout>} />
-              <Route path="/notifications/:id" element={<Layout><NotificationDetail /></Layout>} />
-              <Route path="/judge-scoring" element={<Layout><JudgeScoring /></Layout>} />
-              <Route path="/advertise" element={<Layout><AdvertisePage /></Layout>} />
-              <Route path="/my-ads" element={<Layout><MemberAdDashboard /></Layout>} />
-              <Route path="/directory/create" element={<Layout><CreateDirectoryListing /></Layout>} />
+              <Route path="/notifications" element={<Layout><ProtectedRoute requireProfileComplete={true}><NotificationHistory /></ProtectedRoute></Layout>} />
+              <Route path="/notifications/:id" element={<Layout><ProtectedRoute requireProfileComplete={true}><NotificationDetail /></ProtectedRoute></Layout>} />
+              <Route path="/judge-scoring" element={<Layout><ProtectedRoute requireProfileComplete={true}><JudgeScoring /></ProtectedRoute></Layout>} />
+              <Route path="/advertise" element={<Layout><ProtectedRoute><AdvertisePage /></ProtectedRoute></Layout>} />
+              <Route path="/my-ads" element={<Layout><ProtectedRoute requireProfileComplete={true}><MemberAdDashboard /></ProtectedRoute></Layout>} />
+              <Route path="/directory/create" element={<Layout><ProtectedRoute><CreateDirectoryListing /></ProtectedRoute></Layout>} />
               <Route path="/directory/pending" element={<Layout><DirectoryListingPending /></Layout>} />
               <Route path="/claim-organization/:organizationId" element={<Layout><ClaimOrganization /></Layout>} />
               <Route path="/login" element={<Layout><Login /></Layout>} />
@@ -140,8 +141,8 @@ function App() {
               <Route path="/pricing" element={<Layout><Pricing /></Layout>} />
               <Route path="/business" element={<Layout><BusinessPricing /></Layout>} />
               <Route path="/organizations" element={<Layout><OrganizationPricing /></Layout>} />
-              <Route path="/create-event" element={<Layout><CreateEvent /></Layout>} />
-              <Route path="/events/:id/edit" element={<Layout><EditEvent /></Layout>} />
+              <Route path="/create-event" element={<Layout><ProtectedRoute><CreateEvent /></ProtectedRoute></Layout>} />
+              <Route path="/events/:id/edit" element={<Layout><ProtectedRoute><EditEvent /></ProtectedRoute></Layout>} />
               <Route path="/ai-configuration" element={<Layout><AIConfiguration /></Layout>} />
               <Route path="/pages/:slug" element={<Layout><DynamicPage /></Layout>} />
               <Route path="/privacy-policy" element={<Layout><PrivacyPolicy /></Layout>} />
@@ -149,7 +150,7 @@ function App() {
               <Route path="/newsletter/unsubscribe/:token" element={<Layout><NewsletterUnsubscribe /></Layout>} />
               
               {/* Billing routes with their own layout */}
-              <Route path="/billing" element={<Layout><UserBilling /></Layout>} />
+              <Route path="/billing" element={<Layout><ProtectedRoute requireProfileComplete={true}><UserBilling /></ProtectedRoute></Layout>} />
               
               {/* Admin routes */}
               <Route path="/admin" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminDashboard /></Suspense></AdminLayout>} />

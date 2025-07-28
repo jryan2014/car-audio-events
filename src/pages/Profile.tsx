@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom';
 import NewsletterPreferences from '../components/NewsletterPreferences';
 import NotificationPreferences from '../components/NotificationPreferences';
 import Accordion from '../components/ui/Accordion';
+import { getMembershipDisplayName } from '../utils/membershipUtils';
 
 interface AudioSystem {
   id: string;
@@ -1180,7 +1181,7 @@ export default function Profile() {
               <h1 className="text-3xl font-bold text-white mb-2">{user?.name}</h1>
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-gray-400 mb-4">
                 <span className="bg-electric-500/20 text-electric-400 px-3 py-1 rounded-full text-sm font-medium">
-                  {user?.membershipType}
+                  {getMembershipDisplayName(user?.membershipType, user?.subscriptionPlan)}
                 </span>
                 {user?.location && <span>{user.location}</span>}
                 <span>Member since {new Date().getFullYear()}</span>
@@ -1409,10 +1410,10 @@ export default function Profile() {
                       <FieldHelper text="Different membership types require different levels of verification to ensure platform security and authenticity." />
                     </h3>
 
-                    {/* Basic Competitor - Email Only */}
-                    {user?.membershipType === 'competitor' && (
+                    {/* Free Competitor - Email Only */}
+                    {user?.membershipType === 'competitor' && user?.subscriptionPlan !== 'pro' && (
                       <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
-                        <h4 className="text-blue-400 font-medium mb-2">Basic Competitor Verification</h4>
+                        <h4 className="text-blue-400 font-medium mb-2">Free Competitor Verification</h4>
                         <div className="space-y-2 text-sm text-gray-300">
                           <div className="flex items-center space-x-2">
                             <CheckCircle className="h-4 w-4 text-green-500" />
@@ -1425,8 +1426,8 @@ export default function Profile() {
                       </div>
                     )}
 
-                    {/* Pro Competitor - Billing Verification */}
-                    {user?.membershipType === 'pro_competitor' && (
+                    {/* Competitor Pro - Billing Verification */}
+                    {(user?.membershipType === 'competitor' && user?.subscriptionPlan === 'pro') && (
                       <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-4">
                         <h4 className="text-purple-400 font-medium mb-2">Pro Competitor Verification</h4>
                         <div className="space-y-2 text-sm text-gray-300">

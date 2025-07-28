@@ -5,6 +5,7 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { ActivityLogger } from '../utils/activityLogger';
 import { useNotifications } from '../components/NotificationSystem';
+import { getMembershipDisplayName, getMembershipBadgeStyles } from '../utils/membershipUtils';
 
 const USERS_PER_PAGE = 25;
 
@@ -532,48 +533,43 @@ export default function AdminUsers() {
 
     const Icon = icons[verification as keyof typeof icons];
 
+    const displayText = verification === 'verified' ? 'Verified' : 
+                        verification === 'pending' ? 'Pending' :
+                        verification === 'unverified' ? 'Unverified' :
+                        verification === 'rejected' ? 'Rejected' : verification;
+    
     return (
-      <span className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${styles[verification as keyof typeof styles]}`}>
+      <span className={`inline-flex items-center space-x-0.5 px-2 py-0.5 rounded text-[11px] font-medium ${styles[verification as keyof typeof styles]}`}>
         <Icon className="h-3 w-3" />
-        <span>{verification.charAt(0).toUpperCase() + verification.slice(1)}</span>
+        <span>{displayText}</span>
       </span>
     );
   };
 
-  const getMembershipTypeBadge = (type: string) => {
-    const styles = {
-      competitor: 'bg-blue-500/20 text-blue-400',
-      pro_competitor: 'bg-blue-600/20 text-blue-300',
-      retailer: 'bg-purple-500/20 text-purple-400',
-      manufacturer: 'bg-orange-500/20 text-orange-400',
-      organization: 'bg-green-500/20 text-green-400',
-      admin: 'bg-red-500/20 text-red-400'
-    };
-
-    const displayNames = {
-      competitor: 'Competitor',
-      pro_competitor: 'Pro Competitor',
-      retailer: 'Retailer',
-      manufacturer: 'Manufacturer',
-      organization: 'Organization',
-      admin: 'Admin'
-    };
-
+  const getMembershipTypeBadge = (type: string, subscriptionPlan?: string) => {
+    const displayName = getMembershipDisplayName(type, subscriptionPlan);
+    const styleClasses = getMembershipBadgeStyles(type, subscriptionPlan);
+    
     return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[type as keyof typeof styles]}`}>
-        {displayNames[type as keyof typeof displayNames] || type}
+      <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${styleClasses}`}>
+        {displayName}
       </span>
     );
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
+    const date = new Date(dateString);
+    const dateStr = date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      year: 'numeric'
     });
+    const timeStr = date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+    return `${dateStr} ${timeStr}`;
   };
 
   const formatSubscriptionPlan = (plan: string) => {
@@ -753,16 +749,16 @@ export default function AdminUsers() {
         {/* Users Table */}
         <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full table-fixed">
               <thead className="bg-gray-700/50">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">User</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Type</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Account Status</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Verification</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Plan</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Last Login</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
+                  <th className="w-[30%] px-4 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">User</th>
+                  <th className="w-[14%] px-4 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Type</th>
+                  <th className="w-[10%] px-2 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
+                  <th className="w-[10%] px-2 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Verified</th>
+                  <th className="w-[6%] px-2 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Plan</th>
+                  <th className="w-[18%] px-4 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Last Login</th>
+                  <th className="w-[12%] px-4 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-700/50">
@@ -784,31 +780,31 @@ export default function AdminUsers() {
                 ) : (
                   filteredUsers.map((user) => (
                     <tr key={user.id} className="hover:bg-gray-700/30 transition-colors">
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-4">
                         <div>
                           <div className="text-white font-medium">{user.name}</div>
-                          <div className="text-gray-400 text-sm">{user.email}</div>
+                          <div className="text-gray-400 text-sm break-all">{user.email}</div>
                           {user.company_name && (
                             <div className="text-gray-500 text-xs">{user.company_name}</div>
                           )}
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        {getMembershipTypeBadge(user.membership_type)}
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        {getMembershipTypeBadge(user.membership_type, user.subscription_plan)}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-2 py-4">
                         {getStatusBadge(user.status)}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-2 py-4">
                         {getVerificationBadge(user.verification_status)}
                       </td>
-                      <td className="px-6 py-4">
-                        <span className="text-gray-300">
+                      <td className="px-2 py-4">
+                        <span className="text-gray-300 text-xs">
                           {formatSubscriptionPlan(user.subscription_plan)}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="text-gray-300 text-sm">
+                      <td className="px-4 py-4">
+                        <div className="text-gray-300 text-sm whitespace-nowrap">
                           {user.last_login_at ? formatDate(user.last_login_at) : 'Never'}
                         </div>
                         <div className="text-gray-500 text-xs">

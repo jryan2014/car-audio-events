@@ -79,6 +79,7 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, onL
         console.error('Error fetching navigation:', error);
         // Fallback to hardcoded items
         setNavigationItems(getDefaultNavigation());
+        setLoading(false);
         return;
       }
 
@@ -153,10 +154,11 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, onL
       } else {
         setNavigationItems(filteredItems);
       }
+      
+      setLoading(false);
     } catch (error) {
       console.error('Error in fetchNavigationItems:', error);
       setNavigationItems(getDefaultNavigation());
-    } finally {
       setLoading(false);
     }
   };
@@ -256,29 +258,88 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, onL
       {
         id: 'events',
         title: 'Events',
-        href: '/events',
         icon: 'Calendar',
         nav_order: 2,
         is_active: true,
         target_blank: false,
+        children: [
+          {
+            id: 'events-all',
+            title: 'Browse Events',
+            href: '/events',
+            nav_order: 1,
+            is_active: true,
+            target_blank: false,
+          },
+          {
+            id: 'events-create',
+            title: 'Create Event',
+            href: '/events/create',
+            nav_order: 2,
+            is_active: true,
+            target_blank: false,
+          },
+        ]
       },
       {
         id: 'directory',
         title: 'Directory',
-        href: '/directory',
         icon: 'MapPin',
         nav_order: 3,
         is_active: true,
         target_blank: false,
+        children: [
+          {
+            id: 'directory-browse',
+            title: 'Browse Directory',
+            href: '/directory',
+            nav_order: 1,
+            is_active: true,
+            target_blank: false,
+          },
+          {
+            id: 'directory-add',
+            title: 'Add Business',
+            href: '/directory/add',
+            nav_order: 2,
+            is_active: true,
+            target_blank: false,
+          },
+        ]
       },
       {
         id: 'resources',
         title: 'Resources',
-        href: '/resources',
         icon: 'BookOpen',
         nav_order: 4,
         is_active: true,
         target_blank: false,
+        children: [
+          {
+            id: 'resources-all',
+            title: 'All Resources',
+            href: '/resources',
+            nav_order: 1,
+            is_active: true,
+            target_blank: false,
+          },
+          {
+            id: 'resources-faq',
+            title: 'FAQ',
+            href: '/faq',
+            nav_order: 2,
+            is_active: true,
+            target_blank: false,
+          },
+          {
+            id: 'resources-contact',
+            title: 'Contact',
+            href: '/contact',
+            nav_order: 3,
+            is_active: true,
+            target_blank: false,
+          },
+        ]
       },
     ];
   };
@@ -348,7 +409,7 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, onL
   };
 
   return (
-    <div className="flex flex-col h-full bg-black/95">
+    <div className="flex flex-col h-full bg-black/95" style={{ height: 'calc(100vh - 88px)' }}>
       {/* Search Bar */}
       <div className="p-4 border-b border-gray-700/50">
         <GlobalSearch 
@@ -359,7 +420,9 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, onL
 
       <nav className="flex-grow overflow-y-auto p-4">
         {loading ? (
-          <div className="text-center text-gray-400">Loading navigation...</div>
+          <div className="text-center text-gray-400">
+            <p>Loading navigation...</p>
+          </div>
         ) : (
           <>
             {/* User Profile Section for logged-in users */}

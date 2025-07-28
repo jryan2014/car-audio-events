@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import DashboardWidgets, { Widget } from '../components/DashboardWidgets';
 import { ServiceWorkerManager } from '../components/ServiceWorkerManager';
 import { ActivityLogger } from '../utils/activityLogger';
+import { getMembershipDisplayName } from '../utils/membershipUtils';
 
 // Resend Verification Email Component
 const ResendVerificationEmailButton: React.FC<{ userEmail: string }> = ({ userEmail }) => {
@@ -477,7 +478,9 @@ export default function Dashboard() {
               </div>
               <div>
                 <label className="block text-gray-400 text-sm mb-1">Membership Type</label>
-                <p className="text-white capitalize">{user.membershipType}</p>
+                <p className="text-white">
+                  {getMembershipDisplayName(user.membershipType, user.subscriptionPlan)}
+                </p>
               </div>
               <div>
                 <label className="block text-gray-400 text-sm mb-1">Status</label>
@@ -528,7 +531,7 @@ export default function Dashboard() {
             </div>
             <div className="flex items-center space-x-4">
               <span className="bg-electric-500/20 text-electric-400 px-3 py-1 rounded-full text-sm font-medium">
-                {user?.membershipType}
+                {getMembershipDisplayName(user?.membershipType, user?.subscriptionPlan)}
               </span>
               <Link
                 to="/profile"

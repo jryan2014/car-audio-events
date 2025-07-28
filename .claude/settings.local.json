@@ -35,7 +35,11 @@
       "Bash(PYTHONPATH=. py -3.11 -m SuperClaude install --profile quick --yes)",
       "Bash(PYTHONPATH=. py -3.11 -m SuperClaude install --component mcp --yes)",
       "Bash(cp:*)",
-      "WebFetch(domain:localhost)"
+      "WebFetch(domain:localhost)",
+      "Bash(dir:*)",
+      "Bash(del check-activity-logs.js)",
+      "Bash(cmd /c:*)",
+      "Bash(del check-todd-status.js)"
     ],
     "deny": []
   }

@@ -4,6 +4,8 @@ import { User, MapPin, Phone, Building, AlertTriangle, CheckCircle, Loader } fro
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { COUNTRIES, getCountryByCode, getStatesForCountry, getPostalCodeLabel, getStateLabel, validatePostalCode } from '../data/countries';
+import { activityLogger } from '../services/activityLogger';
+import { validateCompleteProfile } from '../utils/registrationValidator';
 
 interface ProfileFormData {
   first_name: string;
@@ -97,10 +99,21 @@ export default function CompleteProfile() {
       return false;
     }
 
-    // Basic phone validation
-    const phoneRegex = /^[\d\s\-\(\)\+]+$/;
-    if (!phoneRegex.test(formData.phone)) {
-      setError('Please enter a valid phone number');
+    // Validate against spam/bogus data
+    const profileValidation = validateCompleteProfile({
+      firstName: formData.first_name,
+      lastName: formData.last_name,
+      phone: formData.phone,
+      address: formData.address,
+      city: formData.city,
+      state: formData.state,
+      zip: formData.zip,
+      country: formData.country
+    });
+
+    if (!profileValidation.isValid) {
+      // Show the first error to the user
+      setError(profileValidation.errors[0]);
       return false;
     }
 
@@ -145,21 +158,16 @@ export default function CompleteProfile() {
 
       if (updateError) throw updateError;
 
-      // Log activity
-      try {
-        await supabase.functions.invoke('log-activity', {
-          body: {
-            user_id: user!.id,
-            activity_type: 'profile_completed',
-            description: 'User completed profile registration',
-            metadata: {
-              registration_provider: user?.registrationProvider || 'unknown'
-            }
-          }
-        });
-      } catch (logError) {
-        console.warn('Failed to log activity:', logError);
-      }
+      // Log profile completion activity
+      await activityLogger.log({
+        userId: user!.id,
+        activityType: 'profile_update',
+        description: 'User completed profile registration',
+        metadata: {
+          registration_provider: user?.registrationProvider || 'unknown',
+          profile_completed: true
+        }
+      });
 
       setSuccess(true);
       
