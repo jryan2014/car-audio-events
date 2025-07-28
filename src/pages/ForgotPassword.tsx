@@ -15,15 +15,20 @@ export default function ForgotPassword() {
     setError('');
     
     try {
-      // Use our custom password reset system instead of Supabase Auth
+      console.log('Starting password reset for:', email);
+      
+      // Use our custom password reset system that uses the email queue
       const { data, error } = await supabase.rpc('request_password_reset', {
-        p_email: email.trim().toLowerCase()
+        user_email: email.trim().toLowerCase()
       });
 
       if (error) {
+        console.error('Password reset error:', error);
         throw error;
       }
 
+      console.log('Password reset response:', data);
+      
       // Our function always returns success for security (doesn't reveal if email exists)
       setSuccess(true);
     } catch (error: any) {
@@ -36,6 +41,8 @@ export default function ForgotPassword() {
         errorMessage = 'Too many password reset attempts. Please wait a few minutes before trying again.';
       } else if (error.message?.includes('network')) {
         errorMessage = 'Network error. Please check your connection and try again.';
+      } else if (error.message?.includes('function') && error.message?.includes('not exist')) {
+        errorMessage = 'Password reset service is temporarily unavailable. Please contact support at admin@caraudioevents.com';
       } else if (error.message) {
         errorMessage = error.message;
       }
@@ -106,9 +113,9 @@ export default function ForgotPassword() {
                   <div>
                     <h3 className="text-sm font-medium text-red-400">Error</h3>
                     <p className="text-sm text-red-300 mt-1">{error}</p>
-                    {error.includes('email service') && (
+                    {error.includes('support') && (
                       <p className="text-sm text-gray-400 mt-2">
-                        If this problem persists, please contact support at{' '}
+                        Please contact us at{' '}
                         <a href="mailto:admin@caraudioevents.com" className="text-electric-400 hover:text-electric-300">
                           admin@caraudioevents.com
                         </a>
