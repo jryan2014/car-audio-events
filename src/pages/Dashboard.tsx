@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import DashboardWidgets, { Widget } from '../components/DashboardWidgets';
 import { ServiceWorkerManager } from '../components/ServiceWorkerManager';
 import { ActivityLogger } from '../utils/activityLogger';
+import { activityLogger } from '../services/activityLogger';
 import { getMembershipDisplayName } from '../utils/membershipUtils';
 
 // Resend Verification Email Component
@@ -151,7 +152,7 @@ export default function Dashboard() {
             loadUserStats()
           ]);
           
-          // Log dashboard access based on user type
+          // Log dashboard access based on user type with more details
           switch (user.membershipType) {
             case 'competitor':
             case 'pro_competitor':
@@ -169,6 +170,20 @@ export default function Dashboard() {
             default:
               await ActivityLogger.userDashboardAccess('user');
           }
+          
+          // Also log with more details to the newer activity logger
+          await activityLogger.log({
+            userId: user.id,
+            activityType: 'dashboard_view',
+            description: `User visited Dashboard page`,
+            metadata: {
+              page: 'dashboard',
+              user_email: user.email,
+              user_name: user.name,
+              membership_type: user.membershipType,
+              subscription_plan: user.subscriptionPlan
+            }
+          });
           
           // console.log('Dashboard data loaded successfully');
           setError(null);

@@ -401,11 +401,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               console.log('✅ AUTH DEBUG: Setting user and completing login');
               setUser(userProfile);
               
-              // Log the login activity
-              activityLogger.logLogin(userProfile.id, {
-                method: 'email',
-                email: userProfile.email,
-                membership_type: userProfile.membershipType
+              // Log the login activity with more details
+              activityLogger.log({
+                userId: userProfile.id,
+                activityType: 'user_login',
+                description: `User logged in: ${userProfile.email} (${userProfile.name || 'No name'})`,
+                metadata: {
+                  method: session.user.app_metadata?.provider || 'email',
+                  email: userProfile.email,
+                  name: userProfile.name,
+                  membership_type: userProfile.membershipType,
+                  subscription_plan: userProfile.subscriptionPlan,
+                  ip_address: window.location.hostname
+                }
               });
             } else {
               // No profile found for existing auth user - clean up orphaned session
@@ -668,7 +676,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Log the logout activity before clearing user
       if (user) {
-        activityLogger.logLogout(user.id);
+        activityLogger.log({
+          userId: user.id,
+          activityType: 'user_logout',
+          description: `User logged out: ${user.email} (${user.name || 'No name'})`,
+          metadata: {
+            email: user.email,
+            name: user.name,
+            membership_type: user.membershipType
+          }
+        });
       }
       
       // Clear local state immediately

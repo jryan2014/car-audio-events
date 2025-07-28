@@ -17,7 +17,13 @@ export type ActivityType =
   | 'directory_create'
   | 'directory_update'
   | 'system_event'
-  | 'error_event';
+  | 'error_event'
+  | 'page_view'
+  | 'event_view'
+  | 'directory_view'
+  | 'profile_view'
+  | 'resource_view'
+  | 'dashboard_view';
 
 interface LogActivityParams {
   userId?: string | null;

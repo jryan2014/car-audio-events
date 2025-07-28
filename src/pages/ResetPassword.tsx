@@ -11,24 +11,33 @@ export default function ResetPassword() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if we have the required tokens from the URL
-    const accessToken = searchParams.get('access_token');
-    const refreshToken = searchParams.get('refresh_token');
+    // Check if we have a token from our custom system
+    const resetToken = searchParams.get('token');
     
-    if (!accessToken || !refreshToken) {
-      setError('Invalid or expired reset link. Please request a new password reset.');
-      return;
-    }
+    if (!resetToken) {
+      // Check for Supabase tokens as fallback
+      const accessToken = searchParams.get('access_token');
+      const refreshToken = searchParams.get('refresh_token');
+      
+      if (!accessToken || !refreshToken) {
+        setError('Invalid or expired reset link. Please request a new password reset.');
+        return;
+      }
 
-    // Set the session with the tokens from the URL
-    supabase.auth.setSession({
-      access_token: accessToken,
-      refresh_token: refreshToken,
-    });
+      // Set the session with the tokens from the URL (Supabase fallback)
+      supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+    } else {
+      // We have our custom token
+      setToken(resetToken);
+    }
   }, [searchParams]);
 
   const validatePassword = (password: string) => {
@@ -67,12 +76,29 @@ export default function ResetPassword() {
     setIsLoading(true);
     
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: password
-      });
+      if (token) {
+        // Use our custom password reset system
+        const { data, error } = await supabase.rpc('reset_password_with_token', {
+          p_token: token,
+          p_new_password: password
+        });
 
-      if (error) {
-        throw error;
+        if (error) {
+          throw error;
+        }
+
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to reset password');
+        }
+      } else {
+        // Fallback to Supabase auth
+        const { error } = await supabase.auth.updateUser({
+          password: password
+        });
+
+        if (error) {
+          throw error;
+        }
       }
 
       setSuccess(true);

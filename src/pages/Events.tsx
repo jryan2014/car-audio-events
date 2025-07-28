@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import PageHeader from '../components/PageHeader';
 import AdDisplay from '../components/AdDisplay';
 import { parseLocalDate } from '../utils/dateHelpers';
+import { activityLogger } from '../services/activityLogger';
 
 interface Event {
   id: string;
@@ -54,6 +55,18 @@ export default function Events() {
     loadCategories();
     if (user) {
       loadUserFavorites();
+      // Log page visit
+      activityLogger.log({
+        userId: user.id,
+        activityType: 'event_view' as any,
+        description: `User visited Events page`,
+        metadata: {
+          page: 'events',
+          filter: eventFilter,
+          user_email: user.email,
+          user_name: user.name
+        }
+      });
     }
   }, [user, eventFilter]);
 

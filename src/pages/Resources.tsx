@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
+import { activityLogger } from '../services/activityLogger';
 import { 
   BookOpen, 
   FileText, 
@@ -68,6 +70,7 @@ const createProtectedEmailLink = (email: string, subject?: string) => {
 };
 
 export default function Resources() {
+  const { user } = useAuth();
   const [pages, setPages] = useState<CMSPage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -79,6 +82,21 @@ export default function Resources() {
   useEffect(() => {
     loadResourcePages();
     loadContactSettings();
+    
+    // Log page visit
+    if (user) {
+      activityLogger.log({
+        userId: user.id,
+        activityType: 'resource_view',
+        description: `User visited Resources page`,
+        metadata: {
+          page: 'resources',
+          user_email: user.email,
+          user_name: user.name,
+          membership_type: user.membershipType
+        }
+      });
+    }
   }, []);
 
   const loadResourcePages = async () => {

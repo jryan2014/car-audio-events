@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import PageHeader from '../components/PageHeader';
 import { AdvancedSearch } from '../components/AdvancedSearch';
 import { DirectoryListView } from '../components/DirectoryListView';
+import { activityLogger } from '../services/activityLogger';
 
 interface DirectoryListing {
   id: string;
@@ -54,6 +55,20 @@ export default function Directory() {
   useEffect(() => {
     loadListings();
     loadSearchData();
+    
+    // Log page visit
+    if (user) {
+      activityLogger.log({
+        userId: user.id,
+        activityType: 'directory_view' as any,
+        description: `User visited Directory page`,
+        metadata: {
+          page: 'directory',
+          user_email: user.email,
+          user_name: user.name
+        }
+      });
+    }
   }, []);
 
   const loadListings = async () => {

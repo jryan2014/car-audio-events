@@ -8,6 +8,7 @@ import NewsletterPreferences from '../components/NewsletterPreferences';
 import NotificationPreferences from '../components/NotificationPreferences';
 import Accordion from '../components/ui/Accordion';
 import { getMembershipDisplayName } from '../utils/membershipUtils';
+import { activityLogger } from '../services/activityLogger';
 
 interface AudioSystem {
   id: string;
@@ -308,6 +309,21 @@ export default function Profile() {
     const tabParam = urlParams.get('tab');
     if (tabParam && tabs.some(tab => tab.id === tabParam)) {
       setActiveTab(tabParam);
+    }
+    
+    // Log page visit
+    if (user) {
+      activityLogger.log({
+        userId: user.id,
+        activityType: 'profile_view' as any,
+        description: `User visited Profile page`,
+        metadata: {
+          page: 'profile',
+          tab: tabParam || 'profile',
+          user_email: user.email,
+          user_name: user.name
+        }
+      });
     }
   }, []);
   useEffect(() => {

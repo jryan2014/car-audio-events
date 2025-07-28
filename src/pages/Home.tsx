@@ -5,6 +5,8 @@ import GoogleMap from '../components/GoogleMap';
 import AdDisplay from '../components/AdDisplay';
 import { supabase } from '../lib/supabase';
 import { parseLocalDate } from '../utils/dateHelpers';
+import { useAuth } from '../contexts/AuthContext';
+import { activityLogger } from '../services/activityLogger';
 
 interface FeaturedEvent {
   id: string | number;
@@ -20,6 +22,7 @@ interface FeaturedEvent {
 }
 
 export default function Home() {
+  const { user } = useAuth();
   const [featuredEvents, setFeaturedEvents] = useState<FeaturedEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -65,6 +68,21 @@ export default function Home() {
 
   useEffect(() => {
     fetchFeaturedEvents();
+    
+    // Log page visit
+    if (user) {
+      activityLogger.log({
+        userId: user.id,
+        activityType: 'page_view',
+        description: `User visited Home page`,
+        metadata: {
+          page: 'home',
+          user_email: user.email,
+          user_name: user.name,
+          membership_type: user.membershipType
+        }
+      });
+    }
   }, []);
 
   const fetchFeaturedEvents = async () => {
