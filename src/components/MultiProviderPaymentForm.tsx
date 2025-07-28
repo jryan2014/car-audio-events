@@ -149,8 +149,10 @@ export default function MultiProviderPaymentForm({
   const renderPayPalButtons = (intent: any) => {
     if (!paypalRef.current || !(window as any).paypal) return;
 
-    // Clear existing buttons
-    paypalRef.current.innerHTML = '';
+    // Clear existing buttons safely
+    while (paypalRef.current.firstChild) {
+      paypalRef.current.removeChild(paypalRef.current.firstChild);
+    }
 
     (window as any).paypal.Buttons({
       style: {
