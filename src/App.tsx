@@ -23,7 +23,9 @@ const Login = React.lazy(() => import('./pages/Login'));
 const Register = React.lazy(() => import('./pages/Register'));
 const Pricing = React.lazy(() => import('./pages/Pricing'));
 const BusinessPricing = React.lazy(() => import('./pages/BusinessPricing'));
+const BusinessFeatures = React.lazy(() => import('./pages/BusinessFeatures'));
 const OrganizationPricing = React.lazy(() => import('./pages/OrganizationPricing'));
+const OrganizationFeatures = React.lazy(() => import('./pages/OrganizationFeatures'));
 const ForgotPassword = React.lazy(() => import('./pages/ForgotPassword'));
 const ResetPassword = React.lazy(() => import('./pages/ResetPassword'));
 const AdminSettings = React.lazy(() => import('./pages/AdminSettings'));
@@ -140,7 +142,9 @@ function App() {
               {/* <Route path="/test-ads" element={<Layout><TestAds /></Layout>} /> */}
               <Route path="/pricing" element={<Layout><Pricing /></Layout>} />
               <Route path="/business" element={<Layout><BusinessPricing /></Layout>} />
+              <Route path="/business-features" element={<Layout><BusinessFeatures /></Layout>} />
               <Route path="/organizations" element={<Layout><OrganizationPricing /></Layout>} />
+              <Route path="/organization-features" element={<Layout><OrganizationFeatures /></Layout>} />
               <Route path="/create-event" element={<Layout><ProtectedRoute><CreateEvent /></ProtectedRoute></Layout>} />
               <Route path="/events/:id/edit" element={<Layout><ProtectedRoute><EditEvent /></ProtectedRoute></Layout>} />
               <Route path="/ai-configuration" element={<Layout><AIConfiguration /></Layout>} />

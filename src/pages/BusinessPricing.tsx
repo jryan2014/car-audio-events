@@ -92,13 +92,13 @@ export default function BusinessPricing() {
             </p>
             
             <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4">
-              <Link
-                to="/register"
+              <a
+                href="#plans"
                 className="bg-electric-500 text-white px-8 py-4 rounded-lg font-bold hover:bg-electric-600 transition-all duration-200 flex items-center space-x-2"
               >
                 <span>Get Started Today</span>
                 <ArrowRight className="h-5 w-5" />
-              </Link>
+              </a>
               <Link
                 to="/directory"
                 className="text-electric-400 hover:text-electric-300 font-medium transition-colors"
@@ -135,7 +135,7 @@ export default function BusinessPricing() {
       </div>
 
       {/* Pricing Plans */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <div id="plans" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold text-white mb-4">
             Choose Your Business Plan
@@ -175,10 +175,10 @@ export default function BusinessPricing() {
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4">
               <Link
-                to="/register"
+                to="/business-features"
                 className="bg-electric-500 text-white px-8 py-4 rounded-lg font-bold hover:bg-electric-600 transition-all duration-200"
               >
-                Get Started Today
+                View Plan Features & Benefits
               </Link>
               <Link
                 to="/directory"

@@ -110,13 +110,13 @@ export default function OrganizationPricing() {
             </p>
             
             <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4">
-              <Link
-                to="/pricing"
+              <a
+                href="#plans"
                 className="bg-purple-500 text-white px-8 py-4 rounded-lg font-bold hover:bg-purple-600 transition-all duration-200 flex items-center space-x-2"
               >
-                <span>Start Your Organization</span>
+                <span>Get Started Today</span>
                 <ArrowRight className="h-5 w-5" />
-              </Link>
+              </a>
               <Link
                 to="/pricing"
                 className="text-purple-400 hover:text-purple-300 font-medium transition-colors"
@@ -182,7 +182,7 @@ export default function OrganizationPricing() {
       </div>
 
       {/* Pricing Plans */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <div id="plans" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold text-white mb-4">
             Choose Your Organization Plan
@@ -222,10 +222,10 @@ export default function OrganizationPricing() {
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4">
               <Link
-                to="/pricing"
+                to="/organization-features"
                 className="bg-purple-500 text-white px-8 py-4 rounded-lg font-bold hover:bg-purple-600 transition-all duration-200"
               >
-                Start Your Organization
+                View Plan Features & Benefits
               </Link>
               <Link
                 to="/events"
