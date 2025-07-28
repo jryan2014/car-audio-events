@@ -202,7 +202,7 @@ export default function OrganizationPricing() {
         </div>
 
         {isLoading ? (
-          <LoadingSpinner color="purple-500" message="Loading organization plans..." />
+          <LoadingSpinner color="purple" message="Loading organization plans..." />
         ) : plans.length > 0 ? (
           <PricingPlans onPlanSelected={handlePlanSelected} preLoadedPlans={plans} />
         ) : (

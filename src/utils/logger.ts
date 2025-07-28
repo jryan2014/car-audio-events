@@ -14,7 +14,28 @@ export const logger = {
   
   error: (...args: any[]) => {
     // Always log errors, even in production
-    console.error(...args);
+    // In production, sanitize error messages to avoid exposing sensitive data
+    if (isDevelopment) {
+      console.error(...args);
+    } else {
+      // In production, only log error messages without full stack traces
+      const sanitizedArgs = args.map(arg => {
+        if (arg instanceof Error) {
+          return `Error: ${arg.message}`;
+        }
+        if (typeof arg === 'object') {
+          try {
+            // Remove potentially sensitive fields
+            const { password, token, apiKey, secret, ...safe } = arg;
+            return safe;
+          } catch {
+            return '[Object]';
+          }
+        }
+        return arg;
+      });
+      console.error(...sanitizedArgs);
+    }
   },
   
   warn: (...args: any[]) => {
@@ -36,8 +57,25 @@ export const logger = {
   },
   
   // Force logging even in production (use sparingly)
+  // WARNING: Only use for non-sensitive data
   force: (...args: any[]) => {
-    console.log('[FORCE]', ...args);
+    if (isDevelopment) {
+      console.log('[FORCE]', ...args);
+    } else {
+      // In production, still sanitize forced logs
+      const sanitizedArgs = args.map(arg => {
+        if (typeof arg === 'object' && arg !== null) {
+          try {
+            const { password, token, apiKey, secret, email, ...safe } = arg;
+            return safe;
+          } catch {
+            return '[Object]';
+          }
+        }
+        return arg;
+      });
+      console.log('[FORCE]', ...sanitizedArgs);
+    }
   }
 };
 
