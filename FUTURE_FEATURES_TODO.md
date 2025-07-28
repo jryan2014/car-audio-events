@@ -225,6 +225,93 @@ This file contains features to be implemented in the future. These are not part 
   - Foreign key to auth.users with CASCADE delete
 - **Current Status**: Application gracefully handles missing table by returning defaults
 
+## Form Security Enhancements
+
+### 13. Implement CSRF Tokens on All Forms
+- **Description**: Add CSRF protection to all form submissions throughout the application
+- **Purpose**: Prevent Cross-Site Request Forgery attacks on form submissions
+- **Requirements**:
+  - Use existing CSRF protection infrastructure from `csrfProtection.ts`
+  - Add `X-CSRF-Token` header to all form API calls
+  - Implement server-side CSRF validation
+  - Update all forms to include CSRF tokens
+  - Test CSRF protection across all forms
+- **Priority**: High
+- **Estimated Effort**: 1 week
+- **Implementation Example**:
+  ```typescript
+  import { addCSRFHeader } from '../utils/csrfProtection';
+  
+  const headers = addCSRFHeader({
+    'Content-Type': 'application/json'
+  });
+  ```
+- **Forms to Update**:
+  - Registration/Login forms
+  - Event creation/edit forms
+  - Payment forms
+  - Profile update forms
+  - Contact forms
+
+### 14. Form Submission Rate Limiting
+- **Description**: Implement rate limiting to prevent form spam and abuse
+- **Purpose**: Protect against automated form submissions and denial of service
+- **Requirements**:
+  - Client-side rate limiting with exponential backoff
+  - Server-side rate limiting per IP and per user
+  - Different limits for different form types
+  - Graceful error messages for rate-limited users
+  - Admin interface to manage rate limits
+  - Whitelist for trusted users/IPs
+- **Priority**: Medium
+- **Estimated Effort**: 1-2 weeks
+- **Rate Limits**:
+  - Registration: 5 attempts per hour per IP
+  - Login: 10 attempts per 15 minutes
+  - Contact forms: 3 submissions per hour
+  - Payment forms: 20 attempts per hour per user
+  - General forms: 30 submissions per hour per user
+
+### 15. Form Submission Security Logging
+- **Description**: Comprehensive logging system for form submissions
+- **Purpose**: Security auditing, pattern detection, and abuse prevention
+- **Requirements**:
+  - Log all form submissions with metadata
+  - Track: timestamp, user ID, IP address, form type, success/failure
+  - Detect patterns of abuse or suspicious activity
+  - Real-time alerts for suspicious patterns
+  - GDPR-compliant data retention policies
+  - Admin dashboard for viewing form analytics
+  - Export capabilities for security audits
+- **Priority**: Medium
+- **Estimated Effort**: 2 weeks
+- **Features**:
+  - Failed submission tracking
+  - Velocity detection (rapid submissions)
+  - Geographic anomaly detection
+  - Pattern matching for common attacks
+  - Integration with security monitoring tools
+
+### 16. Enhanced Form Error Handling
+- **Description**: Implement dual error messaging system for security
+- **Purpose**: Prevent information leakage while maintaining good UX
+- **Requirements**:
+  - Generic user-facing error messages
+  - Detailed server-side error logging
+  - Error categorization system
+  - Custom error pages for different scenarios
+  - Never expose system internals to users
+  - Implement error ID system for support
+  - A/B test error messages for clarity
+- **Priority**: Low-Medium
+- **Estimated Effort**: 1 week
+- **Error Categories**:
+  - Validation errors (safe to show details)
+  - Authentication errors (generic messages)
+  - System errors (hide all details)
+  - Rate limit errors (show remaining time)
+  - Permission errors (generic "unauthorized")
+
 ## [Other Future Features]
 <!-- Add new features below this line -->
 
