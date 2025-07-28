@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Upload, X, Image as ImageIcon, Loader } from 'lucide-react';
 import { AdImageService } from '../services/adImageService';
 import { useAuth } from '../contexts/AuthContext';
+import { validateFile } from '../utils/fileValidation';
 
 interface AdImageUploadProps {
   advertisementId?: string;
@@ -44,14 +45,13 @@ export default function AdImageUpload({
     setIsUploading(true);
 
     try {
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        throw new Error('Please select an image file');
-      }
-
-      // Validate file size (5MB limit)
-      if (file.size > 5 * 1024 * 1024) {
-        throw new Error('Image size must be less than 5MB');
+      // Comprehensive file validation
+      const validation = await validateFile(file, 'advertisement', {
+        checkSignature: true
+      });
+      
+      if (!validation.valid) {
+        throw new Error(validation.error || 'Invalid file');
       }
 
       // Create preview

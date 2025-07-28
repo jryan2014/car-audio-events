@@ -4,6 +4,7 @@ import { Mail, Lock, User, MapPin, Eye, EyeOff, Volume2, Building, Wrench, Users
 import { useAuth } from '../contexts/AuthContext';
 import HCaptcha, { HCaptchaRef } from '../components/HCaptcha';
 import { supabase } from '../lib/supabase';
+import { registerRateLimiter, getClientIdentifier } from '../utils/rateLimiter';
 
 interface MembershipPlan {
   id: string;
@@ -21,6 +22,24 @@ interface MembershipPlan {
 export default function Register() {
   const [searchParams] = useSearchParams();
   const preSelectedPlan = searchParams.get('plan');
+  
+  // Password validation function
+  const validatePassword = (password: string) => {
+    const minLength = password.length >= 8;
+    const hasUpper = /[A-Z]/.test(password);
+    const hasLower = /[a-z]/.test(password);
+    const hasNumber = /\d/.test(password);
+    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    
+    return {
+      minLength,
+      hasUpper,
+      hasLower,
+      hasNumber,
+      hasSpecial,
+      isValid: minLength && hasUpper && hasLower && hasNumber && hasSpecial
+    };
+  };
   
   const [formData, setFormData] = useState({
     // Basic Info
@@ -286,15 +305,36 @@ export default function Register() {
     setError('');
     setDebugInfo('🎯 Registration form submitted');
     
+    // Check rate limiting
+    const clientId = getClientIdentifier(formData.email);
+    if (registerRateLimiter.isLimited(clientId)) {
+      const blockedTime = registerRateLimiter.getBlockedTime(clientId);
+      if (blockedTime > 0) {
+        const minutes = Math.ceil(blockedTime / 60);
+        setError(`Too many registration attempts. Please try again in ${minutes} minute${minutes > 1 ? 's' : ''}.`);
+        setDebugInfo('❌ Rate limit exceeded');
+        return;
+      }
+    }
+    
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       setDebugInfo('❌ Password confirmation failed');
       return;
     }
 
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters long');
-      setDebugInfo('❌ Password too short');
+    // Validate password strength
+    const passwordValidation = validatePassword(formData.password);
+    if (!passwordValidation.isValid) {
+      const missing = [];
+      if (!passwordValidation.minLength) missing.push('at least 8 characters');
+      if (!passwordValidation.hasUpper) missing.push('an uppercase letter');
+      if (!passwordValidation.hasLower) missing.push('a lowercase letter');
+      if (!passwordValidation.hasNumber) missing.push('a number');
+      if (!passwordValidation.hasSpecial) missing.push('a special character');
+      
+      setError(`Password must contain ${missing.join(', ')}.`);
+      setDebugInfo('❌ Password validation failed');
       return;
     }
 
@@ -333,12 +373,17 @@ export default function Register() {
       };
 
       await register(enhancedUserData);
+      // Registration successful - clear rate limit
+      registerRateLimiter.clear(clientId);
       setDebugInfo('✅ Registration successful, navigating to dashboard');
       setRegistrationSuccess(true);
       setTimeout(() => {
         navigate('/dashboard');
       }, 3000);
     } catch (error: any) {
+      // Record failed attempt
+      registerRateLimiter.recordAttempt(clientId);
+      const remainingAttempts = registerRateLimiter.getRemainingAttempts(clientId);
       console.error('Registration failed:', error);
       
       let errorMessage = 'Registration failed. Please try again.';

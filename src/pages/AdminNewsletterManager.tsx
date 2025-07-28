@@ -3,6 +3,8 @@ import { Mail, Send, Users, Eye, MousePointer, X, Search, Download, Filter, Cale
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
 import { useNotifications } from '../components/NotificationSystem';
+import { safeDelete, validateUUID } from '../utils/secureDatabase';
+import { retryInsert } from '../utils/supabaseRetry';
 
 interface NewsletterSubscriber {
   id: string;
@@ -436,9 +438,16 @@ export default function AdminNewsletterManager() {
     }
 
     try {
-      const { error } = await supabase.rpc('exec_sql', {
-        sql_command: `DELETE FROM newsletter_campaigns WHERE id = '${newsletterId}'`
-      });
+      // Validate input and use safe deletion
+      try {
+        validateUUID(newsletterId);
+      } catch (validationError) {
+        console.error('Invalid newsletter ID:', validationError);
+        showError('Invalid newsletter ID format');
+        return;
+      }
+      
+      const { error } = await safeDelete('newsletter_campaigns', newsletterId);
 
       if (error) throw error;
 
@@ -530,54 +539,56 @@ export default function AdminNewsletterManager() {
           // If it's a schema cache issue, try exec_sql as fallback
           // PGRST204 = schema cache miss, 42P01 = table not found
           if (insertError.code === 'PGRST204' || insertError.message?.includes('schema cache')) {
-            const { error: execError } = await supabase.rpc('exec_sql', {
-              sql_command: `
-                INSERT INTO newsletter_campaigns (
-                  name, subject, content, html_content, tags, status, created_by, scheduled_for
-                ) VALUES (
-                  '${composeData.name.replace(/'/g, "''")}',
-                  '${composeData.subject.replace(/'/g, "''")}',
-                  '${composeData.content.replace(/'/g, "''")}',
-                  '${(composeData.html_content || composeData.content).replace(/'/g, "''")}',
-                  ${composeData.tags.length > 0 ? `ARRAY[${composeData.tags.map(t => `'${t.replace(/'/g, "''")}'`).join(',')}]` : 'NULL'},
-                  '${sendNow ? 'sending' : (composeData.scheduled_for ? 'scheduled' : 'draft')}',
-                  '${userData.user.id}',
-                  ${composeData.scheduled_for ? `'${composeData.scheduled_for}'` : 'NULL'}
-                )
-              `
-            });
+            console.log('Schema cache issue detected, using retry logic...');
             
-            if (execError) throw execError;
+            // Use our secure retry utility instead of exec_sql
+            const retryData = {
+              name: composeData.name,
+              subject: composeData.subject,
+              content: composeData.content,
+              html_content: composeData.html_content || composeData.content,
+              tags: composeData.tags.length > 0 ? composeData.tags : null,
+              status: sendNow ? 'sending' : (composeData.scheduled_for ? 'scheduled' : 'draft'),
+              created_by: userData.user.id,
+              scheduled_for: composeData.scheduled_for || null
+            };
             
-            console.log('Newsletter created via exec_sql, attempting to get ID...');
-            
-            // Try to get the ID manually
-            const { data: newsletters, error: selectError } = await supabase
-              .from('newsletter_campaigns')
-              .select('id, name')
-              .eq('name', composeData.name)
-              .eq('created_by', userData.user.id)
-              .order('created_at', { ascending: false })
-              .limit(1);
-              
-            if (selectError) {
-              console.error('Failed to query newsletter after creation:', selectError);
-              // If we can't query it but exec_sql succeeded, create a fake data object
-              // The newsletter was created, we just can't get its ID due to schema cache
-              data = { 
-                id: 'temp-' + Date.now(), 
-                name: composeData.name,
-                status: sendNow ? 'sending' : 'draft'
-              };
-              // Don't try to send emails if we don't have a real ID
-              if (sendNow) {
-                showWarning('Newsletter saved but cannot queue emails due to database sync issues. Please try again in a moment.');
-                sendNow = false;
+            const { data: retryResult, error: retryError } = await retryInsert(
+              'newsletter_campaigns',
+              retryData,
+              supabase,
+              {
+                maxRetries: 5,
+                onRetry: (attempt, error) => {
+                  console.log(`Retry attempt ${attempt} for newsletter creation:`, error.message);
+                  showInfo(`Retrying newsletter creation (attempt ${attempt})...`);
+                }
               }
-            } else if (!newsletters || newsletters.length === 0) {
-              throw new Error('Failed to create newsletter');
+            );
+            
+            if (retryError) {
+              console.error('Failed to create newsletter after retries:', retryError);
+              throw retryError;
+            }
+            
+            if (retryResult && retryResult.length > 0) {
+              data = retryResult[0];
+              console.log('Newsletter created successfully after retry:', data);
             } else {
-              data = newsletters[0];
+              // If retry succeeded but no data returned, try to fetch it
+              const { data: newsletters, error: selectError } = await supabase
+                .from('newsletter_campaigns')
+                .select('id, name, status')
+                .eq('name', composeData.name)
+                .eq('created_by', userData.user.id)
+                .order('created_at', { ascending: false })
+                .limit(1);
+                
+              if (!selectError && newsletters && newsletters.length > 0) {
+                data = newsletters[0];
+              } else {
+                throw new Error('Newsletter created but unable to retrieve ID');
+              }
             }
           } else {
             throw insertError;

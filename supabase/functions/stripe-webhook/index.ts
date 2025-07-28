@@ -3,6 +3,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Stripe from 'https://esm.sh/stripe@14.21.0'
 import { corsHeaders } from '../_shared/cors.ts'
 import { edgeEmailService } from '../_shared/edge-email-service.ts'
+import { AuditLogger } from '../_shared/audit-logger.ts'
+import { RateLimiter, RateLimitConfigs, createRateLimitHeaders } from '../_shared/rate-limiter.ts'
 
 interface PaymentConfig {
   mode: 'test' | 'live';
@@ -194,6 +196,48 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
+  // Initialize rate limiter and audit logger
+  const rateLimiter = new RateLimiter(RateLimitConfigs.webhook);
+  const auditLogger = new AuditLogger();
+  const requestInfo = auditLogger.getRequestInfo(req);
+  
+  // Get IP for rate limiting
+  const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+                   req.headers.get('cf-connecting-ip') || 
+                   'unknown';
+  const rateLimitKey = `webhook:stripe:${ipAddress}`;
+  
+  // Check rate limit
+  const rateLimitResult = await rateLimiter.checkLimit(rateLimitKey);
+  const rateLimitHeaders = createRateLimitHeaders(rateLimitResult);
+  
+  if (!rateLimitResult.allowed) {
+    console.warn(`Rate limit exceeded for Stripe webhook: ${ipAddress}`);
+    
+    // Log rate limit exceeded
+    await auditLogger.log({
+      action: AuditLogger.Actions.RATE_LIMIT_EXCEEDED,
+      provider: 'stripe',
+      metadata: { 
+        endpoint: 'stripe-webhook',
+        ip_address: ipAddress 
+      },
+      ...requestInfo
+    });
+    
+    return new Response(
+      JSON.stringify({ error: 'Too many requests' }),
+      {
+        headers: { 
+          ...corsHeaders, 
+          ...rateLimitHeaders,
+          'Content-Type': 'application/json' 
+        },
+        status: 429,
+      }
+    );
+  }
+
   // Initialize clients
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -213,13 +257,37 @@ serve(async (req) => {
 
     if (!signature || !webhookSecret) {
       console.error('Missing signature or webhook secret')
-      return new Response('Bad request', { status: 400 })
+      
+      // Log invalid signature
+      await auditLogger.log({
+        action: AuditLogger.Actions.INVALID_SIGNATURE,
+        provider: 'stripe',
+        error_message: 'Missing signature or webhook secret',
+        ...requestInfo
+      });
+      
+      return new Response('Bad request', { 
+        status: 400,
+        headers: rateLimitHeaders
+      })
     }
 
     // Verify the webhook signature
     event = stripe.webhooks.constructEvent(payload, signature, webhookSecret)
 
     console.log(`Processing webhook event: ${event.type}`)
+    
+    // Log webhook received
+    await auditLogger.log({
+      action: AuditLogger.Actions.WEBHOOK_RECEIVED,
+      provider: 'stripe',
+      metadata: {
+        event_type: event.type,
+        event_id: event.id,
+        stripe_account: event.account || 'default'
+      },
+      ...requestInfo
+    });
 
     // Try to create webhook log entry (table might not exist yet)
     try {
@@ -249,6 +317,20 @@ serve(async (req) => {
         
         const userId = paymentIntent.metadata?.user_id
         const eventId = paymentIntent.metadata?.event_id
+        
+        // Log payment confirmation
+        await auditLogger.log({
+          user_id: userId,
+          event_id: eventId,
+          action: AuditLogger.Actions.PAYMENT_INTENT_CONFIRMED,
+          provider: 'stripe',
+          payment_intent_id: paymentIntent.id,
+          amount: paymentIntent.amount / 100,
+          currency: paymentIntent.currency,
+          status: 'succeeded',
+          metadata: paymentIntent.metadata,
+          ...requestInfo
+        });
         
         if (userId) {
           // Record transaction
@@ -310,6 +392,20 @@ serve(async (req) => {
         console.log('Payment failed:', paymentIntent.id)
         
         const userId = paymentIntent.metadata?.user_id
+        
+        // Log payment failure
+        await auditLogger.log({
+          user_id: userId,
+          action: AuditLogger.Actions.PAYMENT_INTENT_FAILED,
+          provider: 'stripe',
+          payment_intent_id: paymentIntent.id,
+          amount: paymentIntent.amount / 100,
+          currency: paymentIntent.currency,
+          status: 'failed',
+          error_message: paymentIntent.last_payment_error?.message || 'Payment failed',
+          metadata: paymentIntent.metadata,
+          ...requestInfo
+        });
         
         if (userId) {
           // Record failed transaction
@@ -587,12 +683,38 @@ serve(async (req) => {
       })
       .eq('event_id', event.id);
 
+    // Log successful webhook processing
+    await auditLogger.log({
+      action: AuditLogger.Actions.WEBHOOK_PROCESSED,
+      provider: 'stripe',
+      metadata: {
+        event_type: event.type,
+        event_id: event.id
+      },
+      ...requestInfo
+    });
+    
     return new Response(JSON.stringify({ received: true }), {
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        ...rateLimitHeaders
+      },
       status: 200,
     })
   } catch (error) {
     console.error('Webhook error:', error)
+    
+    // Log webhook processing error
+    await auditLogger.log({
+      action: AuditLogger.Actions.WEBHOOK_FAILED,
+      provider: 'stripe',
+      error_message: error.message || 'Unknown error',
+      metadata: {
+        event_type: event?.type,
+        event_id: event?.id
+      },
+      ...requestInfo
+    });
     
     // Log error in webhook logs
     if (event?.id) {
@@ -609,7 +731,10 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ error: error.message }),
       { 
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...rateLimitHeaders
+        },
         status: 400 
       }
     )

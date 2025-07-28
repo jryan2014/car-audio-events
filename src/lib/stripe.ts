@@ -1,5 +1,7 @@
 import { loadStripe, Stripe } from '@stripe/stripe-js';
 import { getStripeConfig } from '../services/paymentConfigService';
+import { validatePaymentAmount, validatePaymentMetadata } from '../utils/paymentValidation';
+import { addCSRFHeader } from '../utils/csrfProtection';
 
 // Global Stripe instance - will be initialized on first use
 let stripePromise: Promise<Stripe | null> | null = null;
@@ -46,24 +48,44 @@ export const stripePromiseCompat = getStripe();
  */
 export const createPaymentIntent = async (amount: number, currency: string = 'usd', metadata: any = {}) => {
   try {
+    // Validate and sanitize payment amount
+    const amountValidation = validatePaymentAmount(amount, currency);
+    if (!amountValidation.valid) {
+      throw new Error(amountValidation.errors.join(', '));
+    }
+
+    // Validate and sanitize metadata
+    const metadataValidation = validatePaymentMetadata(metadata);
+    if (!metadataValidation.valid) {
+      throw new Error('Invalid metadata: ' + metadataValidation.errors.join(', '));
+    }
+
+    // Import supabase client to get authenticated session
+    const { supabase } = await import('./supabase');
+    
+    // Get authenticated session
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw new Error('Authentication required for payment processing');
+    }
+    
     // Get Supabase URL from environment
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
     
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Missing Supabase configuration for payment processing');
+    if (!supabaseUrl) {
+      throw new Error('Missing Supabase URL for payment processing');
     }
     
     const response = await fetch(`${supabaseUrl}/functions/v1/create-payment-intent`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${supabaseKey}`,
+      headers: addCSRFHeader({
+        'Authorization': `Bearer ${session.access_token}`,
         'Content-Type': 'application/json',
-      },
+      }),
       body: JSON.stringify({
-        amount,
-        currency,
-        metadata
+        amount: amountValidation.sanitizedAmount,
+        currency: amountValidation.sanitizedCurrency,
+        metadata: metadataValidation.sanitized
       }),
     });
 
@@ -84,19 +106,27 @@ export const createPaymentIntent = async (amount: number, currency: string = 'us
  */
 export const confirmPayment = async (paymentIntentId: string) => {
   try {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    // Import supabase client to get authenticated session
+    const { supabase } = await import('./supabase');
     
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Missing Supabase configuration for payment confirmation');
+    // Get authenticated session
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw new Error('Authentication required for payment confirmation');
+    }
+    
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    
+    if (!supabaseUrl) {
+      throw new Error('Missing Supabase URL for payment confirmation');
     }
     
     const response = await fetch(`${supabaseUrl}/functions/v1/confirm-payment`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${supabaseKey}`,
+      headers: addCSRFHeader({
+        'Authorization': `Bearer ${session.access_token}`,
         'Content-Type': 'application/json',
-      },
+      }),
       body: JSON.stringify({
         payment_intent_id: paymentIntentId
       }),

@@ -97,6 +97,8 @@ async function investigateViews() {
       // Get the current definition first
       const { data: currentDef, error: currentDefError } = await supabase
         .rpc('exec_sql_with_results', { 
+          // SECURITY WARNING: Potential SQL injection if viewName is not validated
+          // viewName should be validated against a whitelist before use
           sql_command: `SELECT pg_get_viewdef('public.${viewName}', true) as definition` 
         });
 

@@ -70,10 +70,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!error && data) {
         const timeoutMinutes = parseInt(data.value) || 30;
         setSessionTimeout(timeoutMinutes);
-        console.log('📅 Session timeout loaded:', timeoutMinutes, 'minutes');
+        // Session timeout loaded successfully
       }
     } catch (error) {
-      console.log('Using default session timeout of 30 minutes');
+      // Using default session timeout of 30 minutes
     }
   };
 
@@ -85,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { resetTimer } = useInactivityTimer({
     timeout: sessionTimeout * 60 * 1000, // Convert minutes to milliseconds
     onTimeout: async () => {
-      console.log('⏰ Session timeout - logging out user');
+      // Session timeout - logging out user
       await logout();
     },
     isActive: !!user // Only active when user is logged in
@@ -99,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, resetTimer]);
 
     const fetchUserProfile = async (userId: string): Promise<User | null> => {
-      console.log('🔍 FETCH DEBUG: Starting profile fetch for user ID:', userId);
+      // Starting profile fetch for user
 
       // Add timeout to prevent hanging (increased for better reliability)
       const isDev = import.meta.env.DEV;
@@ -117,7 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // FIX 3: Simplified admin profile lookup - remove special admin handling that causes timeouts
         // Use standard ID lookup for ALL users (including admins) for consistency and reliability
-        console.log('🔍 FETCH DEBUG: Using standard ID lookup for user...');
+        // Using standard ID lookup for user
         const queryPromise = supabase
           .from('users')
           .select(`
@@ -155,7 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // If ID lookup fails, try email fallback
         if (error && session?.session?.user?.email) {
-          console.log('🔍 FETCH DEBUG: ID lookup failed, trying email fallback...');
+          // ID lookup failed, trying email fallback
           const fallbackQuery = supabase
             .from('users')
             .select(`
@@ -182,16 +182,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           error = fallbackResult.error;
           
           if (data) {
-            console.log('✅ FETCH DEBUG: Email fallback successful:', data);
+            // Email fallback successful
           } else {
-            console.error('❌ FETCH DEBUG: Email fallback also failed:', error);
+            // Email fallback also failed
           }
         }
 
-        console.log('🔍 FETCH DEBUG: Query completed:', { data, error });
+        // Query completed
 
         if (!data) {
-          console.error('🔍 FETCH DEBUG: No data returned from query');
+          console.error('No data returned from query');
           return null;
         }
 
@@ -255,9 +255,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           login_count: currentCount + 1
         })
         .eq('id', userId);
-      console.log('✅ Login tracking updated for user:', userId);
+      // Login tracking updated
     } catch (trackingError) {
-      console.warn('⚠️ Failed to update login tracking:', trackingError);
+      if (import.meta.env.DEV) {
+        console.warn('⚠️ Failed to update login tracking:', trackingError);
+      }
     }
   };
 
@@ -267,26 +269,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     const initializeAuth = async () => {
       try {
-        console.log('🔍 AUTH DEBUG: Initializing auth state...');
+        // Initializing auth state
         
         // Clear any existing session conflicts first
         const existingSession = localStorage.getItem('sb-nqvisvranvjaghvrdaaz-auth-token');
         if (existingSession) {
-          console.log('🔍 AUTH DEBUG: Found existing session token');
+          // Found existing session token
         }
         
         const { data: { session } } = await supabase.auth.getSession();
-        console.log('🔍 AUTH DEBUG: Retrieved session:', session ? 'exists' : 'none');
+        // Retrieved session
         
         if (isMounted) {
           if (session?.user) {
-            console.log('🔍 AUTH DEBUG: Session user found, fetching profile...');
+            // Session user found, fetching profile
             setSession(session);
             try {
               const userProfile = await fetchUserProfile(session.user.id);
               if (userProfile) {
                 setUser(userProfile);
-                console.log('✅ AUTH DEBUG: Profile loaded successfully during init');
+                // Profile loaded successfully during init
               } else {
                 console.warn('⚠️ AUTH DEBUG: No profile found during init');
                 // Keep session but set user to null for now
@@ -299,7 +301,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               setUser(null);
             }
           } else {
-            console.log('🔍 AUTH DEBUG: No session found');
+            // No session found
             setSession(null);
             setUser(null);
           }

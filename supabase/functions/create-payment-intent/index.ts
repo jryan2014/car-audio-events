@@ -1,6 +1,9 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Stripe from 'https://esm.sh/stripe@14.21.0'
+import { getStripeConfig } from '../_shared/payment-config.ts'
+import { RateLimiter, RateLimitConfigs, createRateLimitHeaders } from '../_shared/rate-limiter.ts'
+import { AuditLogger } from '../_shared/audit-logger.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,99 +11,6 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
-interface PaymentConfig {
-  mode: 'test' | 'live';
-  stripe_active: boolean;
-  stripe_test_secret_key: string;
-  stripe_live_secret_key: string;
-}
-
-/**
- * Get Stripe configuration from database first, fallback to environment
- */
-async function getStripeConfig(supabase: any): Promise<{ secretKey: string; isTestMode: boolean; source: string }> {
-  try {
-    // Try to load from database first
-    const { data, error } = await supabase
-      .from('admin_settings')
-      .select('*')
-      .eq('category', 'payment');
-
-    if (error) {
-      console.warn('Error loading payment config from database, using environment variables:', error);
-      return getEnvironmentStripeConfig();
-    }
-
-    if (!data || data.length === 0) {
-      console.log('No payment config found in database, using environment variables');
-      return getEnvironmentStripeConfig();
-    }
-
-    // Convert database settings to config object
-    const config: PaymentConfig = {
-      mode: 'test',
-      stripe_active: true,
-      stripe_test_secret_key: '',
-      stripe_live_secret_key: ''
-    };
-
-    // Map database values to config
-    data.forEach((setting: any) => {
-      const key = setting.key;
-      if (key === 'stripe_active') {
-        config.stripe_active = setting.value === 'true';
-      } else if (key === 'mode') {
-        config.mode = setting.value as 'test' | 'live';
-      } else if (key === 'stripe_test_secret_key') {
-        config.stripe_test_secret_key = setting.value || '';
-      } else if (key === 'stripe_live_secret_key') {
-        config.stripe_live_secret_key = setting.value || '';
-      }
-    });
-
-    if (!config.stripe_active) {
-      throw new Error('Stripe is not active in payment configuration');
-    }
-
-    const isTestMode = config.mode === 'test';
-    const secretKey = isTestMode ? config.stripe_test_secret_key : config.stripe_live_secret_key;
-
-    if (!secretKey) {
-      console.log('Stripe secret key not found in database, falling back to environment variables');
-      return getEnvironmentStripeConfig();
-    }
-
-    console.log(`Stripe config loaded from database - Mode: ${config.mode}, Source: database`);
-    return {
-      secretKey,
-      isTestMode,
-      source: 'database'
-    };
-
-  } catch (error) {
-    console.error('Error getting Stripe config from database:', error);
-    return getEnvironmentStripeConfig();
-  }
-}
-
-/**
- * Fallback to environment variables
- */
-function getEnvironmentStripeConfig(): { secretKey: string; isTestMode: boolean; source: string } {
-  const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
-  if (!stripeSecretKey) {
-    throw new Error('STRIPE_SECRET_KEY not found in environment variables or database');
-  }
-
-  const isTestMode = stripeSecretKey.startsWith('sk_test_');
-  console.log(`Stripe config loaded from environment - Test Mode: ${isTestMode}, Source: environment`);
-  
-  return {
-    secretKey: stripeSecretKey,
-    isTestMode,
-    source: 'environment'
-  };
-}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -111,14 +21,25 @@ serve(async (req) => {
     })
   }
 
+  // Initialize rate limiter for payment creation
+  const rateLimiter = new RateLimiter(RateLimitConfigs.payment);
+  
+  // Initialize audit logger
+  const auditLogger = new AuditLogger();
+  const requestInfo = auditLogger.getRequestInfo(req);
+  
+  // Get user identifier for rate limiting
+  const authHeader = req.headers.get('Authorization');
+  let rateLimitKey = 'anonymous';
+  
   try {
     // Get Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Get Stripe configuration from database or environment
-    const stripeConfig = await getStripeConfig(supabase);
+    // Get Stripe configuration using shared config
+    const stripeConfig = await getStripeConfig();
 
     // Initialize Stripe with the correct configuration
     const stripe = new Stripe(stripeConfig.secretKey, {
@@ -128,13 +49,65 @@ serve(async (req) => {
     // Parse request body
     const { amount, currency = 'usd', metadata = {} } = await req.json()
 
-    // Validate amount
-    if (!amount || amount < 50) { // Minimum $0.50 USD
-      throw new Error('Amount must be at least $0.50 USD')
+    // Enhanced amount validation
+    if (!amount || typeof amount !== 'number') {
+      throw new Error('Amount must be a valid number')
+    }
+
+    // Check for negative amounts
+    if (amount < 0) {
+      throw new Error('Amount cannot be negative')
+    }
+
+    // Check for unreasonably large amounts
+    if (amount > 99999999) { // $999,999.99
+      throw new Error('Amount exceeds maximum allowed')
+    }
+
+    // Currency-specific minimum validation
+    const minimumAmounts: Record<string, number> = {
+      usd: 50,  // $0.50
+      eur: 50,  // €0.50
+      gbp: 30,  // £0.30
+      cad: 50,  // C$0.50
+      aud: 50,  // A$0.50
+    }
+
+    const minAmount = minimumAmounts[currency.toLowerCase()] || 50
+    if (amount < minAmount) {
+      throw new Error(`Amount must be at least ${(minAmount / 100).toFixed(2)} ${currency.toUpperCase()}`)
+    }
+
+    // Validate currency
+    const supportedCurrencies = Object.keys(minimumAmounts)
+    if (!supportedCurrencies.includes(currency.toLowerCase())) {
+      throw new Error(`Unsupported currency: ${currency}. Supported: ${supportedCurrencies.join(', ')}`)
+    }
+
+    // Sanitize metadata - remove any potential XSS or injection attempts
+    const sanitizedMetadata: Record<string, string> = {}
+    if (metadata && typeof metadata === 'object') {
+      const metadataKeys = Object.keys(metadata).slice(0, 50) // Limit to 50 keys
+      for (const key of metadataKeys) {
+        const sanitizedKey = String(key).slice(0, 40) // Max 40 chars for keys
+        const value = metadata[key]
+        let sanitizedValue: string
+        
+        if (value === null || value === undefined) {
+          sanitizedValue = ''
+        } else if (typeof value === 'object') {
+          sanitizedValue = JSON.stringify(value).slice(0, 500) // Max 500 chars for values
+        } else {
+          sanitizedValue = String(value).slice(0, 500)
+        }
+        
+        // Remove potentially dangerous characters
+        sanitizedValue = sanitizedValue.replace(/[<>]/g, '').replace(/\0/g, '')
+        sanitizedMetadata[sanitizedKey] = sanitizedValue
+      }
     }
 
     // Get user from authorization header (optional for membership purchases)
-    const authHeader = req.headers.get('Authorization')
     let user = null;
     
     if (authHeader) {
@@ -143,7 +116,49 @@ serve(async (req) => {
       
       if (!userError && authUser) {
         user = authUser;
+        rateLimitKey = `user:${user.id}`;
       }
+    } else {
+      // Use IP for anonymous users
+      const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+                       req.headers.get('cf-connecting-ip') || 
+                       'unknown';
+      rateLimitKey = `ip:${ipAddress}`;
+    }
+    
+    // Check rate limit
+    const rateLimitResult = await rateLimiter.checkLimit(rateLimitKey);
+    const rateLimitHeaders = createRateLimitHeaders(rateLimitResult);
+    
+    if (!rateLimitResult.allowed) {
+      console.warn(`Rate limit exceeded for payment creation: ${rateLimitKey}`);
+      
+      // Log rate limit exceeded
+      await auditLogger.log({
+        user_id: user?.id,
+        action: AuditLogger.Actions.RATE_LIMIT_EXCEEDED,
+        provider: 'stripe',
+        metadata: { 
+          endpoint: 'create-payment-intent',
+          identifier: rateLimitKey 
+        },
+        ...requestInfo
+      });
+      
+      return new Response(
+        JSON.stringify({ 
+          error: 'Too many payment attempts. Please try again later.', 
+          retryAfter: rateLimitResult.retryAfter 
+        }),
+        {
+          headers: { 
+            ...corsHeaders, 
+            ...rateLimitHeaders,
+            'Content-Type': 'application/json' 
+          },
+          status: 429,
+        }
+      )
     }
 
     // For membership purchases, we allow anonymous users
@@ -151,13 +166,12 @@ serve(async (req) => {
     const userId = user?.id || 'anonymous';
     const userEmail = user?.email || metadata.email || 'anonymous@membership.purchase';
 
-    // Add configuration info to metadata
+    // Add configuration info to sanitized metadata
     const enhancedMetadata = {
       user_id: userId,
       user_email: userEmail,
       stripe_mode: stripeConfig.isTestMode ? 'test' : 'live',
-      config_source: stripeConfig.source,
-      ...metadata
+      ...sanitizedMetadata
     };
 
     // Create payment intent
@@ -201,8 +215,7 @@ serve(async (req) => {
         currency: currency.toLowerCase(),
         metadata: { 
           payment_intent_id: paymentIntent.id,
-          stripe_mode: stripeConfig.isTestMode ? 'test' : 'live',
-          config_source: stripeConfig.source
+          stripe_mode: stripeConfig.isTestMode ? 'test' : 'live'
         }
       })
 
@@ -220,18 +233,34 @@ serve(async (req) => {
     }
 
     // Log payment intent creation
-    console.log(`Payment intent created: ${paymentIntent.id} for user: ${userEmail} using ${stripeConfig.source} config (${stripeConfig.isTestMode ? 'test' : 'live'} mode)`)
+    console.log(`Payment intent created: ${paymentIntent.id} for user: ${userEmail} (${stripeConfig.isTestMode ? 'test' : 'live'} mode)`)
+    
+    // Audit log the payment intent creation
+    await auditLogger.log({
+      user_id: user?.id || undefined,
+      action: AuditLogger.Actions.PAYMENT_INTENT_CREATED,
+      provider: 'stripe',
+      payment_intent_id: paymentIntent.id,
+      amount: amount / 100, // Convert to dollars
+      currency: currency.toLowerCase(),
+      status: paymentIntent.status,
+      metadata: enhancedMetadata,
+      ...requestInfo
+    });
 
     return new Response(
       JSON.stringify({
         client_secret: paymentIntent.client_secret,
         payment_intent_id: paymentIntent.id,
         provider: 'stripe',
-        mode: stripeConfig.isTestMode ? 'test' : 'live',
-        config_source: stripeConfig.source
+        mode: stripeConfig.isTestMode ? 'test' : 'live'
       }),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { 
+          ...corsHeaders, 
+          ...rateLimitHeaders,
+          'Content-Type': 'application/json' 
+        },
         status: 200,
       }
     )
@@ -239,12 +268,30 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error creating payment intent:', error)
     
+    // Audit log the failure
+    await auditLogger.log({
+      user_id: user?.id || undefined,
+      action: AuditLogger.Actions.PAYMENT_INTENT_FAILED,
+      provider: 'stripe',
+      error_message: error.message || 'Unknown error',
+      metadata: { 
+        amount: amount / 100,
+        currency,
+        rateLimitKey 
+      },
+      ...requestInfo
+    });
+    
     return new Response(
       JSON.stringify({
         error: error.message || 'Failed to create payment intent'
       }),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { 
+          ...corsHeaders, 
+          ...rateLimitHeaders,
+          'Content-Type': 'application/json' 
+        },
         status: 400,
       }
     )

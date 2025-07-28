@@ -1,6 +1,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
+import { RateLimiter, RateLimitConfigs, createRateLimitHeaders } from '../_shared/rate-limiter.ts'
+import { AuditLogger } from '../_shared/audit-logger.ts'
 
 interface PayPalWebhookEvent {
   id: string;
@@ -24,6 +26,50 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
+  // Initialize rate limiter and audit logger
+  const rateLimiter = new RateLimiter(RateLimitConfigs.webhook);
+  const auditLogger = new AuditLogger();
+  const requestInfo = auditLogger.getRequestInfo(req);
+  
+  // Get IP address for rate limiting
+  const ipAddress = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+                   req.headers.get('cf-connecting-ip') || 
+                   'unknown';
+  
+  // Check rate limit
+  const rateLimitResult = await rateLimiter.checkLimit(`paypal:${ipAddress}`);
+  const rateLimitHeaders = createRateLimitHeaders(rateLimitResult);
+  
+  if (!rateLimitResult.allowed) {
+    console.warn(`Rate limit exceeded for PayPal webhook from IP: ${ipAddress}`);
+    
+    // Log rate limit exceeded
+    await auditLogger.log({
+      action: AuditLogger.Actions.RATE_LIMIT_EXCEEDED,
+      provider: 'paypal',
+      metadata: { 
+        endpoint: 'paypal-webhook',
+        ip_address: ipAddress 
+      },
+      ...requestInfo
+    });
+    
+    return new Response(
+      JSON.stringify({ 
+        error: 'Too many requests', 
+        retryAfter: rateLimitResult.retryAfter 
+      }),
+      { 
+        status: 429,
+        headers: {
+          ...corsHeaders,
+          ...rateLimitHeaders,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+  }
+
   // Initialize Supabase client
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -40,6 +86,18 @@ serve(async (req) => {
     const event: PayPalWebhookEvent = JSON.parse(payload)
     
     console.log(`Processing PayPal webhook event: ${event.event_type}`)
+    
+    // Log webhook received
+    await auditLogger.log({
+      action: AuditLogger.Actions.WEBHOOK_RECEIVED,
+      provider: 'paypal',
+      metadata: {
+        event_type: event.event_type,
+        event_id: event.id,
+        webhook_id: webhookId
+      },
+      ...requestInfo
+    });
 
     // Create webhook log entry
     await adminClient
@@ -64,6 +122,22 @@ serve(async (req) => {
         const customId = capture.custom_id // This should contain our user_id
         
         console.log('PayPal payment captured:', capture.id)
+        
+        // Log payment confirmation
+        await auditLogger.log({
+          user_id: customId,
+          action: AuditLogger.Actions.PAYMENT_INTENT_CONFIRMED,
+          provider: 'paypal',
+          payment_intent_id: capture.id,
+          amount: parseFloat(capture.amount.value),
+          currency: capture.amount.currency_code,
+          status: 'succeeded',
+          metadata: {
+            order_id: orderId,
+            capture_id: capture.id
+          },
+          ...requestInfo
+        });
         
         if (customId) {
           // Record transaction
@@ -116,6 +190,24 @@ serve(async (req) => {
         const customId = capture.custom_id
         
         console.log(`PayPal payment ${event.event_type}:`, capture.id)
+        
+        // Log payment failure or refund
+        const isRefund = event.event_type === 'PAYMENT.CAPTURE.REFUNDED';
+        await auditLogger.log({
+          user_id: customId,
+          action: isRefund ? AuditLogger.Actions.REFUND_PROCESSED : AuditLogger.Actions.PAYMENT_INTENT_FAILED,
+          provider: 'paypal',
+          payment_intent_id: capture.id,
+          amount: parseFloat(capture.amount.value),
+          currency: capture.amount.currency_code,
+          status: isRefund ? 'refunded' : 'failed',
+          error_message: isRefund ? undefined : capture.status_details?.reason,
+          metadata: {
+            capture_id: capture.id,
+            reason: capture.status_details?.reason
+          },
+          ...requestInfo
+        });
         
         if (customId) {
           const status = event.event_type === 'PAYMENT.CAPTURE.DENIED' ? 'failed' : 'refunded'
@@ -259,12 +351,39 @@ serve(async (req) => {
       })
       .eq('event_id', event.id);
 
+    // Log successful webhook processing
+    await auditLogger.log({
+      action: AuditLogger.Actions.WEBHOOK_PROCESSED,
+      provider: 'paypal',
+      metadata: {
+        event_type: event.event_type,
+        event_id: event.id
+      },
+      ...requestInfo
+    });
+
     return new Response(JSON.stringify({ success: true }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { 
+        ...corsHeaders, 
+        ...rateLimitHeaders,
+        'Content-Type': 'application/json' 
+      },
       status: 200,
     })
   } catch (error) {
     console.error('PayPal webhook error:', error)
+    
+    // Log webhook processing error
+    await auditLogger.log({
+      action: AuditLogger.Actions.WEBHOOK_FAILED,
+      provider: 'paypal',
+      error_message: error.message || 'Unknown error',
+      metadata: {
+        event_type: event?.event_type,
+        event_id: event?.id
+      },
+      ...requestInfo
+    });
     
     // Log error if we have an event ID
     const eventData = await req.clone().json().catch(() => null)
@@ -282,7 +401,11 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ error: error.message }),
       { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { 
+          ...corsHeaders, 
+          ...rateLimitHeaders,
+          'Content-Type': 'application/json' 
+        },
         status: 400 
       }
     )

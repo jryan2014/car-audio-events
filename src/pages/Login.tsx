@@ -2,31 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, Volume2, AlertCircle, Loader, UserPlus } from '../components/icons';
 import { useAuth } from '../contexts/AuthContext';
+import { loginRateLimiter, getClientIdentifier } from '../utils/rateLimiter';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isCreatingAdmin, setIsCreatingAdmin] = useState(false);
   const [error, setError] = useState('');
-  const [adminCreationMessage, setAdminCreationMessage] = useState('');
   const navigate = useNavigate();
   const { login, loginWithGoogle, user, loading, isAuthenticated } = useAuth();
   
   // Handle navigation after successful login
   React.useEffect(() => {
-    console.log('Navigation check:', { loading, user: !!user, membershipType: user?.membershipType });
     if (!loading && user) {
-      console.log('Navigating to dashboard for user:', user.email);
       // Navigate based on user type
       setIsLoading(false); // Clear form loading state
       
       if (user.membershipType === 'admin') {
-        console.log('Redirecting to admin dashboard');
         navigate('/admin/dashboard', { replace: true });
       } else {
-        console.log('Redirecting to regular dashboard');
         navigate('/dashboard', { replace: true });
       }
     }
@@ -51,71 +46,52 @@ export default function Login() {
       return;
     }
 
+    // Check rate limiting
+    const clientId = getClientIdentifier(email);
+    if (loginRateLimiter.isLimited(clientId)) {
+      const blockedTime = loginRateLimiter.getBlockedTime(clientId);
+      if (blockedTime > 0) {
+        const minutes = Math.ceil(blockedTime / 60);
+        setError(`Too many login attempts. Please try again in ${minutes} minute${minutes > 1 ? 's' : ''}.`);
+        return;
+      }
+    }
+
     setIsLoading(true);
     setError('');
     
     try {
       await login(email, password);
-      // Login successful - navigation will be handled by useEffect based on user type
-      console.log('Login completed, navigation will be handled by useEffect...');
+      // Login successful - clear rate limit
+      loginRateLimiter.clear(clientId);
+      // Navigation will be handled by useEffect based on user type
     } catch (error: any) {
-      console.error('Login failed:', error);
+      // Record failed attempt
+      loginRateLimiter.recordAttempt(clientId);
+      const remainingAttempts = loginRateLimiter.getRemainingAttempts(clientId);
       
       let errorMessage = 'Login failed. Please try again.';
       
       if (error?.message) {
         if (error.message.includes('Invalid login credentials')) {
-          errorMessage = 'Invalid email or password. If you need to create an admin user, use the button above.';
+          errorMessage = 'Invalid email or password.';
         } else if (error.message.includes('Email not confirmed')) {
           errorMessage = 'Please check your email and confirm your account.';
         } else if (error.message.includes('Too many requests')) {
           errorMessage = 'Too many login attempts. Please wait before trying again.';
         } else {
-          errorMessage = error.message;
+          // Generic error message to prevent information disclosure
+          errorMessage = 'Login failed. Please check your credentials and try again.';
         }
+      }
+      
+      // Add remaining attempts warning if applicable
+      if (remainingAttempts > 0 && remainingAttempts < 3) {
+        errorMessage += ` (${remainingAttempts} attempt${remainingAttempts > 1 ? 's' : ''} remaining)`;
       }
       
       setError(errorMessage);
       setIsLoading(false); // Only set loading to false on error
-    }
-  };
-
-  const createAdminUser = async () => {
-    setIsCreatingAdmin(true);
-    setAdminCreationMessage('');
-    setError('');
-    
-    try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      
-      if (!supabaseUrl || !supabaseKey) {
-        setError('Error: Missing Supabase configuration. Please check your .env file.');
-        setIsCreatingAdmin(false);
-        return;
-      }
-      
-      const response = await fetch(`${supabaseUrl}/functions/v1/create-admin-user`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${supabaseKey}`,
-          'Content-Type': 'application/json',
-        }
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        setAdminCreationMessage('Admin user created successfully! You can now log in with the credentials below.');
-        setEmail('admin@caraudioevents.com');
-        setPassword('TempAdmin123!');
-      } else {
-        setError('Error creating admin user: ' + (data.error || 'Unknown error'));
-      }
-    } catch (error) {
-      setError('Error creating admin user: ' + (error instanceof Error ? error.message : 'Unknown error'));
-    } finally {
-      setIsCreatingAdmin(false);
     }
   };
 
@@ -127,7 +103,6 @@ export default function Login() {
       await loginWithGoogle();
       // Navigation will be handled by the auth state change
     } catch (error: any) {
-      console.error('Google login error:', error);
       setError('Google sign-in failed. Please try again.');
       setIsLoading(false);
     }
@@ -160,20 +135,6 @@ export default function Login() {
                 <div>
                   <h3 className="text-sm font-medium text-red-400">Login Failed</h3>
                   <p className="text-sm text-red-300 mt-1">{error}</p>
-                </div>
-              </div>
-            )}
-
-            {adminCreationMessage && (
-              <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4 flex items-start space-x-3">
-                <UserPlus className="h-5 w-5 text-green-400 mt-0.5 flex-shrink-0" />
-                <div>
-                  <h3 className="text-sm font-medium text-green-400">Admin User Created</h3>
-                  <p className="text-sm text-green-300 mt-1">{adminCreationMessage}</p>
-                  <div className="mt-2 text-xs text-green-200 bg-green-500/10 rounded p-2">
-                    <p><strong>Email:</strong> admin@caraudioevents.com</p>
-                    <p><strong>Password:</strong> TempAdmin123!</p>
-                  </div>
                 </div>
               </div>
             )}

@@ -164,6 +164,12 @@ const adminNavGroups: AdminNavGroup[] = [
         href: '/admin/system-configuration',
         icon: Cog,
         description: 'System configuration'
+      },
+      {
+        name: 'Test Payment Config',
+        href: '/admin/test-payment-config',
+        icon: CreditCard,
+        description: 'Test payment environment'
       }
     ]
   }

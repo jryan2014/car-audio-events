@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, ArrowLeft, Volume2, AlertCircle, CheckCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { passwordResetRateLimiter, getClientIdentifier } from '../utils/rateLimiter';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -11,11 +12,23 @@ export default function ForgotPassword() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check rate limiting
+    const clientId = getClientIdentifier(email);
+    if (passwordResetRateLimiter.isLimited(clientId)) {
+      const blockedTime = passwordResetRateLimiter.getBlockedTime(clientId);
+      if (blockedTime > 0) {
+        const minutes = Math.ceil(blockedTime / 60);
+        setError(`Too many password reset attempts. Please try again in ${minutes} minute${minutes > 1 ? 's' : ''}.`);
+        return;
+      }
+    }
+    
     setIsLoading(true);
     setError('');
     
     try {
-      console.log('Starting password reset for:', email);
+      // Starting password reset
       
       // Use our custom password reset system that uses the email queue
       const { data, error } = await supabase.rpc('request_password_reset', {
@@ -27,11 +40,16 @@ export default function ForgotPassword() {
         throw error;
       }
 
-      console.log('Password reset response:', data);
+      // Password reset initiated successfully
+      passwordResetRateLimiter.clear(clientId);
       
       // Our function always returns success for security (doesn't reveal if email exists)
       setSuccess(true);
     } catch (error: any) {
+      // Record failed attempt
+      passwordResetRateLimiter.recordAttempt(clientId);
+      const remainingAttempts = passwordResetRateLimiter.getRemainingAttempts(clientId);
+      
       console.error('Password reset failed:', error);
       
       // Provide helpful error messages
@@ -45,6 +63,11 @@ export default function ForgotPassword() {
         errorMessage = 'Password reset service is temporarily unavailable. Please contact support at admin@caraudioevents.com';
       } else if (error.message) {
         errorMessage = error.message;
+      }
+      
+      // Add remaining attempts warning if applicable
+      if (remainingAttempts > 0 && remainingAttempts < 3) {
+        errorMessage += ` (${remainingAttempts} attempt${remainingAttempts > 1 ? 's' : ''} remaining)`;
       }
       
       setError(errorMessage);

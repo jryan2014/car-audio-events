@@ -18,6 +18,7 @@ import {
   Circle
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { retryInsert } from '../utils/supabaseRetry';
 import { 
   BANNER_SIZES, 
   generateBannerVariations, 
@@ -225,40 +226,44 @@ export default function BannerAICreator({
 
   const saveImageToDatabase = async (image: GeneratedImage) => {
     try {
-      // Fuck the schema cache - use exec_sql directly
-      const { data, error } = await supabase.rpc('exec_sql', {
-        sql_command: `
-          INSERT INTO ai_generated_images (
-            prompt, 
-            image_url, 
-            provider, 
-            model, 
-            size, 
-            quality, 
-            style, 
-            cost_usd, 
-            is_active, 
-            is_archived
-          ) VALUES (
-            '${image.prompt.replace(/'/g, "''")}',
-            '${image.url.replace(/'/g, "''")}',
-            '${image.provider}',
-            '${image.model || 'dall-e-3'}',
-            '${image.size.width}x${image.size.height}',
-            'standard',
-            'vivid',
-            ${image.cost},
-            true,
-            false
-          ) RETURNING id;
-        `
-      });
+      // Use retry logic for potential schema cache issues
+      const imageData = {
+        prompt: image.prompt,
+        image_url: image.url,
+        provider: image.provider,
+        model: image.model || 'dall-e-3',
+        size: `${image.size.width}x${image.size.height}`,
+        quality: 'standard',
+        style: 'vivid',
+        cost_usd: image.cost,
+        is_active: true,
+        is_archived: false
+      };
+
+      const { data, error } = await retryInsert(
+        'ai_generated_images',
+        imageData,
+        supabase,
+        {
+          maxRetries: 3,
+          onRetry: (attempt, error) => {
+            console.log(`Retry attempt ${attempt} for AI image save:`, error.message);
+          }
+        }
+      );
 
       if (error) {
+        // Check if it's a persistent schema cache issue
+        if (error.code === 'PGRST204' || error.message?.includes('schema cache')) {
+          console.warn('⚠️ Schema cache issue preventing AI image save. The image was generated successfully but metadata was not saved to database.');
+          console.warn('This is a known Supabase issue. The image can still be used.');
+          // Don't throw - let the user continue using the generated image
+          return;
+        }
         throw error;
       }
 
-      console.log('Successfully saved image to database using exec_sql');
+      console.log('Successfully saved AI generated image to database');
       
     } catch (error) {
       console.error('Failed to save image to database:', error);

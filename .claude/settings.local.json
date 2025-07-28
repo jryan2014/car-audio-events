@@ -39,7 +39,11 @@
       "Bash(dir:*)",
       "Bash(del check-activity-logs.js)",
       "Bash(cmd /c:*)",
-      "Bash(del check-todd-status.js)"
+      "Bash(del check-todd-status.js)",
+      "Bash(mv:*)",
+      "Bash(claude mcp)",
+      "Bash(claude mcp:*)",
+      "Bash(del nul)"
     ],
     "deny": []
   }
