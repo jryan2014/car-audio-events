@@ -205,6 +205,26 @@ This file contains features to be implemented in the future. These are not part 
   - Password reset rate limiting
   - Security questions as backup authentication
 
+## Database Schema Updates
+
+### 12. Create Notification Preferences Table
+- **Description**: Create the missing notification_preferences table in the database
+- **Purpose**: Store user preferences for different notification types
+- **Requirements**:
+  - Create notification_preferences table with proper schema
+  - Enable RLS with user-specific policies
+  - Add indexes for performance
+  - Populate default preferences for existing users
+  - Handle backward compatibility in the application
+- **Priority**: High
+- **Estimated Effort**: 2-3 hours
+- **Technical Details**:
+  - Table columns: id, user_id, preference_type, enabled, created_at, updated_at
+  - Preference types: event_reminders, competition_results, team_invitations, system_updates, marketing, newsletter
+  - UNIQUE constraint on (user_id, preference_type)
+  - Foreign key to auth.users with CASCADE delete
+- **Current Status**: Application gracefully handles missing table by returning defaults
+
 ## [Other Future Features]
 <!-- Add new features below this line -->
 

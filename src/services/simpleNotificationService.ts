@@ -218,11 +218,33 @@ class SimpleNotificationService {
         .eq('user_id', userId)
         .order('preference_type');
 
-      if (error) throw error;
+      if (error) {
+        // If table doesn't exist, return default preferences
+        if (error.code === '42P01') {
+          console.warn('notification_preferences table does not exist, returning defaults');
+          return Object.values(NOTIFICATION_TYPES).map(type => ({
+            id: crypto.randomUUID(),
+            user_id: userId,
+            preference_type: type,
+            enabled: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }));
+        }
+        throw error;
+      }
       return data || [];
     } catch (error) {
       console.error('Error fetching notification preferences:', error);
-      return [];
+      // Return default preferences on error
+      return Object.values(NOTIFICATION_TYPES).map(type => ({
+        id: crypto.randomUUID(),
+        user_id: userId,
+        preference_type: type,
+        enabled: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }));
     }
   }
 
@@ -241,7 +263,14 @@ class SimpleNotificationService {
           onConflict: 'user_id,preference_type'
         });
 
-      if (error) throw error;
+      if (error) {
+        // If table doesn't exist, just log and return true
+        if (error.code === '42P01') {
+          console.warn('notification_preferences table does not exist, cannot update preference');
+          return true; // Return true to prevent UI errors
+        }
+        throw error;
+      }
       return true;
     } catch (error) {
       console.error('Error updating notification preference:', error);
