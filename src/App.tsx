@@ -69,8 +69,6 @@ const AdminBillingConfiguration = React.lazy(() => import('./pages/AdminBillingC
 const NewsletterConfirm = React.lazy(() => import('./pages/NewsletterConfirm'));
 const NewsletterUnsubscribe = React.lazy(() => import('./pages/NewsletterUnsubscribe'));
 const AdminNewsletterManager = React.lazy(() => import('./pages/AdminNewsletterManager'));
-const TestRetryUtility = React.lazy(() => import('./pages/TestRetryUtility'));
-const TestPaymentConfig = React.lazy(() => import('./pages/TestPaymentConfig'));
 
 // Loading component for Suspense fallback
 const LoadingSpinner = () => (
@@ -146,7 +144,6 @@ function App() {
               <Route path="/forgot-password" element={<Layout><ForgotPassword /></Layout>} />
               <Route path="/reset-password" element={<Layout><ResetPassword /></Layout>} />
               {/* <Route path="/test-ads" element={<Layout><TestAds /></Layout>} /> */}
-              <Route path="/test-retry" element={<Layout><TestRetryUtility /></Layout>} />
               <Route path="/pricing" element={<Layout><Pricing /></Layout>} />
               <Route path="/business" element={<Layout><BusinessPricing /></Layout>} />
               <Route path="/business-features" element={<Layout><BusinessFeatures /></Layout>} />
@@ -189,7 +186,6 @@ function App() {
               <Route path="/admin/billing" element={<AdminLayout><AdminBilling /></AdminLayout>} />
               <Route path="/admin/billing-configuration" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminBillingConfiguration /></Suspense></AdminLayout>} />
               <Route path="/admin/newsletter" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminNewsletterManager /></Suspense></AdminLayout>} />
-              <Route path="/admin/test-payment-config" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><TestPaymentConfig /></Suspense></AdminLayout>} />
             </Routes>
           </Suspense>
           <CookieConsent />
