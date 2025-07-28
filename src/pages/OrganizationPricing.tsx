@@ -111,7 +111,7 @@ export default function OrganizationPricing() {
             
             <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4">
               <Link
-                to="/register"
+                to="/pricing"
                 className="bg-purple-500 text-white px-8 py-4 rounded-lg font-bold hover:bg-purple-600 transition-all duration-200 flex items-center space-x-2"
               >
                 <span>Start Your Organization</span>
@@ -222,7 +222,7 @@ export default function OrganizationPricing() {
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4">
               <Link
-                to="/register"
+                to="/pricing"
                 className="bg-purple-500 text-white px-8 py-4 rounded-lg font-bold hover:bg-purple-600 transition-all duration-200"
               >
                 Start Your Organization

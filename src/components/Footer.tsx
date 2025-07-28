@@ -206,7 +206,7 @@ export default function Footer() {
       }
       if (!existingSlugs.some(slug => slug.includes('register') || slug.includes('join'))) {
         fallbackLinks.push(
-          <Link key="register" to="/register" className="block text-gray-400 hover:text-electric-500 transition-colors text-sm">
+          <Link key="pricing" to="/pricing" className="block text-gray-400 hover:text-electric-500 transition-colors text-sm">
             Join Community
           </Link>
         );

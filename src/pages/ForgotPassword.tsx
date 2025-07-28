@@ -168,7 +168,7 @@ export default function ForgotPassword() {
         <div className="text-center">
           <p className="text-gray-400">
             Don't have an account?{' '}
-            <Link to="/register" className="text-electric-400 hover:text-electric-300 font-semibold transition-colors">
+            <Link to="/pricing" className="text-electric-400 hover:text-electric-300 font-semibold transition-colors">
               Sign up here
             </Link>
           </p>
