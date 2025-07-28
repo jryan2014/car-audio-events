@@ -18,7 +18,9 @@ export default function PasswordChangeModal({ isOpen, onClose, isRequired = fals
   const [success, setSuccess] = useState(false);
   const { updatePassword } = useAuth();
 
-  const TEMP_PASSWORD = 'TempAdmin123!';
+  // Security: Temporary password should never be exposed in frontend code
+  // This should be handled server-side only
+  const TEMP_PASSWORD_PATTERN = /^Temp[A-Za-z]+\d+!$/; // Pattern to detect temp passwords
 
   const validatePassword = (password: string) => {
     const minLength = password.length >= 8;
@@ -43,8 +45,8 @@ export default function PasswordChangeModal({ isOpen, onClose, isRequired = fals
     e.preventDefault();
     setError('');
     
-    // Check if user is trying to use the same temporary password
-    if (isRequired && newPassword === TEMP_PASSWORD) {
+    // Check if user is trying to use a temporary password pattern
+    if (isRequired && TEMP_PASSWORD_PATTERN.test(newPassword)) {
       setError('New password must be different from the temporary password. Please choose a new password.');
       return;
     }
@@ -130,7 +132,7 @@ export default function PasswordChangeModal({ isOpen, onClose, isRequired = fals
                       Please create a new secure password to continue.
                     </p>
                     <p className="text-xs text-yellow-400 mt-2 font-mono">
-                      Current temporary password: {TEMP_PASSWORD}
+                      Your current password is temporary and must be changed
                     </p>
                     <p className="text-xs text-yellow-300 mt-1">
                       Your new password must be different from this temporary password.
@@ -176,7 +178,7 @@ export default function PasswordChangeModal({ isOpen, onClose, isRequired = fals
               </div>
               
               {/* Show warning if user enters the temporary password */}
-              {isRequired && newPassword === TEMP_PASSWORD && (
+              {isRequired && TEMP_PASSWORD_PATTERN.test(newPassword) && (
                 <div className="mt-2 text-xs text-yellow-400 flex items-center space-x-1">
                   <AlertCircle className="h-3 w-3" />
                   <span>This is your current temporary password. Please choose a different password.</span>
@@ -209,8 +211,8 @@ export default function PasswordChangeModal({ isOpen, onClose, isRequired = fals
                       <span>One special character</span>
                     </div>
                     {isRequired && (
-                      <div className={`flex items-center space-x-2 ${newPassword !== TEMP_PASSWORD ? 'text-green-400' : 'text-gray-400'}`}>
-                        <div className={`w-2 h-2 rounded-full ${newPassword !== TEMP_PASSWORD ? 'bg-green-400' : 'bg-gray-600'}`}></div>
+                      <div className={`flex items-center space-x-2 ${!TEMP_PASSWORD_PATTERN.test(newPassword) ? 'text-green-400' : 'text-gray-400'}`}>
+                        <div className={`w-2 h-2 rounded-full ${!TEMP_PASSWORD_PATTERN.test(newPassword) ? 'bg-green-400' : 'bg-gray-600'}`}></div>
                         <span>Different from temporary password</span>
                       </div>
                     )}
@@ -255,7 +257,7 @@ export default function PasswordChangeModal({ isOpen, onClose, isRequired = fals
               )}
               <button
                 type="submit"
-                disabled={isLoading || !passwordValidation.isValid || (isRequired && newPassword === TEMP_PASSWORD)}
+                disabled={isLoading || !passwordValidation.isValid || (isRequired && TEMP_PASSWORD_PATTERN.test(newPassword))}
                 className="bg-electric-500 text-white px-6 py-2 rounded-lg font-bold hover:bg-electric-600 transition-all duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? 'Changing Password...' : 'Change Password'}
