@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { navigateAndScroll } from '../utils/navigation';
 import { 
   Building, 
   TrendingUp, 
@@ -24,13 +25,7 @@ export default function BusinessFeatures() {
   const navigate = useNavigate();
   
   const handleViewPlans = () => {
-    navigate('/business');
-    setTimeout(() => {
-      const plansSection = document.getElementById('plans');
-      if (plansSection) {
-        plansSection.scrollIntoView({ behavior: 'smooth' });
-      }
-    }, 100);
+    navigateAndScroll(navigate, '/business', 'plans');
   };
   const topBenefits = [
     {

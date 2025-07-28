@@ -3,9 +3,13 @@ import { Users, Check, Star, ArrowRight, Shield, Globe, Calendar, Trophy } from 
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import PricingPlans from '../components/PricingPlans';
+import LoadingSpinner from '../components/LoadingSpinner';
+import logger from '../utils/logger';
+import { useNotifications } from '../components/NotificationSystem';
 
 export default function OrganizationPricing() {
   const navigate = useNavigate();
+  const { addNotification } = useNotifications();
   const [plans, setPlans] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -27,7 +31,12 @@ export default function OrganizationPricing() {
       if (error) throw error;
       setPlans(data || []);
     } catch (error) {
-      console.error('Failed to load organization plans:', error);
+      logger.error('Failed to load organization plans:', error);
+      addNotification({
+        type: 'error',
+        title: 'Error',
+        message: 'Failed to load pricing plans. Please try again later.'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -193,9 +202,7 @@ export default function OrganizationPricing() {
         </div>
 
         {isLoading ? (
-          <div className="flex justify-center items-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
-          </div>
+          <LoadingSpinner color="purple-500" message="Loading organization plans..." />
         ) : plans.length > 0 ? (
           <PricingPlans onPlanSelected={handlePlanSelected} preLoadedPlans={plans} />
         ) : (

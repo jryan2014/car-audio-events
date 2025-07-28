@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { navigateAndScroll } from '../utils/navigation';
 import { 
   Users, 
   Calendar, 
@@ -25,13 +26,7 @@ export default function OrganizationFeatures() {
   const navigate = useNavigate();
   
   const handleViewPlans = () => {
-    navigate('/organizations');
-    setTimeout(() => {
-      const plansSection = document.getElementById('plans');
-      if (plansSection) {
-        plansSection.scrollIntoView({ behavior: 'smooth' });
-      }
-    }, 100);
+    navigateAndScroll(navigate, '/organizations', 'plans');
   };
 
   const topBenefits = [
