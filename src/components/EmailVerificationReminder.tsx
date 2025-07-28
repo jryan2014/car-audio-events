@@ -10,7 +10,7 @@ export default function EmailVerificationReminder() {
   const [error, setError] = useState('');
 
   // Don't show if user is verified or doesn't exist
-  if (!user || user.verificationStatus === 'verified' || user.emailVerified) {
+  if (!user || user.verificationStatus === 'verified') {
     return null;
   }
 
