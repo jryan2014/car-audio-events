@@ -107,7 +107,13 @@ export async function retrySupabaseOperation<T>(
   }
   
   // Should never reach here, but TypeScript requires a return
-  return { data: null, error: { message: 'Max retries exceeded', code: 'RETRY_EXHAUSTED', details: '', hint: '' } };
+  return { data: null, error: { 
+    message: 'Max retries exceeded', 
+    code: 'RETRY_EXHAUSTED', 
+    details: '', 
+    hint: '',
+    name: 'RetryExhaustedError' 
+  } as PostgrestError };
 }
 
 /**
