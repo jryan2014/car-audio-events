@@ -3,8 +3,8 @@ import { createSupabaseAdminClient } from '../_shared/supabase-admin.ts';
 import { sendEmail } from '../_shared/mailgun-email-service.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 
-// Set your secure cron secret here (must match the one in the cron job URL)
-const CRON_SECRET = 'n&7i%HgGqyx86MWx@Kgrid5JsL9XAtrzKWEkAYv!^t%SCnEHJD8Q5C2bT!GC';
+// Get the cron secret from environment variables
+const CRON_SECRET = Deno.env.get('EMAIL_QUEUE_CRON_SECRET');
 
 // This function is designed to be called by a cron job or manually by admin users.
 // Example cron schedule: once every minute.
@@ -39,7 +39,7 @@ serve(async (req) => {
   }
 
   // --- AUTH LOGIC: allow if JWT or correct cron_secret ---
-  if (!(authHeader || cronSecret === CRON_SECRET)) {
+  if (!(authHeader || (CRON_SECRET && cronSecret === CRON_SECRET))) {
     const origin = req.headers.get('origin');
     const isLocalhost = origin && origin.startsWith('http://localhost:');
     const corsOrigin = (origin === 'https://caraudioevents.com' || isLocalhost) ? origin : 'https://caraudioevents.com';
