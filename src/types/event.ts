@@ -53,7 +53,16 @@ export interface EventFormData {
   schedule: EventScheduleItem[];
   sponsors: string[];
   image_url?: string;
-  image_position?: number;
+  image_position?: number; // Y position (vertical)
+  image_position_x?: number; // X position (horizontal)
+  
+  // Image zoom and crop settings
+  image_zoom?: number;
+  image_crop_x?: number;
+  image_crop_y?: number;
+  image_crop_width?: number | null;
+  image_crop_height?: number | null;
+  flyer_template_id?: string | null;
   
   // Additional Details
   first_place_trophy: boolean;
