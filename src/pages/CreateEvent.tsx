@@ -176,6 +176,23 @@ export default function CreateEvent() {
 
       if (error) throw error;
 
+      // Save multiple categories if any were selected
+      if (data && formData.category_ids && formData.category_ids.length > 0) {
+        const categoriesData = formData.category_ids.map(categoryId => ({
+          event_id: data.id,
+          category_id: categoryId
+        }));
+
+        const { error: categoriesError } = await supabase
+          .from('event_categories_junction')
+          .insert(categoriesData);
+
+        if (categoriesError) {
+          console.error('Error saving event categories:', categoriesError);
+          // Don't throw - event was created successfully
+        }
+      }
+
       // Save competition classes if any were selected
       if (data && formData.competition_classes && formData.competition_classes.length > 0) {
         const classesData = formData.competition_classes.map(className => ({
@@ -223,11 +240,11 @@ export default function CreateEvent() {
     organizer_id: user?.id || '',
     contact_email: user?.email || '',
     contact_phone: user?.phone || '',
-    event_director_first_name: user?.name?.split(' ')[0] || '',
-    event_director_last_name: user?.name?.split(' ').slice(1).join(' ') || '',
-    event_director_email: user?.email || '',
-    event_director_phone: user?.phone || '',
-    use_organizer_contact: true
+    event_director_first_name: '',
+    event_director_last_name: '',
+    event_director_email: '',
+    event_director_phone: '',
+    use_organizer_contact: false
   };
 
   if (!canCreateEvents) {

@@ -61,35 +61,50 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
           )}
         </div>
 
-        {/* Event Category */}
+        {/* Event Categories */}
         <div>
-          <label htmlFor="category" className="block text-gray-400 text-sm mb-2">
-            Event Category *
+          <label className="block text-gray-400 text-sm mb-2">
+            Event Categories *
           </label>
-          <select
-            id="category"
-            name="category_id"
-            required
-            aria-required="true"
-            aria-invalid={!!getFieldError('category_id')}
-            aria-describedby={getFieldError('category_id') ? 'category-error' : undefined}
-            value={formData.category_id}
-            onChange={(e) => updateField('category_id', e.target.value)}
-            onBlur={() => touchField('category_id')}
-            className={`w-full p-3 bg-gray-700/50 border rounded-lg text-white focus:outline-none focus:border-electric-500 ${
-              getFieldError('category_id') ? 'border-red-500' : 'border-gray-600'
-            }`}
-          >
-            <option value="">Select event category</option>
+          <div className="space-y-2 max-h-48 overflow-y-auto bg-gray-700/30 p-3 rounded-lg border border-gray-600">
             {categories.map(category => (
-              <option key={category.id} value={category.id}>{category.name}</option>
+              <label key={category.id} className="flex items-center space-x-2 hover:bg-gray-700/50 p-1 rounded cursor-pointer">
+                <input
+                  type="checkbox"
+                  value={category.id}
+                  checked={formData.category_ids?.includes(category.id) || formData.category_id === category.id}
+                  onChange={(e) => {
+                    const currentIds = formData.category_ids || (formData.category_id ? [formData.category_id] : []);
+                    let newIds: string[];
+                    
+                    if (e.target.checked) {
+                      newIds = [...currentIds, category.id];
+                    } else {
+                      newIds = currentIds.filter(id => id !== category.id);
+                    }
+                    
+                    // Update category_ids
+                    updateField('category_ids', newIds);
+                    
+                    // Update primary category_id (for legacy support)
+                    if (newIds.length > 0 && !newIds.includes(formData.category_id)) {
+                      updateField('category_id', newIds[0]);
+                    } else if (newIds.length === 0) {
+                      updateField('category_id', '');
+                    }
+                  }}
+                  className="rounded border-gray-600 text-electric-500 focus:ring-electric-500"
+                />
+                <span className="text-white">{category.name}</span>
+              </label>
             ))}
-          </select>
+          </div>
           {getFieldError('category_id') && (
-            <p id="category-error" className="mt-1 text-sm text-red-400" role="alert">
+            <p className="mt-1 text-sm text-red-400" role="alert">
               {getFieldError('category_id')}
             </p>
           )}
+          <p className="mt-2 text-xs text-gray-400">Select all categories that apply to your event</p>
         </div>
 
         {/* Sanctioning Body */}

@@ -46,13 +46,14 @@ export const EventForm: React.FC<EventFormProps> = ({
     title: '',
     description: '',
     category_id: '',
+    category_ids: [],
     sanction_body_id: '',
     season_year: new Date().getFullYear(),
     organizer_id: '',
     start_date: getDefaultDateTime(0, 8),
     end_date: getDefaultDateTime(11, 8),
     registration_deadline: '',
-    display_start_date: '',
+    display_start_date: getTodayDate(),
     display_end_date: '',
     venue_name: '',
     address: '',
@@ -69,11 +70,13 @@ export const EventForm: React.FC<EventFormProps> = ({
     event_director_last_name: '',
     event_director_email: '',
     event_director_phone: '',
-    use_organizer_contact: true,
+    use_organizer_contact: false,
     max_participants: null,
     registration_fee: 0,
     member_price: 0,
     non_member_price: 0,
+    gate_fee: null,
+    multi_day_pricing: null,
     early_bird_fee: null,
     early_bird_deadline: '',
     early_bird_name: 'Early Bird Special',
@@ -144,6 +147,12 @@ export const EventForm: React.FC<EventFormProps> = ({
     return tomorrow.toISOString().slice(0, 16);
   }
 
+  // Helper function to get today's date
+  function getTodayDate() {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  }
+
   // Update form field
   const updateField = useCallback(<K extends keyof EventFormData>(
     field: K,
@@ -182,24 +191,31 @@ export const EventForm: React.FC<EventFormProps> = ({
     });
   }, [formData]);
 
+  // Auto-calculate registration deadline when start date changes
+  useEffect(() => {
+    if (formData.start_date && !formData.registration_deadline) {
+      const startDate = new Date(formData.start_date);
+      // Set registration deadline to 1 minute before event start
+      startDate.setMinutes(startDate.getMinutes() - 1);
+      updateField('registration_deadline', startDate.toISOString().slice(0, 16));
+    }
+  }, [formData.start_date]);
+
   // Auto-calculate display dates ONLY when they are empty (initial setup)
   useEffect(() => {
-    if (formData.start_date && formData.end_date && !formData.display_start_date && !formData.display_end_date) {
+    if (formData.start_date && formData.end_date && !formData.display_end_date) {
       const startDate = new Date(formData.start_date);
       const endDate = new Date(formData.end_date);
       
-      const displayStart = new Date(startDate);
-      displayStart.setDate(displayStart.getDate() - 90);
+      // Display start is already set to today's date by default
       
       const displayEnd = new Date(endDate);
       displayEnd.setDate(displayEnd.getDate() + 30);
       
-      const newDisplayStartDate = displayStart.toISOString().split('T')[0];
       const newDisplayEndDate = displayEnd.toISOString().split('T')[0];
       
       setFormData(prev => ({
         ...prev,
-        display_start_date: newDisplayStartDate,
         display_end_date: newDisplayEndDate
       }));
     }

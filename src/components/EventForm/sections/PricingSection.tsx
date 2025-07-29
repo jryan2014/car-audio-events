@@ -42,8 +42,8 @@ const PricingSection: React.FC<PricingSectionProps> = ({
                   step="0.01"
                   required
                   aria-required="true"
-                  value={formData.member_price || 0}
-                  onChange={(e) => updateField('member_price', parseFloat(e.target.value) || 0)}
+                  value={formData.member_price}
+                  onChange={(e) => updateField('member_price', e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
                   onBlur={() => touchField('member_price')}
                   className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
                   placeholder="0.00"
@@ -67,14 +67,156 @@ const PricingSection: React.FC<PricingSectionProps> = ({
                   step="0.01"
                   required
                   aria-required="true"
-                  value={formData.non_member_price || 0}
-                  onChange={(e) => updateField('non_member_price', parseFloat(e.target.value) || 0)}
+                  value={formData.non_member_price}
+                  onChange={(e) => updateField('non_member_price', e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
                   onBlur={() => touchField('non_member_price')}
                   className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
                   placeholder="0.00"
                 />
               </div>
               <p className="mt-1 text-xs text-gray-400">Price for non-members</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Gate Fee */}
+        <div>
+          <h3 className="text-lg font-semibold text-white mb-4">Gate Fee</h3>
+          <div>
+            <label htmlFor="gate-fee" className="block text-gray-400 text-sm mb-2">
+              Gate Fee (Optional)
+            </label>
+            <div className="relative">
+              <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input
+                id="gate-fee"
+                name="gate_fee"
+                type="number"
+                min="0"
+                step="0.01"
+                value={formData.gate_fee || ''}
+                onChange={(e) => updateField('gate_fee', e.target.value ? parseFloat(e.target.value) : null)}
+                onBlur={() => touchField('gate_fee')}
+                className="w-full md:w-1/2 pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                placeholder="0.00"
+              />
+            </div>
+            <p className="mt-1 text-xs text-gray-400">Additional fee for spectators/guests (separate from competition entry)</p>
+          </div>
+        </div>
+
+        {/* Multi-Day Pricing */}
+        <div>
+          <h3 className="text-lg font-semibold text-white mb-4">Multi-Day Event Pricing (Optional)</h3>
+          <p className="text-sm text-gray-400 mb-4">If your event spans multiple days, you can offer different pricing options</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="single-day-price" className="block text-gray-400 text-sm mb-2">
+                Single Day Pass
+              </label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input
+                  id="single-day-price"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.multi_day_pricing?.single_day || ''}
+                  onChange={(e) => {
+                    const value = e.target.value ? parseFloat(e.target.value) : null;
+                    updateField('multi_day_pricing', {
+                      ...formData.multi_day_pricing,
+                      single_day: value || 0,
+                      two_day: formData.multi_day_pricing?.two_day || 0,
+                      three_day: formData.multi_day_pricing?.three_day || 0,
+                      full_event: formData.multi_day_pricing?.full_event || 0
+                    });
+                  }}
+                  className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+            <div>
+              <label htmlFor="two-day-price" className="block text-gray-400 text-sm mb-2">
+                Two Day Pass
+              </label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input
+                  id="two-day-price"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.multi_day_pricing?.two_day || ''}
+                  onChange={(e) => {
+                    const value = e.target.value ? parseFloat(e.target.value) : null;
+                    updateField('multi_day_pricing', {
+                      ...formData.multi_day_pricing,
+                      single_day: formData.multi_day_pricing?.single_day || 0,
+                      two_day: value || 0,
+                      three_day: formData.multi_day_pricing?.three_day || 0,
+                      full_event: formData.multi_day_pricing?.full_event || 0
+                    });
+                  }}
+                  className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+            <div>
+              <label htmlFor="three-day-price" className="block text-gray-400 text-sm mb-2">
+                Three Day Pass
+              </label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input
+                  id="three-day-price"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.multi_day_pricing?.three_day || ''}
+                  onChange={(e) => {
+                    const value = e.target.value ? parseFloat(e.target.value) : null;
+                    updateField('multi_day_pricing', {
+                      ...formData.multi_day_pricing,
+                      single_day: formData.multi_day_pricing?.single_day || 0,
+                      two_day: formData.multi_day_pricing?.two_day || 0,
+                      three_day: value || 0,
+                      full_event: formData.multi_day_pricing?.full_event || 0
+                    });
+                  }}
+                  className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+            <div>
+              <label htmlFor="full-event-price" className="block text-gray-400 text-sm mb-2">
+                Full Event Pass
+              </label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input
+                  id="full-event-price"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.multi_day_pricing?.full_event || ''}
+                  onChange={(e) => {
+                    const value = e.target.value ? parseFloat(e.target.value) : null;
+                    updateField('multi_day_pricing', {
+                      ...formData.multi_day_pricing,
+                      single_day: formData.multi_day_pricing?.single_day || 0,
+                      two_day: formData.multi_day_pricing?.two_day || 0,
+                      three_day: formData.multi_day_pricing?.three_day || 0,
+                      full_event: value || 0
+                    });
+                  }}
+                  className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  placeholder="0.00"
+                />
+              </div>
             </div>
           </div>
         </div>

@@ -4,7 +4,8 @@ export interface EventFormData {
   // Basic Information
   title: string;
   description: string;
-  category_id: string;
+  category_id: string; // Primary category (legacy support)
+  category_ids?: string[]; // Multiple categories
   sanction_body_id: string;
   season_year: number;
   organizer_id: string;
@@ -46,6 +47,13 @@ export interface EventFormData {
   early_bird_name: string;
   member_price: number;
   non_member_price: number;
+  gate_fee?: number | null;
+  multi_day_pricing?: {
+    single_day: number;
+    two_day: number;
+    three_day: number;
+    full_event: number;
+  } | null;
   
   // Details
   rules: string;
