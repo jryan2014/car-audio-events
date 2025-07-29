@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
+import DOMPurify from 'dompurify';
 import { supabase } from '../lib/supabase';
 
 interface CMSPage {
@@ -23,6 +24,32 @@ export default function DynamicPage() {
   const [page, setPage] = useState<CMSPage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+
+  // Configure DOMPurify to allow safe HTML elements and attributes
+  const sanitizeHTML = (html: string): string => {
+    return DOMPurify.sanitize(html, {
+      ALLOWED_TAGS: [
+        'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+        'p', 'br', 'hr',
+        'strong', 'em', 'u', 's', 'mark',
+        'ul', 'ol', 'li',
+        'a', 'img',
+        'blockquote', 'code', 'pre',
+        'table', 'thead', 'tbody', 'tr', 'th', 'td',
+        'div', 'span'
+      ],
+      ALLOWED_ATTR: [
+        'href', 'target', 'rel', 'title', 'alt', 'src',
+        'class', 'style', 'id',
+        'width', 'height',
+        'colspan', 'rowspan'
+      ],
+      ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
+      ADD_ATTR: ['target'], // Allow target attribute for links
+      FORBID_TAGS: ['script', 'style', 'object', 'embed', 'form', 'input', 'iframe'],
+      FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur']
+    });
+  };
 
   useEffect(() => {
     if (!slug) {
@@ -107,7 +134,7 @@ export default function DynamicPage() {
         <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-8">
           <div 
             className="prose prose-invert prose-electric max-w-none"
-            dangerouslySetInnerHTML={{ __html: page.content }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHTML(page.content) }}
             style={{
               color: '#e5e7eb',
               lineHeight: '1.7'

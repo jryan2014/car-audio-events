@@ -70,20 +70,21 @@ export default function Login() {
       loginRateLimiter.recordAttempt(clientId);
       const remainingAttempts = loginRateLimiter.getRemainingAttempts(clientId);
       
-      let errorMessage = 'Login failed. Please try again.';
+      // Use generic error message in production to prevent information disclosure
+      let errorMessage = 'Invalid email or password.';
       
+      // Only show specific error messages for certain safe cases
       if (error?.message) {
-        if (error.message.includes('Invalid login credentials')) {
-          errorMessage = 'Invalid email or password.';
-        } else if (error.message.includes('Email not confirmed')) {
+        if (error.message.includes('Email not confirmed')) {
           errorMessage = 'Please check your email and confirm your account.';
         } else if (error.message.includes('Too many requests')) {
           errorMessage = 'Too many login attempts. Please wait before trying again.';
-        } else {
-          // Generic error message to prevent information disclosure
-          errorMessage = 'Login failed. Please check your credentials and try again.';
         }
+        // For all other errors, use the generic message
       }
+      
+      // Log the actual error for debugging (server-side logging should capture this)
+      console.error('Login error:', error);
       
       // Add remaining attempts warning if applicable
       if (remainingAttempts > 0 && remainingAttempts < 3) {

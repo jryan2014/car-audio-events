@@ -52,18 +52,16 @@ export default function ForgotPassword() {
       
       console.error('Password reset failed:', error);
       
-      // Provide helpful error messages
+      // Use generic error message to prevent information disclosure
       let errorMessage = 'Failed to send reset email. Please try again.';
       
+      // Only show specific messages for safe cases
       if (error.message?.includes('rate limit')) {
         errorMessage = 'Too many password reset attempts. Please wait a few minutes before trying again.';
       } else if (error.message?.includes('network')) {
         errorMessage = 'Network error. Please check your connection and try again.';
-      } else if (error.message?.includes('function') && error.message?.includes('not exist')) {
-        errorMessage = 'Password reset service is temporarily unavailable. Please contact support at admin@caraudioevents.com';
-      } else if (error.message) {
-        errorMessage = error.message;
       }
+      // Don't expose other error details that could reveal system information
       
       // Add remaining attempts warning if applicable
       if (remainingAttempts > 0 && remainingAttempts < 3) {
@@ -136,14 +134,12 @@ export default function ForgotPassword() {
                   <div>
                     <h3 className="text-sm font-medium text-red-400">Error</h3>
                     <p className="text-sm text-red-300 mt-1">{error}</p>
-                    {error.includes('support') && (
-                      <p className="text-sm text-gray-400 mt-2">
-                        Please contact us at{' '}
-                        <a href="mailto:admin@caraudioevents.com" className="text-electric-400 hover:text-electric-300">
-                          admin@caraudioevents.com
-                        </a>
-                      </p>
-                    )}
+                    <p className="text-sm text-gray-400 mt-2">
+                      If the problem persists, please contact us at{' '}
+                      <a href="mailto:admin@caraudioevents.com" className="text-electric-400 hover:text-electric-300">
+                        admin@caraudioevents.com
+                      </a>
+                    </p>
                   </div>
                 </div>
               )}

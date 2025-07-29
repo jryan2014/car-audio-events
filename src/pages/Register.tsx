@@ -294,7 +294,8 @@ export default function Register() {
     } catch (error: any) {
       console.error('Google signup error:', error);
       setError('Google sign-up failed. Please try again.');
-      setDebugInfo(`❌ Google OAuth error: ${error.message || 'Unknown error'}`);
+      setDebugInfo('❌ Google OAuth error');
+      console.error('Google signup error details:', error);
     } finally {
       setIsLoading(false);
     }
@@ -386,36 +387,27 @@ export default function Register() {
       const remainingAttempts = registerRateLimiter.getRemainingAttempts(clientId);
       console.error('Registration failed:', error);
       
+      // Use generic error messages to prevent information disclosure
       let errorMessage = 'Registration failed. Please try again.';
-      let debugMessage = `❌ Registration error: ${error.message || 'Unknown error'}`;
+      let debugMessage = '❌ Registration error';
       
-      // More detailed error messages
+      // Only show specific messages for safe cases
       if (error?.message) {
         if (error.message.includes('hCaptcha')) {
-            errorMessage = 'Bot verification failed. Please try the captcha again.';
-            debugMessage += '\n\n💡 hCaptcha verification failed at server.';
+          errorMessage = 'Bot verification failed. Please try the captcha again.';
+          debugMessage += '\n\n💡 hCaptcha verification failed';
         } else if (error.message.includes('already registered') || error.message.includes('already exists')) {
           errorMessage = 'An account with this email already exists. Please try logging in instead.';
-          debugMessage += '\n\n💡 User already exists - try logging in';
+          debugMessage += '\n\n💡 User already exists';
         } else if (error.message.includes('timeout') || error.message.includes('aborted')) {
           errorMessage = 'Registration timed out. Please check your internet connection and try again.';
-          debugMessage += '\n\n💡 Network timeout - check connection';
-        } else if (error.message.includes('profile')) {
-          errorMessage = 'Account created but profile setup failed. Please contact support.';
-          debugMessage += '\n\n💡 Profile creation failed after auth user created';
-        } else if (error.message.includes('Invalid input')) {
-          errorMessage = 'Please check your input and try again.';
-          debugMessage += '\n\n💡 Input validation failed';
-        } else if (error.message.includes('Email')) {
-          errorMessage = 'Email validation failed. Please check your email address.';
-          debugMessage += '\n\n💡 Email format or validation issue';
-        } else if (error.message.includes('Password')) {
-          errorMessage = 'Password does not meet requirements.';
-          debugMessage += '\n\n💡 Password validation failed';
-        } else {
-          errorMessage = error.message;
+          debugMessage += '\n\n💡 Network timeout';
         }
+        // Don't expose other error details
       }
+      
+      // Log the actual error for debugging (server-side logging should capture this)
+      console.error('Registration error:', error);
       
       setError(errorMessage);
       setDebugInfo(debugMessage);

@@ -1,7 +1,7 @@
 {
   "name": "car-audio-competition-platform",
   "private": true,
-  "version": "1.26.35",
+  "version": "1.26.36",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -29,8 +29,10 @@
     "@stripe/react-stripe-js": "^3.7.0",
     "@stripe/stripe-js": "^2.4.0",
     "@tinymce/tinymce-react": "^6.2.1",
+    "@types/dompurify": "^3.0.5",
     "@types/jszip": "^3.4.0",
     "date-fns": "^4.1.0",
+    "dompurify": "^3.2.6",
     "dotenv": "^16.6.1",
     "jszip": "^3.10.1",
     "lucide-react": "^0.344.0",

@@ -7,6 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getTinyMCEScriptUrl } from '../../config/tinymce';
 import { EmailTemplatesAccordion } from './EmailTemplatesAccordion';
 import { EmailTemplateEditModal } from './EmailTemplateEditModal';
+import { sanitizeEmailHTML } from '../../utils/htmlSanitizer';
 
 
 interface EmailSettingsState {
@@ -1760,7 +1761,7 @@ export const EmailSettings: React.FC = () => {
                             setSelectedTemplate({ ...selectedTemplate, body: content });
                           }
                         }}
-                        dangerouslySetInnerHTML={{ __html: selectedTemplate?.body || '' }}
+                        dangerouslySetInnerHTML={{ __html: sanitizeEmailHTML(selectedTemplate?.body || '') }}
                         className="p-3 min-h-[400px] text-white focus:outline-none focus:ring-2 focus:ring-electric-500 focus:ring-offset-2 focus:ring-offset-gray-900"
                         style={{ fontFamily: 'Helvetica, Arial, sans-serif', fontSize: '14px' }}
                       />
@@ -2206,7 +2207,7 @@ The {{organization_name}} Team"
                   <div 
                     className="prose max-w-none"
                     dangerouslySetInnerHTML={{ 
-                      __html: createFullEmailTemplate(replaceAllEmailVariables(selectedTemplate.body, previewData))
+                      __html: sanitizeEmailHTML(createFullEmailTemplate(replaceAllEmailVariables(selectedTemplate.body, previewData)))
                     }}
                   />
                 </div>

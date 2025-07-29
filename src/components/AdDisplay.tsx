@@ -4,6 +4,51 @@ import { supabase } from '../lib/supabase';
 
 console.log('[AdDisplay] File loaded');
 
+// Safe image component with fallback (no XSS vulnerability)
+interface AdImageWithFallbackProps {
+  src: string;
+  alt: string;
+  title: string;
+  advertiserName: string;
+  dimensions: { width: number; height: number };
+}
+
+const AdImageWithFallback: React.FC<AdImageWithFallbackProps> = ({ 
+  src, 
+  alt, 
+  title, 
+  advertiserName, 
+  dimensions 
+}) => {
+  const [hasError, setHasError] = useState(false);
+
+  if (hasError) {
+    return (
+      <div className="w-full h-full bg-gray-800 border border-gray-600 rounded flex items-center justify-center text-gray-400 text-sm">
+        <div className="text-center">
+          <div className="font-medium">{title}</div>
+          <div className="text-xs mt-1">{advertiserName}</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className="w-full h-full object-cover rounded border border-gray-600/50 group-hover:border-electric-500/50 transition-colors"
+      style={{
+        width: '100%',
+        height: '100%',
+        maxWidth: `${dimensions.width}px`,
+        maxHeight: `${dimensions.height}px`
+      }}
+      onError={() => setHasError(true)}
+    />
+  );
+};
+
 interface Advertisement {
   id: string;
   title: string;
@@ -629,32 +674,13 @@ export default function AdDisplay({ placement, pageType = 'general', className =
             <span className="text-electric-400">{safeIndex + 1}/{eligibleAds.length}</span>
           </div>
 
-          {/* Ad Image */}
-          <img
+          {/* Ad Image with Fallback */}
+          <AdImageWithFallback
             src={imageUrl}
             alt={ad.title}
-            className="w-full h-full object-cover rounded border border-gray-600/50 group-hover:border-electric-500/50 transition-colors"
-            style={{
-              width: '100%',
-              height: '100%',
-              maxWidth: `${dimensions.width}px`,
-              maxHeight: `${dimensions.height}px`
-            }}
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.style.display = 'none';
-              const parent = target.parentElement;
-              if (parent) {
-                parent.innerHTML = `
-                  <div class="w-full h-full bg-gray-800 border border-gray-600 rounded flex items-center justify-center text-gray-400 text-sm">
-                    <div class="text-center">
-                      <div class="font-medium">${ad.title}</div>
-                      <div class="text-xs mt-1">${ad.advertiser_name}</div>
-                    </div>
-                  </div>
-                `;
-              }
-            }}
+            title={ad.title}
+            advertiserName={ad.advertiser_name}
+            dimensions={dimensions}
           />
 
           {/* Hover overlay */}
@@ -693,32 +719,13 @@ export default function AdDisplay({ placement, pageType = 'general', className =
               Ad
             </div>
 
-            {/* Ad Image */}
-            <img
+            {/* Ad Image with Fallback */}
+            <AdImageWithFallback
               src={imageUrl}
               alt={ad.title}
-              className="w-full h-full object-cover rounded border border-gray-600/50 group-hover:border-electric-500/50 transition-colors"
-              style={{
-                width: '100%',
-                height: '100%',
-                maxWidth: `${dimensions.width}px`,
-                maxHeight: `${dimensions.height}px`
-              }}
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.style.display = 'none';
-                const parent = target.parentElement;
-                if (parent) {
-                  parent.innerHTML = `
-                    <div class="w-full h-full bg-gray-800 border border-gray-600 rounded flex items-center justify-center text-gray-400 text-sm">
-                      <div class="text-center">
-                        <div class="font-medium">${ad.title}</div>
-                        <div class="text-xs mt-1">${ad.advertiser_name}</div>
-                      </div>
-                    </div>
-                  `;
-                }
-              }}
+              title={ad.title}
+              advertiserName={ad.advertiser_name}
+              dimensions={dimensions}
             />
 
             {/* Hover overlay */}

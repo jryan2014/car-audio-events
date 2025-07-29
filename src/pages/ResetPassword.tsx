@@ -109,7 +109,8 @@ export default function ResetPassword() {
       }, 3000);
     } catch (error: any) {
       console.error('Password reset failed:', error);
-      setError(error.message || 'Failed to reset password. Please try again.');
+      // Use generic error message to prevent information disclosure
+      setError('Failed to reset password. Please try again.');
     } finally {
       setIsLoading(false);
     }

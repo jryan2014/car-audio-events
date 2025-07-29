@@ -149,17 +149,23 @@ export const CronSettings: React.FC = () => {
     try {
       showInfo('Triggering email processing...');
       
+      // Get current session for authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        showError('Authentication required');
+        return;
+      }
+      
+      // Use secure admin endpoint instead of direct function call
       const response = await fetch(
-        'https://nqvisvranvjaghvrdaaz.supabase.co/functions/v1/process-email-queue',
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-trigger-email-processing`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-          },
-          body: JSON.stringify({
-            cron_secret: 'n&7i%HgGqyx86MWx@Kgrid5JsL9XAtrzKWEkAYv!^t%SCnEHJD8Q5C2bT!GC'
-          })
+            'Authorization': `Bearer ${session.access_token}`
+          }
         }
       );
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Save, Eye, Code, FileText, Copy, HelpCircle } from 'lucide-react';
 import { Editor } from '@tinymce/tinymce-react';
 import { getTinyMCEScriptUrl } from '../../config/tinymce';
+import { sanitizeEmailHTML } from '../../utils/htmlSanitizer';
 // Email variables will be passed as props or defined inline
 
 interface EmailVariable {
@@ -221,7 +222,7 @@ export const EmailTemplateEditModal: React.FC<EmailTemplateEditModalProps> = ({
 
                   {isPreviewMode ? (
                     <div className="bg-white rounded-lg p-6 min-h-[400px]">
-                      <div dangerouslySetInnerHTML={{ __html: editedTemplate.body }} />
+                      <div dangerouslySetInnerHTML={{ __html: sanitizeEmailHTML(editedTemplate.body) }} />
                     </div>
                   ) : (
                     <div className="border border-gray-600 rounded-lg overflow-hidden">

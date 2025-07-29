@@ -25,6 +25,7 @@ import { Editor } from '@tinymce/tinymce-react';
 import { supabase } from '../lib/supabase';
 import { EMAIL_VARIABLES, getVariablesByCategory, getAllCategories, replaceVariables } from '../utils/emailVariables';
 import { getTinyMCEScriptUrl } from '../config/tinymce';
+import { sanitizeEmailHTML } from '../utils/htmlSanitizer';
 
 interface EmailTemplate {
   id: string;
@@ -1184,7 +1185,7 @@ function TemplatePreview({
         </div>
         <div className="bg-white rounded-lg p-6 min-h-[300px] overflow-auto">
           <div 
-            dangerouslySetInnerHTML={{ __html: previewHtml }}
+            dangerouslySetInnerHTML={{ __html: sanitizeEmailHTML(previewHtml) }}
             className="text-black"
           />
         </div>
