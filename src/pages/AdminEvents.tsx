@@ -43,8 +43,12 @@ export default function AdminEvents() {
   const [selectedTimeFilter, setSelectedTimeFilter] = useState('all');
   const [selectedOrganization, setSelectedOrganization] = useState('all');
   const [selectedLocation, setSelectedLocation] = useState('all');
+  const [selectedCountry, setSelectedCountry] = useState('all');
+  const [selectedState, setSelectedState] = useState('all');
   const [organizations, setOrganizations] = useState<{id: string, name: string}[]>([]);
   const [locations, setLocations] = useState<string[]>([]);
+  const [countries, setCountries] = useState<string[]>([]);
+  const [states, setStates] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [showEventModal, setShowEventModal] = useState(false);
@@ -66,7 +70,7 @@ export default function AdminEvents() {
 
   useEffect(() => {
     filterEvents();
-  }, [events, searchTerm, selectedStatus, selectedApproval, selectedTimeFilter, selectedOrganization, selectedLocation]);
+  }, [events, searchTerm, selectedStatus, selectedApproval, selectedTimeFilter, selectedOrganization, selectedLocation, selectedCountry, selectedState]);
 
   const loadEvents = async () => {
     try {
@@ -132,11 +136,42 @@ export default function AdminEvents() {
         }
       });
       setLocations(Array.from(uniqueLocations).sort());
+
+      // Extract unique countries
+      const uniqueCountries = new Set<string>();
+      formattedEvents.forEach(event => {
+        if (event.country) {
+          uniqueCountries.add(event.country);
+        }
+      });
+      setCountries(Array.from(uniqueCountries).sort());
+
+      // Extract unique states
+      const uniqueStates = new Set<string>();
+      formattedEvents.forEach(event => {
+        if (event.state) {
+          uniqueStates.add(event.state);
+        }
+      });
+      setStates(Array.from(uniqueStates).sort());
     } catch (error) {
       console.error('Error loading events:', error);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const getFilteredStates = () => {
+    if (selectedCountry === 'all') {
+      return states;
+    }
+    const filteredStates = new Set<string>();
+    events.forEach(event => {
+      if (event.country === selectedCountry && event.state) {
+        filteredStates.add(event.state);
+      }
+    });
+    return Array.from(filteredStates).sort();
   };
 
   const filterEvents = () => {
@@ -169,7 +204,13 @@ export default function AdminEvents() {
       const matchesLocation = selectedLocation === 'all' || 
                              `${event.city}, ${event.state}` === selectedLocation;
       
-      return matchesSearch && matchesStatus && matchesApproval && matchesTime && matchesOrganization && matchesLocation;
+      // Country filter
+      const matchesCountry = selectedCountry === 'all' || event.country === selectedCountry;
+      
+      // State filter
+      const matchesState = selectedState === 'all' || event.state === selectedState;
+      
+      return matchesSearch && matchesStatus && matchesApproval && matchesTime && matchesOrganization && matchesLocation && matchesCountry && matchesState;
     });
 
     setFilteredEvents(filtered);
@@ -382,7 +423,7 @@ export default function AdminEvents() {
 
         {/* Filters */}
         <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             {/* Search */}
             <div className="relative md:col-span-2 xl:col-span-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -468,6 +509,39 @@ export default function AdminEvents() {
                 <option value="all">All Locations</option>
                 {locations.map(location => (
                   <option key={location} value={location}>{location}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Country Filter */}
+            <div className="relative">
+              <select
+                value={selectedCountry}
+                onChange={(e) => {
+                  setSelectedCountry(e.target.value);
+                  // Reset state when country changes
+                  setSelectedState('all');
+                }}
+                className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500 transition-colors appearance-none"
+              >
+                <option value="all">All Countries</option>
+                {countries.map(country => (
+                  <option key={country} value={country}>{country}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* State Filter */}
+            <div className="relative">
+              <select
+                value={selectedState}
+                onChange={(e) => setSelectedState(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500 transition-colors appearance-none"
+                disabled={selectedCountry === 'all' && states.length === 0}
+              >
+                <option value="all">All States</option>
+                {getFilteredStates().map(state => (
+                  <option key={state} value={state}>{state}</option>
                 ))}
               </select>
             </div>

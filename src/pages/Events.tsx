@@ -17,6 +17,7 @@ interface Event {
   venue_name: string;
   city: string;
   state: string;
+  country: string;
   registration_fee: number;
   max_participants: number | null;
   event_categories: {
@@ -47,6 +48,8 @@ export default function Events() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedSeason, setSelectedSeason] = useState('');
+  const [selectedCountry, setSelectedCountry] = useState('');
+  const [selectedState, setSelectedState] = useState('');
   const [eventFilter, setEventFilter] = useState<'upcoming' | 'past' | 'all'>('upcoming');
   const [categories, setCategories] = useState<Array<{id: string, name: string, color: string}>>([]);
 
@@ -155,6 +158,30 @@ export default function Events() {
     return Array.from(years).sort((a, b) => b - a);
   };
 
+  const getUniqueCountries = () => {
+    const countries = new Set<string>();
+    events.forEach(event => {
+      if (event.country) {
+        countries.add(event.country);
+      }
+    });
+    return Array.from(countries).sort();
+  };
+
+  const getUniqueStates = () => {
+    const states = new Set<string>();
+    events.forEach(event => {
+      // If a country is selected, only show states from that country
+      if (selectedCountry && event.country !== selectedCountry) {
+        return;
+      }
+      if (event.state) {
+        states.add(event.state);
+      }
+    });
+    return Array.from(states).sort();
+  };
+
   const filteredEvents = events.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          event.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -165,7 +192,10 @@ export default function Events() {
     const eventSeasonYear = event.metadata?.season_year || parseLocalDate(event.start_date).getFullYear();
     const matchesSeason = !selectedSeason || eventSeasonYear.toString() === selectedSeason;
     
-    return matchesSearch && matchesCategory && matchesSeason;
+    const matchesCountry = !selectedCountry || event.country === selectedCountry;
+    const matchesState = !selectedState || event.state === selectedState;
+    
+    return matchesSearch && matchesCategory && matchesSeason && matchesCountry && matchesState;
   });
 
   const formatDate = (dateString: string) => {
@@ -204,7 +234,7 @@ export default function Events() {
 
         {/* Filters */}
         <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
             {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
@@ -249,6 +279,35 @@ export default function Events() {
               <option value="">All Seasons</option>
               {getSeasonYears().map(year => (
                 <option key={year} value={year.toString()}>{year} Season</option>
+              ))}
+            </select>
+
+            {/* Country Filter */}
+            <select
+              value={selectedCountry}
+              onChange={(e) => {
+                setSelectedCountry(e.target.value);
+                // Reset state when country changes
+                setSelectedState('');
+              }}
+              className="bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-600 focus:outline-none focus:border-electric-500"
+            >
+              <option value="">All Countries</option>
+              {getUniqueCountries().map(country => (
+                <option key={country} value={country}>{country}</option>
+              ))}
+            </select>
+
+            {/* State Filter */}
+            <select
+              value={selectedState}
+              onChange={(e) => setSelectedState(e.target.value)}
+              className="bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-600 focus:outline-none focus:border-electric-500"
+              disabled={!selectedCountry && getUniqueStates().length === 0}
+            >
+              <option value="">All States</option>
+              {getUniqueStates().map(state => (
+                <option key={state} value={state}>{state}</option>
               ))}
             </select>
 
