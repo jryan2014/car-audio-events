@@ -26,7 +26,7 @@ export default function EventResults() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { showNotification } = useNotifications();
+  const { showSuccess, showError } = useNotifications();
   
   const [event, setEvent] = useState<EventData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -124,7 +124,7 @@ export default function EventResults() {
 
     } catch (error) {
       console.error('Error loading event:', error);
-      showNotification('Failed to load event details', 'error');
+      showError('Failed to load event details');
     } finally {
       setLoading(false);
     }
@@ -196,12 +196,12 @@ export default function EventResults() {
 
       if (resultsError) throw resultsError;
 
-      showNotification('Competition results saved successfully!', 'success');
+      showSuccess('Competition results saved successfully!');
       navigate('/profile#competitions');
 
     } catch (error: any) {
       console.error('Error saving results:', error);
-      showNotification(error.message || 'Failed to save results', 'error');
+      showError(error.message || 'Failed to save results');
     } finally {
       setSaving(false);
     }
