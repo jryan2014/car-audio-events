@@ -36,29 +36,11 @@ export const hasValidApiKey = () => {
          GOOGLE_MAPS_API_KEY.length > 10;
 };
 
-// Fetch Google Maps API key from Supabase Edge Function
-export const fetchGoogleMapsApiKey = async (): Promise<string> => {
-  try {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    
-    if (!supabaseUrl) {
-      console.warn('Missing Supabase URL, using default Google Maps API key');
-      return GOOGLE_MAPS_API_KEY;
-    }
-    
-    const response = await fetch(`${supabaseUrl}/functions/v1/get-google-maps-key`);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch Google Maps API key: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    return data.apiKey || GOOGLE_MAPS_API_KEY;
-  } catch (error) {
-    console.error('Error fetching Google Maps API key:', error);
-    return GOOGLE_MAPS_API_KEY;
-  }
-};
+// Note: Google Maps API key should be restricted in Google Cloud Console
+// Set up these restrictions:
+// 1. HTTP referrer restrictions (your domains only)
+// 2. API restrictions (Maps JavaScript API, Places API, Geometry Library)
+// 3. Quota limits to prevent abuse
 
 // Load Google Maps API
 export const loadGoogleMapsApi = (): Promise<void> => {

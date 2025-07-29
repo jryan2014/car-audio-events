@@ -1,5 +1,7 @@
-// OpenAI API utility for content generation
-// Note: In production, this should be handled by a backend API to keep API keys secure
+// AI Content Generation Service
+// Uses secure edge function to protect API keys
+
+import { supabase } from './supabase';
 
 interface AIContentRequest {
   message: string;
@@ -7,77 +9,61 @@ interface AIContentRequest {
   currentContent?: string;
 }
 
-// Check if OpenAI API is configured
-const hasOpenAIKey = () => {
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-  return apiKey && apiKey !== 'your_openai_api_key_here' && apiKey.startsWith('sk-');
-};
-
 export async function generateAIContent({ message, pageType, currentContent }: AIContentRequest): Promise<string> {
-  // If OpenAI API key is configured, use real API
-  if (hasOpenAIKey()) {
-    try {
-      return await callOpenAIAPI({ message, pageType, currentContent });
-    } catch (error) {
-      console.error('OpenAI API error, falling back to templates:', error);
-      // Fall back to template system if API fails
+  try {
+    // Get authenticated session
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session) {
+      console.warn('No authenticated session for AI content generation');
+      // Return template response for unauthenticated users
+      return getAIResponse(message, pageType, currentContent);
     }
+    
+    // Get Supabase URL
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    
+    if (!supabaseUrl) {
+      console.error('Missing Supabase URL for AI content generation');
+      return getAIResponse(message, pageType, currentContent);
+    }
+    
+    // Call secure edge function
+    const response = await fetch(`${supabaseUrl}/functions/v1/generate-ai-content`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message,
+        pageType,
+        currentContent
+      }),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('AI content generation error:', errorData);
+      
+      // Handle rate limiting
+      if (response.status === 429) {
+        const retryAfter = errorData.retryAfter || 60;
+        throw new Error(`Please wait ${retryAfter} seconds before trying again.`);
+      }
+      
+      // Fall back to template response
+      return getAIResponse(message, pageType, currentContent);
+    }
+    
+    const data = await response.json();
+    return data.content || getAIResponse(message, pageType, currentContent);
+    
+  } catch (error) {
+    console.error('Error generating AI content:', error);
+    // Fall back to template response
+    return getAIResponse(message, pageType, currentContent);
   }
-  
-  // Use sophisticated template system as fallback
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const response = getAIResponse(message, pageType, currentContent);
-      resolve(response);
-    }, 1000 + Math.random() * 2000);
-  });
-}
-
-async function callOpenAIAPI({ message, pageType, currentContent }: AIContentRequest): Promise<string> {
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-  
-  const systemPrompt = `You are a professional content writer specializing in car audio events and competitions. You help create high-quality, engaging content for a car audio events platform.
-
-Context:
-- Platform: Car Audio Events - connecting competitors, organizers, and enthusiasts
-- Industry: Car audio competitions, sound quality events, SPL competitions
-- Audience: Car audio enthusiasts, competitors, event organizers, industry professionals
-- Tone: Professional yet approachable, industry-knowledgeable
-
-Current page type: ${pageType}
-${currentContent ? `Current content: ${currentContent}` : ''}
-
-Guidelines:
-- Write professional, engaging content appropriate for the car audio industry
-- Use industry terminology correctly
-- Ensure legal compliance for policy pages
-- Make content SEO-friendly with proper structure
-- Keep tone consistent with a professional events platform
-- Include relevant calls-to-action where appropriate`;
-
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: message }
-      ],
-      max_tokens: 1500,
-      temperature: 0.7,
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`OpenAI API error: ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  return data.choices[0]?.message?.content || 'Sorry, I could not generate content at this time.';
 }
 
 function getAIResponse(message: string, pageType: string, currentContent?: string): string {
@@ -395,31 +381,4 @@ What specific type of content would you like me to help you create? Just let me 
 • Professional yet approachable tone
 
 What would you like me to help you write or improve today? Just describe what you need, and I'll create content that fits perfectly with your car audio events platform!`;
-}
-
-// Future: Replace simulation with actual OpenAI API call
-/*
-export async function generateAIContentWithOpenAI({ message, pageType, currentContent }: AIContentRequest): Promise<string> {
-  const response = await fetch('/api/ai/generate-content', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      message,
-      pageType,
-      currentContent,
-      systemPrompt: `You are a professional content writer specializing in car audio events and competitions. 
-      Help create engaging, professional content for a car audio events platform. 
-      Focus on industry-specific terminology, legal compliance, and user-friendly language.`
-    }),
-  });
-  
-  if (!response.ok) {
-    throw new Error('Failed to generate AI content');
-  }
-  
-  const data = await response.json();
-  return data.content;
-}
-*/ 
+} 

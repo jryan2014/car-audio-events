@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 import { RateLimiter, RateLimitConfigs, createRateLimitHeaders } from '../_shared/rate-limiter.ts'
 import { AuditLogger } from '../_shared/audit-logger.ts'
+import { verifyPayPalWebhookSignature, getPayPalWebhookConfig } from '../_shared/paypal-webhook-verification.ts'
 
 interface PayPalWebhookEvent {
   id: string;
@@ -77,15 +78,72 @@ serve(async (req) => {
 
   try {
     const payload = await req.text()
-    const webhookId = req.headers.get('paypal-transmission-id')
-    const webhookTimestamp = req.headers.get('paypal-transmission-time')
-    const webhookSignature = req.headers.get('paypal-transmission-sig')
-    const certUrl = req.headers.get('paypal-cert-url')
     
-    // Parse the webhook event
+    // Get PayPal webhook configuration
+    const webhookConfig = await getPayPalWebhookConfig();
+    if (!webhookConfig) {
+      console.error('PayPal webhook configuration not found');
+      
+      // Log configuration error
+      await auditLogger.log({
+        action: AuditLogger.Actions.WEBHOOK_FAILED,
+        provider: 'paypal',
+        error_message: 'PayPal webhook configuration not found',
+        ...requestInfo
+      });
+      
+      return new Response(
+        JSON.stringify({ error: 'Webhook configuration error' }),
+        { 
+          status: 500,
+          headers: {
+            ...corsHeaders,
+            ...rateLimitHeaders,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+    }
+    
+    // Verify webhook signature
+    const isValid = await verifyPayPalWebhookSignature(
+      req.headers,
+      payload,
+      webhookConfig.webhookId
+    );
+    
+    if (!isValid) {
+      console.error('Invalid PayPal webhook signature');
+      
+      // Log invalid signature
+      await auditLogger.log({
+        action: AuditLogger.Actions.INVALID_SIGNATURE,
+        provider: 'paypal',
+        error_message: 'Invalid webhook signature',
+        metadata: {
+          transmission_id: req.headers.get('paypal-transmission-id'),
+          ip_address: ipAddress
+        },
+        ...requestInfo
+      });
+      
+      return new Response(
+        JSON.stringify({ error: 'Invalid webhook signature' }),
+        { 
+          status: 401,
+          headers: {
+            ...corsHeaders,
+            ...rateLimitHeaders,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+    }
+    
+    // Parse the webhook event after verification
     const event: PayPalWebhookEvent = JSON.parse(payload)
     
-    console.log(`Processing PayPal webhook event: ${event.event_type}`)
+    console.log(`Processing verified PayPal webhook event: ${event.event_type}`)
     
     // Log webhook received
     await auditLogger.log({
@@ -94,7 +152,8 @@ serve(async (req) => {
       metadata: {
         event_type: event.event_type,
         event_id: event.id,
-        webhook_id: webhookId
+        webhook_id: req.headers.get('paypal-transmission-id'),
+        verified: true
       },
       ...requestInfo
     });
@@ -106,7 +165,7 @@ serve(async (req) => {
         provider: 'paypal',
         event_type: event.event_type,
         event_id: event.id,
-        webhook_id: webhookId,
+        webhook_id: req.headers.get('paypal-transmission-id'),
         payload: event,
         headers: Object.fromEntries(req.headers.entries()),
         status: 'processing',
