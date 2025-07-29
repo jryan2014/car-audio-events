@@ -245,6 +245,20 @@ const EventDetails = React.memo(function EventDetails() {
 
       console.log('🎨 Setting formatted event with imagePosition:', formattedEvent.imagePosition);
       setEvent(formattedEvent);
+      
+      // Check if user has saved this event
+      if (user) {
+        const { data: savedEvent, error: savedError } = await supabase
+          .from('saved_events')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('event_id', id)
+          .single();
+          
+        if (!savedError && savedEvent) {
+          setIsFavorited(true);
+        }
+      }
     } catch (error) {
       console.error('Error loading event details:', error);
       setError('Failed to load event details. Please try again later.');
@@ -266,11 +280,38 @@ const EventDetails = React.memo(function EventDetails() {
     }
   };
 
-  const handleFavorite = () => {
-    if (!isAuthenticated) {
+  const handleFavorite = async () => {
+    if (!isAuthenticated || !user) {
       return;
     }
-    setIsFavorited(!isFavorited);
+    
+    try {
+      if (isFavorited) {
+        // Remove from saved events
+        const { error } = await supabase
+          .from('saved_events')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('event_id', id);
+          
+        if (error) throw error;
+        setIsFavorited(false);
+      } else {
+        // Add to saved events
+        const { error } = await supabase
+          .from('saved_events')
+          .insert({
+            user_id: user.id,
+            event_id: id
+          });
+          
+        if (error) throw error;
+        setIsFavorited(true);
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      alert('Failed to save event. Please try again.');
+    }
   };
 
   const handleShare = async (platform: string) => {

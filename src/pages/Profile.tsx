@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { User, Car, Trophy, Star, Calendar, Edit, Save, X, Upload, Users, Settings, Plus, Trash2, Award, Target, Shield, AlertTriangle, CheckCircle, FileCheck, MapPin, Phone, Globe, Wrench, Search, UserPlus, Crown, Building, HelpCircle, Camera, UserCheck, UserX, Zap, DollarSign, ExternalLink, Bell, Mail, Lock, Eye, Download, TrendingUp } from 'lucide-react';
+import { User, Car, Trophy, Star, Calendar, Edit, Save, X, Upload, Users, Settings, Plus, Trash2, Award, Target, Shield, AlertTriangle, CheckCircle, FileCheck, MapPin, Phone, Globe, Wrench, Search, UserPlus, Crown, Building, HelpCircle, Camera, UserCheck, UserX, Zap, DollarSign, ExternalLink, Bell, Mail, Lock, Eye, Download, TrendingUp, Heart } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { useNotifications } from '../components/NotificationSystem';
 import { Link } from 'react-router-dom';
 import NewsletterPreferences from '../components/NewsletterPreferences';
 import NotificationPreferences from '../components/NotificationPreferences';
+import SavedEvents from '../components/SavedEvents';
 import Accordion from '../components/ui/Accordion';
 import { getMembershipDisplayName } from '../utils/membershipUtils';
 import { activityLogger } from '../services/activityLogger';
@@ -350,16 +351,22 @@ export default function Profile() {
     { id: 'verification', label: 'Verification', icon: Shield },
     { id: 'system', label: 'Audio System', icon: Car },
     { id: 'competitions', label: 'Competitions', icon: Trophy },
+    { id: 'saved-events', label: 'Saved Events', icon: Heart },
     { id: 'teams', label: 'Teams', icon: Users },
     { id: 'settings', label: 'Settings', icon: Settings }
   ];
 
-  // Check URL for tab parameter
+  // Check URL for tab parameter or hash
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const tabParam = urlParams.get('tab');
-    if (tabParam && tabs.some(tab => tab.id === tabParam)) {
-      setActiveTab(tabParam);
+    const hash = window.location.hash.slice(1); // Remove the # symbol
+    
+    // Priority: hash > query param
+    const targetTab = hash || tabParam;
+    
+    if (targetTab && tabs.some(tab => tab.id === targetTab)) {
+      setActiveTab(targetTab);
     }
     
     // Log page visit
@@ -370,7 +377,7 @@ export default function Profile() {
         description: `User visited Profile page`,
         metadata: {
           page: 'profile',
-          tab: tabParam || 'profile',
+          tab: targetTab || 'profile',
           user_email: user.email,
           user_name: user.name
         }
@@ -2430,6 +2437,17 @@ export default function Profile() {
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {activeTab === 'saved-events' && (
+            <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-white mb-2">Saved Events</h2>
+                <p className="text-gray-400">Manage your saved events and track your attendance</p>
+              </div>
+              
+              <SavedEvents showActions={true} />
             </div>
           )}
 

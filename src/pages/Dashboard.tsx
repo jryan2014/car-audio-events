@@ -8,6 +8,7 @@ import { ServiceWorkerManager } from '../components/ServiceWorkerManager';
 import { ActivityLogger } from '../utils/activityLogger';
 import { activityLogger } from '../services/activityLogger';
 import { getMembershipDisplayName } from '../utils/membershipUtils';
+import SavedEvents from '../components/SavedEvents';
 
 // Resend Verification Email Component
 const ResendVerificationEmailButton: React.FC<{ userEmail: string }> = ({ userEmail }) => {
@@ -764,6 +765,21 @@ export default function Dashboard() {
                 </Link>
               </div>
             )}
+          </div>
+
+          {/* Saved Events */}
+          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-white">Saved Events</h2>
+              <Link
+                to="/profile#saved-events"
+                className="text-electric-400 hover:text-electric-300 text-sm font-medium flex items-center space-x-1"
+              >
+                <span>View All</span>
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+            <SavedEvents limit={3} showActions={false} />
           </div>
 
         </div>

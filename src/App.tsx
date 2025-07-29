@@ -36,6 +36,7 @@ const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
 const AdminEvents = React.lazy(() => import('./pages/AdminEvents'));
 const CreateEvent = React.lazy(() => import('./pages/CreateEvent'));
 const EditEvent = React.lazy(() => import('./pages/EditEvent'));
+const EventResults = React.lazy(() => import('./pages/EventResults'));
 const UserDetails = React.lazy(() => import('./pages/UserDetails'));
 const EditUser = React.lazy(() => import('./pages/EditUser'));
 const AdminAnalytics = React.lazy(() => import('./pages/AdminAnalytics'));
@@ -151,6 +152,7 @@ function App() {
               <Route path="/organization-features" element={<Layout><OrganizationFeatures /></Layout>} />
               <Route path="/create-event" element={<Layout><ProtectedRoute><CreateEvent /></ProtectedRoute></Layout>} />
               <Route path="/events/:id/edit" element={<Layout><ProtectedRoute><EditEvent /></ProtectedRoute></Layout>} />
+              <Route path="/events/:id/results" element={<Layout><ProtectedRoute><EventResults /></ProtectedRoute></Layout>} />
               <Route path="/ai-configuration" element={<Layout><AIConfiguration /></Layout>} />
               <Route path="/pages/:slug" element={<Layout><DynamicPage /></Layout>} />
               <Route path="/privacy-policy" element={<Layout><PrivacyPolicy /></Layout>} />
