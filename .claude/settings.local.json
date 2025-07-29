@@ -72,7 +72,8 @@
       "mcp__playwright__browser_select_option",
       "Bash(npm audit:*)",
       "Bash(npm update:*)",
-      "Bash(touch:*)"
+      "Bash(touch:*)",
+      "mcp__netlify__netlify-project-services"
     ],
     "deny": []
   },

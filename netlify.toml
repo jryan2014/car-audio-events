@@ -8,13 +8,10 @@
   status = 200
 
 [build.environment]
-  NODE_VERSION = "18"
+  NODE_VERSION = "18" 
   SECRETS_SCAN_SMART_DETECTION_ENABLED = "false"
-  # Environment variables should be set in Netlify dashboard:
-  # VITE_SUPABASE_URL
-  # VITE_SUPABASE_ANON_KEY
-  # VITE_GOOGLE_MAPS_API_KEY
-  # VITE_HCAPTCHA_SITE_KEY
+  # Environment variables are configured in Netlify dashboard for security
+  # See NETLIFY_ENV_SETUP.md for configuration details
 
 # Ensure all routes are handled by the SPA
 [[redirects]]
