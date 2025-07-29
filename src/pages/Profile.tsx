@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Car, Trophy, Star, Calendar, Edit, Save, X, Upload, Users, Settings, Plus, Trash2, Award, Target, Shield, AlertTriangle, CheckCircle, FileCheck, MapPin, Phone, Globe, Wrench, Search, UserPlus, Crown, Building, HelpCircle, Camera, UserCheck, UserX, Zap, DollarSign, ExternalLink, Bell, Mail, Lock, Eye, Download } from 'lucide-react';
+import { User, Car, Trophy, Star, Calendar, Edit, Save, X, Upload, Users, Settings, Plus, Trash2, Award, Target, Shield, AlertTriangle, CheckCircle, FileCheck, MapPin, Phone, Globe, Wrench, Search, UserPlus, Crown, Building, HelpCircle, Camera, UserCheck, UserX, Zap, DollarSign, ExternalLink, Bell, Mail, Lock, Eye, Download, TrendingUp } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { useNotifications } from '../components/NotificationSystem';
@@ -9,6 +9,39 @@ import NotificationPreferences from '../components/NotificationPreferences';
 import Accordion from '../components/ui/Accordion';
 import { getMembershipDisplayName } from '../utils/membershipUtils';
 import { activityLogger } from '../services/activityLogger';
+import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+
+interface CompetitionResult {
+  id: string;
+  user_id: string;
+  event_id?: number;
+  is_cae_event: boolean;
+  event_name?: string;
+  event_date?: string;
+  event_location?: string;
+  event_organizer?: string;
+  event_title?: string;
+  competed_at?: string;
+  category: string;
+  class?: string;
+  vehicle_year?: string;
+  vehicle_make?: string;
+  vehicle_model?: string;
+  score?: number;
+  placement?: number;
+  total_participants?: number;
+  points_earned: number;
+  overall_score?: number;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  event?: {
+    id: number;
+    name: string;
+    start_date: string;
+    location: string;
+  };
+}
 
 interface AudioSystem {
   id: string;
@@ -35,16 +68,6 @@ interface AudioComponent {
   price?: number;
 }
 
-interface CompetitionResult {
-  id: string;
-  event_title: string;
-  category: string;
-  overall_score?: number;
-  placement?: number;
-  total_participants?: number;
-  points_earned: number;
-  competed_at: string;
-}
 
 interface Team {
   id: string;
@@ -293,6 +316,34 @@ export default function Profile() {
   const [userPreferences, setUserPreferences] = useState<any>(null);
   const [favoriteEvents, setFavoriteEvents] = useState<any[]>([]);
   const [registeredEvents, setRegisteredEvents] = useState<any[]>([]);
+  
+  // Competition modal states
+  const [showLogEventModal, setShowLogEventModal] = useState(false);
+  const [editingResult, setEditingResult] = useState<CompetitionResult | null>(null);
+  const [isLoadingCompetitions, setIsLoadingCompetitions] = useState(false);
+  const [eventFormData, setEventFormData] = useState({
+    event_name: '',
+    event_date: '',
+    event_location: '',
+    event_organizer: '',
+    category: '',
+    class: '',
+    vehicle_year: '',
+    vehicle_make: '',
+    vehicle_model: '',
+    score: '',
+    placement: '',
+    total_participants: '',
+    points_earned: '0',
+    notes: ''
+  });
+
+  // Load competition results when component mounts or user changes
+  useEffect(() => {
+    if (user?.id) {
+      loadCompetitionResults();
+    }
+  }, [user?.id]);
 
   const tabs = [
     { id: 'profile', label: 'Profile', icon: User },
@@ -349,7 +400,7 @@ export default function Profile() {
       // Only load data that exists in current database schema
       await Promise.all([
         loadAudioSystems(), // Load audio systems
-        // loadCompetitionResults(), // Skip - table doesn't exist
+        loadCompetitionResults(), // Load competition results
         loadTeams(), // Load teams data
         // loadUserStats() // Skip - function doesn't exist
       ]);
@@ -385,32 +436,190 @@ export default function Profile() {
   };
 
   const loadCompetitionResults = async () => {
-    const { data: results, error } = await supabase
-      .from('competition_results')
-      .select(`
-        *,
-        events!inner(title)
-      `)
-      .eq('user_id', user!.id)
-      .order('competed_at', { ascending: false });
+    if (!user?.id) return;
+    
+    setIsLoadingCompetitions(true);
+    try {
+      // First, just get the competition results without the join
+      const { data: results, error } = await supabase
+        .from('user_competition_results')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('event_date', { ascending: false });
 
-    if (error) {
-      console.error('Error loading competition results:', error);
-      return;
+      if (error) {
+        console.error('Error loading competition results:', error);
+        showError('Failed to load competition results');
+        return;
     }
 
-    const formattedResults = (results || []).map(result => ({
-      id: result.id,
-      event_title: result.events.title,
-      category: result.category,
-      overall_score: result.overall_score,
-      placement: result.placement,
-      total_participants: result.total_participants,
-      points_earned: result.points_earned,
-      competed_at: result.competed_at
-    }));
+      // For CAE events, try to get event details separately
+      const formattedResults = await Promise.all((results || []).map(async (result) => {
+        let eventDetails = null;
+        
+        if (result.is_cae_event && result.event_id) {
+          try {
+            const { data: event } = await supabase
+              .from('events')
+              .select('id, title, start_date, location')
+              .eq('id', result.event_id)
+              .single();
+            
+            eventDetails = event;
+          } catch (err) {
+            console.warn('Could not fetch event details for event_id:', result.event_id);
+          }
+        }
+        
+        return {
+          ...result,
+          event_title: eventDetails?.title || result.event_name || 'Unknown Event',
+          event: eventDetails
+        };
+      }));
 
-    setCompetitionResults(formattedResults);
+      setCompetitionResults(formattedResults);
+      
+      // TEMPORARY: Mock data to demonstrate charts functionality
+      if (formattedResults.length === 0) {
+        const mockData: CompetitionResult[] = [
+          {
+            id: 'mock-1',
+            user_id: user.id,
+            is_cae_event: false,
+            event_name: 'West Coast Audio Festival',
+            event_date: '2024-12-15',
+            event_location: 'Los Angeles, CA',
+            event_organizer: 'WCAF',
+            category: 'SPL (Sound Pressure Level)',
+            class: 'Street',
+            vehicle_year: '2023',
+            vehicle_make: 'Toyota',
+            vehicle_model: 'Camry',
+            score: 155.3,
+            placement: 2,
+            total_participants: 15,
+            points_earned: 85,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          {
+            id: 'mock-2',
+            user_id: user.id,
+            is_cae_event: false,
+            event_name: 'Midwest Bass Challenge',
+            event_date: '2024-11-20',
+            event_location: 'Chicago, IL',
+            event_organizer: 'MBC',
+            category: 'SPL (Sound Pressure Level)',
+            class: 'Street',
+            vehicle_year: '2023',
+            vehicle_make: 'Toyota',
+            vehicle_model: 'Camry',
+            score: 159.7,
+            placement: 1,
+            total_participants: 20,
+            points_earned: 100,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          {
+            id: 'mock-3',
+            user_id: user.id,
+            is_cae_event: false,
+            event_name: 'Southern Sound Showdown',
+            event_date: '2024-10-10',
+            event_location: 'Atlanta, GA',
+            event_organizer: 'SSS',
+            category: 'SQ (Sound Quality)',
+            class: 'Street',
+            vehicle_year: '2023',
+            vehicle_make: 'Toyota',
+            vehicle_model: 'Camry',
+            score: 84.6,
+            placement: 3,
+            total_participants: 12,
+            points_earned: 70,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          {
+            id: 'mock-4',
+            user_id: user.id,
+            is_cae_event: false,
+            event_name: 'East Coast Audio Open',
+            event_date: '2024-09-05',
+            event_location: 'New York, NY',
+            event_organizer: 'ECAO',
+            category: 'SQ (Sound Quality)',
+            class: 'Street',
+            vehicle_year: '2023',
+            vehicle_make: 'Toyota',
+            vehicle_model: 'Camry',
+            score: 92.1,
+            placement: 1,
+            total_participants: 18,
+            points_earned: 100,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          {
+            id: 'mock-5',
+            user_id: user.id,
+            is_cae_event: false,
+            event_name: 'Texas Thunder Tournament',
+            event_date: '2024-08-12',
+            event_location: 'Houston, TX',
+            event_organizer: 'TTT',
+            category: 'SPL (Sound Pressure Level)',
+            class: 'Street',
+            vehicle_year: '2023',
+            vehicle_make: 'Toyota',
+            vehicle_model: 'Camry',
+            score: 153.8,
+            placement: 4,
+            total_participants: 25,
+            points_earned: 60,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          {
+            id: 'mock-6',
+            user_id: user.id,
+            is_cae_event: false,
+            event_name: 'Arizona Audio Attack',
+            event_date: '2024-07-20',
+            event_location: 'Phoenix, AZ',
+            event_organizer: 'AAA',
+            category: 'Install Quality',
+            class: 'Street',
+            vehicle_year: '2023',
+            vehicle_make: 'Toyota',
+            vehicle_model: 'Camry',
+            score: 76.2,
+            placement: 2,
+            total_participants: 10,
+            points_earned: 85,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }
+        ];
+        
+        // Add formatted date for SPL chart
+        const mockDataWithFormattedDates = mockData.map(result => ({
+          ...result,
+          date: new Date(result.event_date!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        }));
+        
+        setCompetitionResults(mockDataWithFormattedDates);
+        console.log('Mock competition data loaded for demonstration:', mockDataWithFormattedDates);
+      }
+    } catch (error) {
+      console.error('Error in loadCompetitionResults:', error);
+      showError('Failed to load competition results');
+    } finally {
+      setIsLoadingCompetitions(false);
+    }
   };
 
   const loadTeams = async () => {
@@ -1160,6 +1369,107 @@ export default function Profile() {
     team.location?.toLowerCase().includes(teamSearchQuery.toLowerCase())
   );
 
+  // Competition-related functions
+  const handleEditResult = (result: CompetitionResult) => {
+    setEditingResult(result);
+    setEventFormData({
+      event_name: result.event_name || '',
+      event_date: result.event_date || result.competed_at || '',
+      event_location: result.event_location || '',
+      event_organizer: result.event_organizer || '',
+      category: result.category || '',
+      class: result.class || '',
+      vehicle_year: result.vehicle_year || '',
+      vehicle_make: result.vehicle_make || '',
+      vehicle_model: result.vehicle_model || '',
+      score: result.score?.toString() || '',
+      placement: result.placement?.toString() || '',
+      total_participants: result.total_participants?.toString() || '',
+      points_earned: result.points_earned?.toString() || '0',
+      notes: result.notes || ''
+    });
+    setShowLogEventModal(true);
+  };
+
+  const handleLogEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      setSaveStatus('saving');
+      
+      const eventData = {
+        user_id: user!.id,
+        is_cae_event: false,
+        event_name: eventFormData.event_name,
+        event_date: eventFormData.event_date,
+        event_location: eventFormData.event_location,
+        event_organizer: eventFormData.event_organizer || null,
+        category: eventFormData.category,
+        class: eventFormData.class || null,
+        vehicle_year: eventFormData.vehicle_year || null,
+        vehicle_make: eventFormData.vehicle_make || null,
+        vehicle_model: eventFormData.vehicle_model || null,
+        score: eventFormData.score ? parseFloat(eventFormData.score) : null,
+        placement: eventFormData.placement ? parseInt(eventFormData.placement) : null,
+        total_participants: eventFormData.total_participants ? parseInt(eventFormData.total_participants) : null,
+        points_earned: parseInt(eventFormData.points_earned) || 0,
+        notes: eventFormData.notes || null
+      };
+
+      if (editingResult) {
+        // Update existing result
+        const { error } = await supabase
+          .from('user_competition_results')
+          .update(eventData)
+          .eq('id', editingResult.id);
+
+        if (error) throw error;
+      } else {
+        // Insert new result
+        const { error } = await supabase
+          .from('user_competition_results')
+          .insert([eventData]);
+
+        if (error) throw error;
+      }
+
+      setSaveStatus('success');
+      showSuccess(
+        editingResult ? 'Competition result updated successfully!' : 'Competition result logged successfully!'
+      );
+      
+      // Reset form and reload data
+      setTimeout(() => {
+        setSaveStatus('idle');
+        setShowLogEventModal(false);
+        setEditingResult(null);
+        setEventFormData({
+          event_name: '',
+          event_date: '',
+          event_location: '',
+          event_organizer: '',
+          category: '',
+          class: '',
+          vehicle_year: '',
+          vehicle_make: '',
+          vehicle_model: '',
+          score: '',
+          placement: '',
+          total_participants: '',
+          points_earned: '0',
+          notes: ''
+        });
+        loadCompetitionResults();
+      }, 1500);
+      
+    } catch (error) {
+      console.error('Error logging event:', error);
+      setSaveStatus('error');
+      showError('Failed to log competition result');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    }
+  };
+
   // Helper tooltip component
   const FieldHelper = ({ text }: { text: string }) => (
     <div className="relative group inline-block ml-2">
@@ -1182,6 +1492,29 @@ export default function Profile() {
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header with Navigation */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-white">
+                Your <span className="text-electric-400">Profile</span>
+              </h1>
+              <p className="text-gray-400 mt-2">
+                Manage your information and competition history
+              </p>
+            </div>
+            <div className="flex items-center space-x-4">
+              <Link
+                to="/dashboard"
+                className="bg-electric-500 text-white px-4 py-2 rounded-lg hover:bg-electric-600 transition-colors flex items-center space-x-2"
+              >
+                <TrendingUp className="h-4 w-4" />
+                <span>View Dashboard</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+
         {/* Profile Header */}
         <div className="bg-gradient-to-r from-gray-800 to-gray-900 rounded-2xl p-8 mb-8 border border-gray-700/50">
           <div className="flex flex-col md:flex-row items-center md:items-start space-y-4 md:space-y-0 md:space-x-6">
@@ -1194,7 +1527,7 @@ export default function Profile() {
               </button>
             </div>
             <div className="flex-1 text-center md:text-left">
-              <h1 className="text-3xl font-bold text-white mb-2">{user?.name}</h1>
+              <h2 className="text-2xl font-bold text-white mb-2">{user?.name}</h2>
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-gray-400 mb-4">
                 <span className="bg-electric-500/20 text-electric-400 px-3 py-1 rounded-full text-sm font-medium">
                   {getMembershipDisplayName(user?.membershipType, user?.subscriptionPlan)}
@@ -1691,105 +2024,409 @@ export default function Profile() {
             </div>
           )}
 
+
           {activeTab === 'competitions' && (
             <div className="space-y-6">
-              {/* Stats Overview */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 text-center">
-                  <Trophy className="h-8 w-8 text-yellow-500 mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-white">{userStats?.total_competitions || 0}</div>
-                  <div className="text-gray-400 text-sm">Total Events</div>
+              {/* Competition Stats */}
+              <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+                <h2 className="text-2xl font-bold text-white mb-6 flex items-center space-x-2">
+                  <Trophy className="h-6 w-6 text-electric-500" />
+                  <span>Competition Results</span>
+                </h2>
+                
+                {/* Performance Summary Section */}
+                <div className="mb-8">
+                  <h3 className="text-xl font-bold text-white mb-4">Performance Summary</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* SPL Performance Chart */}
+                    <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-700/50">
+                      <h4 className="text-white font-semibold mb-4 flex items-center justify-between">
+                        SPL Performance
+                        <span className="text-electric-400 text-sm">{competitionResults.filter(r => r.category === 'SPL (Sound Pressure Level)').length} Events</span>
+                      </h4>
+                      {competitionResults.filter(r => r.category === 'SPL (Sound Pressure Level)').length > 0 ? (
+                        <ResponsiveContainer width="100%" height={200}>
+                          <BarChart data={competitionResults
+                            .filter(r => r.category === 'SPL (Sound Pressure Level)')
+                            .map(r => ({
+                              date: new Date(r.event_date || r.competed_at || '').toLocaleDateString('en-US', { month: 'short' }),
+                              score: r.score || 0,
+                              event: r.event_name || r.event_title
+                            }))
+                            .slice(-6) // Last 6 events
+                          }>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                            <XAxis dataKey="date" stroke="#9CA3AF" fontSize={12} />
+                            <YAxis stroke="#9CA3AF" fontSize={12} />
+                            <Tooltip 
+                              contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151', borderRadius: '8px' }}
+                              labelStyle={{ color: '#E5E7EB' }}
+                            />
+                            <Bar dataKey="score" fill="#0ea5e9" radius={[8, 8, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="flex items-center justify-center h-[200px] text-gray-500">
+                          <p className="text-center">No SPL data yet</p>
+                        </div>
+                      )}
+                      <div className="mt-2 text-center">
+                        <span className="text-gray-400 text-xs">Avg: </span>
+                        <span className="text-white font-semibold">
+                          {competitionResults.filter(r => r.category === 'SPL (Sound Pressure Level)').length > 0
+                            ? (competitionResults
+                                .filter(r => r.category === 'SPL (Sound Pressure Level)')
+                                .reduce((sum, r) => sum + (r.score || 0), 0) / 
+                                competitionResults.filter(r => r.category === 'SPL (Sound Pressure Level)').length
+                              ).toFixed(1) + ' dB'
+                            : '0.0 dB'
+                          }
+                        </span>
+                        <span className="text-gray-400 text-xs ml-4">Best: </span>
+                        <span className="text-white font-semibold">
+                          {competitionResults.filter(r => r.category === 'SPL (Sound Pressure Level)').length > 0
+                            ? Math.max(...competitionResults
+                                .filter(r => r.category === 'SPL (Sound Pressure Level)')
+                                .map(r => r.score || 0)
+                              ).toFixed(1) + ' dB'
+                            : '0.0 dB'
+                          }
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* SQ Performance Chart */}
+                    <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-700/50">
+                      <h4 className="text-white font-semibold mb-4 flex items-center justify-between">
+                        SQ Performance
+                        <span className="text-electric-400 text-sm">{competitionResults.filter(r => r.category === 'SQ (Sound Quality)').length} Events</span>
+                      </h4>
+                      {competitionResults.filter(r => r.category === 'SQ (Sound Quality)').length > 0 ? (
+                        <ResponsiveContainer width="100%" height={200}>
+                          <PieChart>
+                            <Pie
+                              data={[
+                                { name: 'Imaging', value: 30, color: '#f59e0b' },
+                                { name: 'Dynamics', value: 25, color: '#3b82f6' },
+                                { name: 'Noise', value: 20, color: '#10b981' },
+                                { name: 'Total', value: 25, color: '#8b5cf6' }
+                              ]}
+                              cx="50%"
+                              cy="50%"
+                              outerRadius={70}
+                              fill="#8884d8"
+                              dataKey="value"
+                            >
+                              {[
+                                { name: 'Imaging', value: 30, color: '#f59e0b' },
+                                { name: 'Dynamics', value: 25, color: '#3b82f6' },
+                                { name: 'Noise', value: 20, color: '#10b981' },
+                                { name: 'Total', value: 25, color: '#8b5cf6' }
+                              ].map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.color} />
+                              ))}
+                            </Pie>
+                            <Tooltip 
+                              contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151', borderRadius: '8px' }}
+                              labelStyle={{ color: '#E5E7EB' }}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="flex items-center justify-center h-[200px] text-gray-500">
+                          <p className="text-center">No SQ data yet</p>
+                        </div>
+                      )}
+                      <div className="mt-2 text-center">
+                        <span className="text-gray-400 text-xs">Avg: </span>
+                        <span className="text-white font-semibold">
+                          {competitionResults.filter(r => r.category === 'SQ (Sound Quality)').length > 0
+                            ? (competitionResults
+                                .filter(r => r.category === 'SQ (Sound Quality)')
+                                .reduce((sum, r) => sum + (r.score || 0), 0) / 
+                                competitionResults.filter(r => r.category === 'SQ (Sound Quality)').length
+                              ).toFixed(1)
+                            : '0.0'}
+                        </span>
+                        <span className="text-gray-400 text-xs ml-4">Best: </span>
+                        <span className="text-white font-semibold">
+                          {competitionResults.filter(r => r.category === 'SQ (Sound Quality)').length > 0
+                            ? Math.max(...competitionResults
+                                .filter(r => r.category === 'SQ (Sound Quality)')
+                                .map(r => r.score || 0)
+                              ).toFixed(1)
+                            : '0.0'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Placements Chart */}
+                    <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-700/50">
+                      <h4 className="text-white font-semibold mb-4 flex items-center justify-between">
+                        Placements
+                        <span className="text-electric-400 text-sm">{competitionResults.length} Total</span>
+                      </h4>
+                      {competitionResults.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={200}>
+                          <PieChart>
+                            <Pie
+                              data={[
+                                { 
+                                  name: '1st', 
+                                  value: competitionResults.filter(r => r.placement === 1).length,
+                                  color: '#fbbf24'
+                                },
+                                { 
+                                  name: '2nd', 
+                                  value: competitionResults.filter(r => r.placement === 2).length,
+                                  color: '#9ca3af'
+                                },
+                                { 
+                                  name: '3rd', 
+                                  value: competitionResults.filter(r => r.placement === 3).length,
+                                  color: '#f97316'
+                                },
+                                { 
+                                  name: 'Other', 
+                                  value: competitionResults.filter(r => !r.placement || r.placement > 3).length,
+                                  color: '#4b5563'
+                                }
+                              ].filter(d => d.value > 0)}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={40}
+                              outerRadius={70}
+                              fill="#8884d8"
+                              dataKey="value"
+                              label={({ value, percent }) => `${value} (${(percent * 100).toFixed(0)}%)`}
+                              labelLine={false}
+                            >
+                              {[
+                                { 
+                                  name: '1st', 
+                                  value: competitionResults.filter(r => r.placement === 1).length,
+                                  color: '#fbbf24'
+                                },
+                                { 
+                                  name: '2nd', 
+                                  value: competitionResults.filter(r => r.placement === 2).length,
+                                  color: '#9ca3af'
+                                },
+                                { 
+                                  name: '3rd', 
+                                  value: competitionResults.filter(r => r.placement === 3).length,
+                                  color: '#f97316'
+                                },
+                                { 
+                                  name: 'Other', 
+                                  value: competitionResults.filter(r => !r.placement || r.placement > 3).length,
+                                  color: '#4b5563'
+                                }
+                              ].filter(d => d.value > 0).map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.color} />
+                              ))}
+                            </Pie>
+                            <Tooltip 
+                              contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151', borderRadius: '8px' }}
+                              labelStyle={{ color: '#E5E7EB' }}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="flex items-center justify-center h-[200px] text-gray-500">
+                          <p className="text-center">No placement data yet</p>
+                        </div>
+                      )}
+                      <div className="mt-2 text-center">
+                        <span className="text-gray-400 text-xs">Win Rate: </span>
+                        <span className="text-white font-semibold">
+                          {competitionResults.length > 0
+                            ? ((competitionResults.filter(r => r.placement === 1).length / competitionResults.length) * 100).toFixed(0) + '%'
+                            : '0%'}
+                        </span>
+                        <span className="text-gray-400 text-xs ml-4">Podium: </span>
+                        <span className="text-white font-semibold">
+                          {competitionResults.length > 0
+                            ? ((competitionResults.filter(r => r.placement && r.placement <= 3).length / competitionResults.length) * 100).toFixed(0) + '%'
+                            : '0%'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 text-center">
-                  <Star className="h-8 w-8 text-electric-500 mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-white">{userStats?.total_points || 0}</div>
-                  <div className="text-gray-400 text-sm">Total Points</div>
+
+                {/* Performance by Category */}
+                <div className="mb-8">
+                  <h3 className="text-xl font-bold text-white mb-4">Performance by Category</h3>
+                  <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-700/50 overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="text-gray-400 text-sm">
+                          <th className="text-left py-2">CATEGORY</th>
+                          <th className="text-center py-2">EVENTS</th>
+                          <th className="text-center py-2">AVG SCORE</th>
+                          <th className="text-center py-2">BEST SCORE</th>
+                          <th className="text-center py-2">WINS</th>
+                          <th className="text-center py-2">TREND</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-700/50">
+                        {['SPL (Sound Pressure Level)', 'SQ (Sound Quality)', 'Install Quality', 'Bass Race', 'Demo'].map(category => {
+                          const categoryResults = competitionResults.filter(r => r.category === category);
+                          const avgScore = categoryResults.length > 0 
+                            ? categoryResults.reduce((sum, r) => sum + (r.score || 0), 0) / categoryResults.length
+                            : 0;
+                          const bestScore = categoryResults.length > 0
+                            ? Math.max(...categoryResults.map(r => r.score || 0))
+                            : 0;
+                          const wins = categoryResults.filter(r => r.placement === 1).length;
+                          
+                          return (
+                            <tr key={category} className="text-gray-300">
+                              <td className="py-3 font-medium">{category}</td>
+                              <td className="text-center py-3">{categoryResults.length}</td>
+                              <td className="text-center py-3">{avgScore.toFixed(1)}</td>
+                              <td className="text-center py-3">{bestScore.toFixed(1)}</td>
+                              <td className="text-center py-3">
+                                <span className="text-yellow-400 font-semibold">{wins}</span>
+                              </td>
+                              <td className="text-center py-3">
+                                {categoryResults.length >= 2 ? (
+                                  <div className="flex items-center justify-center">
+                                    {categoryResults[categoryResults.length - 1].score! > categoryResults[categoryResults.length - 2].score! ? (
+                                      <TrendingUp className="h-4 w-4 text-green-400" />
+                                    ) : (
+                                      <div className="h-4 w-4 bg-gray-600 rounded" />
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="h-4 w-4 bg-gray-600 rounded mx-auto" />
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-                <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 text-center">
-                  <Award className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-white">{userStats?.wins || 0}</div>
-                  <div className="text-gray-400 text-sm">Wins</div>
-                </div>
-                <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 text-center">
-                  <Target className="h-8 w-8 text-purple-500 mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-white">{userStats?.average_score?.toFixed(1) || '0.0'}</div>
-                  <div className="text-gray-400 text-sm">Avg Score</div>
+
+                {/* Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <Link
+                    to="/events"
+                    className="flex-1 bg-electric-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-electric-600 transition-all duration-200 flex items-center justify-center space-x-2"
+                  >
+                    <Search className="h-5 w-5" />
+                    <span>Find CAE Events</span>
+                  </Link>
+                  
+                  <button
+                    onClick={() => setShowLogEventModal(true)}
+                    className="flex-1 bg-gray-700 text-white px-6 py-3 rounded-lg font-medium hover:bg-gray-600 transition-all duration-200 flex items-center justify-center space-x-2"
+                  >
+                    <Plus className="h-5 w-5" />
+                    <span>Log Non-CAE Event</span>
+                  </button>
                 </div>
               </div>
 
               {/* Competition History */}
               <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold text-white">Competition History</h2>
-                  <Link
-                    to="/events"
-                    className="bg-electric-500 text-white px-4 py-2 rounded-lg hover:bg-electric-600 transition-colors flex items-center space-x-2"
-                  >
-                    <Calendar className="h-4 w-4" />
-                    <span>Find Events</span>
-                  </Link>
-                </div>
+                <h3 className="text-xl font-bold text-white mb-6">Competition History</h3>
                 
-                {competitionResults.length > 0 ? (
-                  <div className="space-y-4">
-                    {competitionResults.map((result) => (
-                      <div key={result.id} className="bg-gray-700/30 p-6 rounded-lg">
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex-1">
-                            <h3 className="text-xl font-bold text-white mb-2">{result.event_title}</h3>
-                            <div className="flex flex-wrap gap-4 text-sm text-gray-400">
-                              <div className="flex items-center space-x-1">
-                                <Calendar className="h-4 w-4" />
-                                <span>{new Date(result.competed_at).toLocaleDateString()}</span>
-                              </div>
-                              <div className="flex items-center space-x-1">
-                                <Trophy className="h-4 w-4" />
-                                <span>{result.category}</span>
-                              </div>
-                              {result.placement && (
-                                <div className="flex items-center space-x-1">
-                                  <Award className="h-4 w-4" />
-                                  <span>Placed {result.placement}{result.total_participants ? ` of ${result.total_participants}` : ''}</span>
+                {isLoadingCompetitions ? (
+                  <div className="flex justify-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-electric-500"></div>
+                  </div>
+                ) : competitionResults.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="border-b border-gray-700">
+                        <tr>
+                          <th className="text-left py-3 text-gray-400 font-medium">Event</th>
+                          <th className="text-left py-3 text-gray-400 font-medium">Date</th>
+                          <th className="text-left py-3 text-gray-400 font-medium">Category</th>
+                          <th className="text-center py-3 text-gray-400 font-medium">Placement</th>
+                          <th className="text-center py-3 text-gray-400 font-medium">Score</th>
+                          <th className="text-center py-3 text-gray-400 font-medium">Points</th>
+                          <th className="text-right py-3 text-gray-400 font-medium">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-700/50">
+                        {competitionResults.map((result) => {
+                          const placementColor = 
+                            result.placement === 1 ? 'text-yellow-400' :
+                            result.placement === 2 ? 'text-gray-400' :
+                            result.placement === 3 ? 'text-orange-400' : 'text-white';
+                          
+                          return (
+                            <tr key={result.id} className="hover:bg-gray-700/20 transition-colors">
+                              <td className="py-4">
+                                <div className="flex items-center space-x-2">
+                                  {!result.is_cae_event && (
+                                    <span className="bg-gray-600 text-gray-300 px-2 py-1 rounded text-xs">Non-CAE</span>
+                                  )}
+                                  <span className="text-white font-medium">
+                                    {result.event_name || result.event_title}
+                                  </span>
                                 </div>
-                              )}
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            {result.placement && result.placement <= 3 && (
-                              <div className={`inline-flex items-center justify-center w-12 h-12 rounded-full mb-2 ${
-                                result.placement === 1 ? 'bg-yellow-500' :
-                                result.placement === 2 ? 'bg-gray-400' :
-                                'bg-orange-600'
-                              }`}>
-                                <Trophy className="h-6 w-6 text-white" />
-                              </div>
-                            )}
-                            <div className="text-2xl font-bold text-electric-400">{result.points_earned}</div>
-                            <div className="text-xs text-gray-400">Points</div>
-                          </div>
-                        </div>
-                        {result.overall_score && (
-                          <div className="mt-4 pt-4 border-t border-gray-700">
-                            <div className="flex justify-between items-center">
-                              <span className="text-gray-400">Score</span>
-                              <span className="text-xl font-bold text-white">{result.overall_score.toFixed(2)}</span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                              </td>
+                              <td className="py-4 text-gray-300">
+                                {new Date(result.event_date || result.competed_at).toLocaleDateString()}
+                              </td>
+                              <td className="py-4 text-gray-300">{result.category}</td>
+                              <td className="py-4 text-center">
+                                <span className={`font-bold ${placementColor}`}>
+                                  {result.placement ? `#${result.placement}` : '-'}
+                                </span>
+                                {result.total_participants && (
+                                  <span className="text-gray-500 text-sm ml-1">
+                                    /{result.total_participants}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-4 text-center text-white">
+                                {result.score || '-'}
+                              </td>
+                              <td className="py-4 text-center text-electric-400 font-medium">
+                                {result.points_earned}
+                              </td>
+                              <td className="py-4 text-right">
+                                {!result.is_cae_event && (
+                                  <button
+                                    onClick={() => handleEditResult(result)}
+                                    className="text-gray-400 hover:text-white transition-colors"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 ) : (
                   <div className="text-center py-12">
                     <Trophy className="h-16 w-16 text-gray-600 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-gray-400 mb-2">No Competition History</h3>
-                    <p className="text-gray-500 mb-4">Start competing to build your track record!</p>
-                    <Link 
-                      to="/events"
-                      className="bg-electric-500 text-white px-6 py-2 rounded-lg hover:bg-electric-600 transition-colors"
-                    >
-                      Find Competitions
-                    </Link>
+                    <h4 className="text-xl font-semibold text-gray-400 mb-2">No Competition History</h4>
+                    <p className="text-gray-500 mb-6">Start competing to build your competition history</p>
+                    <div className="flex justify-center space-x-4">
+                      <Link
+                        to="/events"
+                        className="bg-electric-500 text-white px-6 py-2 rounded-lg hover:bg-electric-600 transition-colors"
+                      >
+                        Browse Events
+                      </Link>
+                      <button
+                        onClick={() => setShowLogEventModal(true)}
+                        className="bg-gray-700 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+                      >
+                        Log Past Event
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -3509,6 +4146,305 @@ export default function Profile() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Log Non-CAE Event Modal */}
+      {showLogEventModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <form onSubmit={handleLogEvent}>
+              <div className="p-6 border-b border-gray-700">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-bold text-white">
+                    {editingResult ? 'Edit Competition Result' : 'Log Competition Result'}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowLogEventModal(false);
+                      setEditingResult(null);
+                    }}
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
+              </div>
+              
+              <div className="p-6 space-y-6">
+                {/* Event Information */}
+                <div>
+                  <h4 className="text-white font-semibold mb-4 flex items-center space-x-2">
+                    <Calendar className="h-5 w-5 text-electric-500" />
+                    <span>Event Information</span>
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2">
+                        Event Name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={eventFormData.event_name}
+                        onChange={(e) => setEventFormData({ ...eventFormData, event_name: e.target.value })}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                        placeholder="e.g., West Coast Audio Festival"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2">
+                        Event Date <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={eventFormData.event_date}
+                        onChange={(e) => setEventFormData({ ...eventFormData, event_date: e.target.value })}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2">
+                        Location <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={eventFormData.event_location}
+                        onChange={(e) => setEventFormData({ ...eventFormData, event_location: e.target.value })}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                        placeholder="City, State"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2">
+                        Event Organizer
+                      </label>
+                      <input
+                        type="text"
+                        value={eventFormData.event_organizer}
+                        onChange={(e) => setEventFormData({ ...eventFormData, event_organizer: e.target.value })}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                        placeholder="Organization name"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Competition Details */}
+                <div>
+                  <h4 className="text-white font-semibold mb-4 flex items-center space-x-2">
+                    <Trophy className="h-5 w-5 text-electric-500" />
+                    <span>Competition Details</span>
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2">
+                        Category <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={eventFormData.category}
+                        onChange={(e) => setEventFormData({ ...eventFormData, category: e.target.value })}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                        required
+                      >
+                        <option value="">Select category...</option>
+                        <option value="SPL (Sound Pressure Level)">SPL (Sound Pressure Level)</option>
+                        <option value="SQ (Sound Quality)">SQ (Sound Quality)</option>
+                        <option value="Install Quality">Install Quality</option>
+                        <option value="Bass Race">Bass Race</option>
+                        <option value="Demo">Demo</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2">
+                        Class
+                      </label>
+                      <input
+                        type="text"
+                        value={eventFormData.class}
+                        onChange={(e) => setEventFormData({ ...eventFormData, class: e.target.value })}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                        placeholder="e.g., Street 1, Street 2, Pro"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Vehicle Information */}
+                <div>
+                  <h4 className="text-white font-semibold mb-4 flex items-center space-x-2">
+                    <Car className="h-5 w-5 text-electric-500" />
+                    <span>Vehicle Information</span>
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2">Year</label>
+                      <input
+                        type="number"
+                        value={eventFormData.vehicle_year}
+                        onChange={(e) => setEventFormData({ ...eventFormData, vehicle_year: e.target.value })}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                        placeholder="2023"
+                        min="1900"
+                        max={new Date().getFullYear() + 1}
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2">Make</label>
+                      <input
+                        type="text"
+                        value={eventFormData.vehicle_make}
+                        onChange={(e) => setEventFormData({ ...eventFormData, vehicle_make: e.target.value })}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                        placeholder="Toyota"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2">Model</label>
+                      <input
+                        type="text"
+                        value={eventFormData.vehicle_model}
+                        onChange={(e) => setEventFormData({ ...eventFormData, vehicle_model: e.target.value })}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                        placeholder="Camry"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Results */}
+                <div>
+                  <h4 className="text-white font-semibold mb-4 flex items-center space-x-2">
+                    <Award className="h-5 w-5 text-electric-500" />
+                    <span>Results</span>
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2">Score</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={eventFormData.score}
+                        onChange={(e) => setEventFormData({ ...eventFormData, score: e.target.value })}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                        placeholder="155.3"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2">Placement</label>
+                      <input
+                        type="number"
+                        value={eventFormData.placement}
+                        onChange={(e) => setEventFormData({ ...eventFormData, placement: e.target.value })}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                        placeholder="1"
+                        min="1"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2">Total Participants</label>
+                      <input
+                        type="number"
+                        value={eventFormData.total_participants}
+                        onChange={(e) => setEventFormData({ ...eventFormData, total_participants: e.target.value })}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                        placeholder="25"
+                        min="1"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2">Points Earned</label>
+                      <input
+                        type="number"
+                        value={eventFormData.points_earned}
+                        onChange={(e) => setEventFormData({ ...eventFormData, points_earned: e.target.value })}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                        placeholder="100"
+                        min="0"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">Notes</label>
+                  <textarea
+                    value={eventFormData.notes}
+                    onChange={(e) => setEventFormData({ ...eventFormData, notes: e.target.value })}
+                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500 resize-none"
+                    rows={3}
+                    placeholder="Additional details about the competition..."
+                  />
+                </div>
+
+                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
+                  <p className="text-yellow-400 text-sm">
+                    <strong>Note:</strong> This competition result will only be visible in your profile and will not be listed in the main events section.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="p-6 border-t border-gray-700 flex justify-end space-x-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLogEventModal(false);
+                    setEditingResult(null);
+                  }}
+                  className="px-4 py-2 text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+                  disabled={saveStatus === 'saving'}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className={`px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 ${
+                    saveStatus === 'success'
+                      ? 'bg-green-600 text-white'
+                      : saveStatus === 'error'
+                      ? 'bg-red-600 text-white'
+                      : 'bg-electric-500 text-white hover:bg-electric-600'
+                  } disabled:opacity-50`}
+                  disabled={saveStatus === 'saving'}
+                >
+                  {saveStatus === 'saving' ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Saving...</span>
+                    </>
+                  ) : saveStatus === 'success' ? (
+                    <>
+                      <CheckCircle className="h-4 w-4" />
+                      <span>Saved!</span>
+                    </>
+                  ) : saveStatus === 'error' ? (
+                    <>
+                      <X className="h-4 w-4" />
+                      <span>Error</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4" />
+                      <span>{editingResult ? 'Update Result' : 'Log Result'}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

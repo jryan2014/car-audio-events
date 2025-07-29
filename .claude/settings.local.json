@@ -43,8 +43,44 @@
       "Bash(mv:*)",
       "Bash(claude mcp)",
       "Bash(claude mcp:*)",
-      "Bash(del nul)"
+      "Bash(del nul)",
+      "Bash(npm search:*)",
+      "Bash(supabase:*)",
+      "Bash(netlify:*)",
+      "Bash(npx playwright:*)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "Bash(gh auth:*)",
+      "Bash(where npx)",
+      "Bash(npx:*)",
+      "Bash(npm uninstall:*)",
+      "mcp__netlify__netlify-user-services",
+      "mcp__github__search_repositories",
+      "mcp__supabase__list_tables",
+      "mcp__supabase__get_project_url",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_close",
+      "mcp__supabase__execute_sql",
+      "mcp__supabase__apply_migration",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_console_messages",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_evaluate",
+      "mcp__playwright__browser_press_key",
+      "mcp__playwright__browser_select_option",
+      "Bash(npm audit:*)",
+      "Bash(npm update:*)",
+      "Bash(touch:*)"
     ],
     "deny": []
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "netlify",
+    "supabase",
+    "github",
+    "playwright"
+  ]
 }

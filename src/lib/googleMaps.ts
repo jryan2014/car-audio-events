@@ -108,6 +108,17 @@ export const loadGoogleMapsApi = (): Promise<void> => {
       script.async = true;
       script.defer = true;
       
+      // Add security attributes
+      // Note: Google Maps API doesn't support SRI as it's dynamically generated
+      // We rely on CSP to restrict the source to maps.googleapis.com
+      script.crossOrigin = 'anonymous';
+      
+      // Add nonce for CSP if available
+      const meta = document.querySelector('meta[name="csp-nonce"]');
+      if (meta) {
+        script.nonce = meta.getAttribute('content') || '';
+      }
+      
       console.log('Loading Google Maps from:', scriptUrl.replace(GOOGLE_MAPS_API_KEY, 'API_KEY_HIDDEN'));
       
       script.onerror = (event) => {

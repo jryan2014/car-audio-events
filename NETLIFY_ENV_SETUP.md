@@ -1,16 +1,39 @@
-# Netlify Environment Variables to Add
+# Netlify Environment Variables Setup
 
-Add these in Netlify Dashboard > Site configuration > Environment variables:
+The following environment variables need to be configured in your Netlify dashboard:
 
-## Stripe Public Keys
-VITE_STRIPE_TEST_PUBLISHABLE_KEY = [Your pk_test_... key from database]
-VITE_STRIPE_LIVE_PUBLISHABLE_KEY = [Your pk_live_... key from database]
+## Required Environment Variables
 
-## PayPal Public Keys  
-VITE_PAYPAL_TEST_CLIENT_ID = [Your PayPal test client ID from database]
-VITE_PAYPAL_LIVE_CLIENT_ID = [Your PayPal live client ID from database]
+1. **VITE_SUPABASE_URL**
+   - Value: `https://nqvisvranvjaghvrdaaz.supabase.co`
+   - Description: Your Supabase project URL
 
-## Important Notes:
-- Only add PUBLISHABLE keys and CLIENT IDs (not secrets!)
-- The VITE_ prefix is required for Vite to expose them to the frontend
-- These will be visible in your built JavaScript (that's OK - they're public keys)
+2. **VITE_SUPABASE_ANON_KEY**
+   - Value: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xdmlzdnJhbnZqYWdodnJkYWF6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk2MDY2NzcsImV4cCI6MjA2NTE4MjY3N30.OWwP8kH9qTKxgEHCC6ru0QSAJ5KhOupCxMUyxHuYWVY`
+   - Description: Your Supabase anonymous key (public)
+
+3. **VITE_GOOGLE_MAPS_API_KEY**
+   - Value: `AIzaSyBYMbq6u4tmOJKRnLww28MGe-7QOGmhjyM`
+   - Description: Google Maps API key (remember to restrict to your domain in production)
+
+4. **VITE_HCAPTCHA_SITE_KEY**
+   - Value: `acc27e90-e7ae-451e-bbfa-c738c53420fe`
+   - Description: hCaptcha site key (public)
+
+## How to Add in Netlify
+
+1. Go to your Netlify dashboard
+2. Select your site
+3. Go to Site Settings ’ Environment variables
+4. Click "Add a variable"
+5. For each variable:
+   - Add the key (e.g., `VITE_SUPABASE_URL`)
+   - Add the value
+   - Set scope to "All scopes" (or adjust as needed)
+6. Save and deploy
+
+## Security Notes
+
+- These are all public keys (they're exposed to the client anyway)
+- The Google Maps API key should be restricted by referrer in the Google Cloud Console for production
+- Never add secret keys (like Stripe secret key or Supabase service role key) as VITE_ variables
