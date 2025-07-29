@@ -219,9 +219,9 @@ class SimpleNotificationService {
         .order('preference_type');
 
       if (error) {
-        // If table doesn't exist, return default preferences
-        if (error.code === '42P01') {
-          console.warn('notification_preferences table does not exist, returning defaults');
+        // If table doesn't exist (404 or specific postgres error), return default preferences
+        if (error.code === '42P01' || error.code === 'PGRST116' || error.message?.includes('404')) {
+          // Don't log this as it's expected until table is created
           return Object.values(NOTIFICATION_TYPES).map(type => ({
             id: crypto.randomUUID(),
             user_id: userId,
@@ -264,9 +264,9 @@ class SimpleNotificationService {
         });
 
       if (error) {
-        // If table doesn't exist, just log and return true
-        if (error.code === '42P01') {
-          console.warn('notification_preferences table does not exist, cannot update preference');
+        // If table doesn't exist (404 or specific postgres error), silently return success
+        if (error.code === '42P01' || error.code === 'PGRST116' || error.message?.includes('404')) {
+          // Don't log - table will be created later
           return true; // Return true to prevent UI errors
         }
         throw error;

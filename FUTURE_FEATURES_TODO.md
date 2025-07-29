@@ -312,6 +312,32 @@ This file contains features to be implemented in the future. These are not part 
   - Rate limit errors (show remaining time)
   - Permission errors (generic "unauthorized")
 
+## User Profile Features
+
+### 17. Fix Profile Update/Save Functionality
+- **Description**: Profile edit form on /profile page is not saving user data when Save button is clicked
+- **Purpose**: Allow users to update their profile information including bio, website, and other fields
+- **Requirements**:
+  - Debug why profile save is not working
+  - Check if API calls are being made correctly
+  - Verify database update permissions (RLS policies)
+  - Ensure form validation is not blocking saves
+  - Test all profile fields: bio, website, location, phone, etc.
+  - Add proper error handling and user feedback
+  - Show success message when profile is saved
+- **Priority**: High
+- **Estimated Effort**: 3-5 hours
+- **Bug Details**:
+  - User clicks Edit button on profile
+  - Enters information in bio, website, or other fields
+  - Clicks Save but changes are not persisted
+  - No error messages shown to user
+  - Need to investigate if this is a frontend or backend issue
+- **Affected Components**:
+  - `src/pages/Profile.tsx`
+  - Profile update API endpoints
+  - Database RLS policies for users table
+
 ## [Other Future Features]
 <!-- Add new features below this line -->
 
