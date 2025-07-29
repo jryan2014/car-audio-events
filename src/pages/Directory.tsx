@@ -104,8 +104,9 @@ export default function Directory() {
         .eq('status', 'approved')
         .not('services_offered', 'is', null);
       
-      const allServices = servicesData.data?.flatMap(item => item.services_offered || []) || [];
-      setAvailableServices([...new Set(allServices)].sort());
+      const allServices = servicesData.data?.flatMap(item => (item.services_offered as string[]) || []) || [];
+      const uniqueServices = [...new Set(allServices)] as string[];
+      setAvailableServices(uniqueServices.sort());
 
       // Load unique brands
       const brandsData = await supabase
@@ -114,8 +115,9 @@ export default function Directory() {
         .eq('status', 'approved')
         .not('brands_carried', 'is', null);
       
-      const allBrands = brandsData.data?.flatMap(item => item.brands_carried || []) || [];
-      setAvailableBrands([...new Set(allBrands)].sort());
+      const allBrands = brandsData.data?.flatMap(item => (item.brands_carried as string[]) || []) || [];
+      const uniqueBrands = [...new Set(allBrands)] as string[];
+      setAvailableBrands(uniqueBrands.sort());
 
       // Load categories
       const { data: categoriesData } = await supabase
@@ -133,8 +135,8 @@ export default function Directory() {
         .eq('status', 'approved')
         .not('state', 'is', null);
       
-      const allStates = statesData.data?.map(item => item.state) || [];
-      setAvailableStates([...new Set(allStates)].sort());
+      const allStates = statesData.data?.map(item => item.state).filter(Boolean) || [];
+      setAvailableStates([...new Set(allStates as string[])].sort());
 
     } catch (error) {
       console.error('Error loading search data:', error);
