@@ -252,7 +252,7 @@ const EventDetails = React.memo(function EventDetails() {
           .from('saved_events')
           .select('id')
           .eq('user_id', user.id)
-          .eq('event_id', id)
+          .eq('event_id', parseInt(id))
           .single();
           
         if (!savedError && savedEvent) {
@@ -292,7 +292,7 @@ const EventDetails = React.memo(function EventDetails() {
           .from('saved_events')
           .delete()
           .eq('user_id', user.id)
-          .eq('event_id', id);
+          .eq('event_id', parseInt(id));
           
         if (error) throw error;
         setIsFavorited(false);
@@ -302,7 +302,7 @@ const EventDetails = React.memo(function EventDetails() {
           .from('saved_events')
           .insert({
             user_id: user.id,
-            event_id: id
+            event_id: parseInt(id)
           });
           
         if (error) throw error;
