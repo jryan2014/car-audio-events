@@ -61,58 +61,103 @@ export default function SavedEvents({ limit, showActions = true }: SavedEventsPr
     try {
       setLoading(true);
       
-      let query = supabase
+      // First get saved events
+      const { data: savedEventsData, error: savedError } = await supabase
         .from('saved_events')
-        .select(`
-          *,
-          event:events!event_id (
-            id,
-            title,
-            start_date,
-            end_date,
-            city,
-            state,
-            category,
-            image_url,
-            registration_deadline,
-            status
-          ),
-          attendance:event_attendance!event_id (
-            id,
-            attended_date,
-            status
-          ),
-          competition_results!event_id (
-            id,
-            category,
-            class,
-            score,
-            placement,
-            points_earned,
-            verified
-          )
-        `)
+        .select('*')
         .eq('user_id', user!.id)
         .order('saved_at', { ascending: false });
 
+      if (savedError) throw savedError;
+      if (!savedEventsData || savedEventsData.length === 0) {
+        setSavedEvents([]);
+        setLoading(false);
+        return;
+      }
+
+      // Get event IDs
+      const eventIds = savedEventsData.map(se => se.event_id);
+      
+      // Load events data - simple approach without joins
+      const eventsPromises = eventIds.map(async (eventId) => {
+        try {
+          const { data, error } = await supabase
+            .from('events')
+            .select('*, event_categories(name)')
+            .eq('id', eventId)
+            .single();
+          
+          if (error) throw error;
+          return data;
+        } catch (err) {
+          console.error(`Error loading event ${eventId}:`, err);
+          return null;
+        }
+      });
+
+      const eventsData = await Promise.all(eventsPromises);
+      const validEvents = eventsData.filter(e => e !== null);
+
+      // Load attendance data
+      const { data: attendanceData } = await supabase
+        .from('event_attendance')
+        .select('*')
+        .eq('user_id', user!.id)
+        .in('event_id', eventIds);
+
+      // Load competition results
+      const { data: resultsData } = await supabase
+        .from('competition_results')
+        .select('*')
+        .eq('user_id', user!.id)
+        .in('event_id', eventIds);
+
+      // Combine all data
+      const combinedData = savedEventsData.map(savedEvent => {
+        const event = validEvents.find((e: any) => e.id === savedEvent.event_id);
+        const attendance = attendanceData?.find(a => a.event_id === savedEvent.event_id);
+        const results = resultsData?.filter(r => r.event_id === savedEvent.event_id);
+
+        if (!event) {
+          return null; // Skip if event not found
+        }
+
+        return {
+          ...savedEvent,
+          event: {
+            id: event.id,
+            title: event.title || 'Untitled Event',
+            start_date: event.start_date,
+            end_date: event.end_date || event.start_date,
+            city: event.city || 'Unknown',
+            state: event.state || 'Unknown',
+            category: event.event_categories?.name || 'Competition',
+            image_url: event.image_url,
+            registration_deadline: event.registration_deadline,
+            status: event.status || 'published'
+          },
+          attendance,
+          competition_results: results
+        };
+      }).filter(item => item !== null);
+
       // Apply filters
-      const now = new Date().toISOString();
+      const now = new Date();
+      let filteredData = combinedData;
+      
       if (filter === 'upcoming') {
-        query = query.gt('event.start_date', now);
+        filteredData = combinedData.filter(se => new Date(se.event.start_date) > now);
       } else if (filter === 'past') {
-        query = query.lt('event.end_date', now);
+        filteredData = combinedData.filter(se => new Date(se.event.end_date) < now);
       } else if (filter === 'attended') {
-        query = query.not('attendance', 'is', null);
+        filteredData = combinedData.filter(se => !!se.attendance);
       }
 
       if (limit) {
-        query = query.limit(limit);
+        filteredData = filteredData.slice(0, limit);
       }
 
-      const { data, error } = await query;
-
-      if (error) throw error;
-      setSavedEvents(data || []);
+      setSavedEvents(filteredData);
     } catch (error) {
       console.error('Error loading saved events:', error);
     } finally {
