@@ -18,9 +18,11 @@ const ContactSection: React.FC<ContactSectionProps> = ({
 }) => {
   const { user } = useAuth();
 
-  // Handle the "use organizer contact" checkbox change
-  useEffect(() => {
-    if (formData.use_organizer_contact && user) {
+  // Handle the "use organizer contact" checkbox change - only when checkbox is clicked
+  const handleUseOrganizerContactChange = (checked: boolean) => {
+    updateField('use_organizer_contact', checked);
+    
+    if (checked && user) {
       // Split the user's name into first and last
       const nameParts = user.name ? user.name.split(' ') : ['', ''];
       const firstName = nameParts[0] || '';
@@ -31,14 +33,14 @@ const ContactSection: React.FC<ContactSectionProps> = ({
       updateField('event_director_last_name', lastName);
       updateField('event_director_email', user.email || '');
       updateField('event_director_phone', user.phone || '');
-    } else if (!formData.use_organizer_contact) {
+    } else if (!checked) {
       // Clear the fields when unchecked
       updateField('event_director_first_name', '');
       updateField('event_director_last_name', '');
       updateField('event_director_email', '');
       updateField('event_director_phone', '');
     }
-  }, [formData.use_organizer_contact, user]);
+  };
 
   return (
     <>
@@ -54,7 +56,7 @@ const ContactSection: React.FC<ContactSectionProps> = ({
             <input
               type="checkbox"
               checked={formData.use_organizer_contact}
-              onChange={(e) => updateField('use_organizer_contact', e.target.checked)}
+              onChange={(e) => handleUseOrganizerContactChange(e.target.checked)}
               className="rounded border-gray-600 text-electric-500 focus:ring-electric-500"
             />
             <span className="text-gray-400">Use my contact information</span>

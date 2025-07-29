@@ -482,7 +482,7 @@ const EventDetails = React.memo(function EventDetails() {
             {/* Description */}
             <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
               <h2 className="text-2xl font-bold text-white mb-4">About This Event</h2>
-              <p className="text-gray-300 leading-relaxed">{event.description}</p>
+              <p className="text-gray-300 leading-relaxed whitespace-pre-wrap">{event.description}</p>
             </div>
 
             {/* Events Offered */}
