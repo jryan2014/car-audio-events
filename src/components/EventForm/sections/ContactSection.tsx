@@ -33,13 +33,8 @@ const ContactSection: React.FC<ContactSectionProps> = ({
       updateField('event_director_last_name', lastName);
       updateField('event_director_email', user.email || '');
       updateField('event_director_phone', user.phone || '');
-    } else if (!checked) {
-      // Clear the fields when unchecked
-      updateField('event_director_first_name', '');
-      updateField('event_director_last_name', '');
-      updateField('event_director_email', '');
-      updateField('event_director_phone', '');
     }
+    // Don't clear fields when unchecked - preserve existing data
   };
 
   return (

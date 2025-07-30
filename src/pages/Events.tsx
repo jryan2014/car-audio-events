@@ -25,10 +25,15 @@ interface Event {
   max_participants: number | null;
   event_director_first_name?: string;
   event_director_last_name?: string;
+  organization_id?: string | null;
   event_categories: {
     name: string;
     color: string;
   };
+  organizations?: {
+    id: string;
+    name: string;
+  } | null;
   users: {
     name: string;
     company_name?: string;
@@ -56,8 +61,11 @@ export default function Events() {
   const [selectedSeason, setSelectedSeason] = useState('');
   const [selectedCountry, setSelectedCountry] = useState('');
   const [selectedState, setSelectedState] = useState('');
+  const [selectedOrganization, setSelectedOrganization] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState('');
   const [eventFilter, setEventFilter] = useState<'upcoming' | 'past' | 'all'>('upcoming');
   const [categories, setCategories] = useState<Array<{id: string, name: string, color: string}>>([]);
+  const [organizations, setOrganizations] = useState<Array<{id: string, name: string}>>([]);
 
   useEffect(() => {
     loadEvents();
@@ -89,7 +97,8 @@ export default function Events() {
         .select(`
           *,
           event_categories(name, color),
-          users!organizer_id(name, company_name)
+          users!organizer_id(name, company_name),
+          organizations(id, name)
         `)
         .eq('status', 'published')
         .eq('approval_status', 'approved');
@@ -127,6 +136,15 @@ export default function Events() {
         } else {
           setEvents(eventsData);
         }
+        
+        // Extract unique organizations
+        const uniqueOrgs = new Map<string, string>();
+        eventsData.forEach(event => {
+          if (event.organizations?.id && event.organizations?.name) {
+            uniqueOrgs.set(event.organizations.id, event.organizations.name);
+          }
+        });
+        setOrganizations(Array.from(uniqueOrgs, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name)));
       } else {
         setEvents([]);
       }
@@ -226,7 +244,13 @@ export default function Events() {
     const matchesCountry = !selectedCountry || event.country === selectedCountry;
     const matchesState = !selectedState || event.state === selectedState;
     
-    return matchesSearch && matchesCategory && matchesSeason && matchesCountry && matchesState;
+    const matchesOrganization = !selectedOrganization || 
+                               (event.organizations?.id === selectedOrganization);
+    
+    const matchesMonth = !selectedMonth || 
+                        (selectedMonth === parseLocalDate(event.start_date).toLocaleString('en-US', { month: 'long' }));
+    
+    return matchesSearch && matchesCategory && matchesSeason && matchesCountry && matchesState && matchesOrganization && matchesMonth;
   });
 
   const formatDate = (dateString: string) => {
@@ -265,7 +289,7 @@ export default function Events() {
 
         {/* Filters */}
         <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
@@ -339,6 +363,39 @@ export default function Events() {
               <option value="">All States</option>
               {getUniqueStates().map(state => (
                 <option key={state} value={state}>{state}</option>
+              ))}
+            </select>
+
+            {/* Month Filter */}
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-600 focus:outline-none focus:border-electric-500"
+            >
+              <option value="">All Months</option>
+              <option value="January">January</option>
+              <option value="February">February</option>
+              <option value="March">March</option>
+              <option value="April">April</option>
+              <option value="May">May</option>
+              <option value="June">June</option>
+              <option value="July">July</option>
+              <option value="August">August</option>
+              <option value="September">September</option>
+              <option value="October">October</option>
+              <option value="November">November</option>
+              <option value="December">December</option>
+            </select>
+
+            {/* Sanctioning Body Filter */}
+            <select
+              value={selectedOrganization}
+              onChange={(e) => setSelectedOrganization(e.target.value)}
+              className="bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-600 focus:outline-none focus:border-electric-500"
+            >
+              <option value="">All Sanctioning Bodies</option>
+              {organizations.map(org => (
+                <option key={org.id} value={org.id}>{org.name}</option>
               ))}
             </select>
 

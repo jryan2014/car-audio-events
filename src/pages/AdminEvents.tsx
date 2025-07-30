@@ -113,7 +113,7 @@ export default function AdminEvents() {
         organizer_email: event.users?.email || '',
         category_name: event.event_categories?.name || 'Uncategorized',
         organization_name: event.organizations?.name || null,
-        organization_id: event.organization_id || null,
+        organization_id: event.organization_id ? String(event.organization_id) : null,
         created_at: event.created_at,
         rejection_reason: event.rejection_reason
       }));
@@ -143,10 +143,11 @@ export default function AdminEvents() {
       const uniqueOrgs = new Map();
       formattedEvents.forEach(event => {
         if (event.organization_id && event.organization_name) {
-          uniqueOrgs.set(event.organization_id, event.organization_name);
+          // Ensure organization_id is stored as string for consistent comparison
+          uniqueOrgs.set(String(event.organization_id), event.organization_name);
         }
       });
-      setOrganizations(Array.from(uniqueOrgs, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name)));
+      setOrganizations(Array.from(uniqueOrgs, ([id, name]) => ({ id: String(id), name })).sort((a, b) => a.name.localeCompare(b.name)));
       
       // Extract unique locations (city, state combinations)
       const uniqueLocations = new Set<string>();
@@ -218,7 +219,7 @@ export default function AdminEvents() {
       
       // Organization filter
       const matchesOrganization = selectedOrganization === 'all' || 
-                                 event.organization_id === selectedOrganization;
+                                 (event.organization_id && String(event.organization_id) === selectedOrganization);
       
       // Location filter
       const matchesLocation = selectedLocation === 'all' || 
@@ -608,6 +609,19 @@ export default function AdminEvents() {
           </div>
         </div>
 
+        {/* Filter Results Count */}
+        {searchTerm || selectedStatus !== 'all' || selectedApproval !== 'all' || selectedTimeFilter !== 'all' || 
+         selectedOrganization !== 'all' || selectedLocation !== 'all' || selectedCountry !== 'all' || selectedState !== 'all' ? (
+          <div className="mb-4 text-center">
+            <span className="text-electric-400 font-medium">
+              Showing {filteredEvents.length} filtered event{filteredEvents.length !== 1 ? 's' : ''}
+            </span>
+            <span className="text-gray-400 text-sm ml-2">
+              (out of {events.length} total)
+            </span>
+          </div>
+        ) : null}
+
         {/* Events Table */}
         <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
@@ -615,12 +629,12 @@ export default function AdminEvents() {
               <thead className="bg-gray-700/50">
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Event</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Organizer</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Date</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Location</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Approval</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
+                  <th className="px-4 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Organizer</th>
+                  <th className="px-4 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">Date</th>
+                  <th className="px-4 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Location</th>
+                  <th className="px-3 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
+                  <th className="px-3 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Approval</th>
+                  <th className="px-3 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-700/50">
@@ -664,40 +678,52 @@ export default function AdminEvents() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-4">
                         <div>
-                          <div className="text-white font-medium">{event.organizer_name}</div>
-                          <div className="text-gray-400 text-sm">{event.organizer_email}</div>
+                          <div className="text-white text-sm font-medium">{event.organizer_name}</div>
+                          <div className="text-gray-400 text-xs truncate max-w-[200px]" title={event.organizer_email}>
+                            {event.organizer_email}
+                          </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-4 whitespace-nowrap">
                         <div className="text-white text-sm">
-                          {formatDate(event.start_date)}
+                          {new Date(event.start_date).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
                         </div>
                         <div className="text-gray-400 text-xs">
-                          to {formatDate(event.end_date)}
+                          to {new Date(event.end_date).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-4">
                         <div className="flex items-center space-x-1 text-gray-300 text-sm">
-                          <MapPin className="h-4 w-4 text-electric-500" />
-                          <span>{event.city}, {event.state}</span>
+                          <MapPin className="h-3 w-3 text-electric-500 flex-shrink-0" />
+                          <span className="truncate">{event.city}, {event.state}</span>
                         </div>
-                        <div className="text-gray-400 text-xs">{event.venue_name}</div>
+                        <div className="text-gray-400 text-xs truncate">{event.venue_name}</div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-3 py-4">
                         {getStatusBadge(event.status)}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-3 py-4">
                         {getApprovalBadge(event.approval_status)}
                         {event.rejection_reason && (
-                          <div className="text-red-400 text-xs mt-1\" title={event.rejection_reason}>
-                            Reason: {event.rejection_reason.substring(0, 30)}...
+                          <div className="text-red-400 text-xs mt-1" title={event.rejection_reason}>
+                            <span className="truncate block max-w-[100px]">
+                              {event.rejection_reason}
+                            </span>
                           </div>
                         )}
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-2">
+                      <td className="px-3 py-4">
+                        <div className="flex items-center space-x-1">
                           <button
                             onClick={() => {
                               setSelectedEvent(event);

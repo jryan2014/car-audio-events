@@ -116,6 +116,12 @@ const EditEvent = React.memo(function EditEvent() {
       if (error) throw error;
       
       console.log('Loaded event data:', event);
+      console.log('Event dates from DB:', {
+        start_date: event.start_date,
+        end_date: event.end_date,
+        registration_deadline: event.registration_deadline,
+        early_bird_deadline: event.early_bird_deadline
+      });
       console.log('Event schedule:', event.schedule);
       console.log('Event image_url:', event.image_url);
       console.log('Event trophies:', {
@@ -242,7 +248,7 @@ const EditEvent = React.memo(function EditEvent() {
         event_director_last_name: event.event_director_last_name || '',
         event_director_email: event.event_director_email || '',
         event_director_phone: event.event_director_phone || '',
-        use_organizer_contact: event.use_organizer_contact || false,
+        use_organizer_contact: event.use_organizer_contact === true,
         max_participants: event.max_participants !== null && event.max_participants !== undefined ? Number(event.max_participants) : null,
         registration_fee: Number(event.ticket_price || event.registration_fee || 0),
         member_price: Number(event.member_price || 0),
@@ -289,6 +295,12 @@ const EditEvent = React.memo(function EditEvent() {
 
 
       console.log('Transformed data:', transformedData);
+      console.log('Formatted dates:', {
+        start_date: transformedData.start_date,
+        end_date: transformedData.end_date,
+        registration_deadline: transformedData.registration_deadline,
+        early_bird_deadline: transformedData.early_bird_deadline
+      });
       console.log('Transformed schedule:', transformedData.schedule);
       console.log('Transformed image_url:', transformedData.image_url);
       
@@ -320,15 +332,15 @@ const EditEvent = React.memo(function EditEvent() {
         organization_id: formData.sanction_body_id || null,
         season_year: formData.season_year,
         organizer_id: formData.organizer_id || null,
-        start_date: formData.start_date ? new Date(formData.start_date).toISOString() : null,
-        end_date: formData.end_date ? new Date(formData.end_date).toISOString() : null,
-        registration_deadline: formData.registration_deadline ? new Date(formData.registration_deadline).toISOString() : null,
+        start_date: formData.start_date || null,
+        end_date: formData.end_date || null,
+        registration_deadline: formData.registration_deadline || null,
         max_participants: formData.max_participants,
         ticket_price: formData.registration_fee,
         member_price: formData.member_price || 0,
         non_member_price: formData.non_member_price || 0,
         early_bird_fee: formData.early_bird_fee,
-        early_bird_deadline: formData.early_bird_deadline ? new Date(formData.early_bird_deadline).toISOString() : null,
+        early_bird_deadline: formData.early_bird_deadline || null,
         early_bird_name: formData.early_bird_name || 'Early Bird Special',
         gate_fee: formData.gate_fee || null,
         multi_day_pricing: formData.multi_day_pricing || null,

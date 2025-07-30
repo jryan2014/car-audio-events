@@ -12,7 +12,20 @@ export function formatDateForInput(dateString: string | null | undefined): strin
       return `${dateString}T12:00`;
     }
     
-    // If it includes time, parse and format properly
+    // If it's an ISO string with timezone (ends with Z or has timezone offset)
+    // we need to extract just the date and time parts without conversion
+    if (dateString.includes('T') && (dateString.endsWith('Z') || dateString.match(/[+-]\d{2}:\d{2}$/))) {
+      // Remove timezone info and milliseconds to get local datetime
+      // This preserves the exact time that was entered, regardless of timezone
+      const localDateTime = dateString.split('.')[0].split('Z')[0];
+      
+      // If it already looks like YYYY-MM-DDTHH:mm, return as is
+      if (localDateTime.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/)) {
+        return localDateTime.substring(0, 16); // Ensure we only take YYYY-MM-DDTHH:mm
+      }
+    }
+    
+    // For other formats, parse as local date
     const date = new Date(dateString);
     
     // Check if date is valid
@@ -21,7 +34,7 @@ export function formatDateForInput(dateString: string | null | undefined): strin
       return '';
     }
     
-    // Get the year, month, day, hours, and minutes
+    // Get the year, month, day, hours, and minutes in local time
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
