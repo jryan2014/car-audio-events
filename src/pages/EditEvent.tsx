@@ -115,6 +115,21 @@ const EditEvent = React.memo(function EditEvent() {
 
       if (error) throw error;
       
+      console.log('Loaded event data:', event);
+      console.log('Event schedule:', event.schedule);
+      console.log('Event image_url:', event.image_url);
+      console.log('Event trophies:', {
+        first: event.first_place_trophy,
+        second: event.second_place_trophy,
+        third: event.third_place_trophy,
+        fourth: event.fourth_place_trophy,
+        fifth: event.fifth_place_trophy
+      });
+      console.log('Event visibility:', {
+        is_public: event.is_public,
+        is_featured: event.is_featured,
+        allows_online_registration: event.allows_online_registration
+      });
 
       // Load competition classes for this event
       const { data: competitionClasses, error: classesError } = await supabase
@@ -227,28 +242,32 @@ const EditEvent = React.memo(function EditEvent() {
         image_crop_width: event.image_crop_width !== null && event.image_crop_width !== undefined ? Number(event.image_crop_width) : null,
         image_crop_height: event.image_crop_height !== null && event.image_crop_height !== undefined ? Number(event.image_crop_height) : null,
         flyer_template_id: event.flyer_template_id || null,
-        first_place_trophy: event.first_place_trophy === true,
-        second_place_trophy: event.second_place_trophy === true,
-        third_place_trophy: event.third_place_trophy === true,
-        fourth_place_trophy: event.fourth_place_trophy === true,
-        fifth_place_trophy: event.fifth_place_trophy === true,
-        has_raffle: event.has_raffle === true,
+        first_place_trophy: !!event.first_place_trophy,
+        second_place_trophy: !!event.second_place_trophy,
+        third_place_trophy: !!event.third_place_trophy,
+        fourth_place_trophy: !!event.fourth_place_trophy,
+        fifth_place_trophy: !!event.fifth_place_trophy,
+        has_raffle: !!event.has_raffle,
         shop_sponsors: Array.isArray(event.shop_sponsors) ? event.shop_sponsors.map((s: any) => String(s)) : (event.shop_sponsors ? [String(event.shop_sponsors)] : []),
         member_giveaways: Array.isArray(event.member_giveaways) ? event.member_giveaways.map((g: any) => String(g)) : (event.member_giveaways ? [String(event.member_giveaways)] : []),
         non_member_giveaways: Array.isArray(event.non_member_giveaways) ? event.non_member_giveaways.map((g: any) => String(g)) : (event.non_member_giveaways ? [String(event.non_member_giveaways)] : []),
         seo_title: event.seo_title || '',
         seo_description: event.seo_description || '',
         seo_keywords: Array.isArray(event.seo_keywords) ? event.seo_keywords.map((k: any) => String(k)) : (event.seo_keywords ? [String(event.seo_keywords)] : []),
-        is_public: event.is_public === true,
-        is_featured: event.is_featured === true,
+        is_public: !!event.is_public,
+        is_featured: !!event.is_featured,
         is_active: event.is_active !== false,
         status: event.status || 'draft',
         approval_status: event.approval_status || 'pending',
         competition_classes: competitionClasses?.map(item => item.competition_class) || [],
-        allows_online_registration: event.allows_online_registration === true
+        allows_online_registration: !!event.allows_online_registration
       };
 
 
+      console.log('Transformed data:', transformedData);
+      console.log('Transformed schedule:', transformedData.schedule);
+      console.log('Transformed image_url:', transformedData.image_url);
+      
       setEventData(transformedData);
     } catch (error: any) {
       console.error('Error loading event:', error);

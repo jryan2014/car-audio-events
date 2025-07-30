@@ -39,9 +39,6 @@ const ImageSection: React.FC<ImageSectionProps> = ({
   const [uploadMethod, setUploadMethod] = useState<'upload' | 'url'>('url');
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string>(formData.image_url || '');
-  
-  console.log('ImageSection initialized with formData.image_url:', formData.image_url);
-  console.log('Initial previewUrl:', formData.image_url || '');
   const [imagePositionY, setImagePositionY] = useState<number>(
     formData.image_position !== null && formData.image_position !== undefined 
       ? formData.image_position 
@@ -95,10 +92,8 @@ const ImageSection: React.FC<ImageSectionProps> = ({
 
   // Sync preview URL when formData changes
   useEffect(() => {
-    console.log('useEffect triggered, formData.image_url:', formData.image_url);
     // Always sync the preview URL with form data
     setPreviewUrl(formData.image_url || '');
-    console.log('useEffect set previewUrl to:', formData.image_url || '');
   }, [formData.image_url]);
 
   // Load templates when component mounts or organization changes
@@ -217,15 +212,11 @@ const ImageSection: React.FC<ImageSectionProps> = ({
     // Basic URL validation and sanitization
     const trimmedUrl = url.trim();
     
-    console.log('handleUrlChange called with:', url);
-    console.log('trimmedUrl:', trimmedUrl);
-    
     // Always update the field to allow user to type/paste
     updateField('image_url', trimmedUrl);
     
     // Update preview URL immediately for better UX
     setPreviewUrl(trimmedUrl);
-    console.log('previewUrl set to:', trimmedUrl);
     
     // Reset error state when URL changes
     setImageLoadError(false);
@@ -642,7 +633,6 @@ const ImageSection: React.FC<ImageSectionProps> = ({
       )}
 
       {/* Image Preview and Controls */}
-      {console.log('About to render preview, previewUrl:', previewUrl, 'truthy?', !!previewUrl)}
       {previewUrl && (
         <div className="space-y-4">
           <div className="relative bg-gray-900 rounded-lg overflow-hidden">
