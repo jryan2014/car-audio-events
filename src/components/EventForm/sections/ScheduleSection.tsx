@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Clock, X } from 'lucide-react';
 import { EventFormData, EventScheduleItem } from '../../../types/event';
 import { formatTime12Hour } from '../../../utils/dateHelpers';
@@ -16,6 +16,24 @@ const ScheduleSection: React.FC<ScheduleSectionProps> = ({
   getFieldError,
   touchField
 }) => {
+  // Automatically update display_end_date when end_date changes
+  useEffect(() => {
+    if (formData.end_date) {
+      const endDate = new Date(formData.end_date);
+      // Add one day to the end date
+      endDate.setDate(endDate.getDate() + 1);
+      // Format as YYYY-MM-DD for the date input
+      const year = endDate.getFullYear();
+      const month = String(endDate.getMonth() + 1).padStart(2, '0');
+      const day = String(endDate.getDate()).padStart(2, '0');
+      const newDisplayEndDate = `${year}-${month}-${day}`;
+      
+      // Only update if the current display_end_date is different
+      if (formData.display_end_date !== newDisplayEndDate) {
+        updateField('display_end_date', newDisplayEndDate);
+      }
+    }
+  }, [formData.end_date]);
   const handleScheduleChange = (index: number, field: 'time' | 'activity', value: string) => {
     const newSchedule = [...formData.schedule];
     newSchedule[index] = { ...newSchedule[index], [field]: value };
@@ -176,9 +194,9 @@ const ScheduleSection: React.FC<ScheduleSectionProps> = ({
                 value={formData.display_end_date}
                 onChange={(e) => updateField('display_end_date', e.target.value)}
                 className="w-full p-2 bg-gray-600/50 border border-gray-500 rounded text-white text-sm focus:outline-none focus:border-electric-500"
-                title="Auto-calculated: 30 days after event ends"
+                title="Auto-calculated: 1 day after event ends"
               />
-              <p className="text-xs text-gray-500 mt-1">Auto: 30 days after event ends</p>
+              <p className="text-xs text-gray-500 mt-1">Auto: 1 day after event ends</p>
             </div>
           </div>
           <p className="text-xs text-yellow-400 mt-2">
