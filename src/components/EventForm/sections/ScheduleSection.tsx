@@ -23,7 +23,8 @@ const ScheduleSection: React.FC<ScheduleSectionProps> = ({
   };
 
   const addScheduleItem = () => {
-    updateField('schedule', [...formData.schedule, { time: '', activity: '' }]);
+    // Set a default time of 12:00 PM (noon) for new items
+    updateField('schedule', [...formData.schedule, { time: '12:00', activity: '' }]);
   };
 
   const removeScheduleItem = (index: number) => {

@@ -92,9 +92,8 @@ const ImageSection: React.FC<ImageSectionProps> = ({
 
   // Sync preview URL when formData changes
   useEffect(() => {
-    if (formData.image_url) {
-      setPreviewUrl(formData.image_url);
-    }
+    // Always sync the preview URL with form data
+    setPreviewUrl(formData.image_url || '');
   }, [formData.image_url]);
 
   // Load templates when component mounts or organization changes

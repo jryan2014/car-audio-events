@@ -145,13 +145,20 @@ const EditEvent = React.memo(function EditEvent() {
         if (!event.schedule) return [{ time: '', activity: '' }];
         if (typeof event.schedule === 'string') {
           try {
-            return JSON.parse(event.schedule);
+            const parsed = JSON.parse(event.schedule);
+            return parsed.map((item: any) => ({
+              time: item.time || '',
+              activity: item.activity || ''
+            }));
           } catch (e) {
             return [{ time: '', activity: '' }];
           }
         }
         return Array.isArray(event.schedule) ? 
-          (event.schedule.length > 0 ? event.schedule : [{ time: '', activity: '' }]) : 
+          (event.schedule.length > 0 ? event.schedule.map((item: any) => ({
+            time: item.time || '',
+            activity: item.activity || ''
+          })) : [{ time: '', activity: '' }]) : 
           [{ time: '', activity: '' }];
       };
 
@@ -220,25 +227,25 @@ const EditEvent = React.memo(function EditEvent() {
         image_crop_width: event.image_crop_width !== null && event.image_crop_width !== undefined ? Number(event.image_crop_width) : null,
         image_crop_height: event.image_crop_height !== null && event.image_crop_height !== undefined ? Number(event.image_crop_height) : null,
         flyer_template_id: event.flyer_template_id || null,
-        first_place_trophy: event.first_place_trophy || false,
-        second_place_trophy: event.second_place_trophy || false,
-        third_place_trophy: event.third_place_trophy || false,
-        fourth_place_trophy: event.fourth_place_trophy || false,
-        fifth_place_trophy: event.fifth_place_trophy || false,
-        has_raffle: event.has_raffle || false,
+        first_place_trophy: event.first_place_trophy === true,
+        second_place_trophy: event.second_place_trophy === true,
+        third_place_trophy: event.third_place_trophy === true,
+        fourth_place_trophy: event.fourth_place_trophy === true,
+        fifth_place_trophy: event.fifth_place_trophy === true,
+        has_raffle: event.has_raffle === true,
         shop_sponsors: Array.isArray(event.shop_sponsors) ? event.shop_sponsors.map((s: any) => String(s)) : (event.shop_sponsors ? [String(event.shop_sponsors)] : []),
         member_giveaways: Array.isArray(event.member_giveaways) ? event.member_giveaways.map((g: any) => String(g)) : (event.member_giveaways ? [String(event.member_giveaways)] : []),
         non_member_giveaways: Array.isArray(event.non_member_giveaways) ? event.non_member_giveaways.map((g: any) => String(g)) : (event.non_member_giveaways ? [String(event.non_member_giveaways)] : []),
         seo_title: event.seo_title || '',
         seo_description: event.seo_description || '',
         seo_keywords: Array.isArray(event.seo_keywords) ? event.seo_keywords.map((k: any) => String(k)) : (event.seo_keywords ? [String(event.seo_keywords)] : []),
-        is_public: event.is_public !== false,
-        is_featured: event.is_featured || false,
+        is_public: event.is_public === true,
+        is_featured: event.is_featured === true,
         is_active: event.is_active !== false,
         status: event.status || 'draft',
         approval_status: event.approval_status || 'pending',
         competition_classes: competitionClasses?.map(item => item.competition_class) || [],
-        allows_online_registration: event.allows_online_registration || false
+        allows_online_registration: event.allows_online_registration === true
       };
 
 
