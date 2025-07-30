@@ -280,10 +280,13 @@ const EventDetails = React.memo(function EventDetails() {
         .from('event_interest_counts')
         .select('interest_count')
         .eq('event_id', parseInt(id))
-        .single();
+        .maybeSingle();
         
       if (!interestError && interestData) {
         setInterestCount(interestData.interest_count);
+      } else {
+        // If no record exists, the count is 0
+        setInterestCount(0);
       }
       
       // Check if current user has expressed interest

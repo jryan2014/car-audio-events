@@ -73,7 +73,10 @@
       "Bash(npm audit:*)",
       "Bash(npm update:*)",
       "Bash(touch:*)",
-      "mcp__netlify__netlify-project-services"
+      "mcp__netlify__netlify-project-services",
+      "mcp__supabase__get_advisors",
+      "mcp__supabase__get_logs",
+      "Bash(npm version:*)"
     ],
     "deny": []
   },
