@@ -65,6 +65,7 @@ const ImageSection: React.FC<ImageSectionProps> = ({
   const [templateName, setTemplateName] = useState('');
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
+  const [imageLoadError, setImageLoadError] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isLoadingTemplateRef = useRef(false);
@@ -212,11 +213,14 @@ const ImageSection: React.FC<ImageSectionProps> = ({
     // Basic URL validation and sanitization
     const trimmedUrl = url.trim();
     
-    // Only update if empty or valid URL pattern
-    if (!trimmedUrl || isValidImageUrl(trimmedUrl)) {
-      updateField('image_url', trimmedUrl);
-      setPreviewUrl(trimmedUrl);
-    }
+    // Always update the field to allow user to type/paste
+    updateField('image_url', trimmedUrl);
+    
+    // Update preview URL immediately for better UX
+    setPreviewUrl(trimmedUrl);
+    
+    // Reset error state when URL changes
+    setImageLoadError(false);
   };
 
   // Helper function to validate image URLs
@@ -251,6 +255,7 @@ const ImageSection: React.FC<ImageSectionProps> = ({
     setCrop(undefined);
     setCompletedCrop(undefined);
     setApplyCropToFill(false);
+    setImageLoadError(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -654,8 +659,7 @@ const ImageSection: React.FC<ImageSectionProps> = ({
                     }}
                     onError={(e) => {
                       console.error('Failed to load crop image:', previewUrl);
-                      alert('Failed to load image. This may be due to CORS restrictions. Please try uploading the image directly instead of using a URL.');
-                      handleRemoveImage();
+                      setImageLoadError(true);
                     }}
                   />
                 </ReactCrop>
@@ -669,16 +673,49 @@ const ImageSection: React.FC<ImageSectionProps> = ({
                     onLoad={() => {
                       // Image loaded successfully
                       console.log('Image loaded successfully');
+                      setImageLoadError(false);
                     }}
                     onError={(e) => {
                       console.error('Failed to load image:', previewUrl);
-                      // Show user-friendly error message
-                      alert('Failed to load image. This may be due to CORS restrictions. Please try uploading the image directly instead of using a URL.');
-                      // Clear the image to prevent infinite error loops
-                      handleRemoveImage();
+                      setImageLoadError(true);
+                      // Don't automatically clear the image - let user decide
+                      // This prevents clearing the URL while the user is still typing
                     }}
                     loading="lazy"
                   />
+                </div>
+              )}
+              
+              {/* Image Load Error Message */}
+              {imageLoadError && (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80">
+                  <div className="text-center p-6 max-w-md">
+                    <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-white mb-2">Failed to Load Image</h3>
+                    <p className="text-gray-400 mb-4">
+                      This may be due to CORS restrictions or an invalid URL. 
+                      Try uploading the image directly instead.
+                    </p>
+                    <div className="flex justify-center space-x-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUploadMethod('upload');
+                          setImageLoadError(false);
+                        }}
+                        className="px-4 py-2 bg-electric-500 text-white rounded-lg hover:bg-electric-600 transition-colors"
+                      >
+                        Switch to Upload
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleRemoveImage}
+                        className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
+                      >
+                        Clear Image
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
               
