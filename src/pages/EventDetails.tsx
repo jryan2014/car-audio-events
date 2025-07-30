@@ -181,6 +181,8 @@ const EventDetails = React.memo(function EventDetails() {
         image: eventData.image_url || 
                "https://images.pexels.com/photos/1127000/pexels-photo-1127000.jpeg?auto=compress&cs=tinysrgb&w=1200&h=600&dpr=2",
         imagePosition: eventData.image_position !== null && eventData.image_position !== undefined ? eventData.image_position : 50,
+        imagePositionX: eventData.image_position_x !== null && eventData.image_position_x !== undefined ? eventData.image_position_x : 50,
+        imageZoom: eventData.image_zoom || 1,
         images: imagesData || [],
         featured: eventData.is_featured,
         date: (() => {
@@ -409,15 +411,19 @@ const EventDetails = React.memo(function EventDetails() {
           <div className="relative">
             {event.image && (
               <div 
-                className="relative cursor-pointer group"
+                className="relative cursor-pointer group h-64 md:h-80 overflow-hidden"
                 onClick={() => setShowLightbox(true)}
               >
                 <img 
                   src={event.image} 
                   alt={event.title}
-                  className="w-full h-64 md:h-80 object-cover transition-transform group-hover:scale-105"
+                  className="absolute inset-0 w-auto h-auto max-w-none max-h-none"
                   style={{
-                    objectPosition: `center ${event.imagePosition !== null && event.imagePosition !== undefined ? event.imagePosition : 50}%`
+                    transform: `translate(${50 - event.imagePositionX}%, ${50 - event.imagePosition}%) scale(${event.imageZoom})`,
+                    transformOrigin: 'center',
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
                   }}
                 />
                 <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
