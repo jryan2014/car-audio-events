@@ -201,23 +201,30 @@ export const EventForm: React.FC<EventFormProps> = ({
     }
   }, [formData.start_date]);
 
-  // Auto-calculate display dates ONLY when they are empty (initial setup)
+  // Auto-calculate display dates when they are empty (initial setup)
   useEffect(() => {
-    if (formData.start_date && formData.end_date && !formData.display_end_date) {
+    if (formData.start_date && formData.end_date) {
       const startDate = new Date(formData.start_date);
       const endDate = new Date(formData.end_date);
+      const today = new Date().toISOString().split('T')[0];
       
-      // Display start is already set to today's date by default
+      // Set display_start_date to today if it's empty
+      const needsDisplayStart = !formData.display_start_date;
       
-      const displayEnd = new Date(endDate);
-      displayEnd.setDate(displayEnd.getDate() + 30);
+      // Set display_end_date to 1 day after event ends if it's empty
+      const needsDisplayEnd = !formData.display_end_date;
       
-      const newDisplayEndDate = displayEnd.toISOString().split('T')[0];
-      
-      setFormData(prev => ({
-        ...prev,
-        display_end_date: newDisplayEndDate
-      }));
+      if (needsDisplayStart || needsDisplayEnd) {
+        const displayEnd = new Date(endDate);
+        displayEnd.setDate(displayEnd.getDate() + 1);
+        const newDisplayEndDate = displayEnd.toISOString().split('T')[0];
+        
+        setFormData(prev => ({
+          ...prev,
+          ...(needsDisplayStart && { display_start_date: today }),
+          ...(needsDisplayEnd && { display_end_date: newDisplayEndDate })
+        }));
+      }
     }
   }, [formData.start_date, formData.end_date]);
 

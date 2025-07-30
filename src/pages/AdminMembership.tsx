@@ -314,12 +314,29 @@ export default function AdminMembership() {
         .from('teams')
         .select(`
           *,
-          users!teams_owner_id_fkey(name),
           team_members(count)
         `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+
+      // Fetch owner names separately
+      const ownerIds = (data || []).map(team => team.owner_id).filter(Boolean);
+      let ownerNames: Record<string, string> = {};
+      
+      if (ownerIds.length > 0) {
+        const { data: owners } = await supabase
+          .from('users')
+          .select('id, name')
+          .in('id', ownerIds);
+        
+        if (owners) {
+          ownerNames = owners.reduce((acc, owner) => {
+            acc[owner.id] = owner.name || 'Unknown';
+            return acc;
+          }, {} as Record<string, string>);
+        }
+      }
 
       const transformedTeams: Team[] = (data || []).map(team => ({
         id: team.id,
@@ -335,7 +352,7 @@ export default function AdminMembership() {
         total_points: team.total_points,
         competitions_won: team.competitions_won,
         owner_id: team.owner_id,
-        owner_name: team.users?.name || 'Unknown',
+        owner_name: ownerNames[team.owner_id] || 'Unknown',
         member_count: team.team_members?.length || 0,
         created_at: team.created_at,
         updated_at: team.updated_at
@@ -353,22 +370,37 @@ export default function AdminMembership() {
     try {
       const { data, error } = await supabase
         .from('team_members')
-        .select(`
-          *,
-          users!team_members_user_id_fkey(name, email)
-        `)
+        .select('*')
         .eq('team_id', teamId)
         .eq('is_active', true)
         .order('joined_at', { ascending: true });
 
       if (error) throw error;
 
+      // Fetch user information separately
+      const userIds = (data || []).map(member => member.user_id).filter(Boolean);
+      let userInfo: Record<string, { name: string; email: string }> = {};
+      
+      if (userIds.length > 0) {
+        const { data: users } = await supabase
+          .from('users')
+          .select('id, name, email')
+          .in('id', userIds);
+        
+        if (users) {
+          userInfo = users.reduce((acc, user) => {
+            acc[user.id] = { name: user.name || 'Unknown', email: user.email };
+            return acc;
+          }, {} as Record<string, { name: string; email: string }>);
+        }
+      }
+
       const transformedMembers: TeamMember[] = (data || []).map(member => ({
         id: member.id,
         team_id: member.team_id,
         user_id: member.user_id,
-        user_name: member.users?.name || 'Unknown',
-        user_email: member.users?.email || '',
+        user_name: userInfo[member.user_id]?.name || 'Unknown',
+        user_email: userInfo[member.user_id]?.email || '',
         role: member.role,
         joined_at: member.joined_at,
         points_contributed: member.points_contributed || 0,
@@ -388,7 +420,7 @@ export default function AdminMembership() {
       // Get total revenue
       const { data: revenueData, error: revenueError } = await supabase
         .from('transactions')
-        .select('amount, currency, membership_plan_id, created_at')
+        .select('amount, currency, created_at')
         .eq('type', 'payment')
         .eq('status', 'succeeded');
 
@@ -426,10 +458,7 @@ export default function AdminMembership() {
       // Get recent transactions
       const { data: recentTransactions, error: transError } = await supabase
         .from('transactions')
-        .select(`
-          *,
-          membership_plans (name)
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
         .limit(10);
 
@@ -1383,7 +1412,7 @@ export default function AdminMembership() {
                                 {new Date(transaction.created_at).toLocaleDateString()}
                               </td>
                               <td className="p-3 text-white text-sm">
-                                {transaction.membership_plans?.name || 'N/A'}
+                                {transaction.description || 'N/A'}
                               </td>
                               <td className="p-3 text-green-400 text-sm font-medium">
                                 ${((transaction.amount || 0) / 100).toFixed(2)}

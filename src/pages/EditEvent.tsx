@@ -231,7 +231,7 @@ const EditEvent = React.memo(function EditEvent() {
         start_date: formatDateForInput(event.start_date),
         end_date: formatDateForInput(event.end_date),
         registration_deadline: formatDateForInput(event.registration_deadline),
-        display_start_date: formatDateForDateInput(event.display_start_date),
+        display_start_date: formatDateForDateInput(event.display_start_date) || new Date().toISOString().split('T')[0],
         display_end_date: formatDateForDateInput(event.display_end_date),
         venue_name: event.venue_name || '',
         address: event.address || '',

@@ -45,7 +45,7 @@ const sections = [
 ];
 
 export default function AdminSettings() {
-  const { user, session } = useAuth();
+  const { user, session, loading } = useAuth();
   const [keys, setKeys] = useState<IntegrationKeys>({
     stripe_publishable_key: '',
     stripe_secret_key: '',
@@ -72,9 +72,21 @@ export default function AdminSettings() {
   const [debugModeEnabled, setDebugModeEnabled] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Show loading while auth is initializing
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-electric-500 mx-auto"></div>
+          <p className="mt-4 text-gray-400">Loading admin settings...</p>
+        </div>
+      </div>
+    );
+  }
+
   // Check if user is admin
   if (!user || user.membershipType !== 'admin') {
-    return <Navigate to="/\" replace />;
+    return <Navigate to="/" replace />;
   }
 
   useEffect(() => {

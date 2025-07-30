@@ -179,9 +179,9 @@ const ScheduleSection: React.FC<ScheduleSectionProps> = ({
                 value={formData.display_start_date}
                 onChange={(e) => updateField('display_start_date', e.target.value)}
                 className="w-full p-2 bg-gray-600/50 border border-gray-500 rounded text-white text-sm focus:outline-none focus:border-electric-500"
-                title="Auto-calculated: 90 days before event or now"
+                title="Auto-calculated: Today's date when event is created"
               />
-              <p className="text-xs text-gray-500 mt-1">Auto: 90 days before event</p>
+              <p className="text-xs text-gray-500 mt-1">Auto: Today's date (when created)</p>
             </div>
             <div>
               <label htmlFor="display-end" className="block text-gray-400 text-sm mb-2">
