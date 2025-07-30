@@ -39,21 +39,10 @@ const ImageSection: React.FC<ImageSectionProps> = ({
   const [uploadMethod, setUploadMethod] = useState<'upload' | 'url'>('url');
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string>(formData.image_url || '');
-  const [imagePositionY, setImagePositionY] = useState<number>(
-    formData.image_position !== null && formData.image_position !== undefined 
-      ? formData.image_position 
-      : 50
-  );
-  const [imagePositionX, setImagePositionX] = useState<number>(
-    formData.image_position_x !== null && formData.image_position_x !== undefined 
-      ? formData.image_position_x 
-      : 50
-  );
   
   // Zoom and crop states
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
-  const [zoom, setZoom] = useState<number>(formData.image_zoom || 1);
   const [showCropMode, setShowCropMode] = useState(false);
   const [applyCropToFill, setApplyCropToFill] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
@@ -68,27 +57,16 @@ const ImageSection: React.FC<ImageSectionProps> = ({
   const [imageLoadError, setImageLoadError] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const isLoadingTemplateRef = useRef(false);
   const { user, session } = useAuth();
 
-  // Sync state when formData changes (only on initial load or external changes)
-  useEffect(() => {
-    if (!isLoadingTemplateRef.current && formData.image_position !== undefined && formData.image_position !== imagePositionY) {
-      setImagePositionY(formData.image_position);
-    }
-  }, [formData.image_position, imagePositionY]);
-
-  useEffect(() => {
-    if (!isLoadingTemplateRef.current && formData.image_position_x !== undefined && formData.image_position_x !== imagePositionX) {
-      setImagePositionX(formData.image_position_x);
-    }
-  }, [formData.image_position_x, imagePositionX]);
-
-  useEffect(() => {
-    if (!isLoadingTemplateRef.current && formData.image_zoom !== undefined && formData.image_zoom !== zoom) {
-      setZoom(formData.image_zoom);
-    }
-  }, [formData.image_zoom, zoom]);
+  // Get current values from formData with defaults
+  const imagePositionY = formData.image_position !== null && formData.image_position !== undefined 
+    ? formData.image_position 
+    : 50;
+  const imagePositionX = formData.image_position_x !== null && formData.image_position_x !== undefined 
+    ? formData.image_position_x 
+    : 50;
+  const zoom = formData.image_zoom || 1;
 
   // Sync preview URL when formData changes
   useEffect(() => {
@@ -248,9 +226,6 @@ const ImageSection: React.FC<ImageSectionProps> = ({
     updateField('image_position', 50);
     updateField('image_position_x', 50);
     setPreviewUrl('');
-    setZoom(1);
-    setImagePositionY(50);
-    setImagePositionX(50);
     setCrop(undefined);
     setCompletedCrop(undefined);
     setApplyCropToFill(false);
@@ -264,7 +239,6 @@ const ImageSection: React.FC<ImageSectionProps> = ({
     // Validate and clamp position to safe range
     const safePosition = Math.max(-50, Math.min(150, Number(position) || 50));
     if (!isNaN(safePosition)) {
-      setImagePositionY(safePosition);
       updateField('image_position', safePosition);
     }
   };
@@ -273,7 +247,6 @@ const ImageSection: React.FC<ImageSectionProps> = ({
     // Validate and clamp position to safe range
     const safePosition = Math.max(-50, Math.min(150, Number(position) || 50));
     if (!isNaN(safePosition)) {
-      setImagePositionX(safePosition);
       updateField('image_position_x', safePosition);
     }
   };
@@ -282,7 +255,6 @@ const ImageSection: React.FC<ImageSectionProps> = ({
     // Validate and clamp zoom to safe range
     const safeZoom = Math.max(0.5, Math.min(3, Number(newZoom) || 1));
     if (!isNaN(safeZoom)) {
-      setZoom(safeZoom);
       updateField('image_zoom', safeZoom);
     }
   };
@@ -361,22 +333,14 @@ const ImageSection: React.FC<ImageSectionProps> = ({
     const template = templates.find(t => t.id === templateId);
     if (!template) return;
 
-    // Set flag to prevent useEffect loops
-    isLoadingTemplateRef.current = true;
-
-    try {
-      // Batch all state updates to prevent cascading updates
-      // Update local state directly
-      setPreviewUrl(template.image_url);
-      setImagePositionY(template.image_position);
-      setImagePositionX(template.image_position_x || 50);
-      setZoom(template.zoom_level);
-      
-      // Update form data in a single batch
-      updateField('image_url', template.image_url);
-      updateField('image_position', template.image_position);
-      updateField('image_position_x', template.image_position_x || 50);
-      updateField('image_zoom', template.zoom_level);
+    // Update preview URL
+    setPreviewUrl(template.image_url);
+    
+    // Update form data in a single batch
+    updateField('image_url', template.image_url);
+    updateField('image_position', template.image_position);
+    updateField('image_position_x', template.image_position_x || 50);
+    updateField('image_zoom', template.zoom_level);
     
     // Apply crop if exists
     if (template.crop_width && template.crop_height) {
@@ -405,15 +369,9 @@ const ImageSection: React.FC<ImageSectionProps> = ({
       updateField('image_crop_height', null);
     }
     
-      // Track which template was used
-      updateField('flyer_template_id', templateId);
-      setSelectedTemplateId(templateId);
-    } finally {
-      // Reset flag after a short delay to ensure all updates have processed
-      setTimeout(() => {
-        isLoadingTemplateRef.current = false;
-      }, 100);
-    }
+    // Track which template was used
+    updateField('flyer_template_id', templateId);
+    setSelectedTemplateId(templateId);
   };
 
   const setAsDefault = async (templateId: string, isGlobal: boolean = false) => {

@@ -248,14 +248,13 @@ const EventDetails = React.memo(function EventDetails() {
       
       // Check if user has saved this event
       if (user) {
-        const { data: savedEvent, error: savedError } = await supabase
+        const { data: savedEvents, error: savedError } = await supabase
           .from('saved_events')
           .select('id')
           .eq('user_id', user.id)
-          .eq('event_id', parseInt(id))
-          .single();
+          .eq('event_id', parseInt(id));
           
-        if (!savedError && savedEvent) {
+        if (!savedError && savedEvents && savedEvents.length > 0) {
           setIsFavorited(true);
         }
       }
