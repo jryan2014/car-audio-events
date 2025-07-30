@@ -19,7 +19,12 @@ interface Event {
   state: string;
   country: string;
   registration_fee: number;
+  member_price: number;
+  non_member_price: number;
+  ticket_price: number;
   max_participants: number | null;
+  event_director_first_name?: string;
+  event_director_last_name?: string;
   event_categories: {
     name: string;
     color: string;
@@ -38,6 +43,7 @@ interface Event {
   _count?: {
     registrations: number;
   };
+  interest_count?: number;
 }
 
 export default function Events() {
@@ -95,10 +101,35 @@ export default function Events() {
         query = query.lt('end_date', now);
       }
 
-      const { data, error } = await query.order('start_date', { ascending: eventFilter === 'upcoming' });
+      const { data: eventsData, error } = await query.order('start_date', { ascending: eventFilter === 'upcoming' });
 
       if (error) throw error;
-      setEvents(data || []);
+      
+      // Load interest counts for all events
+      if (eventsData && eventsData.length > 0) {
+        const eventIds = eventsData.map(e => e.id);
+        const { data: interestData, error: interestError } = await supabase
+          .from('event_interest_counts')
+          .select('event_id, interest_count')
+          .in('event_id', eventIds);
+          
+        if (!interestError && interestData) {
+          // Create a map of event_id to interest_count
+          const interestMap = new Map(interestData.map(item => [item.event_id, item.interest_count]));
+          
+          // Add interest count to each event
+          const eventsWithInterest = eventsData.map(event => ({
+            ...event,
+            interest_count: interestMap.get(event.id) || 0
+          }));
+          
+          setEvents(eventsWithInterest);
+        } else {
+          setEvents(eventsData);
+        }
+      } else {
+        setEvents([]);
+      }
     } catch (error) {
       console.error('Error loading events:', error);
     } finally {
@@ -333,9 +364,9 @@ export default function Events() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {filteredEvents.map((event) => (
-                  <div key={event.id} className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl overflow-hidden hover:border-electric-500/50 transition-all duration-300 group">
+                  <div key={event.id} className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl overflow-hidden hover:border-electric-500/50 transition-all duration-300 group flex flex-col h-full">
                     {/* Event Header */}
-                    <div className="p-6 pb-4">
+                    <div className="p-6 pb-4 flex-1 flex flex-col">
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-2">
@@ -400,8 +431,7 @@ export default function Events() {
                           <div className="flex items-center text-gray-300">
                             <Users className="h-4 w-4 mr-2 text-electric-500" />
                             <span>
-                              {event._count?.registrations || 0} registered
-                              {event.max_participants && ` / ${event.max_participants}`}
+                              {event.interest_count || 0} interested
                             </span>
                           </div>
                           
@@ -413,19 +443,35 @@ export default function Events() {
                           )}
                         </div>
 
-                        {event.registration_fee > 0 && (
+                        {(event.member_price > 0 || event.non_member_price > 0 || event.ticket_price > 0 || event.registration_fee > 0) && (
                           <div className="flex items-center text-green-400">
-                            <span className="font-medium">${event.registration_fee}</span>
-                            <span className="text-gray-400 ml-1">registration fee</span>
+                            {event.member_price > 0 || event.non_member_price > 0 ? (
+                              <>
+                                <span className="font-medium">
+                                  ${event.member_price > 0 ? event.member_price : event.non_member_price}
+                                </span>
+                                {event.member_price !== event.non_member_price && event.member_price > 0 && event.non_member_price > 0 && (
+                                  <span className="text-gray-400 ml-1">- ${event.non_member_price}</span>
+                                )}
+                                <span className="text-gray-400 ml-1">entry fee</span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="font-medium">${event.ticket_price || event.registration_fee}</span>
+                                <span className="text-gray-400 ml-1">entry fee</span>
+                              </>
+                            )}
                           </div>
                         )}
                       </div>
 
                       {/* Organizer */}
-                      <div className="mt-4 pt-4 border-t border-gray-700">
+                      <div className="mt-auto pt-4 border-t border-gray-700">
                         <p className="text-xs text-gray-500">
                           Organized by <span className="text-gray-400 font-medium">
-                            {event.users?.company_name || event.users?.name}
+                            {event.event_director_first_name && event.event_director_last_name
+                              ? `${event.event_director_first_name} ${event.event_director_last_name}`
+                              : event.users?.company_name || event.users?.name}
                           </span>
                         </p>
                       </div>

@@ -100,6 +100,7 @@ export interface EventFormData {
   
   // Online Registration
   allows_online_registration?: boolean;
+  external_registration_url?: string;
 }
 
 export interface EventScheduleItem {

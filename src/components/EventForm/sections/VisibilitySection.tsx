@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eye } from 'lucide-react';
+import { Eye, ExternalLink } from 'lucide-react';
 import { EventFormData } from '../../../types/event';
 
 interface VisibilitySectionProps {
@@ -56,6 +56,29 @@ const VisibilitySection: React.FC<VisibilitySectionProps> = ({
             <span className="text-gray-500 text-xs">Competitors can register for this event through the website</span>
           </div>
         </label>
+        
+        {/* External Registration URL */}
+        {!formData.allows_online_registration && (
+          <div className="mt-4 p-4 bg-gray-700/30 rounded-lg">
+            <label htmlFor="external-registration-url" className="block text-gray-400 text-sm mb-2">
+              External Registration URL
+            </label>
+            <div className="relative">
+              <ExternalLink className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input
+                id="external-registration-url"
+                type="url"
+                value={formData.external_registration_url || ''}
+                onChange={(e) => updateField('external_registration_url', e.target.value)}
+                placeholder="https://example.com/register"
+                className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+              />
+            </div>
+            <p className="mt-2 text-xs text-gray-500">
+              Provide a link to an external registration system if you're not using the built-in registration
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -22,6 +22,7 @@ interface Event {
   registration_fee: number;
   max_participants?: number;
   current_participants: number;
+  interest_count?: number;
   status: 'draft' | 'pending_approval' | 'approved' | 'published' | 'cancelled' | 'completed';
   approval_status: 'pending' | 'approved' | 'rejected';
   organizer_name: string;
@@ -117,6 +118,25 @@ export default function AdminEvents() {
         rejection_reason: event.rejection_reason
       }));
 
+      // Load interest counts for all events
+      if (formattedEvents.length > 0) {
+        const eventIds = formattedEvents.map(e => e.id);
+        const { data: interestData, error: interestError } = await supabase
+          .from('event_interest_counts')
+          .select('event_id, interest_count')
+          .in('event_id', eventIds);
+          
+        if (!interestError && interestData) {
+          // Create a map of event_id to interest_count
+          const interestMap = new Map(interestData.map(item => [item.event_id, item.interest_count]));
+          
+          // Add interest count to each event
+          formattedEvents.forEach(event => {
+            event.interest_count = interestMap.get(event.id) || 0;
+          });
+        }
+      }
+      
       setEvents(formattedEvents);
       
       // Extract unique organizations that are actually used in events
@@ -631,8 +651,16 @@ export default function AdminEvents() {
                             <span className="text-gray-500 text-xs">${event.registration_fee}</span>
                             <Users className="h-3 w-3 text-gray-500 ml-2" />
                             <span className="text-gray-500 text-xs">
-                              {event.current_participants}{event.max_participants ? `/${event.max_participants}` : ''}
+                              {event.current_participants}{event.max_participants ? `/${event.max_participants}` : ''} registered
                             </span>
+                            {event.interest_count !== undefined && event.interest_count > 0 && (
+                              <>
+                                <span className="text-gray-500">•</span>
+                                <span className="text-purple-500 text-xs">
+                                  {event.interest_count} interested
+                                </span>
+                              </>
+                            )}
                           </div>
                         </div>
                       </td>

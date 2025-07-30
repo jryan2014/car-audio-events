@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Calendar, MapPin, Users, Star, Clock, DollarSign, Trophy, ArrowLeft, Heart, Share2, Phone, Globe, Mail, X, ZoomIn } from 'lucide-react';
+import { Calendar, MapPin, Users, Star, Clock, DollarSign, Trophy, ArrowLeft, Heart, Share2, Phone, Globe, Mail, X, ZoomIn, ExternalLink } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import PaymentForm from '../components/PaymentForm';
 import EventLocationMap from '../components/EventLocationMap';
@@ -23,11 +23,23 @@ const EventDetails = React.memo(function EventDetails() {
   const [memoryInfo, setMemoryInfo] = useState<any>(null);
   const [showMemoryTest, setShowMemoryTest] = useState(false);
   const [showShareDropdown, setShowShareDropdown] = useState(false);
+  const [isInterested, setIsInterested] = useState(false);
+  const [interestCount, setInterestCount] = useState(0);
   
   // Use memory manager for better resource cleanup
   const abortControllerRef = useRef<AbortController | null>(null);
   const shareDropdownRef = useRef<HTMLDivElement | null>(null);
   const shareButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  // Helper function to get or create session ID for interest tracking
+  const getOrCreateSessionId = () => {
+    let sessionId = localStorage.getItem('event_session_id');
+    if (!sessionId) {
+      sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      localStorage.setItem('event_session_id', sessionId);
+    }
+    return sessionId;
+  };
 
   // Helper function to get class color based on type
   const getClassColor = (className: string) => {
@@ -229,7 +241,9 @@ const EventDetails = React.memo(function EventDetails() {
         sponsors: Array.isArray(eventData.sponsors) ? eventData.sponsors : [],
         // Add organization data for competition classes
         organization: eventData.organizations || null,
-        competitionClasses: [] // Will be loaded separately
+        competitionClasses: [], // Will be loaded separately
+        allows_online_registration: eventData.allows_online_registration,
+        external_registration_url: eventData.external_registration_url
       };
 
       // Load competition classes for this specific event
@@ -260,6 +274,29 @@ const EventDetails = React.memo(function EventDetails() {
           setIsFavorited(true);
         }
       }
+      
+      // Load interest count
+      const { data: interestData, error: interestError } = await supabase
+        .from('event_interest_counts')
+        .select('interest_count')
+        .eq('event_id', parseInt(id))
+        .single();
+        
+      if (!interestError && interestData) {
+        setInterestCount(interestData.interest_count);
+      }
+      
+      // Check if current user has expressed interest
+      const sessionId = getOrCreateSessionId();
+      const { data: userInterest } = await supabase
+        .from('event_interests')
+        .select('id')
+        .eq('event_id', parseInt(id))
+        .eq('session_id', sessionId);
+        
+      if (userInterest && userInterest.length > 0) {
+        setIsInterested(true);
+      }
     } catch (error) {
       console.error('Error loading event details:', error);
       setError('Failed to load event details. Please try again later.');
@@ -280,6 +317,44 @@ const EventDetails = React.memo(function EventDetails() {
       setShowPayment(true);
     }
   };
+
+
+  const handleInterest = async () => {
+    try {
+      const sessionId = getOrCreateSessionId();
+      
+      if (isInterested) {
+        // Remove interest
+        const { error } = await supabase
+          .from('event_interests')
+          .delete()
+          .eq('event_id', parseInt(id))
+          .eq('session_id', sessionId);
+          
+        if (error) throw error;
+        setIsInterested(false);
+        setInterestCount(Math.max(0, interestCount - 1));
+      } else {
+        // Add interest
+        const { error } = await supabase
+          .from('event_interests')
+          .insert({
+            event_id: parseInt(id),
+            session_id: sessionId,
+            user_id: user?.id || null,
+            ip_address: null, // We don't track IP for privacy
+            user_agent: navigator.userAgent
+          });
+          
+        if (error) throw error;
+        setIsInterested(true);
+        setInterestCount(interestCount + 1);
+      }
+    } catch (error) {
+      console.error('Error toggling interest:', error);
+    }
+  };
+
 
   const handleFavorite = async () => {
     if (!isAuthenticated || !user) {
@@ -414,10 +489,24 @@ const EventDetails = React.memo(function EventDetails() {
                 className="relative cursor-pointer group h-64 md:h-80 overflow-hidden"
                 onClick={() => setShowLightbox(true)}
               >
+                {/* Mobile Image - Same positioning as desktop but scaled down */}
                 <img 
                   src={event.image} 
                   alt={event.title}
-                  className="absolute inset-0 w-auto h-auto max-w-none max-h-none"
+                  className="md:hidden absolute inset-0 w-auto h-auto max-w-none max-h-none"
+                  style={{
+                    transform: `translate(${50 - event.imagePositionX}%, ${50 - event.imagePosition}%) scale(${event.imageZoom})`,
+                    transformOrigin: 'center',
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                  }}
+                />
+                {/* Desktop Image - Matches editor preview exactly */}
+                <img 
+                  src={event.image} 
+                  alt={event.title}
+                  className="hidden md:block absolute inset-0 w-auto h-auto max-w-none max-h-none"
                   style={{
                     transform: `translate(${50 - event.imagePositionX}%, ${50 - event.imagePosition}%) scale(${event.imageZoom})`,
                     transformOrigin: 'center',
@@ -485,8 +574,7 @@ const EventDetails = React.memo(function EventDetails() {
                   <div className="flex items-center space-x-2">
                     <Users className="h-5 w-5 text-electric-500" />
                     <span className="font-medium">
-                      {event.participants}
-                      {event.maxParticipants ? `/${event.maxParticipants}` : ''} Registered
+                      {interestCount} Interested
                     </span>
                   </div>
                 </div>
@@ -508,10 +596,7 @@ const EventDetails = React.memo(function EventDetails() {
             </div>
             <div className="flex items-center space-x-2">
               <Users className="h-4 w-4 text-electric-500" />
-              <span className="text-gray-300">
-                {event.participants}
-                {event.maxParticipants ? `/${event.maxParticipants}` : ''} Registered
-              </span>
+              <span className="text-gray-300">{interestCount} Interested</span>
             </div>
             {event.registration_deadline && (
               <div className="flex items-center space-x-2">
@@ -800,81 +885,114 @@ const EventDetails = React.memo(function EventDetails() {
             <div className="bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700/50 rounded-xl p-6 sticky top-6">
 
               <div className="space-y-4">
-                {isAuthenticated ? (
-                  <>
-                    {/* Event Registration - Only show if event allows online registration */}
-                    {event.allows_online_registration && 
-                     event.registration_deadline && 
-                     parseLocalDate(event.registration_deadline) > new Date() &&
-                     (!event.maxParticipants || event.participants < event.maxParticipants) && (
-                      <div className="bg-gray-700/30 border border-gray-600/50 rounded-lg p-4">
-                        <h3 className="text-sm font-semibold text-gray-300 mb-2">Event Registration</h3>
-                        <button
-                          onClick={handleRegister}
-                          className={`w-full py-3 rounded-lg font-bold text-lg transition-all duration-200 ${
-                            isRegistered
-                              ? 'bg-green-600 text-white hover:bg-green-700'
-                              : 'bg-electric-500 text-white hover:bg-electric-600 shadow-lg'
-                          }`}
-                        >
-                          {isRegistered ? 'Registered for Event ✓' : 'Register for This Event'}
-                        </button>
-                      </div>
-                    )}
-                    
-                    {/* Save and Share buttons */}
-                    <div className="flex space-x-2">
+                {/* Event Registration Section */}
+                {event.allows_online_registration && 
+                 event.registration_deadline && 
+                 parseLocalDate(event.registration_deadline) > new Date() &&
+                 (!event.maxParticipants || event.participants < event.maxParticipants) ? (
+                  <div className="bg-gray-700/30 border border-gray-600/50 rounded-lg p-4">
+                    <h3 className="text-sm font-semibold text-gray-300 mb-2">Event Registration</h3>
+                    {isAuthenticated ? (
                       <button
-                        onClick={handleFavorite}
-                        className={`flex-1 flex items-center justify-center space-x-2 py-2 px-4 rounded-lg font-medium transition-all duration-200 ${
-                          isFavorited
-                            ? 'bg-red-600 text-white hover:bg-red-700'
-                            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        onClick={handleRegister}
+                        className={`w-full py-3 rounded-lg font-bold text-lg transition-all duration-200 ${
+                          isRegistered
+                            ? 'bg-green-600 text-white hover:bg-green-700'
+                            : 'bg-electric-500 text-white hover:bg-electric-600 shadow-lg'
                         }`}
                       >
-                        <Heart className={`h-4 w-4 ${isFavorited ? 'fill-current' : ''}`} />
-                        <span>{isFavorited ? 'Saved' : 'Save Event'}</span>
+                        {isRegistered ? 'Registered for Event ✓' : 'Register for This Event'}
                       </button>
-                      <div className="relative">
-                        <button 
-                          ref={shareButtonRef}
-                          onClick={() => setShowShareDropdown(!showShareDropdown)}
-                          className="flex items-center justify-center space-x-2 py-2 px-4 bg-gray-700 text-gray-300 rounded-lg font-medium hover:bg-gray-600 transition-all duration-200"
-                        >
-                          <Share2 className="h-4 w-4" />
-                          <span>Share</span>
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="bg-gray-700/30 border border-gray-600/50 rounded-lg p-4">
-                      <h3 className="text-sm font-semibold text-gray-300 mb-2">Website Membership Required</h3>
+                    ) : (
                       <Link
                         to="/login"
                         className="block w-full py-3 bg-electric-500 text-white rounded-lg font-bold text-lg text-center hover:bg-electric-600 transition-all duration-200 shadow-lg"
                       >
-                        Sign In to Your Account
+                        Sign In to Register
                       </Link>
-                      <p className="text-gray-400 text-xs text-center mt-2">
-                        Members can save events and access competitor features
-                      </p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-gray-400 text-sm mb-2">
-                        New to Car Audio Events?
-                      </p>
-                      <Link 
-                        to="/pricing" 
-                        className="inline-block px-6 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-all duration-200"
+                    )}
+                  </div>
+                ) : event.external_registration_url && !event.allows_online_registration ? (
+                  <div className="bg-gray-700/30 border border-gray-600/50 rounded-lg p-4">
+                    <h3 className="text-sm font-semibold text-gray-300 mb-2">External Registration</h3>
+                    <a
+                      href={event.external_registration_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-3 bg-electric-500 text-white rounded-lg font-bold text-lg flex items-center justify-center space-x-2 hover:bg-electric-600 transition-all duration-200 shadow-lg"
+                    >
+                      <span>Register Externally</span>
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                    <p className="text-gray-400 text-xs text-center mt-2">
+                      You will be redirected to an external registration site
+                    </p>
+                  </div>
+                ) : null}
+                
+                {/* I'm Interested Button */}
+                <div className="bg-gray-700/30 border border-gray-600/50 rounded-lg p-4">
+                  <button
+                    onClick={handleInterest}
+                    className={`w-full py-3 rounded-lg font-bold text-lg transition-all duration-200 ${
+                      isInterested
+                        ? 'bg-purple-600 text-white hover:bg-purple-700'
+                        : 'bg-gray-700 text-white hover:bg-gray-600 border border-gray-600'
+                    }`}
+                  >
+                    {isInterested ? '✓ I\'m Interested' : 'I\'m Interested'}
+                  </button>
+                  <p className="text-gray-400 text-xs text-center mt-2">
+                    {interestCount} {interestCount === 1 ? 'person is' : 'people are'} interested
+                  </p>
+                </div>
+                    
+                {/* Save and Share buttons - Only for authenticated users */}
+                {isAuthenticated && (
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={handleFavorite}
+                      className={`flex-1 flex items-center justify-center space-x-2 py-2 px-4 rounded-lg font-medium transition-all duration-200 ${
+                        isFavorited
+                          ? 'bg-red-600 text-white hover:bg-red-700'
+                          : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      }`}
+                    >
+                      <Heart className={`h-4 w-4 ${isFavorited ? 'fill-current' : ''}`} />
+                      <span>{isFavorited ? 'Saved' : 'Save Event'}</span>
+                    </button>
+                    <div className="relative">
+                      <button 
+                        ref={shareButtonRef}
+                        onClick={() => setShowShareDropdown(!showShareDropdown)}
+                        className="flex items-center justify-center space-x-2 py-2 px-4 bg-gray-700 text-gray-300 rounded-lg font-medium hover:bg-gray-600 transition-all duration-200"
                       >
-                        Create Free Membership
-                      </Link>
-                      <p className="text-gray-500 text-xs mt-2">
-                        Free membership includes event tracking & competitor profile
-                      </p>
+                        <Share2 className="h-4 w-4" />
+                        <span>Share</span>
+                      </button>
                     </div>
+                  </div>
+                )}
+                
+                {/* Login prompt for non-authenticated users */}
+                {!isAuthenticated && (
+                  <div className="text-center">
+                    <p className="text-gray-400 text-sm mb-2">
+                      Want to save events and access competitor features?
+                    </p>
+                    <Link 
+                      to="/login" 
+                      className="inline-block px-4 py-2 bg-gray-700 text-white rounded-lg font-medium hover:bg-gray-600 transition-all duration-200"
+                    >
+                      Sign In
+                    </Link>
+                    <span className="text-gray-400 text-sm mx-2">or</span>
+                    <Link 
+                      to="/pricing" 
+                      className="inline-block px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-all duration-200"
+                    >
+                      Join Free
+                    </Link>
                   </div>
                 )}
               </div>
@@ -999,11 +1117,21 @@ const EventDetails = React.memo(function EventDetails() {
                     )}
                   </div>
                 )}
+                {/* Show participants count only to event organizers */}
+                {isAuthenticated && user?.id === event.organizer_id && (
+                  <div>
+                    <div className="text-gray-400 text-sm">Participants</div>
+                    <div className="text-white font-medium">
+                      {event.participants || 0} registered
+                      {event.maxParticipants && ` (${event.maxParticipants} max)`}
+                    </div>
+                  </div>
+                )}
+                {/* Show interested count to everyone */}
                 <div>
-                  <div className="text-gray-400 text-sm">Participants</div>
+                  <div className="text-gray-400 text-sm">Interest</div>
                   <div className="text-white font-medium">
-                    {event.participants || 0} registered
-                    {event.maxParticipants && ` (${event.maxParticipants} max)`}
+                    {interestCount} {interestCount === 1 ? 'person' : 'people'} interested
                   </div>
                 </div>
                 {event.organization?.name && (
