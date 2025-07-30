@@ -9,7 +9,19 @@ interface AdminLayoutProps {
 }
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+
+  // Show loading while auth is initializing
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-electric-500 mx-auto"></div>
+          <p className="mt-4 text-gray-400">Loading admin panel...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Check if user is admin
   if (!user || user.membershipType !== 'admin') {
