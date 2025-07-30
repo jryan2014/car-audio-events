@@ -157,24 +157,47 @@ const EditEvent = React.memo(function EditEvent() {
       };
 
       const processSchedule = () => {
-        if (!event.schedule) return [{ time: '', activity: '' }];
+        console.log('processSchedule - Raw event.schedule:', event.schedule);
+        console.log('processSchedule - Type of event.schedule:', typeof event.schedule);
+        console.log('processSchedule - Is Array?:', Array.isArray(event.schedule));
+        
+        if (!event.schedule) {
+          console.log('processSchedule - No schedule, returning empty');
+          return [{ time: '', activity: '' }];
+        }
+        
         if (typeof event.schedule === 'string') {
+          console.log('processSchedule - Schedule is string, parsing...');
           try {
             const parsed = JSON.parse(event.schedule);
+            console.log('processSchedule - Parsed schedule:', parsed);
             return parsed.map((item: any) => ({
               time: item.time || '',
               activity: item.activity || ''
             }));
           } catch (e) {
+            console.error('processSchedule - Parse error:', e);
             return [{ time: '', activity: '' }];
           }
         }
-        return Array.isArray(event.schedule) ? 
-          (event.schedule.length > 0 ? event.schedule.map((item: any) => ({
-            time: item.time || '',
-            activity: item.activity || ''
-          })) : [{ time: '', activity: '' }]) : 
-          [{ time: '', activity: '' }];
+        
+        if (Array.isArray(event.schedule)) {
+          console.log('processSchedule - Schedule is array');
+          if (event.schedule.length > 0) {
+            const result = event.schedule.map((item: any) => ({
+              time: item.time || '',
+              activity: item.activity || ''
+            }));
+            console.log('processSchedule - Mapped schedule:', result);
+            return result;
+          } else {
+            console.log('processSchedule - Empty array, returning default');
+            return [{ time: '', activity: '' }];
+          }
+        }
+        
+        console.log('processSchedule - Schedule is neither string nor array, returning default');
+        return [{ time: '', activity: '' }];
       };
 
       const processSponsors = () => {
