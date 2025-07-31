@@ -253,8 +253,7 @@ export default function Events() {
     const matchesState = !selectedState || event.state === selectedState;
     
     const matchesOrganization = !selectedOrganization || 
-                               (event.organizations?.id === selectedOrganization) ||
-                               (event.organizations?.id === Number(selectedOrganization));
+                               event.organizations?.id === selectedOrganization;
     
     const matchesMonth = !selectedMonth || 
                         (selectedMonth === parseLocalDate(event.start_date).toLocaleString('en-US', { month: 'long' }));
