@@ -1,7 +1,7 @@
 {
   "name": "car-audio-competition-platform",
   "private": true,
-  "version": "1.26.66",
+  "version": "1.26.67",
   "type": "module",
   "scripts": {
     "dev": "vite",
