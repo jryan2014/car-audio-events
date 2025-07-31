@@ -114,6 +114,8 @@ export default function Events() {
 
       if (error) throw error;
       
+      console.log('Loaded events data:', eventsData);
+      
       // Load interest counts for all events
       if (eventsData && eventsData.length > 0) {
         const eventIds = eventsData.map(e => e.id);
@@ -140,10 +142,16 @@ export default function Events() {
         // Extract unique organizations
         const uniqueOrgs = new Map<string, string>();
         eventsData.forEach(event => {
+          console.log('Event org data:', { 
+            event_id: event.id, 
+            organization_id: event.organization_id,
+            organizations: event.organizations 
+          });
           if (event.organizations?.id && event.organizations?.name) {
             uniqueOrgs.set(event.organizations.id, event.organizations.name);
           }
         });
+        console.log('Unique organizations:', uniqueOrgs);
         setOrganizations(Array.from(uniqueOrgs, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name)));
       } else {
         setEvents([]);
@@ -245,7 +253,8 @@ export default function Events() {
     const matchesState = !selectedState || event.state === selectedState;
     
     const matchesOrganization = !selectedOrganization || 
-                               (event.organizations?.id === selectedOrganization);
+                               (event.organizations?.id === selectedOrganization) ||
+                               (event.organizations?.id === Number(selectedOrganization));
     
     const matchesMonth = !selectedMonth || 
                         (selectedMonth === parseLocalDate(event.start_date).toLocaleString('en-US', { month: 'long' }));
@@ -387,24 +396,18 @@ export default function Events() {
               <option value="December">December</option>
             </select>
 
-            {/* Sanctioning Body Filter */}
+            {/* Organization Filter */}
             <select
               value={selectedOrganization}
               onChange={(e) => setSelectedOrganization(e.target.value)}
               className="bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-600 focus:outline-none focus:border-electric-500"
             >
-              <option value="">All Sanctioning Bodies</option>
+              <option value="">All Organizations</option>
               {organizations.map(org => (
                 <option key={org.id} value={org.id}>{org.name}</option>
               ))}
             </select>
 
-            {/* Results Count */}
-            <div className="flex items-center justify-center bg-gray-700/50 rounded-lg px-4 py-2">
-              <span className="text-gray-400 text-sm">
-                {filteredEvents.length} event{filteredEvents.length !== 1 ? 's' : ''}
-              </span>
-            </div>
           </div>
         </div>
 
@@ -412,6 +415,13 @@ export default function Events() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-3">
+            {/* Results Count */}
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-lg font-medium text-gray-300">
+                {filteredEvents.length} {filteredEvents.length === 1 ? 'event' : 'events'} found
+              </h2>
+            </div>
+            
             {filteredEvents.length === 0 ? (
               <div className="text-center py-12">
                 <Calendar className="h-16 w-16 text-gray-600 mx-auto mb-4" />
