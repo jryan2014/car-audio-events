@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { User, Trophy, Calendar, Users, TrendingUp, Star, ArrowRight, Plus, Target, Award, MapPin } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { 
+  User, Trophy, Calendar, Users, TrendingUp, Star, ArrowRight, 
+  Plus, Target, Award, MapPin, CreditCard, Package, Clock, 
+  DollarSign, FileText, Shield, Activity, Heart, Settings,
+  ChevronRight, Home, BarChart3, Zap, Bell
+} from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import DashboardWidgets, { Widget } from '../components/DashboardWidgets';
@@ -9,6 +14,12 @@ import { ActivityLogger } from '../utils/activityLogger';
 import { activityLogger } from '../services/activityLogger';
 import { getMembershipDisplayName } from '../utils/membershipUtils';
 import SavedEvents from '../components/SavedEvents';
+import { billingService, Subscription } from '../services/billingService';
+import { formatDate } from '../utils/date-utils';
+import { 
+  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, 
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
+} from 'recharts';
 
 // Resend Verification Email Component
 const ResendVerificationEmailButton: React.FC<{ userEmail: string }> = ({ userEmail }) => {
@@ -80,10 +91,12 @@ interface QuickAction {
   icon: React.ComponentType<any>;
   link: string;
   color: string;
+  external?: boolean;
 }
 
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats>({
     totalCompetitions: 0,
     totalPoints: 0,
@@ -98,14 +111,9 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [widgets, setWidgets] = useState<Widget[]>([]);
   const [isEditMode, setIsEditMode] = useState(false);
-
-  // Debug logging (can be removed in production)
-  // console.log('=== DASHBOARD RENDER ===');
-  // console.log('authLoading:', authLoading);
-  // console.log('isLoading:', isLoading);
-  // console.log('user:', user);
-  // console.log('error:', error);
-  // console.log('========================');
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [competitionData, setCompetitionData] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'overview' | 'profile' | 'competitions' | 'billing'>('overview');
 
   const quickActions: QuickAction[] = [
     {
@@ -116,67 +124,45 @@ export default function Dashboard() {
       color: 'blue'
     },
     {
-      title: 'Update Profile',
-      description: 'Manage your profile and audio system',
-      icon: User,
-      link: '/profile',
+      title: 'Update Audio System',
+      description: 'Manage your setup',
+      icon: Zap,
+      link: '/profile?tab=audio-systems',
       color: 'purple'
     },
     {
-      title: 'Join Teams',
-      description: 'Connect with other competitors',
-      icon: Users,
-      link: '/teams',
+      title: 'Support Desk',
+      description: 'Get help or report issues',
+      icon: Shield,
+      link: '/support',
       color: 'green'
     },
     {
-      title: 'View Directory',
-      description: 'Find retailers and manufacturers',
-      icon: MapPin,
-      link: '/directory',
+      title: 'View Leaderboard',
+      description: 'See top competitors',
+      icon: Trophy,
+      link: '/leaderboard',
       color: 'orange'
     }
   ];
 
   useEffect(() => {
     const loadDashboardData = async () => {
-      // console.log('=== DASHBOARD USEEFFECT ===');
-      // console.log('user:', user?.email);
-      // console.log('authLoading:', authLoading);
-      // console.log('==========================');
-      
       if (user) {
-        // console.log('Loading dashboard data for user:', user.email);
         try {
           await Promise.all([
             loadUpcomingEvents(),
-            loadUserStats()
+            loadUserStats(),
+            loadRecentResults(),
+            loadBillingData(),
+            loadCompetitionHistory()
           ]);
           
-          // Log dashboard access based on user type with more details
-          switch (user.membershipType) {
-            case 'competitor':
-            case 'pro_competitor':
-              await ActivityLogger.userDashboardAccess('competitor');
-              break;
-            case 'retailer':
-              await ActivityLogger.userDashboardAccess('retailer');
-              break;
-            case 'manufacturer':
-              await ActivityLogger.userDashboardAccess('manufacturer');
-              break;
-            case 'organization':
-              await ActivityLogger.userDashboardAccess('organization');
-              break;
-            default:
-              await ActivityLogger.userDashboardAccess('user');
-          }
-          
-          // Also log with more details to the newer activity logger
+          // Log dashboard access
           await activityLogger.log({
             userId: user.id,
             activityType: 'dashboard_view',
-            description: `User visited Dashboard page`,
+            description: `User visited unified Dashboard page`,
             metadata: {
               page: 'dashboard',
               user_email: user.email,
@@ -186,17 +172,14 @@ export default function Dashboard() {
             }
           });
           
-          // console.log('Dashboard data loaded successfully');
           setError(null);
         } catch (error) {
           console.error('Error loading dashboard data:', error);
           setError(error instanceof Error ? error.message : 'Unknown error occurred');
         } finally {
-          // console.log('Setting isLoading to false');
           setIsLoading(false);
         }
       } else if (!authLoading) {
-        // console.log('No user and not auth loading, setting isLoading to false');
         setIsLoading(false);
       }
     };
@@ -204,44 +187,78 @@ export default function Dashboard() {
     loadDashboardData();
   }, [user, authLoading]);
 
-  // Scroll to top when component mounts or after data loads
-  useEffect(() => {
-    if (!isLoading && !authLoading) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+  const loadBillingData = async () => {
+    if (!user) return;
+    try {
+      const overview = await billingService.getBillingOverview(user.id);
+      setSubscription(overview.subscription);
+    } catch (error) {
+      console.error('Error loading billing data:', error);
     }
-  }, [isLoading, authLoading]);
+  };
+
+  const loadCompetitionHistory = async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from('competition_results')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('competed_at', { ascending: true });
+
+      if (error) throw error;
+
+      // Transform data for charts
+      const chartData = (data || []).map(result => ({
+        date: new Date(result.competed_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+        score: result.score || 0,
+        placement: result.placement || 0,
+        points: result.points_earned || 0
+      }));
+
+      setCompetitionData(chartData);
+    } catch (error) {
+      console.error('Error loading competition history:', error);
+    }
+  };
 
   const loadUserStats = async () => {
+    if (!user) return;
     try {
-      // Load real user statistics when implemented
-      // For now, set defaults until proper stats system is built
+      const { data, error } = await supabase
+        .from('competition_results')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      const results = data || [];
+      const totalComps = results.length;
+      const totalPts = results.reduce((sum, r) => sum + (r.points_earned || 0), 0);
+      const avgScore = results.length > 0 
+        ? results.reduce((sum, r) => sum + (r.score || 0), 0) / results.length 
+        : 0;
+      const bestPlace = results.length > 0
+        ? Math.min(...results.map(r => r.placement || 999))
+        : 0;
+      const wins = results.filter(r => r.placement === 1).length;
+      const podiums = results.filter(r => r.placement && r.placement <= 3).length;
+
       setStats({
-        totalCompetitions: 0,
-        totalPoints: 0,
-        averageScore: 0,
-        bestPlacement: 0,
-        upcomingEvents: 0,
-        teamMemberships: 0
+        totalCompetitions: totalComps,
+        totalPoints: totalPts,
+        averageScore: Math.round(avgScore * 10) / 10,
+        bestPlacement: bestPlace === 999 ? 0 : bestPlace,
+        upcomingEvents: 0, // Will be updated from events query
+        teamMemberships: 0  // Will be updated from teams query
       });
-      
-      setRecentResults([]);
     } catch (error) {
       console.error('Error loading user stats:', error);
-      setStats({
-        totalCompetitions: 0,
-        totalPoints: 0,
-        averageScore: 0,
-        bestPlacement: 0,
-        upcomingEvents: 0,
-        teamMemberships: 0
-      });
-      setRecentResults([]);
     }
   };
 
   const loadUpcomingEvents = async () => {
     try {
-      // Try to load real data
       const { data, error } = await supabase
         .from('events')
         .select(`
@@ -268,20 +285,20 @@ export default function Dashboard() {
         location: `${event.city}, ${event.state}`,
         category: (event.event_categories as any)?.name || 'Competition',
         registrationDeadline: event.registration_deadline,
-        isRegistered: false // This would need a separate query
+        isRegistered: false
       }));
 
       setUpcomingEvents(formattedEvents);
+      setStats(prev => ({ ...prev, upcomingEvents: formattedEvents.length }));
     } catch (error) {
       console.error('Error loading upcoming events:', error);
-      // Set empty array instead of mock data
       setUpcomingEvents([]);
     }
   };
 
   const loadRecentResults = async () => {
+    if (!user) return;
     try {
-      // Try to load real data
       const { data, error } = await supabase
         .from('competition_results')
         .select(`
@@ -291,9 +308,11 @@ export default function Dashboard() {
           total_participants,
           points_earned,
           competed_at,
-          events!inner(title)
+          score,
+          is_cae_event,
+          event_name
         `)
-        .eq('user_id', user!.id)
+        .eq('user_id', user.id)
         .order('competed_at', { ascending: false })
         .limit(5);
 
@@ -301,23 +320,22 @@ export default function Dashboard() {
 
       const formattedResults = (data || []).map(result => ({
         id: result.id,
-        eventTitle: (result.events as any)?.title || 'Unknown Event',
+        eventTitle: result.event_name || 'Event',
         category: result.category,
-        placement: result.placement,
-        totalParticipants: result.total_participants,
-        points: result.points_earned,
+        placement: result.placement || 0,
+        totalParticipants: result.total_participants || 0,
+        points: result.points_earned || 0,
         date: result.competed_at
       }));
 
       setRecentResults(formattedResults);
     } catch (error) {
       console.error('Error loading recent results:', error);
-      // Set empty array instead of mock data
       setRecentResults([]);
     }
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDateShort = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
@@ -343,20 +361,17 @@ export default function Dashboard() {
   };
 
   if (authLoading || isLoading) {
-    // console.log('Showing loading spinner - authLoading:', authLoading, 'isLoading:', isLoading);
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-electric-500 mx-auto mb-4"></div>
           <p className="text-white">Loading dashboard...</p>
-          <p className="text-gray-400 text-sm">Auth: {authLoading ? 'loading' : 'ready'}, Data: {isLoading ? 'loading' : 'ready'}</p>
         </div>
       </div>
     );
   }
 
   if (!user) {
-    // console.log('No user found, showing login prompt');
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -372,7 +387,7 @@ export default function Dashboard() {
     );
   }
 
-  // Check if user needs admin approval (business accounts)
+  // Check if user needs admin approval or email verification
   if (['retailer', 'manufacturer', 'organization'].includes(user.membershipType) && 
       user.status === 'pending') {
     return (
@@ -386,77 +401,12 @@ export default function Dashboard() {
             <p className="text-gray-400 mb-6">
               Your {user.membershipType} account is pending admin approval. You'll receive an email once your account is approved.
             </p>
-            <p className="text-gray-500 text-sm mb-6">
-              This usually takes 1-2 business days. Thank you for your patience!
-            </p>
-            <Link
-              to="/profile"
-              className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-500 transition-colors inline-block"
-            >
-              View Profile
-            </Link>
-          </div>
-          
-          {/* Limited Profile Access */}
-          <div className="mt-8 bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-            <h3 className="text-xl font-bold text-white mb-4">Your Profile</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-gray-400 text-sm mb-1">Name</label>
-                <p className="text-white">{user.name}</p>
-              </div>
-              <div>
-                <label className="block text-gray-400 text-sm mb-1">Email</label>
-                <p className="text-white">{user.email}</p>
-              </div>
-              <div>
-                <label className="block text-gray-400 text-sm mb-1">Business Type</label>
-                <p className="text-white capitalize">{user.membershipType}</p>
-              </div>
-              <div>
-                <label className="block text-gray-400 text-sm mb-1">Company</label>
-                <p className="text-white">{user.companyName || 'Not specified'}</p>
-              </div>
-              <div>
-                <label className="block text-gray-400 text-sm mb-1">Status</label>
-                <span className="bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-full text-sm">
-                  Pending Approval
-                </span>
-              </div>
-              <div>
-                <label className="block text-gray-400 text-sm mb-1">Membership Plan</label>
-                <p className="text-white capitalize">{user.subscriptionPlan || 'Pending'}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Links for Pending Users */}
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Link 
-              to="/resources"
-              className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 hover:border-electric-500/50 transition-colors"
-            >
-              <h4 className="text-lg font-semibold text-white mb-2">Browse Resources</h4>
-              <p className="text-gray-400 text-sm">
-                Explore our resource library while your account is being reviewed.
-              </p>
-            </Link>
-            <Link 
-              to="/events"
-              className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 hover:border-electric-500/50 transition-colors"
-            >
-              <h4 className="text-lg font-semibold text-white mb-2">View Events</h4>
-              <p className="text-gray-400 text-sm">
-                Check out upcoming car audio events in your area.
-              </p>
-            </Link>
           </div>
         </div>
       </div>
     );
   }
 
-  // Check if user needs email verification
   if (user.verificationStatus === 'pending' && user.membershipType !== 'admin') {
     return (
       <div className="min-h-screen py-8">
@@ -467,334 +417,670 @@ export default function Dashboard() {
             </div>
             <h2 className="text-2xl font-bold text-white mb-4">Email Verification Required</h2>
             <p className="text-gray-400 mb-6">
-              Please verify your email address to access all dashboard features. Check your inbox for a verification email.
+              Please verify your email address to access all dashboard features.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <ResendVerificationEmailButton userEmail={user.email} />
-              <Link
-                to="/profile"
-                className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-500 transition-colors"
-              >
-                View Profile
-              </Link>
-            </div>
-          </div>
-          
-          {/* Limited Profile Access */}
-          <div className="mt-8 bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-            <h3 className="text-xl font-bold text-white mb-4">Your Profile</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-gray-400 text-sm mb-1">Name</label>
-                <p className="text-white">{user.name}</p>
-              </div>
-              <div>
-                <label className="block text-gray-400 text-sm mb-1">Email</label>
-                <p className="text-white">{user.email}</p>
-              </div>
-              <div>
-                <label className="block text-gray-400 text-sm mb-1">Membership Type</label>
-                <p className="text-white">
-                  {getMembershipDisplayName(user.membershipType, user.subscriptionPlan)}
-                </p>
-              </div>
-              <div>
-                <label className="block text-gray-400 text-sm mb-1">Status</label>
-                <span className="bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-full text-sm">
-                  Pending Verification
-                </span>
-              </div>
-            </div>
+            <ResendVerificationEmailButton userEmail={user.email} />
           </div>
         </div>
       </div>
     );
   }
 
-  if (error) {
-    // console.log('Error state, showing error message:', error);
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-red-400 mb-4">Dashboard Error</h2>
-          <p className="text-gray-400 mb-4">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="bg-electric-500 text-white px-6 py-3 rounded-lg hover:bg-electric-600 transition-colors"
-          >
-            Reload Page
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // console.log('Rendering dashboard content for user:', user.email);
-  
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold text-white">
                 Welcome back, <span className="text-electric-400">{user?.name}</span>
               </h1>
               <p className="text-gray-400 mt-2">
-                Here's what's happening with your car audio journey
+                Your unified dashboard for everything car audio
               </p>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-wrap items-center gap-3">
               <span className="bg-electric-500/20 text-electric-400 px-3 py-1 rounded-full text-sm font-medium">
                 {getMembershipDisplayName(user?.membershipType, user?.subscriptionPlan)}
               </span>
               <Link
                 to="/profile"
-                className="bg-electric-500 text-white px-4 py-2 rounded-lg hover:bg-electric-600 transition-colors flex items-center space-x-2"
+                className="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors flex items-center gap-2"
               >
-                <User className="h-4 w-4" />
-                <span>View Profile</span>
+                <Settings className="h-4 w-4" />
+                <span>Settings</span>
+              </Link>
+              <Link
+                to="/notifications"
+                className="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors flex items-center gap-2 relative"
+              >
+                <Bell className="h-4 w-4" />
+                <span className="absolute -top-1 -right-1 bg-electric-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  3
+                </span>
               </Link>
             </div>
           </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
-          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Competitions</p>
-                <p className="text-2xl font-bold text-white">{stats.totalCompetitions}</p>
-              </div>
-              <Trophy className="h-8 w-8 text-electric-500" />
-            </div>
-          </div>
-
-          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Total Points</p>
-                <p className="text-2xl font-bold text-electric-400">{stats.totalPoints}</p>
-              </div>
-              <Star className="h-8 w-8 text-electric-500" />
-            </div>
-          </div>
-
-          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Avg Score</p>
-                <p className="text-2xl font-bold text-white">{stats.averageScore}</p>
-              </div>
-              <Target className="h-8 w-8 text-green-500" />
-            </div>
-          </div>
-
-          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Best Rank</p>
-                <p className="text-2xl font-bold text-yellow-400">#{stats.bestPlacement || 'N/A'}</p>
-              </div>
-              <Award className="h-8 w-8 text-yellow-500" />
-            </div>
-          </div>
-
-          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Upcoming</p>
-                <p className="text-2xl font-bold text-white">{stats.upcomingEvents}</p>
-              </div>
-              <Calendar className="h-8 w-8 text-blue-500" />
-            </div>
-          </div>
-
-          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Teams</p>
-                <p className="text-2xl font-bold text-white">{stats.teamMemberships}</p>
-              </div>
-              <Users className="h-8 w-8 text-purple-500" />
-            </div>
-          </div>
+        {/* Tab Navigation */}
+        <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl mb-6">
+          <nav className="flex flex-wrap p-2">
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                activeTab === 'overview'
+                  ? 'bg-electric-500 text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+              }`}
+            >
+              <Home className="h-4 w-4" />
+              Overview
+            </button>
+            <button
+              onClick={() => setActiveTab('profile')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                activeTab === 'profile'
+                  ? 'bg-electric-500 text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+              }`}
+            >
+              <User className="h-4 w-4" />
+              Profile
+            </button>
+            <button
+              onClick={() => setActiveTab('competitions')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                activeTab === 'competitions'
+                  ? 'bg-electric-500 text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+              }`}
+            >
+              <Trophy className="h-4 w-4" />
+              Competitions
+            </button>
+            <button
+              onClick={() => setActiveTab('billing')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                activeTab === 'billing'
+                  ? 'bg-electric-500 text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+              }`}
+            >
+              <CreditCard className="h-4 w-4" />
+              Billing
+            </button>
+          </nav>
         </div>
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {quickActions.map((action, index) => (
-            <Link
-              key={index}
-              to={action.link}
-              className={`bg-gradient-to-br ${getActionColor(action.color)} border rounded-xl p-6 transition-all duration-200 group`}
-            >
-              <div className="flex items-center space-x-3">
-                <action.icon className="h-8 w-8 text-white group-hover:scale-110 transition-transform" />
-                <div>
-                  <h3 className="text-white font-semibold">{action.title}</h3>
-                  <p className="text-gray-300 text-sm">{action.description}</p>
+        {/* Tab Content */}
+        {activeTab === 'overview' && (
+          <>
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
+              <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-400 text-sm">Competitions</p>
+                    <p className="text-2xl font-bold text-white">{stats.totalCompetitions}</p>
+                  </div>
+                  <Trophy className="h-8 w-8 text-electric-500" />
                 </div>
               </div>
-            </Link>
-          ))}
-        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Upcoming Events */}
-          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-white">Upcoming Events</h2>
-              <Link
-                to="/events"
-                className="text-electric-400 hover:text-electric-300 text-sm font-medium flex items-center space-x-1"
-              >
-                <span>View All</span>
-                <ArrowRight className="h-4 w-4" />
-              </Link>
+              <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-400 text-sm">Total Points</p>
+                    <p className="text-2xl font-bold text-electric-400">{stats.totalPoints}</p>
+                  </div>
+                  <Star className="h-8 w-8 text-electric-500" />
+                </div>
+              </div>
+
+              <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-400 text-sm">Avg Score</p>
+                    <p className="text-2xl font-bold text-white">{stats.averageScore}</p>
+                  </div>
+                  <Target className="h-8 w-8 text-green-500" />
+                </div>
+              </div>
+
+              <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-400 text-sm">Best Rank</p>
+                    <p className="text-2xl font-bold text-yellow-400">#{stats.bestPlacement || 'N/A'}</p>
+                  </div>
+                  <Award className="h-8 w-8 text-yellow-500" />
+                </div>
+              </div>
+
+              <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-400 text-sm">Upcoming</p>
+                    <p className="text-2xl font-bold text-white">{stats.upcomingEvents}</p>
+                  </div>
+                  <Calendar className="h-8 w-8 text-blue-500" />
+                </div>
+              </div>
+
+              <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-400 text-sm">Membership</p>
+                    <p className="text-lg font-bold text-white">
+                      {subscription?.status === 'active' ? 'Active' : 'Free'}
+                    </p>
+                  </div>
+                  <Package className="h-8 w-8 text-purple-500" />
+                </div>
+              </div>
             </div>
 
-            {upcomingEvents.length > 0 ? (
-              <div className="space-y-4">
-                {upcomingEvents.map((event) => (
-                  <div key={event.id} className="bg-gray-700/30 p-4 rounded-lg">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h3 className="text-white font-semibold mb-1">{event.title}</h3>
-                        <div className="text-gray-400 text-sm space-y-1">
-                          <div className="flex items-center space-x-2">
-                            <Calendar className="h-4 w-4" />
-                            <span>{formatDate(event.date)}</span>
+            {/* Quick Actions */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              {quickActions.map((action, index) => (
+                <Link
+                  key={index}
+                  to={action.link}
+                  className={`bg-gradient-to-br ${getActionColor(action.color)} border rounded-xl p-6 transition-all duration-200 group`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <action.icon className="h-8 w-8 text-white group-hover:scale-110 transition-transform" />
+                    <div>
+                      <h3 className="text-white font-semibold">{action.title}</h3>
+                      <p className="text-gray-300 text-sm">{action.description}</p>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Upcoming Events */}
+              <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold text-white">Upcoming Events</h2>
+                  <Link
+                    to="/events"
+                    className="text-electric-400 hover:text-electric-300 text-sm font-medium flex items-center gap-1"
+                  >
+                    <span>View All</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+
+                {upcomingEvents.length > 0 ? (
+                  <div className="space-y-4">
+                    {upcomingEvents.slice(0, 3).map((event) => (
+                      <div key={event.id} className="bg-gray-700/30 p-4 rounded-lg">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h3 className="text-white font-semibold mb-1">{event.title}</h3>
+                            <div className="text-gray-400 text-sm space-y-1">
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4" />
+                                <span>{formatDateShort(event.date)}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <MapPin className="h-4 w-4" />
+                                <span>{event.location}</span>
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex items-center space-x-2">
-                            <MapPin className="h-4 w-4" />
-                            <span>{event.location}</span>
-                          </div>
-                        </div>
-                        <div className="mt-2">
-                          <span className="bg-electric-500/20 text-electric-400 px-2 py-1 rounded text-xs">
-                            {event.category}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        {event.isRegistered ? (
-                          <span className="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-xs font-medium">
-                            Registered
-                          </span>
-                        ) : (
                           <Link
                             to={`/events/${event.id}`}
                             className="bg-electric-500 text-white px-3 py-1 rounded-full text-xs font-medium hover:bg-electric-600 transition-colors"
                           >
-                            Register
+                            View
                           </Link>
-                        )}
+                        </div>
                       </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
+                ) : (
+                  <div className="text-center py-8">
+                    <Calendar className="h-12 w-12 text-gray-600 mx-auto mb-4" />
+                    <p className="text-gray-400">No upcoming events</p>
+                    <Link
+                      to="/events"
+                      className="text-electric-400 hover:text-electric-300 text-sm font-medium"
+                    >
+                      Browse Events
+                    </Link>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="text-center py-8">
-                <Calendar className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-                <p className="text-gray-400">No upcoming events</p>
-                <Link
-                  to="/events"
-                  className="text-electric-400 hover:text-electric-300 text-sm font-medium"
-                >
-                  Browse Events
-                </Link>
+
+              {/* Recent Results */}
+              <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold text-white">Recent Results</h2>
+                  <button
+                    onClick={() => setActiveTab('competitions')}
+                    className="text-electric-400 hover:text-electric-300 text-sm font-medium flex items-center gap-1"
+                  >
+                    <span>View All</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {recentResults.length > 0 ? (
+                  <div className="space-y-4">
+                    {recentResults.slice(0, 3).map((result) => (
+                      <div key={result.id} className="bg-gray-700/30 p-4 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <h3 className="text-white font-semibold mb-1">{result.eventTitle}</h3>
+                            <div className="text-gray-400 text-sm">
+                              <span className="bg-gray-600 px-2 py-1 rounded text-xs mr-2">
+                                {result.category}
+                              </span>
+                              <span>{formatDateShort(result.date)}</span>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className={`text-lg font-bold ${getPlacementColor(result.placement)}`}>
+                              #{result.placement}
+                            </div>
+                            <div className="text-electric-400 text-sm font-medium">
+                              +{result.points} pts
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Trophy className="h-12 w-12 text-gray-600 mx-auto mb-4" />
+                    <p className="text-gray-400">No competition results yet</p>
+                    <Link
+                      to="/events"
+                      className="text-electric-400 hover:text-electric-300 text-sm font-medium"
+                    >
+                      Join Your First Competition
+                    </Link>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
-          {/* Recent Results */}
-          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-white">Recent Results</h2>
-              <Link
-                to="/profile?tab=competitions"
-                className="text-electric-400 hover:text-electric-300 text-sm font-medium flex items-center space-x-1"
-              >
-                <span>View All</span>
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
+              {/* Billing Summary */}
+              <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold text-white">Membership</h2>
+                  <button
+                    onClick={() => setActiveTab('billing')}
+                    className="text-electric-400 hover:text-electric-300 text-sm font-medium flex items-center gap-1"
+                  >
+                    <span>Manage</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                </div>
 
-            {recentResults.length > 0 ? (
-              <div className="space-y-4">
-                {recentResults.map((result) => (
-                  <div key={result.id} className="bg-gray-700/30 p-4 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <h3 className="text-white font-semibold mb-1">{result.eventTitle}</h3>
-                        <div className="text-gray-400 text-sm">
-                          <span className="bg-gray-600 px-2 py-1 rounded text-xs mr-2">
-                            {result.category}
+                {subscription ? (
+                  <div className="space-y-4">
+                    <div className="bg-gray-700/30 p-4 rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-gray-400">Plan</span>
+                        <span className="text-white font-medium capitalize">
+                          {subscription.plan_name || subscription.plan}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-gray-400">Status</span>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          subscription.status === 'active' 
+                            ? 'bg-green-500/20 text-green-400'
+                            : 'bg-gray-500/20 text-gray-400'
+                        }`}>
+                          {subscription.status}
+                        </span>
+                      </div>
+                      {subscription.current_period_end && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-400">Renews</span>
+                          <span className="text-white text-sm">
+                            {formatDateShort(subscription.current_period_end)}
                           </span>
-                          <span>{formatDate(result.date)}</span>
                         </div>
-                      </div>
-                      <div className="text-right">
-                        <div className={`text-lg font-bold ${getPlacementColor(result.placement)}`}>
-                          #{result.placement}
-                        </div>
-                        <div className="text-gray-400 text-xs">
-                          of {result.totalParticipants}
-                        </div>
-                        <div className="text-electric-400 text-sm font-medium">
-                          +{result.points} pts
-                        </div>
-                      </div>
+                      )}
+                    </div>
+                    
+                    {subscription.status === 'active' && (
+                      <Link
+                        to="/billing"
+                        className="w-full bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors text-center block"
+                      >
+                        View Billing Details
+                      </Link>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <Package className="h-12 w-12 text-gray-600 mx-auto mb-4" />
+                    <p className="text-gray-400 mb-4">Free Member</p>
+                    <Link
+                      to="/pricing"
+                      className="bg-electric-500 text-white px-4 py-2 rounded-lg hover:bg-electric-600 transition-colors inline-block"
+                    >
+                      Upgrade to Pro
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        {activeTab === 'profile' && (
+          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+            <h2 className="text-2xl font-bold text-white mb-6">Profile Overview</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-4">Personal Information</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-400">Name</span>
+                    <span className="text-white">{user.name}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-400">Email</span>
+                    <span className="text-white">{user.email}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-400">Location</span>
+                    <span className="text-white">{user.location || 'Not set'}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-400">Member Since</span>
+                    <span className="text-white">
+                      {formatDateShort(user.createdAt || new Date().toISOString())}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
+                <div className="space-y-3">
+                  <Link
+                    to="/profile"
+                    className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors"
+                  >
+                    <span className="flex items-center gap-2 text-white">
+                      <User className="h-4 w-4" />
+                      Edit Profile
+                    </span>
+                    <ChevronRight className="h-4 w-4 text-gray-400" />
+                  </Link>
+                  <Link
+                    to="/profile?tab=audio-systems"
+                    className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors"
+                  >
+                    <span className="flex items-center gap-2 text-white">
+                      <Zap className="h-4 w-4" />
+                      Manage Audio Systems
+                    </span>
+                    <ChevronRight className="h-4 w-4 text-gray-400" />
+                  </Link>
+                  <Link
+                    to="/profile?tab=saved-events"
+                    className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors"
+                  >
+                    <span className="flex items-center gap-2 text-white">
+                      <Heart className="h-4 w-4" />
+                      Saved Events
+                    </span>
+                    <ChevronRight className="h-4 w-4 text-gray-400" />
+                  </Link>
+                  <Link
+                    to="/profile?tab=notifications"
+                    className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors"
+                  >
+                    <span className="flex items-center gap-2 text-white">
+                      <Bell className="h-4 w-4" />
+                      Notification Settings
+                    </span>
+                    <ChevronRight className="h-4 w-4 text-gray-400" />
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'competitions' && (
+          <div className="space-y-6">
+            {/* Competition Stats Overview */}
+            <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+              <h2 className="text-2xl font-bold text-white mb-6">Competition Statistics</h2>
+              
+              {competitionData.length > 0 ? (
+                <div className="space-y-6">
+                  {/* Score Trend Chart */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-4">Score Trend</h3>
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={competitionData}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                          <XAxis dataKey="date" stroke="#9CA3AF" />
+                          <YAxis stroke="#9CA3AF" />
+                          <Tooltip 
+                            contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151' }}
+                            labelStyle={{ color: '#F3F4F6' }}
+                          />
+                          <Line 
+                            type="monotone" 
+                            dataKey="score" 
+                            stroke="#A78BFA" 
+                            strokeWidth={2}
+                            dot={{ fill: '#A78BFA' }}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
                     </div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <Trophy className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-                <p className="text-gray-400">No competition results yet</p>
+
+                  {/* Points Accumulated Chart */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-4">Points Accumulated</h3>
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={competitionData}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                          <XAxis dataKey="date" stroke="#9CA3AF" />
+                          <YAxis stroke="#9CA3AF" />
+                          <Tooltip 
+                            contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151' }}
+                            labelStyle={{ color: '#F3F4F6' }}
+                          />
+                          <Bar dataKey="points" fill="#10B981" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <BarChart3 className="h-12 w-12 text-gray-600 mx-auto mb-4" />
+                  <p className="text-gray-400">No competition data to display</p>
+                </div>
+              )}
+            </div>
+
+            {/* Recent Competition Results */}
+            <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-white">All Competition Results</h2>
                 <Link
-                  to="/events"
+                  to="/profile?tab=competitions"
                   className="text-electric-400 hover:text-electric-300 text-sm font-medium"
                 >
-                  Join Your First Competition
+                  Manage Results
                 </Link>
               </div>
-            )}
-          </div>
 
-          {/* Saved Events */}
-          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-white">Saved Events</h2>
+              {recentResults.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="text-left border-b border-gray-700">
+                        <th className="pb-3 text-gray-400 font-medium">Event</th>
+                        <th className="pb-3 text-gray-400 font-medium">Category</th>
+                        <th className="pb-3 text-gray-400 font-medium">Date</th>
+                        <th className="pb-3 text-gray-400 font-medium text-center">Placement</th>
+                        <th className="pb-3 text-gray-400 font-medium text-right">Points</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-700">
+                      {recentResults.map((result) => (
+                        <tr key={result.id} className="hover:bg-gray-700/30 transition-colors">
+                          <td className="py-3 text-white">{result.eventTitle}</td>
+                          <td className="py-3">
+                            <span className="bg-gray-600 px-2 py-1 rounded text-xs text-white">
+                              {result.category}
+                            </span>
+                          </td>
+                          <td className="py-3 text-gray-400">{formatDateShort(result.date)}</td>
+                          <td className="py-3 text-center">
+                            <span className={`font-bold ${getPlacementColor(result.placement)}`}>
+                              #{result.placement}
+                            </span>
+                          </td>
+                          <td className="py-3 text-right text-electric-400 font-medium">
+                            +{result.points}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Trophy className="h-12 w-12 text-gray-600 mx-auto mb-4" />
+                  <p className="text-gray-400">No competition results yet</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'billing' && (
+          <div className="space-y-6">
+            {/* Current Plan */}
+            <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+              <h2 className="text-2xl font-bold text-white mb-6">Current Membership</h2>
+              
+              {subscription ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <p className="text-gray-400 text-sm mb-1">Plan</p>
+                      <p className="text-white text-lg font-semibold capitalize">
+                        {subscription.plan_name || subscription.plan}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-400 text-sm mb-1">Status</p>
+                      <p className={`text-lg font-semibold ${
+                        subscription.status === 'active' ? 'text-green-400' : 'text-gray-400'
+                      }`}>
+                        {subscription.status === 'active' ? 'Active' : 'Inactive'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-400 text-sm mb-1">Next Billing</p>
+                      <p className="text-white text-lg font-semibold">
+                        {subscription.current_period_end 
+                          ? formatDateShort(subscription.current_period_end)
+                          : 'N/A'
+                        }
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="pt-4 border-t border-gray-700">
+                    <Link
+                      to="/billing"
+                      className="bg-electric-500 text-white px-6 py-3 rounded-lg hover:bg-electric-600 transition-colors inline-flex items-center gap-2"
+                    >
+                      <CreditCard className="h-4 w-4" />
+                      Manage Billing
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Package className="h-16 w-16 text-gray-600 mx-auto mb-4" />
+                  <h3 className="text-xl font-bold text-white mb-2">Free Membership</h3>
+                  <p className="text-gray-400 mb-6">
+                    Upgrade to Pro to unlock all features and benefits
+                  </p>
+                  <Link
+                    to="/pricing"
+                    className="bg-electric-500 text-white px-6 py-3 rounded-lg hover:bg-electric-600 transition-colors inline-block"
+                  >
+                    View Pro Benefits
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            {/* Quick Billing Actions */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Link
-                to="/profile#saved-events"
-                className="text-electric-400 hover:text-electric-300 text-sm font-medium flex items-center space-x-1"
+                to="/billing#payment-methods"
+                className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 hover:border-electric-500/50 transition-colors"
               >
-                <span>View All</span>
-                <ArrowRight className="h-4 w-4" />
+                <CreditCard className="h-8 w-8 text-electric-500 mb-3" />
+                <h3 className="text-lg font-semibold text-white mb-2">Payment Methods</h3>
+                <p className="text-gray-400 text-sm">Manage your payment methods</p>
+              </Link>
+              
+              <Link
+                to="/billing#invoices"
+                className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 hover:border-electric-500/50 transition-colors"
+              >
+                <FileText className="h-8 w-8 text-electric-500 mb-3" />
+                <h3 className="text-lg font-semibold text-white mb-2">Invoices</h3>
+                <p className="text-gray-400 text-sm">View and download invoices</p>
+              </Link>
+              
+              <Link
+                to="/billing#transactions"
+                className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 hover:border-electric-500/50 transition-colors"
+              >
+                <Activity className="h-8 w-8 text-electric-500 mb-3" />
+                <h3 className="text-lg font-semibold text-white mb-2">Transactions</h3>
+                <p className="text-gray-400 text-sm">View payment history</p>
               </Link>
             </div>
-            <SavedEvents limit={3} showActions={false} />
           </div>
+        )}
 
+        {/* Saved Events Widget (Always visible) */}
+        <div className="mt-8 bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-white">Saved Events</h2>
+            <Link
+              to="/profile?tab=saved-events"
+              className="text-electric-400 hover:text-electric-300 text-sm font-medium flex items-center gap-1"
+            >
+              <span>View All</span>
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+          <SavedEvents limit={3} showActions={false} />
         </div>
 
-        {/* Personalized Dashboard Widgets */}
-        <div className="mt-8">
-          <DashboardWidgets
-            initialWidgets={widgets}
-            onWidgetsChange={setWidgets}
-            isEditMode={isEditMode}
-            onEditModeChange={setIsEditMode}
-          />
-        </div>
-
-        {/* System Status for Members */}
+        {/* System Status */}
         <div className="mt-8 flex justify-end">
           <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-700/30 rounded-lg p-3">
             <ServiceWorkerManager showFullInterface={false} />
