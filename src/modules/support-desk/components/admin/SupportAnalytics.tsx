@@ -198,18 +198,84 @@ const SupportAnalytics: React.FC<SupportAnalyticsProps> = ({ initialTab = 'overv
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
 
-      // Calculate average response time (mock data for now)
-      const avgResponseTime = 4.5; // hours
-      const avgResolutionTime = 24; // hours
-      const satisfactionScore = 4.2; // out of 5
+      // Get agent performance from database
+      const { data: agentTickets } = await supabase
+        .from('support_tickets')
+        .select(`
+          assigned_to_user_id,
+          status,
+          created_at,
+          resolved_at,
+          users!assigned_to_user_id(id, name, email)
+        `)
+        .not('assigned_to_user_id', 'is', null)
+        .gte('created_at', startDate.toISOString());
 
-      // Get agent performance (mock data for now)
-      const agentPerformance = [
-        { agent: 'John Doe', resolved: 45, avg_time: 18 },
-        { agent: 'Jane Smith', resolved: 38, avg_time: 22 },
-        { agent: 'Mike Johnson', resolved: 32, avg_time: 20 },
-        { agent: 'Sarah Wilson', resolved: 28, avg_time: 25 }
-      ];
+      const agentPerformance = Object.entries(
+        agentTickets?.reduce((acc: any, ticket: any) => {
+          const agentName = ticket.users?.name || 'Unknown Agent';
+          const agentId = ticket.assigned_to_user_id;
+          
+          if (!acc[agentId]) {
+            acc[agentId] = {
+              agent: agentName,
+              resolved: 0,
+              total: 0,
+              avg_time: 0,
+              totalTime: 0
+            };
+          }
+          
+          acc[agentId].total++;
+          
+          if (ticket.status === 'resolved' || ticket.status === 'closed') {
+            acc[agentId].resolved++;
+            
+            if (ticket.resolved_at) {
+              const resolutionTime = (new Date(ticket.resolved_at).getTime() - new Date(ticket.created_at).getTime()) / (1000 * 60 * 60); // hours
+              acc[agentId].totalTime += resolutionTime;
+            }
+          }
+          
+          return acc;
+        }, {}) || {}
+      ).map(([_, agent]: any) => ({
+        agent: agent.agent,
+        resolved: agent.resolved,
+        avg_time: agent.resolved > 0 ? Math.round(agent.totalTime / agent.resolved) : 0
+      })).sort((a, b) => b.resolved - a.resolved);
+
+      // Calculate average response and resolution times from actual data
+      const { data: responseTimeData } = await supabase
+        .from('support_tickets')
+        .select('created_at, first_response_at, resolved_at')
+        .gte('created_at', startDate.toISOString())
+        .not('first_response_at', 'is', null);
+
+      let totalResponseTime = 0;
+      let responseCount = 0;
+      let totalResolutionTime = 0;
+      let resolutionCount = 0;
+
+      responseTimeData?.forEach(ticket => {
+        if (ticket.first_response_at) {
+          const responseTime = (new Date(ticket.first_response_at).getTime() - new Date(ticket.created_at).getTime()) / (1000 * 60 * 60);
+          totalResponseTime += responseTime;
+          responseCount++;
+        }
+        
+        if (ticket.resolved_at) {
+          const resolutionTime = (new Date(ticket.resolved_at).getTime() - new Date(ticket.created_at).getTime()) / (1000 * 60 * 60);
+          totalResolutionTime += resolutionTime;
+          resolutionCount++;
+        }
+      });
+
+      const avgResponseTime = responseCount > 0 ? Math.round(totalResponseTime / responseCount * 10) / 10 : 0;
+      const avgResolutionTime = resolutionCount > 0 ? Math.round(totalResolutionTime / resolutionCount) : 0;
+      
+      // For now, satisfaction score is still mock until we implement feedback system
+      const satisfactionScore = 4.2;
 
       setAnalytics({
         totalTickets: totalTickets || 0,
@@ -323,46 +389,54 @@ const SupportAnalytics: React.FC<SupportAnalyticsProps> = ({ initialTab = 'overv
       {/* Tab Navigation */}
       <div className="bg-gray-800/50 rounded-lg mb-6">
         <div className="border-b border-gray-700">
-          <nav className="flex space-x-2 p-4">
+          <nav className="flex flex-wrap gap-2 p-4 overflow-x-auto">
             <button
               onClick={() => setActiveTab('overview')}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+              className={`px-3 py-2 rounded-lg font-medium text-sm transition-colors whitespace-nowrap flex-shrink-0 ${
                 activeTab === 'overview'
                   ? 'bg-electric-500 text-white'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                  : 'text-gray-300 hover:text-white hover:bg-gray-700/50'
               }`}
             >
-              📊 Overview
+              <span className="mr-1">📊</span>
+              <span className="hidden sm:inline">Overview</span>
+              <span className="sm:hidden">Overview</span>
             </button>
             <button
               onClick={() => setActiveTab('tickets')}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+              className={`px-3 py-2 rounded-lg font-medium text-sm transition-colors whitespace-nowrap flex-shrink-0 ${
                 activeTab === 'tickets'
                   ? 'bg-electric-500 text-white'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                  : 'text-gray-300 hover:text-white hover:bg-gray-700/50'
               }`}
             >
-              🎫 Ticket Reports
+              <span className="mr-1">🎫</span>
+              <span className="hidden sm:inline">Ticket Reports</span>
+              <span className="sm:hidden">Tickets</span>
             </button>
             <button
               onClick={() => setActiveTab('agents')}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+              className={`px-3 py-2 rounded-lg font-medium text-sm transition-colors whitespace-nowrap flex-shrink-0 ${
                 activeTab === 'agents'
                   ? 'bg-electric-500 text-white'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                  : 'text-gray-300 hover:text-white hover:bg-gray-700/50'
               }`}
             >
-              👥 Agent Performance
+              <span className="mr-1">👥</span>
+              <span className="hidden sm:inline">Agent Performance</span>
+              <span className="sm:hidden">Agents</span>
             </button>
             <button
               onClick={() => setActiveTab('satisfaction')}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+              className={`px-3 py-2 rounded-lg font-medium text-sm transition-colors whitespace-nowrap flex-shrink-0 ${
                 activeTab === 'satisfaction'
                   ? 'bg-electric-500 text-white'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                  : 'text-gray-300 hover:text-white hover:bg-gray-700/50'
               }`}
             >
-              ⭐ Customer Satisfaction
+              <span className="mr-1">⭐</span>
+              <span className="hidden sm:inline">Customer Satisfaction</span>
+              <span className="sm:hidden">Satisfaction</span>
             </button>
           </nav>
         </div>
@@ -625,32 +699,45 @@ const SupportAnalytics: React.FC<SupportAnalyticsProps> = ({ initialTab = 'overv
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-700">
-                  {analytics.agentPerformance.map((agent, index) => (
-                    <tr key={index}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
-                        {agent.agent}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-100">
-                        {agent.resolved}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-100">
-                        {agent.avg_time}h
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-1 bg-gray-600 rounded-full h-2 mr-2">
-                            <div
-                              className="bg-electric-500 h-2 rounded-full"
-                              style={{ width: `${(agent.resolved / 50) * 100}%` }}
-                            ></div>
-                          </div>
-                          <span className="text-sm text-gray-100">
-                            {Math.round((agent.resolved / 50) * 100)}%
-                          </span>
-                        </div>
+                  {analytics.agentPerformance.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-400">
+                        No agent performance data available for the selected period.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    analytics.agentPerformance.map((agent, index) => {
+                      const maxResolved = Math.max(...analytics.agentPerformance.map(a => a.resolved), 1);
+                      const performancePercent = Math.round((agent.resolved / maxResolved) * 100);
+                      
+                      return (
+                        <tr key={index}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
+                            {agent.agent}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-100">
+                            {agent.resolved}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-100">
+                            {agent.avg_time}h
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="flex-1 bg-gray-600 rounded-full h-2 mr-2">
+                                <div
+                                  className="bg-electric-500 h-2 rounded-full"
+                                  style={{ width: `${performancePercent}%` }}
+                                ></div>
+                              </div>
+                              <span className="text-sm text-gray-100">
+                                {performancePercent}%
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
@@ -806,32 +893,45 @@ const SupportAnalytics: React.FC<SupportAnalyticsProps> = ({ initialTab = 'overv
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-700">
-                    {analytics.agentPerformance.map((agent, index) => (
-                      <tr key={index}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
-                          {agent.agent}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                          {agent.resolved}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                          {agent.avg_time}h
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="flex-1 bg-gray-600 rounded-full h-2 mr-2">
-                              <div
-                                className="bg-electric-500 h-2 rounded-full"
-                                style={{ width: `${Math.min((agent.resolved / 50) * 100, 100)}%` }}
-                              ></div>
-                            </div>
-                            <span className="text-sm text-gray-100">
-                              {Math.round(Math.min((agent.resolved / 50) * 100, 100))}%
-                            </span>
-                          </div>
+                    {analytics.agentPerformance.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-400">
+                          No agent performance data available for the selected period.
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      analytics.agentPerformance.map((agent, index) => {
+                        const maxResolved = Math.max(...analytics.agentPerformance.map(a => a.resolved), 1);
+                        const efficiencyScore = Math.round((agent.resolved / maxResolved) * 100);
+                        
+                        return (
+                          <tr key={index}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
+                              {agent.agent}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              {agent.resolved}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                              {agent.avg_time}h
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center">
+                                <div className="flex-1 bg-gray-600 rounded-full h-2 mr-2">
+                                  <div
+                                    className="bg-electric-500 h-2 rounded-full"
+                                    style={{ width: `${efficiencyScore}%` }}
+                                  ></div>
+                                </div>
+                                <span className="text-sm text-gray-100">
+                                  {efficiencyScore}%
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>

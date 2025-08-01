@@ -764,7 +764,7 @@ const AdminSupportSettings: React.FC = () => {
                     </p>
                     <Link
                       to="/admin/support/analytics"
-                      className="inline-block px-4 py-2 bg-electric-500 text-white rounded-md hover:bg-electric-600 text-sm"
+                      className="inline-flex items-center justify-center px-4 py-2 bg-electric-500 text-white rounded-md hover:bg-electric-600 text-sm w-full sm:w-auto"
                     >
                       View Full Analytics
                     </Link>
@@ -780,7 +780,7 @@ const AdminSupportSettings: React.FC = () => {
                         </p>
                         <Link
                           to="/admin/support/analytics/tickets"
-                          className="inline-block mt-2 px-3 py-1 bg-electric-500 text-white rounded text-sm hover:bg-electric-600"
+                          className="inline-flex items-center justify-center mt-2 px-3 py-1 bg-electric-500 text-white rounded text-sm hover:bg-electric-600 w-full sm:w-auto"
                         >
                           View Reports
                         </Link>
@@ -793,7 +793,7 @@ const AdminSupportSettings: React.FC = () => {
                         </p>
                         <Link
                           to="/admin/support/analytics/agents"
-                          className="inline-block mt-2 px-3 py-1 bg-electric-500 text-white rounded text-sm hover:bg-electric-600"
+                          className="inline-flex items-center justify-center mt-2 px-3 py-1 bg-electric-500 text-white rounded text-sm hover:bg-electric-600 w-full sm:w-auto"
                         >
                           View Performance
                         </Link>
@@ -806,7 +806,7 @@ const AdminSupportSettings: React.FC = () => {
                         </p>
                         <Link
                           to="/admin/support/analytics/satisfaction"
-                          className="inline-block mt-2 px-3 py-1 bg-electric-500 text-white rounded text-sm hover:bg-electric-600"
+                          className="inline-flex items-center justify-center mt-2 px-3 py-1 bg-electric-500 text-white rounded text-sm hover:bg-electric-600 w-full sm:w-auto"
                         >
                           View Feedback
                         </Link>
