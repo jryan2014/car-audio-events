@@ -20,6 +20,8 @@ interface User {
   subscriptionPlan?: string;
   requiresPasswordChange?: boolean;
   passwordChangedAt?: string;
+  organizationId?: number;
+  role?: string;
   // New fields for complete profile
   firstName?: string;
   lastName?: string;

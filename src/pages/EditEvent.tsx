@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import EventForm from '../components/EventForm/EventForm';
 import { EventFormData, EventCategory, Organization, DatabaseUser } from '../types/event';
-import { formatDateForInput, formatDateForDateInput } from '../utils/dateHelpers';
+import { formatDateForInput, formatDateForDateInput, formatDateForDatabase } from '../utils/dateHelpers';
 
 const EditEvent = React.memo(function EditEvent() {
   const { id } = useParams<{ id: string }>();
@@ -332,15 +332,15 @@ const EditEvent = React.memo(function EditEvent() {
         organization_id: formData.sanction_body_id || null,
         season_year: formData.season_year,
         organizer_id: formData.organizer_id || null,
-        start_date: formData.start_date || null,
-        end_date: formData.end_date || null,
-        registration_deadline: formData.registration_deadline || null,
+        start_date: formatDateForDatabase(formData.start_date),
+        end_date: formatDateForDatabase(formData.end_date),
+        registration_deadline: formatDateForDatabase(formData.registration_deadline),
         max_participants: formData.max_participants,
         ticket_price: formData.registration_fee,
         member_price: formData.member_price || 0,
         non_member_price: formData.non_member_price || 0,
         early_bird_fee: formData.early_bird_fee,
-        early_bird_deadline: formData.early_bird_deadline || null,
+        early_bird_deadline: formatDateForDatabase(formData.early_bird_deadline),
         early_bird_name: formData.early_bird_name || 'Early Bird Special',
         gate_fee: formData.gate_fee || null,
         multi_day_pricing: formData.multi_day_pricing || null,

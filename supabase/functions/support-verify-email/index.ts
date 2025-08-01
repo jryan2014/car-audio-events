@@ -1,0 +1,215 @@
+import { serve } from 'https://deno.land/std@0.131.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+interface RequestBody {
+  email: string
+  captcha_token?: string
+  code?: string
+  action: 'send' | 'verify'
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Missing Supabase configuration')
+    }
+    
+    const supabaseClient = createClient(
+      supabaseUrl,
+      supabaseKey,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    )
+
+    const { email, captcha_token, code, action } = await req.json() as RequestBody
+
+    // Get IP address for rate limiting
+    const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown'
+
+    if (action === 'send') {
+      // Verify captcha if provided (skip for test tokens)
+      if (captcha_token && captcha_token !== 'test-token-for-development') {
+        const captchaResponse = await fetch('https://hcaptcha.com/siteverify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            secret: Deno.env.get('HCAPTCHA_SECRET_KEY') ?? '',
+            response: captcha_token,
+            remoteip: ip,
+          }),
+        })
+
+        const captchaResult = await captchaResponse.json()
+        if (!captchaResult.success) {
+          throw new Error('Captcha verification failed')
+        }
+      }
+
+      // Check rate limit (skip for testing)
+      console.log('Checking rate limit for:', email)
+      try {
+        const { data: rateLimitOk, error: rateLimitError } = await supabaseClient.rpc('check_support_rate_limit', {
+          p_identifier: email,
+          p_identifier_type: 'email',
+          p_action: 'email_verify',
+          p_max_attempts: 3,
+          p_window_minutes: 60
+        })
+        
+        console.log('Rate limit check result:', { rateLimitOk, rateLimitError })
+        
+        if (rateLimitError) {
+          console.error('Rate limit check error:', rateLimitError)
+          // Continue anyway for testing
+        } else if (!rateLimitOk) {
+          throw new Error('Too many verification attempts. Please try again later.')
+        }
+      } catch (rateLimitCheckError) {
+        console.error('Rate limit check failed:', rateLimitCheckError)
+        // Continue anyway for testing
+      }
+
+      // Generate 6-digit code
+      const verificationCode = Math.floor(100000 + Math.random() * 900000).toString()
+
+      // Store verification token
+      const { error: tokenError } = await supabaseClient
+        .from('support_email_verification_tokens')
+        .insert({
+          email,
+          token: verificationCode,
+          ip_address: ip === 'unknown' ? null : ip,
+        })
+
+      if (tokenError) {
+        console.error('Token creation error:', tokenError)
+        console.error('Token data:', { email, token: verificationCode, ip_address: ip === 'unknown' ? null : ip })
+        throw new Error(`Failed to create verification token: ${tokenError.message}`)
+      }
+
+      // Queue verification email
+      console.log('Attempting to insert into email_queue with data:', {
+        to_email: email,
+        subject: 'Car Audio Events - Support Request Verification',
+        priority: 1,
+        metadata: { type: 'support_verification' }
+      })
+      
+      const { data: emailData, error: emailError } = await supabaseClient
+        .from('email_queue')
+        .insert({
+          to_email: email,
+          subject: 'Car Audio Events - Support Request Verification',
+          html_content: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #333;">Verify Your Email</h2>
+              <p>You're almost done! Please enter this verification code to submit your support request:</p>
+              <div style="background-color: #f0f0f0; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px;">
+                <h1 style="font-size: 36px; letter-spacing: 8px; margin: 0; font-family: monospace;">${verificationCode}</h1>
+              </div>
+              <p style="color: #666; font-size: 14px;">This code will expire in 1 hour.</p>
+              <p style="color: #666; font-size: 14px;">If you didn't request this verification, please ignore this email.</p>
+            </div>
+          `,
+          priority: 1, // high priority as integer
+          metadata: { type: 'support_verification' }
+        })
+        .select()
+
+      if (emailError) {
+        console.error('Email queue error:', emailError)
+        console.error('Email queue error details:', {
+          message: emailError.message,
+          details: emailError.details,
+          hint: emailError.hint,
+          code: emailError.code
+        })
+        throw new Error(`Failed to send verification email: ${emailError.message}`)
+      }
+      
+      console.log('Email queue insert successful:', emailData)
+
+      return new Response(
+        JSON.stringify({ success: true, message: 'Verification email sent' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+
+    } else if (action === 'verify') {
+      if (!code || code.length !== 6) {
+        throw new Error('Invalid verification code')
+      }
+
+      // Verify the code
+      const { data: token, error: tokenError } = await supabaseClient
+        .from('support_email_verification_tokens')
+        .select('*')
+        .eq('email', email)
+        .eq('token', code)
+        .is('used_at', null)
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      if (tokenError || !token) {
+        // Increment attempts on the most recent token
+        await supabaseClient
+          .from('support_email_verification_tokens')
+          .update({ attempts: token?.attempts ? token.attempts + 1 : 1 })
+          .eq('email', email)
+          .is('used_at', null)
+          .order('created_at', { ascending: false })
+          .limit(1)
+
+        throw new Error('Invalid or expired verification code')
+      }
+
+      // Mark token as used
+      const { error: updateError } = await supabaseClient
+        .from('support_email_verification_tokens')
+        .update({ used_at: new Date().toISOString() })
+        .eq('id', token.id)
+
+      if (updateError) {
+        console.error('Token update error:', updateError)
+        throw new Error('Failed to verify email')
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, verified: true, email }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+
+    } else {
+      throw new Error('Invalid action')
+    }
+
+  } catch (error) {
+    console.error('Support email verification error:', error)
+    return new Response(
+      JSON.stringify({ 
+        error: error.message || 'An error occurred during email verification' 
+      }),
+      { 
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      },
+    )
+  }
+})

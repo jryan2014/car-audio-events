@@ -49,31 +49,92 @@ export default function NotificationManager() {
   };
 
   const loadRecentNotifications = async () => {
-    const { data, error } = await supabase
-      .from('notifications')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(10);
+    try {
+      // Get unique notifications with recipient count using RPC function
+      const { data, error } = await supabase.rpc('get_admin_recent_notifications', {
+        limit_count: 10
+      });
 
-    if (!error && data) {
-      // Fetch user details separately
-      const userIds = [...new Set(data.map(n => n.user_id))];
-      const { data: users } = await supabase
+      if (error) {
+        // Fallback to direct query if RPC doesn't exist
+        console.warn('RPC function not available, using fallback query');
+        const fallbackData = await loadRecentNotificationsFallback();
+        setRecentNotifications(fallbackData);
+        return;
+      }
+
+      // Get admin details
+      const adminIds = [...new Set(data.map(n => n.created_by).filter(Boolean))];
+      const { data: admins } = await supabase
         .from('users')
         .select('id, name, email')
-        .in('id', userIds);
+        .in('id', adminIds);
 
-      // Map user details to notifications
-      const notificationsWithUsers = data.map(notif => {
-        const user = users?.find(u => u.id === notif.user_id);
+      // Map admin details to notifications
+      const notificationsWithAdmins = data.map(notif => {
+        const admin = admins?.find(a => a.id === notif.created_by);
         return {
           ...notif,
-          users: user
+          admin: admin
         };
       });
 
-      setRecentNotifications(notificationsWithUsers);
+      setRecentNotifications(notificationsWithAdmins);
+    } catch (error) {
+      console.error('Error loading recent notifications:', error);
+      const fallbackData = await loadRecentNotificationsFallback();
+      setRecentNotifications(fallbackData);
     }
+  };
+
+  const loadRecentNotificationsFallback = async () => {
+    // Fallback method - get distinct notifications by title, message, type
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .not('created_by', 'is', null) // Only admin-created notifications
+      .order('created_at', { ascending: false })
+      .limit(50); // Get more to filter
+
+    if (error || !data) return [];
+
+    // Group by unique content
+    const uniqueNotifications = new Map();
+    
+    for (const notif of data) {
+      const key = `${notif.title}|${notif.message}|${notif.type}`;
+      const existing = uniqueNotifications.get(key);
+      
+      if (!existing || new Date(notif.created_at) > new Date(existing.created_at)) {
+        uniqueNotifications.set(key, notif);
+      }
+    }
+
+    // Get recipient counts and admin details
+    const results = await Promise.all(
+      Array.from(uniqueNotifications.values()).slice(0, 10).map(async (notif) => {
+        const { count } = await supabase
+          .from('notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('title', notif.title)
+          .eq('message', notif.message)
+          .eq('type', notif.type);
+
+        const { data: admin } = await supabase
+          .from('users')
+          .select('id, name, email')
+          .eq('id', notif.created_by)
+          .single();
+
+        return {
+          ...notif,
+          recipient_count: count || 0,
+          admin: admin
+        };
+      })
+    );
+
+    return results;
   };
 
   const handleSendNotification = async () => {
@@ -174,19 +235,34 @@ export default function NotificationManager() {
     }
   };
 
-  const handleDeleteNotification = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this notification?')) return;
+  const handleDeleteNotification = async (notif: any) => {
+    const recipientText = notif.recipient_count > 1 
+      ? `all ${notif.recipient_count} copies of this notification`
+      : 'this notification';
+    
+    if (!confirm(`Are you sure you want to delete ${recipientText}?`)) return;
 
-    const { error } = await supabase
-      .from('notifications')
-      .delete()
-      .eq('id', id);
+    try {
+      // Delete all notifications with the same title, message, type, and created_by
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('title', notif.title)
+        .eq('message', notif.message)
+        .eq('type', notif.type)
+        .eq('created_by', notif.created_by);
 
-    if (error) {
+      if (error) {
+        showError('Delete Failed', error.message);
+      } else {
+        const deletedText = notif.recipient_count > 1 
+          ? `Deleted ${notif.recipient_count} notifications`
+          : 'Deleted notification';
+        showSuccess('Deleted', deletedText);
+        loadRecentNotifications();
+      }
+    } catch (error: any) {
       showError('Delete Failed', error.message);
-    } else {
-      showSuccess('Deleted', 'Notification deleted successfully');
-      loadRecentNotifications();
     }
   };
 
@@ -410,14 +486,16 @@ export default function NotificationManager() {
                         <p className="text-electric-400 text-sm mt-1">Link: {notif.link}</p>
                       )}
                       <p className="text-gray-500 text-xs mt-2">
-                        Sent to: {notif.users?.name || notif.users?.email || 'Unknown'} • 
+                        Sent to: {notif.recipient_count} user{notif.recipient_count !== 1 ? 's' : ''} • 
+                        By: {notif.admin?.name || notif.admin?.email || 'Unknown Admin'} • 
                         {new Date(notif.created_at).toLocaleString()}
                       </p>
                     </div>
                   </div>
                   <button
-                    onClick={() => handleDeleteNotification(notif.id)}
+                    onClick={() => handleDeleteNotification(notif)}
                     className="text-gray-400 hover:text-red-400 transition-colors"
+                    title={`Delete notification sent to ${notif.recipient_count} user${notif.recipient_count !== 1 ? 's' : ''}`}
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>

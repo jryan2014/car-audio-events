@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { usePermissions } from '../hooks/usePermissions';
 import EventForm from '../components/EventForm/EventForm';
 import { EventFormData, EventCategory, Organization, DatabaseUser } from '../types/event';
+import { formatDateForDatabase } from '../utils/dateHelpers';
 
 export default function CreateEvent() {
   const { user } = useAuth();
@@ -119,9 +120,9 @@ export default function CreateEvent() {
         description: formData.description,
         category_id: formData.category_id,
         category: selectedCategory?.name || 'Competition', // Legacy field
-        start_date: formData.start_date,
-        end_date: formData.end_date,
-        registration_deadline: formData.registration_deadline || null,
+        start_date: formatDateForDatabase(formData.start_date),
+        end_date: formatDateForDatabase(formData.end_date),
+        registration_deadline: formatDateForDatabase(formData.registration_deadline),
         max_participants: formData.max_participants,
         ticket_price: formData.registration_fee,
         member_price: formData.member_price || 0,
@@ -175,23 +176,6 @@ export default function CreateEvent() {
         .single();
 
       if (error) throw error;
-
-      // Save multiple categories if any were selected
-      if (data && formData.category_ids && formData.category_ids.length > 0) {
-        const categoriesData = formData.category_ids.map(categoryId => ({
-          event_id: data.id,
-          category_id: categoryId
-        }));
-
-        const { error: categoriesError } = await supabase
-          .from('event_categories_junction')
-          .insert(categoriesData);
-
-        if (categoriesError) {
-          console.error('Error saving event categories:', categoriesError);
-          // Don't throw - event was created successfully
-        }
-      }
 
       // Save competition classes if any were selected
       if (data && formData.competition_classes && formData.competition_classes.length > 0) {

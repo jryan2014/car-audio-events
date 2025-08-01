@@ -71,6 +71,13 @@ const NewsletterConfirm = React.lazy(() => import('./pages/NewsletterConfirm'));
 const NewsletterUnsubscribe = React.lazy(() => import('./pages/NewsletterUnsubscribe'));
 const AdminNewsletterManager = React.lazy(() => import('./pages/AdminNewsletterManager'));
 
+// Support Desk components
+const PublicSupportForm = React.lazy(() => import('./modules/support-desk/components/public/PublicSupportForm'));
+const SupportSuccess = React.lazy(() => import('./modules/support-desk/components/public/SupportSuccess'));
+const SupportDashboard = React.lazy(() => import('./modules/support-desk/components/user/SupportDashboard'));
+const AdminSupportDashboard = React.lazy(() => import('./modules/support-desk/components/admin/AdminSupportDashboard'));
+const OrgSupportDashboard = React.lazy(() => import('./modules/support-desk/components/organization/OrgSupportDashboard'));
+
 // Loading component for Suspense fallback
 const LoadingSpinner = () => (
   <div className="flex items-center justify-center min-h-[200px]">
@@ -140,6 +147,13 @@ function App() {
               <Route path="/directory/create" element={<Layout><ProtectedRoute><CreateDirectoryListing /></ProtectedRoute></Layout>} />
               <Route path="/directory/pending" element={<Layout><DirectoryListingPending /></Layout>} />
               <Route path="/claim-organization/:organizationId" element={<Layout><ClaimOrganization /></Layout>} />
+              
+              {/* Support Routes */}
+              <Route path="/support" element={<Layout><Suspense fallback={<LoadingSpinner />}><PublicSupportForm /></Suspense></Layout>} />
+              <Route path="/support/success" element={<Layout><Suspense fallback={<LoadingSpinner />}><SupportSuccess /></Suspense></Layout>} />
+              <Route path="/dashboard/support/*" element={<Layout><ProtectedRoute requireProfileComplete={true}><Suspense fallback={<LoadingSpinner />}><SupportDashboard /></Suspense></ProtectedRoute></Layout>} />
+              <Route path="/organization/support/*" element={<Layout><ProtectedRoute requireProfileComplete={true}><Suspense fallback={<LoadingSpinner />}><OrgSupportDashboard /></Suspense></ProtectedRoute></Layout>} />
+              
               <Route path="/login" element={<Layout><Login /></Layout>} />
               <Route path="/register" element={<Layout><Register /></Layout>} />
               <Route path="/forgot-password" element={<Layout><ForgotPassword /></Layout>} />
@@ -188,6 +202,7 @@ function App() {
               <Route path="/admin/billing" element={<AdminLayout><AdminBilling /></AdminLayout>} />
               <Route path="/admin/billing-configuration" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminBillingConfiguration /></Suspense></AdminLayout>} />
               <Route path="/admin/newsletter" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminNewsletterManager /></Suspense></AdminLayout>} />
+              <Route path="/admin/support/*" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminSupportDashboard /></Suspense></AdminLayout>} />
             </Routes>
           </Suspense>
           <CookieConsent />

@@ -126,3 +126,38 @@ export function formatTime12Hour(time24: string | null | undefined): string {
     return time24; // Return original on error
   }
 }
+
+/**
+ * Convert a datetime-local input value to a PostgreSQL timestamp with time zone
+ * This ensures the date and time are properly preserved when saving to the database
+ */
+export function formatDateForDatabase(dateString: string | null | undefined): string | null {
+  if (!dateString) return null;
+  
+  try {
+    // If it's already in the YYYY-MM-DDTHH:mm format from datetime-local input
+    if (dateString.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)) {
+      // Append seconds and timezone to make it a valid ISO string
+      // This preserves the exact time entered by the user
+      return `${dateString}:00`;
+    }
+    
+    // If it has seconds already, just return it
+    if (dateString.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)) {
+      return dateString;
+    }
+    
+    // For other formats, parse and convert
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      console.warn('Invalid date for database:', dateString);
+      return null;
+    }
+    
+    // Return ISO string which PostgreSQL handles correctly
+    return date.toISOString();
+  } catch (error) {
+    console.error('Error formatting date for database:', error, dateString);
+    return null;
+  }
+}

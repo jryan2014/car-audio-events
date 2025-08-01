@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, X, User, Calendar, MapPin, Users, LogOut, Settings, Shield, Package, BarChart3, Target, FileText, Building2, ChevronDown, Search, CreditCard } from 'lucide-react';
+import { Menu, X, User, Calendar, MapPin, Users, LogOut, Settings, Shield, Package, BarChart3, Target, FileText, Building2, ChevronDown, Search, CreditCard, MessageSquare } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import MegaMenu from './MegaMenu';
 import MobileMegaMenu from './MobileMegaMenu';
@@ -142,6 +142,15 @@ export default function Header() {
                         </Link>
                         
                         <Link
+                          to="/dashboard/support"
+                          onClick={handleDropdownLinkClick}
+                          className="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700/50 rounded-lg transition-colors duration-200"
+                        >
+                          <MessageSquare className="h-4 w-4" />
+                          <span>Support</span>
+                        </Link>
+                        
+                        <Link
                           to="/billing"
                           onClick={handleDropdownLinkClick}
                           className="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700/50 rounded-lg transition-colors duration-200"
@@ -167,14 +176,24 @@ export default function Header() {
                               </Link>
                               
                               {user.membershipType === 'organization' && (
-                                <Link
-                                  to="/admin/organizations"
-                                  onClick={handleDropdownLinkClick}
-                                  className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
-                                >
-                                  <Building2 className="h-3 w-3" />
-                                  <span>My Organization</span>
-                                </Link>
+                                <>
+                                  <Link
+                                    to="/admin/organizations"
+                                    onClick={handleDropdownLinkClick}
+                                    className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
+                                  >
+                                    <Building2 className="h-3 w-3" />
+                                    <span>My Organization</span>
+                                  </Link>
+                                  <Link
+                                    to="/organization/support"
+                                    onClick={handleDropdownLinkClick}
+                                    className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
+                                  >
+                                    <MessageSquare className="h-3 w-3" />
+                                    <span>Support</span>
+                                  </Link>
+                                </>
                               )}
                             </div>
                           </>
@@ -257,6 +276,15 @@ export default function Header() {
                               >
                                 <BarChart3 className="h-3 w-3" />
                                 <span>Analytics</span>
+                              </Link>
+                              
+                              <Link
+                                to="/admin/support"
+                                onClick={handleDropdownLinkClick}
+                                className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
+                              >
+                                <MessageSquare className="h-3 w-3" />
+                                <span>Support</span>
                               </Link>
                             </div>
                           </>
