@@ -74,6 +74,12 @@ const HCaptcha = forwardRef<HCaptchaRef, HCaptchaProps>(({
 
   const renderCaptcha = async () => {
     if (!captchaRef.current) return;
+    
+    // Check if captcha is already rendered
+    if (widgetID.current !== null) return;
+    
+    // Check if container already has a captcha
+    if (captchaRef.current.querySelector('.h-captcha')) return;
 
     const siteKey = import.meta.env.VITE_HCAPTCHA_SITE_KEY || 'acc27e90-e7ae-451e-bbfa-c738c53420fe';
     if (!siteKey) {
@@ -83,7 +89,7 @@ const HCaptcha = forwardRef<HCaptchaRef, HCaptchaProps>(({
 
     await loadHCaptchaScript();
 
-    if (window.hcaptcha && captchaRef.current) {
+    if (window.hcaptcha && captchaRef.current && widgetID.current === null) {
       try {
         widgetID.current = window.hcaptcha.render(captchaRef.current, {
           sitekey: siteKey,
@@ -100,12 +106,22 @@ const HCaptcha = forwardRef<HCaptchaRef, HCaptchaProps>(({
   };
 
   useEffect(() => {
-    renderCaptcha();
+    let mounted = true;
+    
+    const initCaptcha = async () => {
+      if (mounted) {
+        await renderCaptcha();
+      }
+    };
+    
+    initCaptcha();
 
     return () => {
+      mounted = false;
       if (widgetID.current && window.hcaptcha) {
         try {
           window.hcaptcha.remove(widgetID.current);
+          widgetID.current = null;
         } catch (error) {
           console.error('Error removing hCaptcha widget:', error);
         }

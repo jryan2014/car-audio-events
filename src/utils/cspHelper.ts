@@ -112,12 +112,12 @@ export const auditCSPCompliance = (): {
 export const buildEnhancedCSP = (nonce: string): string => {
   const policies = [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' https://js.stripe.com https://maps.googleapis.com https://maps.gstatic.com https://www.google.com https://cdn.tiny.cloud https://*.tinymce.com blob:`,
+    `script-src 'self' 'nonce-${nonce}' https://js.stripe.com https://maps.googleapis.com https://maps.gstatic.com https://www.google.com https://cdn.tiny.cloud https://*.tinymce.com https://js.hcaptcha.com https://*.hcaptcha.com blob:`,
     `style-src 'self' 'nonce-${nonce}' https://fonts.googleapis.com https://cdn.tiny.cloud https://*.tinymce.com`,
     "img-src 'self' data: https: https://images.unsplash.com https://*.unsplash.com https://images.pexels.com https://*.pexels.com https://maps.googleapis.com https://maps.gstatic.com https://sp.tinymce.com https://cdn.tiny.cloud",
     "font-src 'self' https://fonts.gstatic.com",
-    "connect-src 'self' https://nqvisvranvjaghvrdaaz.supabase.co wss://nqvisvranvjaghvrdaaz.supabase.co https://api.stripe.com https://maps.googleapis.com https://maps.gstatic.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.tiny.cloud https://*.tinymce.com https://nominatim.openstreetmap.org https://api.openai.com https://api.stability.ai",
-    "frame-src 'self' https://js.stripe.com https://www.google.com",
+    "connect-src 'self' https://nqvisvranvjaghvrdaaz.supabase.co wss://nqvisvranvjaghvrdaaz.supabase.co https://api.stripe.com https://maps.googleapis.com https://maps.gstatic.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.tiny.cloud https://*.tinymce.com https://nominatim.openstreetmap.org https://api.openai.com https://api.stability.ai https://hcaptcha.com https://*.hcaptcha.com",
+    "frame-src 'self' https://js.stripe.com https://www.google.com https://hcaptcha.com https://*.hcaptcha.com",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

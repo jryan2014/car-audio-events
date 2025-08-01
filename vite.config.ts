@@ -20,7 +20,9 @@ const csp = `
     https://www.google.com
     https://maps.gstatic.com
     https://cdn.tiny.cloud
-    https://*.tinymce.com;
+    https://*.tinymce.com
+    https://js.hcaptcha.com
+    https://*.hcaptcha.com;
   style-src 'self' 'unsafe-inline' 
     https://fonts.googleapis.com
     https://cdn.tiny.cloud
@@ -40,11 +42,15 @@ const csp = `
     https://api.openai.com
     https://api.stability.ai
     https://cdn.tiny.cloud
-    https://*.tinymce.com;
+    https://*.tinymce.com
+    https://hcaptcha.com
+    https://*.hcaptcha.com;
   frame-src 'self' 
     https://www.google.com 
     https://maps.google.com
-    https://js.stripe.com;
+    https://js.stripe.com
+    https://hcaptcha.com
+    https://*.hcaptcha.com;
   object-src 'none';
   base-uri 'self';
   form-action 'self' https://api.stripe.com;
