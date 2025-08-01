@@ -112,6 +112,9 @@ export const supportEmailService = {
       const template = await this.getTemplate(templateName);
       
       // Prepare template variables
+      // Use base URL from environment or fallback to safe default
+      const baseUrl = import.meta.env?.VITE_BASE_URL || 'https://caraudioevents.com';
+      
       const variables: Record<string, string> = {
         ticketNumber: ticket.ticket_number,
         firstName: toName,
@@ -123,9 +126,9 @@ export const supportEmailService = {
         resolutionDate: new Date().toLocaleDateString(),
         resolutionTime: this.calculateResolutionTime(ticket),
         resolutionSummary: message || 'Your ticket has been resolved.',
-        feedbackUrl: `${window.location.origin}/support/feedback/${ticket.id}`,
+        feedbackUrl: `${baseUrl}/support/feedback/${ticket.id}`,
         companyName: 'Car Audio Events',
-        ticketUrl: `${window.location.origin}/dashboard/support/ticket/${ticket.id}`
+        ticketUrl: `${baseUrl}/dashboard/support/ticket/${ticket.id}`
       };
       
       let subject = '';
@@ -158,23 +161,20 @@ export const supportEmailService = {
         }
       };
 
-      const { error } = await supabase
-        .from('email_queue')
-        .insert({
-          to_email: toEmail,
-          subject,
-          html_content: htmlContent,
-          priority: getPriorityNumber(ticket.priority),
-          status: 'pending',
-          created_at: new Date().toISOString(),
-          template_id: template?.id,
-          metadata: {
-            type: 'support_notification',
-            ticket_id: ticket.id,
-            action,
-            variables
-          }
-        });
+      // Use RPC function to queue email (bypasses RLS restrictions)
+      const { error } = await supabase.rpc('queue_support_email', {
+        p_to_email: toEmail,
+        p_subject: subject,
+        p_html_content: htmlContent,
+        p_priority: getPriorityNumber(ticket.priority),
+        p_template_id: template?.id,
+        p_metadata: {
+          type: 'support_notification',
+          ticket_id: ticket.id,
+          action,
+          variables
+        }
+      });
         
       if (error) {
         console.error('Error queueing support email:', error);
@@ -255,7 +255,8 @@ export const supportEmailService = {
         `;
     }
     
-    content += `<hr><p>View ticket: <a href="${window.location.origin}/dashboard/support/ticket/${ticket.id}">Click here</a></p>`;
+    const baseUrl = import.meta.env?.VITE_BASE_URL || 'https://caraudioevents.com';
+    content += `<hr><p>View ticket: <a href="${baseUrl}/dashboard/support/ticket/${ticket.id}">Click here</a></p>`;
     return content;
   },
   
