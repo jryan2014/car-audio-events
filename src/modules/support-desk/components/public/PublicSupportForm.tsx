@@ -393,7 +393,8 @@ const PublicSupportForm: React.FC = () => {
               onChange={handleInputChange}
               required
               maxLength={200}
-              className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
+              className="mt-1 block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
+              placeholder="Brief summary of your issue"
             />
           </div>
           
@@ -409,29 +410,31 @@ const PublicSupportForm: React.FC = () => {
               onChange={handleInputChange}
               required
               rows={6}
-              className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
+              className="mt-1 block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
               placeholder="Please provide as much detail as possible..."
             />
           </div>
           
-          {/* Priority */}
-          <div>
-            <label htmlFor="priority" className="block text-sm font-medium text-gray-300">
-              Priority
-            </label>
-            <select
-              id="priority"
-              name="priority"
-              value={formData.priority}
-              onChange={handleInputChange}
-              className="mt-1 block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white focus:border-electric-500 focus:ring-electric-500"
-            >
-              <option value="low">Low</option>
-              <option value="normal">Normal</option>
-              <option value="high">High</option>
-              {user && <option value="urgent">Urgent</option>}
-            </select>
-          </div>
+          {/* Priority - Only show for authenticated users */}
+          {user && (
+            <div>
+              <label htmlFor="priority" className="block text-sm font-medium text-gray-300">
+                Priority
+              </label>
+              <select
+                id="priority"
+                name="priority"
+                value={formData.priority}
+                onChange={handleInputChange}
+                className="mt-1 block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white focus:border-electric-500 focus:ring-electric-500"
+              >
+                <option value="low">Low</option>
+                <option value="normal">Normal</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </div>
+          )}
           
           {/* Custom Fields */}
           {customFields.map(field => (

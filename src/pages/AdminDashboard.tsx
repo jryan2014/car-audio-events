@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Calendar, DollarSign, TrendingUp, Activity, Shield, AlertTriangle, CheckCircle, UserCheck, FileText, Target, Settings, Archive, Mail, Building2, Menu, Brain, Zap } from '../components/icons';
+import { Users, Calendar, DollarSign, TrendingUp, Activity, Shield, AlertTriangle, CheckCircle, UserCheck, FileText, Target, Settings, Archive, Mail, Building2, Menu, Brain, Zap, MessageSquare } from '../components/icons';
+import { Bell } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -22,6 +23,7 @@ interface DashboardStats {
   aiImagesGenerated: number;
   aiWritingRequests: number;
   aiTotalCost: number;
+  supportTickets: number;
 }
 
 interface RecentActivity {
@@ -47,7 +49,8 @@ export default function AdminDashboard() {
     publishedPages: 0,
     aiImagesGenerated: 0,
     aiWritingRequests: 0,
-    aiTotalCost: 0
+    aiTotalCost: 0,
+    supportTickets: 0
   });
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -98,6 +101,12 @@ export default function AdminDashboard() {
         realStats.publishedPages = pagesData.filter(page => page.status === 'published').length;
       }
 
+      // Load support tickets count
+      const { data: ticketsData, count: ticketsCount } = await supabase
+        .from('support_tickets')
+        .select('*', { count: 'exact', head: true })
+        .in('status', ['open', 'in_progress', 'waiting_on_user']);
+      
       // Load real AI stats for admin
       let aiStats = { aiImagesGenerated: 0, aiWritingRequests: 0, aiTotalCost: 0 };
       try {
@@ -131,7 +140,8 @@ export default function AdminDashboard() {
         publishedPages: realStats.publishedPages ?? 0,
         aiImagesGenerated: aiStats.aiImagesGenerated,
         aiWritingRequests: aiStats.aiWritingRequests,
-        aiTotalCost: aiStats.aiTotalCost
+        aiTotalCost: aiStats.aiTotalCost,
+        supportTickets: ticketsCount ?? 0
       };
 
       setStats(finalStats);
@@ -178,7 +188,8 @@ export default function AdminDashboard() {
         publishedPages: 0,
         aiImagesGenerated: 0,
         aiWritingRequests: 0,
-        aiTotalCost: 0
+        aiTotalCost: 0,
+        supportTickets: 0
       });
       setRecentActivity([]);
     } finally {
@@ -393,6 +404,16 @@ export default function AdminDashboard() {
               <DollarSign className="h-8 w-8 text-emerald-500" />
             </div>
           </div>
+
+          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-400 text-sm">Support Tickets</p>
+                <p className="text-2xl font-bold text-white">{stats.supportTickets}</p>
+              </div>
+              <MessageSquare className="h-8 w-8 text-rose-500" />
+            </div>
+          </div>
         </div>
 
         {/* Quick Actions */}
@@ -575,6 +596,45 @@ export default function AdminDashboard() {
               <div>
                 <h3 className="text-white font-semibold">AI Management</h3>
                 <p className="text-gray-400 text-sm">Configure AI services and view usage analytics</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            to="/admin/support"
+            className="bg-gradient-to-br from-rose-500/20 to-rose-600/20 border border-rose-500/30 rounded-xl p-6 hover:from-rose-500/30 hover:to-rose-600/30 transition-all duration-200 group"
+          >
+            <div className="flex items-center space-x-3">
+              <MessageSquare className="h-8 w-8 text-rose-400 group-hover:scale-110 transition-transform" />
+              <div>
+                <h3 className="text-white font-semibold">Support System</h3>
+                <p className="text-gray-400 text-sm">Manage support tickets and responses</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            to="/admin/newsletter"
+            className="bg-gradient-to-br from-violet-500/20 to-violet-600/20 border border-violet-500/30 rounded-xl p-6 hover:from-violet-500/30 hover:to-violet-600/30 transition-all duration-200 group"
+          >
+            <div className="flex items-center space-x-3">
+              <Mail className="h-8 w-8 text-violet-400 group-hover:scale-110 transition-transform" />
+              <div>
+                <h3 className="text-white font-semibold">Newsletter Manager</h3>
+                <p className="text-gray-400 text-sm">Create and send newsletters</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            to="/admin/notifications"
+            className="bg-gradient-to-br from-amber-500/20 to-amber-600/20 border border-amber-500/30 rounded-xl p-6 hover:from-amber-500/30 hover:to-amber-600/30 transition-all duration-200 group"
+          >
+            <div className="flex items-center space-x-3">
+              <Bell className="h-8 w-8 text-amber-400 group-hover:scale-110 transition-transform" />
+              <div>
+                <h3 className="text-white font-semibold">Notification Manager</h3>
+                <p className="text-gray-400 text-sm">Send platform notifications</p>
               </div>
             </div>
           </Link>
