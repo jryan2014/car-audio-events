@@ -224,27 +224,83 @@ const TicketDetail: React.FC<TicketDetailProps> = ({
             </div>
           )}
           {ticket.event && (
-            <div>
+            <div className="col-span-full">
               <span className="text-gray-500">Event:</span>
-              <span className="ml-2 text-gray-900 dark:text-white">
-                {ticket.event.event_name || ticket.event.title}
-              </span>
+              <div className="ml-2 inline-flex items-center gap-3">
+                <a
+                  href={`/events/${ticket.event.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-electric-500 hover:text-electric-400 underline inline-flex items-center gap-1"
+                >
+                  {ticket.event.event_name || ticket.event.title}
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
+                {canManage && (
+                  <>
+                    <span className="text-gray-500">|</span>
+                    <a
+                      href={`/events/${ticket.event.id}/edit`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-gray-400 hover:text-gray-300 text-sm inline-flex items-center gap-1"
+                    >
+                      Edit Event
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                  </>
+                )}
+              </div>
             </div>
           )}
           {ticket.related_invoice && (
-            <div>
+            <div className="col-span-full">
               <span className="text-gray-500">Invoice:</span>
-              <span className="ml-2 text-gray-900 dark:text-white">
-                {ticket.related_invoice.stripe_invoice_id} - ${(ticket.related_invoice.amount_due / 100).toFixed(2)}
-              </span>
+              <div className="ml-2 inline-flex items-center gap-2">
+                <span className="text-gray-900 dark:text-white">
+                  {ticket.related_invoice.stripe_invoice_id} - ${(ticket.related_invoice.amount_due / 100).toFixed(2)}
+                </span>
+                {canManage && (
+                  <a
+                    href={`/admin/billing?search=${ticket.related_invoice.stripe_invoice_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-electric-500 hover:text-electric-400 text-sm inline-flex items-center gap-1"
+                  >
+                    View in Billing
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
+                )}
+              </div>
             </div>
           )}
           {ticket.related_transaction && (
-            <div>
+            <div className="col-span-full">
               <span className="text-gray-500">Transaction:</span>
-              <span className="ml-2 text-gray-900 dark:text-white">
-                {ticket.related_transaction.description || ticket.related_transaction.provider_transaction_id} - ${(ticket.related_transaction.amount / 100).toFixed(2)}
-              </span>
+              <div className="ml-2 inline-flex items-center gap-2">
+                <span className="text-gray-900 dark:text-white">
+                  {ticket.related_transaction.description || ticket.related_transaction.provider_transaction_id} - ${(ticket.related_transaction.amount / 100).toFixed(2)}
+                </span>
+                {canManage && (
+                  <a
+                    href={`/admin/billing?search=${ticket.related_transaction.provider_transaction_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-electric-500 hover:text-electric-400 text-sm inline-flex items-center gap-1"
+                  >
+                    View in Billing
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
+                )}
+              </div>
             </div>
           )}
           <div>
