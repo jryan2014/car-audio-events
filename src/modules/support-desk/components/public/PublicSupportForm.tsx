@@ -197,49 +197,52 @@ const PublicSupportForm: React.FC = () => {
   
   if (success) {
     return (
-      <div className="max-w-2xl mx-auto p-6">
-        <div className="bg-green-50 border border-green-200 rounded-lg p-8 text-center">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Support Ticket Created Successfully!
-          </h2>
-          <p className="text-gray-600 mb-4">
-            Your support request has been submitted. We'll get back to you as soon as possible.
-          </p>
-          {user ? (
-            <p className="text-sm text-gray-500">Redirecting to your ticket...</p>
-          ) : (
-            <p className="text-sm text-gray-500">
-              You'll receive an email confirmation at {verifiedEmail || formData.email}
+      <div className="min-h-screen bg-gray-900 text-white">
+        <div className="max-w-2xl mx-auto p-6">
+          <div className="bg-green-900/20 border border-green-700 rounded-lg p-8 text-center">
+            <div className="w-16 h-16 bg-green-800/50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-2">
+              Support Ticket Created Successfully!
+            </h2>
+            <p className="text-gray-300 mb-4">
+              Your support request has been submitted. We'll get back to you as soon as possible.
             </p>
-          )}
+            {user ? (
+              <p className="text-sm text-gray-400">Redirecting to your ticket...</p>
+            ) : (
+              <p className="text-sm text-gray-400">
+                You'll receive an email confirmation at {verifiedEmail || formData.email}
+              </p>
+            )}
+          </div>
         </div>
       </div>
     );
   }
   
   return (
-    <div className="max-w-2xl mx-auto p-6">
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-          Contact Support
-        </h1>
-        
-        {error && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
-            <p className="text-sm text-red-600">{error}</p>
-          </div>
-        )}
+    <div className="min-h-screen bg-gray-900 text-white">
+      <div className="max-w-2xl mx-auto p-6">
+        <div className="bg-gray-800/50 border border-gray-700 rounded-lg shadow-md p-6">
+          <h1 className="text-2xl font-bold text-white mb-6">
+            Contact Support
+          </h1>
+          
+          {error && (
+            <div className="mb-4 p-4 bg-red-900/20 border border-red-700 rounded-md">
+              <p className="text-sm text-red-400">{error}</p>
+            </div>
+          )}
         
         <form id="support-form" onSubmit={handleSubmit} className="space-y-6">
           {/* Email field for public users */}
           {!user && (
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-300">
                 Email Address *
               </label>
               <input
@@ -250,10 +253,10 @@ const PublicSupportForm: React.FC = () => {
                 onChange={handleInputChange}
                 required
                 disabled={!!verifiedEmail}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-100"
+                className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500 disabled:bg-gray-600"
               />
               {verifiedEmail && (
-                <p className="mt-1 text-sm text-green-600">
+                <p className="mt-1 text-sm text-green-400">
                   ✓ Email verified
                 </p>
               )}
@@ -262,7 +265,7 @@ const PublicSupportForm: React.FC = () => {
           
           {/* Request Type */}
           <div>
-            <label htmlFor="request_type_id" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label htmlFor="request_type_id" className="block text-sm font-medium text-gray-300">
               What can we help you with? *
             </label>
             <select
@@ -271,7 +274,7 @@ const PublicSupportForm: React.FC = () => {
               value={formData.request_type_id}
               onChange={handleInputChange}
               required
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white focus:border-electric-500 focus:ring-electric-500"
             >
               <option value="">Select a category</option>
               {requestTypes.map(type => (
@@ -281,7 +284,7 @@ const PublicSupportForm: React.FC = () => {
               ))}
             </select>
             {selectedRequestType?.description && (
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="mt-1 text-sm text-gray-400">
                 {selectedRequestType.description}
               </p>
             )}
@@ -290,7 +293,7 @@ const PublicSupportForm: React.FC = () => {
           {/* Event selector if required */}
           {selectedRequestType?.requires_event && (
             <div>
-              <label htmlFor="event_id" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              <label htmlFor="event_id" className="block text-sm font-medium text-gray-300">
                 Related Event *
               </label>
               <select
@@ -299,7 +302,7 @@ const PublicSupportForm: React.FC = () => {
                 value={formData.event_id || ''}
                 onChange={handleInputChange}
                 required
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white focus:border-electric-500 focus:ring-electric-500"
               >
                 <option value="">Select an event</option>
                 {/* TODO: Load events dynamically */}
@@ -309,7 +312,7 @@ const PublicSupportForm: React.FC = () => {
           
           {/* Title */}
           <div>
-            <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label htmlFor="title" className="block text-sm font-medium text-gray-300">
               Subject *
             </label>
             <input
@@ -320,13 +323,13 @@ const PublicSupportForm: React.FC = () => {
               onChange={handleInputChange}
               required
               maxLength={200}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
             />
           </div>
           
           {/* Description */}
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label htmlFor="description" className="block text-sm font-medium text-gray-300">
               How can we help? *
             </label>
             <textarea
@@ -336,14 +339,14 @@ const PublicSupportForm: React.FC = () => {
               onChange={handleInputChange}
               required
               rows={6}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
               placeholder="Please provide as much detail as possible..."
             />
           </div>
           
           {/* Priority */}
           <div>
-            <label htmlFor="priority" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label htmlFor="priority" className="block text-sm font-medium text-gray-300">
               Priority
             </label>
             <select
@@ -351,7 +354,7 @@ const PublicSupportForm: React.FC = () => {
               name="priority"
               value={formData.priority}
               onChange={handleInputChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white focus:border-electric-500 focus:ring-electric-500"
             >
               <option value="low">Low</option>
               <option value="normal">Normal</option>
@@ -388,7 +391,7 @@ const PublicSupportForm: React.FC = () => {
             <button
               type="submit"
               disabled={loading} /* Temporarily simplified for testing */
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-electric-500 hover:bg-electric-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-electric-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <LoadingSpinner size="small" />
@@ -398,6 +401,7 @@ const PublicSupportForm: React.FC = () => {
             </button>
           </div>
         </form>
+        </div>
       </div>
       
       {/* Email Verification Modal */}
