@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../../../contexts/AuthContext';
 import LoadingSpinner from '../../../../components/LoadingSpinner';
 import { ticketService } from '../../services/supabase-client';
-import type { SupportTicketWithRelations, TicketFilters } from '../../types';
+import type { SupportTicketWithRelations, TicketFilters, TicketStatus } from '../../types';
 
 const TicketList: React.FC = () => {
   const { user } = useAuth();
@@ -14,7 +14,7 @@ const TicketList: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   
   // Filters
-  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<TicketStatus[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   
   useEffect(() => {
@@ -47,7 +47,7 @@ const TicketList: React.FC = () => {
     }
   };
   
-  const handleStatusFilterChange = (status: string) => {
+  const handleStatusFilterChange = (status: TicketStatus) => {
     if (statusFilter.includes(status)) {
       setStatusFilter(statusFilter.filter(s => s !== status));
     } else {
@@ -116,7 +116,7 @@ const TicketList: React.FC = () => {
               Status Filter
             </label>
             <div className="flex flex-wrap gap-2">
-              {['open', 'in_progress', 'waiting_on_user', 'resolved', 'closed'].map(status => (
+              {(['open', 'in_progress', 'waiting_on_user', 'resolved', 'closed'] as TicketStatus[]).map(status => (
                 <label key={status} className="inline-flex items-center">
                   <input
                     type="checkbox"
@@ -137,7 +137,7 @@ const TicketList: React.FC = () => {
       {/* Tickets List */}
       {loading ? (
         <div className="flex justify-center items-center h-64">
-          <LoadingSpinner size="lg" />
+          <LoadingSpinner size="large" />
         </div>
       ) : error ? (
         <div className="bg-red-900/20 border border-red-700 rounded-lg p-4">

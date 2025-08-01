@@ -82,7 +82,8 @@
       "mcp__supabase__list_edge_functions",
       "mcp__playwright__browser_navigate_back",
       "mcp__playwright__browser_handle_dialog",
-      "Bash(wmic process where \"name='node.exe'\" call terminate:*)"
+      "Bash(wmic process where \"name='node.exe'\" call terminate:*)",
+      "Bash(tsc --noEmit)"
     ],
     "deny": []
   },

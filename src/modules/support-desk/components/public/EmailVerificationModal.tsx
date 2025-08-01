@@ -125,7 +125,7 @@ const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
         
         {!verificationSent ? (
           <div className="text-center py-4">
-            <LoadingSpinner size="lg" />
+            <LoadingSpinner size="large" />
             <p className="mt-2 text-sm text-gray-500">
               Sending verification email...
             </p>
@@ -159,7 +159,7 @@ const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
               disabled={loading || verificationCode.length !== 6}
               className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? <LoadingSpinner size="sm" /> : 'Verify Email'}
+              {loading ? <LoadingSpinner size="small" /> : 'Verify Email'}
             </button>
             
             <div className="mt-4 text-center">

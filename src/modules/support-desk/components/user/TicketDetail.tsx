@@ -142,7 +142,7 @@ const TicketDetail: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 text-white flex justify-center items-center">
-        <LoadingSpinner size="lg" />
+        <LoadingSpinner size="large" />
       </div>
     );
   }
@@ -362,7 +362,7 @@ const TicketDetail: React.FC = () => {
                 disabled={messageLoading || !newMessage.trim()}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-electric-500 hover:bg-electric-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-electric-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {messageLoading ? <LoadingSpinner size="sm" /> : 'Send Message'}
+                {messageLoading ? <LoadingSpinner size="small" /> : 'Send Message'}
               </button>
             </div>
           </form>
