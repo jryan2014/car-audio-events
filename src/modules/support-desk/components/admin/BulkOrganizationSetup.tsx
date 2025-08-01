@@ -225,7 +225,7 @@ const BulkOrganizationSetup: React.FC = () => {
                 value={csvContent}
                 onChange={(e) => setCsvContent(e.target.value)}
                 rows={8}
-                className="block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500 font-mono text-sm"
+                className="block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500 font-mono text-sm"
                 placeholder="organization_name&#10;Acme Corporation&#10;Widget Industries"
               />
             </div>

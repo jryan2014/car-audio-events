@@ -61,8 +61,7 @@ serve(async (req) => {
         }
       }
 
-      // Check rate limit (skip for testing)
-      console.log('Checking rate limit for:', email)
+      // Check rate limit
       try {
         const { data: rateLimitOk, error: rateLimitError } = await supabaseClient.rpc('check_support_rate_limit', {
           p_identifier: email,
@@ -72,16 +71,14 @@ serve(async (req) => {
           p_window_minutes: 60
         })
         
-        console.log('Rate limit check result:', { rateLimitOk, rateLimitError })
-        
         if (rateLimitError) {
-          console.error('Rate limit check error:', rateLimitError)
+          console.error('Rate limit check error:', rateLimitError.message)
           // Continue anyway for testing
         } else if (!rateLimitOk) {
           throw new Error('Too many verification attempts. Please try again later.')
         }
       } catch (rateLimitCheckError) {
-        console.error('Rate limit check failed:', rateLimitCheckError)
+        console.error('Rate limit check failed:', rateLimitCheckError.message || 'Unknown error')
         // Continue anyway for testing
       }
 
@@ -98,20 +95,16 @@ serve(async (req) => {
         })
 
       if (tokenError) {
-        console.error('Token creation error:', tokenError)
-        console.error('Token data:', { email, token: verificationCode, ip_address: ip === 'unknown' ? null : ip })
+        console.error('Token creation error:', tokenError.message)
         throw new Error(`Failed to create verification token: ${tokenError.message}`)
       }
 
-      // Queue verification email
-      console.log('Attempting to insert into email_queue with data:', {
-        to_email: email,
-        subject: 'Car Audio Events - Support Request Verification',
-        priority: 1,
-        metadata: { type: 'support_verification' }
-      })
+      // Get base URL from environment or use default
+      const baseUrl = Deno.env.get('SITE_BASE_URL') || 'https://caraudioevents.com';
+      const verificationLink = `${baseUrl}/support/verify?email=${encodeURIComponent(email)}&code=${verificationCode}`;
       
-      const { data: emailData, error: emailError } = await supabaseClient
+      // Queue verification email using the standard email queue
+      const { error: emailError } = await supabaseClient
         .from('email_queue')
         .insert({
           to_email: email,
@@ -119,34 +112,40 @@ serve(async (req) => {
           html_content: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <h2 style="color: #333;">Verify Your Email</h2>
-              <p>You're almost done! Please enter this verification code to submit your support request:</p>
+              <p>You're almost done! Please verify your email to submit your support request.</p>
+              
+              <div style="margin: 30px 0; text-align: center;">
+                <a href="${verificationLink}" 
+                   style="display: inline-block; background-color: #3b82f6; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                  Verify Email Address
+                </a>
+              </div>
+              
+              <p style="color: #666; font-size: 14px;">Or enter this verification code manually:</p>
               <div style="background-color: #f0f0f0; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px;">
                 <h1 style="font-size: 36px; letter-spacing: 8px; margin: 0; font-family: monospace;">${verificationCode}</h1>
               </div>
+              
               <p style="color: #666; font-size: 14px;">This code will expire in 1 hour.</p>
               <p style="color: #666; font-size: 14px;">If you didn't request this verification, please ignore this email.</p>
             </div>
           `,
-          priority: 1, // high priority as integer
-          metadata: { type: 'support_verification' }
+          body: `Car Audio Events - Support Request Verification\n\nYou're almost done! Please verify your email to submit your support request.\n\nClick here to verify: ${verificationLink}\n\nOr enter this verification code manually:\n\n${verificationCode}\n\nThis code will expire in 1 hour.\n\nIf you didn't request this verification, please ignore this email.`,
+          priority: 2, // high priority
+          status: 'pending',
+          metadata: { 
+            type: 'support_verification',
+            email: email
+          }
         })
-        .select()
 
       if (emailError) {
-        console.error('Email queue error:', emailError)
-        console.error('Email queue error details:', {
-          message: emailError.message,
-          details: emailError.details,
-          hint: emailError.hint,
-          code: emailError.code
-        })
-        throw new Error(`Failed to send verification email: ${emailError.message}`)
+        console.error('Email queue error:', emailError.message, emailError.code)
+        throw new Error(`Failed to queue verification email: ${emailError.message}`)
       }
-      
-      console.log('Email queue insert successful:', emailData)
 
       return new Response(
-        JSON.stringify({ success: true, message: 'Verification email sent' }),
+        JSON.stringify({ success: true, message: 'Verification email queued successfully' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
 
@@ -187,7 +186,7 @@ serve(async (req) => {
         .eq('id', token.id)
 
       if (updateError) {
-        console.error('Token update error:', updateError)
+        console.error('Token update error:', updateError.message)
         throw new Error('Failed to verify email')
       }
 
@@ -201,7 +200,7 @@ serve(async (req) => {
     }
 
   } catch (error) {
-    console.error('Support email verification error:', error)
+    console.error('Support email verification error:', error.message || 'Unknown error')
     return new Response(
       JSON.stringify({ 
         error: error.message || 'An error occurred during email verification' 

@@ -161,20 +161,23 @@ export const supportEmailService = {
         }
       };
 
-      // Use RPC function to queue email (bypasses RLS restrictions)
-      const { error } = await supabase.rpc('queue_support_email', {
-        p_to_email: toEmail,
-        p_subject: subject,
-        p_html_content: htmlContent,
-        p_priority: getPriorityNumber(ticket.priority),
-        p_template_id: template?.id,
-        p_metadata: {
-          type: 'support_notification',
-          ticket_id: ticket.id,
-          action,
-          variables
-        }
-      });
+      const { error } = await supabase
+        .from('email_queue')
+        .insert({
+          to_email: toEmail,
+          subject,
+          html_content: htmlContent,
+          priority: getPriorityNumber(ticket.priority),
+          status: 'pending',
+          created_at: new Date().toISOString(),
+          template_id: template?.id,
+          metadata: {
+            type: 'support_notification',
+            ticket_id: ticket.id,
+            action,
+            variables
+          }
+        });
         
       if (error) {
         console.error('Error queueing support email:', error);

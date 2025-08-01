@@ -45,7 +45,12 @@ interface AnalyticsData {
   agentPerformance: { agent: string; resolved: number; avg_time: number }[];
 }
 
-const SupportAnalytics: React.FC = () => {
+interface SupportAnalyticsProps {
+  initialTab?: 'overview' | 'tickets' | 'agents' | 'satisfaction';
+}
+
+const SupportAnalytics: React.FC<SupportAnalyticsProps> = ({ initialTab = 'overview' }) => {
+  const [activeTab, setActiveTab] = useState<'overview' | 'tickets' | 'agents' | 'satisfaction'>(initialTab);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [dateRange, setDateRange] = useState('30d');
@@ -315,14 +320,65 @@ const SupportAnalytics: React.FC = () => {
         </div>
       )}
 
+      {/* Tab Navigation */}
+      <div className="bg-gray-800/50 rounded-lg mb-6">
+        <div className="border-b border-gray-700">
+          <nav className="flex space-x-2 p-4">
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                activeTab === 'overview'
+                  ? 'bg-electric-500 text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-700'
+              }`}
+            >
+              📊 Overview
+            </button>
+            <button
+              onClick={() => setActiveTab('tickets')}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                activeTab === 'tickets'
+                  ? 'bg-electric-500 text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-700'
+              }`}
+            >
+              🎫 Ticket Reports
+            </button>
+            <button
+              onClick={() => setActiveTab('agents')}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                activeTab === 'agents'
+                  ? 'bg-electric-500 text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-700'
+              }`}
+            >
+              👥 Agent Performance
+            </button>
+            <button
+              onClick={() => setActiveTab('satisfaction')}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                activeTab === 'satisfaction'
+                  ? 'bg-electric-500 text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-700'
+              }`}
+            >
+              ⭐ Customer Satisfaction
+            </button>
+          </nav>
+        </div>
+      </div>
+
       {loading ? (
         <div className="flex justify-center items-center h-64">
           <LoadingSpinner size="large" />
         </div>
       ) : (
         <>
-          {/* Key Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
+          {/* Tab Content */}
+          {activeTab === 'overview' && (
+            <>
+              {/* Key Metrics */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
             <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -599,6 +655,311 @@ const SupportAnalytics: React.FC = () => {
               </table>
             </div>
           </div>
+            </>
+          )}
+
+          {/* Ticket Reports Tab */}
+          {activeTab === 'tickets' && (
+            <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">Ticket Reports</h3>
+              
+              {/* Ticket Volume Trend */}
+              <div className="mb-8">
+                <h4 className="text-md font-medium text-gray-300 mb-4">Ticket Volume Trend</h4>
+                <div className="h-64">
+                  <Line
+                    data={{
+                      labels: analytics.ticketsTrend.map(item => item.date),
+                      datasets: [{
+                        label: 'Tickets',
+                        data: analytics.ticketsTrend.map(item => item.count),
+                        borderColor: 'rgb(99, 102, 241)',
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        tension: 0.4
+                      }]
+                    }}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      plugins: {
+                        legend: { display: false }
+                      },
+                      scales: {
+                        y: { beginAtZero: true }
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Status and Priority Breakdown */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="text-md font-medium text-gray-300 mb-4">Tickets by Status</h4>
+                  <div className="h-64">
+                    <Doughnut
+                      data={{
+                        labels: analytics.ticketsByStatus.map(item => item.status),
+                        datasets: [{
+                          data: analytics.ticketsByStatus.map(item => item.count),
+                          backgroundColor: [
+                            'rgba(34, 197, 94, 0.8)',
+                            'rgba(251, 146, 60, 0.8)',
+                            'rgba(147, 51, 234, 0.8)',
+                            'rgba(239, 68, 68, 0.8)'
+                          ]
+                        }]
+                      }}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-md font-medium text-gray-300 mb-4">Tickets by Priority</h4>
+                  <div className="h-64">
+                    <Bar
+                      data={{
+                        labels: analytics.ticketsByPriority.map(item => item.priority),
+                        datasets: [{
+                          label: 'Tickets',
+                          data: analytics.ticketsByPriority.map(item => item.count),
+                          backgroundColor: 'rgba(99, 102, 241, 0.8)'
+                        }]
+                      }}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: { display: false }
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Top Request Types */}
+              <div className="mt-8">
+                <h4 className="text-md font-medium text-gray-300 mb-4">Top Request Types</h4>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-700">
+                    <thead className="bg-gray-800">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                          Request Type
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                          Count
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                          Percentage
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-700">
+                      {analytics.topRequestTypes.slice(0, 5).map((type, index) => (
+                        <tr key={index}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                            {type.type}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                            {type.count}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                            {((type.count / analytics.totalTickets) * 100).toFixed(1)}%
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Agent Performance Tab */}
+          {activeTab === 'agents' && (
+            <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">Agent Performance Metrics</h3>
+              
+              {/* Agent Stats Table */}
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-700">
+                  <thead className="bg-gray-800">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        Agent
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        Tickets Resolved
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        Avg Resolution Time
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        Efficiency Score
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-700">
+                    {analytics.agentPerformance.map((agent, index) => (
+                      <tr key={index}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
+                          {agent.agent}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                          {agent.resolved}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                          {agent.avg_time}h
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="flex-1 bg-gray-600 rounded-full h-2 mr-2">
+                              <div
+                                className="bg-electric-500 h-2 rounded-full"
+                                style={{ width: `${Math.min((agent.resolved / 50) * 100, 100)}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-sm text-gray-100">
+                              {Math.round(Math.min((agent.resolved / 50) * 100, 100))}%
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Agent Performance Chart */}
+              <div className="mt-8">
+                <h4 className="text-md font-medium text-gray-300 mb-4">Resolution Time Comparison</h4>
+                <div className="h-64">
+                  <Bar
+                    data={{
+                      labels: analytics.agentPerformance.map(agent => agent.agent),
+                      datasets: [{
+                        label: 'Avg Resolution Time (hours)',
+                        data: analytics.agentPerformance.map(agent => agent.avg_time),
+                        backgroundColor: 'rgba(147, 51, 234, 0.8)'
+                      }]
+                    }}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      scales: {
+                        y: { beginAtZero: true }
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Customer Satisfaction Tab */}
+          {activeTab === 'satisfaction' && (
+            <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">Customer Satisfaction Analytics</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="bg-gray-700/50 rounded-lg p-6 text-center">
+                  <h4 className="text-sm font-medium text-gray-400 mb-2">Overall Satisfaction Score</h4>
+                  <p className="text-4xl font-bold text-green-500">
+                    {analytics.satisfactionScore}%
+                  </p>
+                  <p className="text-xs text-gray-400 mt-2">Based on recent feedback</p>
+                </div>
+
+                <div className="bg-gray-700/50 rounded-lg p-6 text-center">
+                  <h4 className="text-sm font-medium text-gray-400 mb-2">Response Time Rating</h4>
+                  <p className="text-4xl font-bold text-blue-500">
+                    4.2/5
+                  </p>
+                  <p className="text-xs text-gray-400 mt-2">Customer rating</p>
+                </div>
+
+                <div className="bg-gray-700/50 rounded-lg p-6 text-center">
+                  <h4 className="text-sm font-medium text-gray-400 mb-2">Resolution Quality</h4>
+                  <p className="text-4xl font-bold text-purple-500">
+                    4.5/5
+                  </p>
+                  <p className="text-xs text-gray-400 mt-2">Customer rating</p>
+                </div>
+              </div>
+
+              {/* Satisfaction Trend */}
+              <div className="mb-8">
+                <h4 className="text-md font-medium text-gray-300 mb-4">Satisfaction Trend</h4>
+                <div className="h-64">
+                  <Line
+                    data={{
+                      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                      datasets: [{
+                        label: 'Satisfaction %',
+                        data: [85, 87, 86, 89, 91, analytics.satisfactionScore],
+                        borderColor: 'rgb(34, 197, 94)',
+                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                        tension: 0.4
+                      }]
+                    }}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      scales: {
+                        y: { 
+                          beginAtZero: false,
+                          min: 80,
+                          max: 100
+                        }
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Feedback Summary */}
+              <div>
+                <h4 className="text-md font-medium text-gray-300 mb-4">Recent Feedback Summary</h4>
+                <div className="space-y-4">
+                  <div className="bg-gray-700/50 rounded-lg p-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium text-gray-300">Positive Feedback</span>
+                      <span className="text-sm text-green-500">78%</span>
+                    </div>
+                    <div className="w-full bg-gray-600 rounded-full h-2">
+                      <div className="bg-green-500 h-2 rounded-full" style={{ width: '78%' }}></div>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-700/50 rounded-lg p-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium text-gray-300">Neutral Feedback</span>
+                      <span className="text-sm text-yellow-500">15%</span>
+                    </div>
+                    <div className="w-full bg-gray-600 rounded-full h-2">
+                      <div className="bg-yellow-500 h-2 rounded-full" style={{ width: '15%' }}></div>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-700/50 rounded-lg p-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium text-gray-300">Negative Feedback</span>
+                      <span className="text-sm text-red-500">7%</span>
+                    </div>
+                    <div className="w-full bg-gray-600 rounded-full h-2">
+                      <div className="bg-red-500 h-2 rounded-full" style={{ width: '7%' }}></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
       </div>

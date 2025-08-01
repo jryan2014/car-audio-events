@@ -137,7 +137,7 @@ const RequestTypeModal: React.FC<RequestTypeModalProps> = ({ isOpen, onClose, on
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 required
-                className="block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
+                className="block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
                 placeholder="e.g., Billing Issue"
               />
             </div>
@@ -149,7 +149,7 @@ const RequestTypeModal: React.FC<RequestTypeModalProps> = ({ isOpen, onClose, on
               <select
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value as RequestCategory })}
-                className="block w-full rounded-md bg-gray-700 border-gray-600 text-white focus:border-electric-500 focus:ring-electric-500"
+                className="block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white focus:border-electric-500 focus:ring-electric-500"
               >
                 <option value="general">General</option>
                 <option value="billing">Billing</option>
@@ -166,7 +166,7 @@ const RequestTypeModal: React.FC<RequestTypeModalProps> = ({ isOpen, onClose, on
               <select
                 value={formData.default_routing}
                 onChange={(e) => setFormData({ ...formData, default_routing: e.target.value as RoutingType })}
-                className="block w-full rounded-md bg-gray-700 border-gray-600 text-white focus:border-electric-500 focus:ring-electric-500"
+                className="block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white focus:border-electric-500 focus:ring-electric-500"
               >
                 <option value="internal">Internal (Admin Team)</option>
                 <option value="organization">Organization</option>
@@ -181,7 +181,7 @@ const RequestTypeModal: React.FC<RequestTypeModalProps> = ({ isOpen, onClose, on
               <select
                 value={formData.default_priority}
                 onChange={(e) => setFormData({ ...formData, default_priority: e.target.value as TicketPriority })}
-                className="block w-full rounded-md bg-gray-700 border-gray-600 text-white focus:border-electric-500 focus:ring-electric-500"
+                className="block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white focus:border-electric-500 focus:ring-electric-500"
               >
                 <option value="low">Low</option>
                 <option value="normal">Normal</option>
@@ -199,7 +199,7 @@ const RequestTypeModal: React.FC<RequestTypeModalProps> = ({ isOpen, onClose, on
                 value={formData.sort_order}
                 onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
                 min="0"
-                className="block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
+                className="block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
               />
             </div>
 
@@ -234,7 +234,7 @@ const RequestTypeModal: React.FC<RequestTypeModalProps> = ({ isOpen, onClose, on
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={3}
-              className="block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
+              className="block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
               placeholder="Optional description of this request type"
             />
           </div>

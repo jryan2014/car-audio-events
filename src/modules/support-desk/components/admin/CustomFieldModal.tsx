@@ -162,7 +162,7 @@ const CustomFieldModal: React.FC<CustomFieldModalProps> = ({ isOpen, onClose, on
                 required
                 pattern="[a-z][a-z0-9_]*"
                 title="Must start with a letter and contain only lowercase letters, numbers, and underscores"
-                className="block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
+                className="block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
                 placeholder="e.g., customer_phone"
               />
               <p className="mt-1 text-xs text-gray-400">
@@ -179,7 +179,7 @@ const CustomFieldModal: React.FC<CustomFieldModalProps> = ({ isOpen, onClose, on
                 value={formData.label}
                 onChange={(e) => setFormData({ ...formData, label: e.target.value })}
                 required
-                className="block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
+                className="block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
                 placeholder="e.g., Phone Number"
               />
             </div>
@@ -191,7 +191,7 @@ const CustomFieldModal: React.FC<CustomFieldModalProps> = ({ isOpen, onClose, on
               <select
                 value={formData.field_type}
                 onChange={(e) => setFormData({ ...formData, field_type: e.target.value as FieldType })}
-                className="block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
+                className="block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
               >
                 {fieldTypeOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -210,7 +210,7 @@ const CustomFieldModal: React.FC<CustomFieldModalProps> = ({ isOpen, onClose, on
                 value={formData.sort_order}
                 onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
                 min="0"
-                className="block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
+                className="block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
               />
             </div>
 
@@ -245,7 +245,7 @@ const CustomFieldModal: React.FC<CustomFieldModalProps> = ({ isOpen, onClose, on
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={2}
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              className="block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
               placeholder="Optional description or help text"
             />
           </div>
@@ -258,7 +258,7 @@ const CustomFieldModal: React.FC<CustomFieldModalProps> = ({ isOpen, onClose, on
               type="text"
               value={formData.placeholder}
               onChange={(e) => setFormData({ ...formData, placeholder: e.target.value })}
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              className="block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
               placeholder="Placeholder text for the input field"
             />
           </div>
@@ -288,14 +288,14 @@ const CustomFieldModal: React.FC<CustomFieldModalProps> = ({ isOpen, onClose, on
                       value={option.value}
                       onChange={(e) => handleOptionChange(index, 'value', e.target.value)}
                       placeholder="Value"
-                      className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      className="flex-1 px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
                     />
                     <input
                       type="text"
                       value={option.label}
                       onChange={(e) => handleOptionChange(index, 'label', e.target.value)}
                       placeholder="Display Label"
-                      className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      className="flex-1 px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
                     />
                     <button
                       type="button"
@@ -324,7 +324,7 @@ const CustomFieldModal: React.FC<CustomFieldModalProps> = ({ isOpen, onClose, on
                     value={formData.validation_rules.min_length || ''}
                     onChange={(e) => updateValidationRule('min_length', parseInt(e.target.value) || undefined)}
                     min="0"
-                    className="block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
+                    className="block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
                   />
                 </div>
                 <div>
@@ -334,7 +334,7 @@ const CustomFieldModal: React.FC<CustomFieldModalProps> = ({ isOpen, onClose, on
                     value={formData.validation_rules.max_length || ''}
                     onChange={(e) => updateValidationRule('max_length', parseInt(e.target.value) || undefined)}
                     min="0"
-                    className="block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
+                    className="block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
                   />
                 </div>
               </div>
@@ -354,7 +354,7 @@ const CustomFieldModal: React.FC<CustomFieldModalProps> = ({ isOpen, onClose, on
                     value={formData.validation_rules.accept || ''}
                     onChange={(e) => updateValidationRule('accept', e.target.value || undefined)}
                     placeholder=".pdf,.doc,.docx"
-                    className="block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
+                    className="block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
                   />
                 </div>
                 <div>
@@ -364,7 +364,7 @@ const CustomFieldModal: React.FC<CustomFieldModalProps> = ({ isOpen, onClose, on
                     value={formData.validation_rules.max_size || ''}
                     onChange={(e) => updateValidationRule('max_size', parseInt(e.target.value) || undefined)}
                     min="1"
-                    className="block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
+                    className="block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
                   />
                 </div>
               </div>

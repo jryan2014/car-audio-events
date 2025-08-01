@@ -11,6 +11,7 @@ import Accordion from '../components/ui/Accordion';
 import { getMembershipDisplayName } from '../utils/membershipUtils';
 import { activityLogger } from '../services/activityLogger';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import LogCAEEventModal from '../components/LogCAEEventModal';
 
 interface CompetitionResult {
   id: string;
@@ -320,6 +321,7 @@ export default function Profile() {
   
   // Competition modal states
   const [showLogEventModal, setShowLogEventModal] = useState(false);
+  const [showLogCAEEventModal, setShowLogCAEEventModal] = useState(false);
   const [editingResult, setEditingResult] = useState<CompetitionResult | null>(null);
   const [isLoadingCompetitions, setIsLoadingCompetitions] = useState(false);
   const [eventFormData, setEventFormData] = useState({
@@ -2320,13 +2322,13 @@ export default function Profile() {
 
                 {/* Action Buttons */}
                 <div className="flex flex-col sm:flex-row gap-4">
-                  <Link
-                    to="/events"
+                  <button
+                    onClick={() => setShowLogCAEEventModal(true)}
                     className="flex-1 bg-electric-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-electric-600 transition-all duration-200 flex items-center justify-center space-x-2"
                   >
-                    <Search className="h-5 w-5" />
-                    <span>Find CAE Events</span>
-                  </Link>
+                    <Trophy className="h-5 w-5" />
+                    <span>Log CAE Event Score</span>
+                  </button>
                   
                   <button
                     onClick={() => setShowLogEventModal(true)}
@@ -4466,6 +4468,18 @@ export default function Profile() {
           </div>
         </div>
       )}
+
+      {/* Log CAE Event Modal */}
+      <LogCAEEventModal
+        isOpen={showLogCAEEventModal}
+        onClose={() => setShowLogCAEEventModal(false)}
+        userId={user?.id || ''}
+        onSuccess={() => {
+          // Reload competition results
+          loadCompetitionResults();
+          setShowLogCAEEventModal(false);
+        }}
+      />
     </div>
   );
 }

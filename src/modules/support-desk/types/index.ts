@@ -311,6 +311,7 @@ export interface CreateTicketFormData {
   attachments?: File[];
   captcha_token?: string;
   email?: string; // For public users
+  csrf_token?: string; // CSRF protection
 }
 
 export interface CreateMessageFormData {

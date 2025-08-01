@@ -70,10 +70,12 @@ const AdminBillingConfiguration = React.lazy(() => import('./pages/AdminBillingC
 const NewsletterConfirm = React.lazy(() => import('./pages/NewsletterConfirm'));
 const NewsletterUnsubscribe = React.lazy(() => import('./pages/NewsletterUnsubscribe'));
 const AdminNewsletterManager = React.lazy(() => import('./pages/AdminNewsletterManager'));
+const Leaderboard = React.lazy(() => import('./pages/Leaderboard'));
 
 // Support Desk components
 const PublicSupportForm = React.lazy(() => import('./modules/support-desk/components/public/PublicSupportForm'));
 const SupportSuccess = React.lazy(() => import('./modules/support-desk/components/public/SupportSuccess'));
+const EmailVerificationPage = React.lazy(() => import('./modules/support-desk/components/public/EmailVerificationPage'));
 const SupportDashboard = React.lazy(() => import('./modules/support-desk/components/user/SupportDashboard'));
 const AdminSupportDashboard = React.lazy(() => import('./modules/support-desk/components/admin/AdminSupportDashboard'));
 const OrgSupportDashboard = React.lazy(() => import('./modules/support-desk/components/organization/OrgSupportDashboard'));
@@ -150,6 +152,7 @@ function App() {
               
               {/* Support Routes */}
               <Route path="/support" element={<Layout><Suspense fallback={<LoadingSpinner />}><PublicSupportForm /></Suspense></Layout>} />
+              <Route path="/support/verify" element={<Layout><Suspense fallback={<LoadingSpinner />}><EmailVerificationPage /></Suspense></Layout>} />
               <Route path="/support/success" element={<Layout><Suspense fallback={<LoadingSpinner />}><SupportSuccess /></Suspense></Layout>} />
               <Route path="/dashboard/support/*" element={<Layout><ProtectedRoute requireProfileComplete={true}><Suspense fallback={<LoadingSpinner />}><SupportDashboard /></Suspense></ProtectedRoute></Layout>} />
               <Route path="/organization/support/*" element={<Layout><ProtectedRoute requireProfileComplete={true}><Suspense fallback={<LoadingSpinner />}><OrgSupportDashboard /></Suspense></ProtectedRoute></Layout>} />
@@ -172,6 +175,7 @@ function App() {
               <Route path="/privacy-policy" element={<Layout><PrivacyPolicy /></Layout>} />
               <Route path="/newsletter/confirm/:token" element={<Layout><NewsletterConfirm /></Layout>} />
               <Route path="/newsletter/unsubscribe/:token" element={<Layout><NewsletterUnsubscribe /></Layout>} />
+              <Route path="/leaderboard" element={<Layout><Leaderboard /></Layout>} />
               
               {/* Billing routes with their own layout */}
               <Route path="/billing" element={<Layout><ProtectedRoute requireProfileComplete={true}><UserBilling /></ProtectedRoute></Layout>} />

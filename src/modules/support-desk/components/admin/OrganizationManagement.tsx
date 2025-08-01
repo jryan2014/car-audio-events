@@ -197,7 +197,7 @@ const OrganizationManagement: React.FC = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search by name or email..."
-              className="block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
+              className="block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
             />
           </div>
 
@@ -208,7 +208,7 @@ const OrganizationManagement: React.FC = () => {
             <select
               value={filter}
               onChange={(e) => setFilter(e.target.value as any)}
-              className="block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
+              className="block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
             >
               <option value="all">All Organizations</option>
               <option value="enabled">Support Enabled</option>

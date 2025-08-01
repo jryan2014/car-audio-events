@@ -16,6 +16,9 @@ const AdminSupportDashboard: React.FC = () => {
       <Route path="organizations" element={<OrganizationManagement />} />
       <Route path="organizations/bulk-setup" element={<BulkOrganizationSetup />} />
       <Route path="analytics" element={<SupportAnalytics />} />
+      <Route path="analytics/tickets" element={<SupportAnalytics initialTab="tickets" />} />
+      <Route path="analytics/agents" element={<SupportAnalytics initialTab="agents" />} />
+      <Route path="analytics/satisfaction" element={<SupportAnalytics initialTab="satisfaction" />} />
       <Route path="*" element={<Navigate to="/admin/support" replace />} />
     </Routes>
   );

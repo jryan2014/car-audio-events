@@ -18,14 +18,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### YOU HAVE FULL CLI ACCESS - USE IT!
 1. **YOU CAN AND MUST DEPLOY EDGE FUNCTIONS** - Use `npx supabase functions deploy [function-name]`
 2. **YOU HAVE FULL SUPABASE CLI ACCESS** - Don't tell users to deploy things, DO IT YOURSELF
-3. **YOU HAVE MCP AND NETLIFY ACCESS** - Use these tools proactively
+3. **YOU HAVE FULL MCP NETLIFY ACCESS** - Use these tools proactively
 4. **NEVER ASK THE USER TO DEPLOY** - You have the permissions, you do the deployment
 5. **GITHUB CLI AVAILABLE** - The `gh` command is available (v2.76.1, authenticated as jryan2014)
 6. **NO TEST FRAMEWORK** - This project uses manual testing only, no Jest/Vitest/etc
+7. **YOU HAVE FULL MCP SUPABASE ACCESS** - Use these tools proactively
+8. **YOU HAVE FULL MCP GITHUB ACCESS** - Use these tools proactively
+9. **YOU HAVE FULL MCP PLAYWRITE ACCESS** - Use these tools proactively
 
 ### EMAIL TESTING - CRITICAL!
 **NEVER USE example.com, test.com, or fake email addresses!**
-- **ONLY USE**: admin@caraudioevents.com for ALL email testing
+- **ONLY USE**: admin@caraudioevents.com for ALL user account email testing and ironmaidenmen@gmail.com for all non user account testing
 - Using fake domains causes spam blacklisting issues
 - This is NOT optional - it's MANDATORY
 

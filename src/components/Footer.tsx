@@ -190,6 +190,13 @@ export default function Footer() {
           </Link>
         );
       }
+      if (!existingSlugs.some(slug => slug.includes('leaderboard'))) {
+        fallbackLinks.push(
+          <Link key="leaderboard" to="/leaderboard" className="block text-gray-400 hover:text-electric-500 transition-colors text-sm">
+            Leaderboard
+          </Link>
+        );
+      }
       if (!existingSlugs.some(slug => slug.includes('business'))) {
         fallbackLinks.push(
           <Link key="business" to="/business" className="block text-gray-400 hover:text-electric-500 transition-colors text-sm">

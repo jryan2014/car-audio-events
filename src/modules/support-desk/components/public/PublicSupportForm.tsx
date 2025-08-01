@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../../../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import HCaptcha, { HCaptchaRef } from '../../../../components/HCaptcha';
 import LoadingSpinner from '../../../../components/LoadingSpinner';
 import { requestTypeService, fieldService, ticketService } from '../../services/supabase-client';
 import { EmailVerificationModal } from './EmailVerificationModal';
 import { CustomFieldRenderer } from '../shared/CustomFieldRenderer';
+import { getCSRFToken } from '../../../../utils/csrfProtection';
 import type { 
   SupportRequestType, 
   CreateTicketFormData, 
@@ -15,6 +16,7 @@ import type {
 const PublicSupportForm: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const captchaRef = useRef<HCaptchaRef>(null);
   
   const [loading, setLoading] = useState(false);
@@ -41,6 +43,24 @@ const PublicSupportForm: React.FC = () => {
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [verifiedEmail, setVerifiedEmail] = useState('');
   const [captchaToken, setCaptchaToken] = useState('');
+  
+  // Check for pre-verified email from verification page
+  useEffect(() => {
+    const stateEmail = location.state?.verifiedEmail;
+    const sessionEmail = sessionStorage.getItem('verified_support_email');
+    
+    if (stateEmail) {
+      setVerifiedEmail(stateEmail);
+      setFormData(prev => ({ ...prev, email: stateEmail }));
+      // Clear session storage
+      sessionStorage.removeItem('verified_support_email');
+    } else if (sessionEmail) {
+      setVerifiedEmail(sessionEmail);
+      setFormData(prev => ({ ...prev, email: sessionEmail }));
+      // Clear session storage
+      sessionStorage.removeItem('verified_support_email');
+    }
+  }, [location]);
   
   // Load request types on mount
   useEffect(() => {
@@ -138,13 +158,17 @@ const PublicSupportForm: React.FC = () => {
         return;
       }
       
-      // Temporarily bypass captcha for testing
-      const testCaptchaToken = 'test-token-for-development';
-      setCaptchaToken(testCaptchaToken);
+      // Check if captcha is required (bypass only in development)
+      const isDevelopment = import.meta.env.DEV;
       
-      if (!captchaToken && false) { // Disabled for testing
+      if (!captchaToken && !isDevelopment) {
         setError('Please complete the captcha verification');
         return;
+      }
+      
+      // Use test token only in development
+      if (isDevelopment && !captchaToken) {
+        setCaptchaToken('test-token-for-development');
       }
       
       setShowEmailVerification(true);
@@ -157,8 +181,9 @@ const PublicSupportForm: React.FC = () => {
     try {
       const ticketData: CreateTicketFormData = {
         ...formData,
-        captcha_token: captchaToken || 'test-token-for-development', // Use test token if needed
-        email: user ? undefined : verifiedEmail
+        captcha_token: captchaToken || (import.meta.env.DEV ? 'test-token-for-development' : ''),
+        email: user ? undefined : verifiedEmail,
+        csrf_token: getCSRFToken()
       };
       
       const ticket = await ticketService.createTicket(ticketData);

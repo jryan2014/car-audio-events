@@ -314,7 +314,7 @@ const SupportAgentModal: React.FC<SupportAgentModalProps> = ({ isOpen, onClose, 
                 onChange={(e) => setFormData({ ...formData, max_tickets_per_day: parseInt(e.target.value) || 50 })}
                 min="1"
                 max="200"
-                className="block w-full rounded-md bg-gray-700 border-gray-600 text-white shadow-sm focus:border-electric-500 focus:ring-electric-500"
+                className="block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white shadow-sm focus:border-electric-500 focus:ring-electric-500"
               />
             </div>
 

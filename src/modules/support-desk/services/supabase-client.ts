@@ -961,6 +961,9 @@ async function uploadAttachments(files: File[], ticketId: string): Promise<any[]
   return attachments;
 }
 
+// Export system config service
+export { systemConfigService } from './system-config-service';
+
 // Real-time subscription helper
 export function subscribeToTicket(
   ticketId: string, 

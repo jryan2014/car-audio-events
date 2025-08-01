@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import LoadingSpinner from '../../../../components/LoadingSpinner';
-import { requestTypeService, fieldService, supportAgentService } from '../../services/supabase-client';
+import { requestTypeService, fieldService, supportAgentService, systemConfigService } from '../../services/supabase-client';
 import RequestTypeModal from './RequestTypeModal';
 import CustomFieldModal from './CustomFieldModal';
 import SupportAgentModal from './SupportAgentModal';
 import type { SupportRequestType, SupportFieldDefinition, SupportAgentWithUser } from '../../types';
 
 const AdminSupportSettings: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'general' | 'request-types' | 'fields' | 'agents' | 'organizations'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'request-types' | 'fields' | 'agents' | 'organizations' | 'analytics'>('general');
   const [loading, setLoading] = useState(false);
   const [requestTypes, setRequestTypes] = useState<SupportRequestType[]>([]);
   const [customFields, setCustomFields] = useState<SupportFieldDefinition[]>([]);
@@ -45,6 +45,9 @@ const AdminSupportSettings: React.FC = () => {
 
   useEffect(() => {
     loadData();
+    if (activeTab === 'general') {
+      loadGeneralSettings();
+    }
   }, [activeTab]);
 
   const loadData = async () => {
@@ -68,6 +71,16 @@ const AdminSupportSettings: React.FC = () => {
     }
   };
 
+  const loadGeneralSettings = async () => {
+    try {
+      const settings = await systemConfigService.getSupportSettings();
+      setGeneralSettings(settings);
+    } catch (error) {
+      console.error('Error loading general settings:', error);
+      setError('Failed to load general settings');
+    }
+  };
+
   const handleSaveGeneral = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -75,8 +88,7 @@ const AdminSupportSettings: React.FC = () => {
     setSuccess('');
 
     try {
-      // Here you would implement saving general settings to a system config table
-      // await systemConfigService.updateSupportSettings(generalSettings);
+      await systemConfigService.updateSupportSettings(generalSettings);
       setSuccess('General settings saved successfully');
       setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
@@ -188,7 +200,8 @@ const AdminSupportSettings: React.FC = () => {
     { id: 'request-types', label: 'Request Types', icon: '📋' },
     { id: 'fields', label: 'Custom Fields', icon: '📝' },
     { id: 'agents', label: 'Support Agents', icon: '👥' },
-    { id: 'organizations', label: 'Organizations', icon: '🏢' }
+    { id: 'organizations', label: 'Organizations', icon: '🏢' },
+    { id: 'analytics', label: 'Analytics', icon: '📊' }
   ];
 
   return (
@@ -327,7 +340,7 @@ const AdminSupportSettings: React.FC = () => {
                           value={generalSettings.support_email}
                           onChange={(e) => setGeneralSettings({ ...generalSettings, support_email: e.target.value })}
                           placeholder="support@yourcompany.com"
-                          className="block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
+                          className="block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
                         />
                       </div>
 
@@ -341,7 +354,7 @@ const AdminSupportSettings: React.FC = () => {
                           onChange={(e) => setGeneralSettings({ ...generalSettings, ticket_number_prefix: e.target.value })}
                           placeholder="SUP-"
                           maxLength={10}
-                          className="block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
+                          className="block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
                         />
                       </div>
                     </div>
@@ -359,7 +372,7 @@ const AdminSupportSettings: React.FC = () => {
                         <select
                           value={generalSettings.default_priority}
                           onChange={(e) => setGeneralSettings({ ...generalSettings, default_priority: e.target.value as any })}
-                          className="block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
+                          className="block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
                         >
                           <option value="low">Low</option>
                           <option value="normal">Normal</option>
@@ -378,7 +391,7 @@ const AdminSupportSettings: React.FC = () => {
                           onChange={(e) => setGeneralSettings({ ...generalSettings, max_attachments: parseInt(e.target.value) || 5 })}
                           min="1"
                           max="20"
-                          className="block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
+                          className="block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
                         />
                       </div>
 
@@ -392,7 +405,7 @@ const AdminSupportSettings: React.FC = () => {
                           onChange={(e) => setGeneralSettings({ ...generalSettings, max_attachment_size: parseInt(e.target.value) || 10 })}
                           min="1"
                           max="100"
-                          className="block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
+                          className="block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
                         />
                       </div>
 
@@ -406,7 +419,7 @@ const AdminSupportSettings: React.FC = () => {
                           onChange={(e) => setGeneralSettings({ ...generalSettings, auto_close_resolved_days: parseInt(e.target.value) || 7 })}
                           min="0"
                           max="90"
-                          className="block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
+                          className="block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
                         />
                         <p className="mt-1 text-xs text-gray-400">
                           Set to 0 to disable auto-closing
@@ -713,15 +726,80 @@ const AdminSupportSettings: React.FC = () => {
                       </div>
                       
                       <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-                        <h5 className="font-medium text-white">Support Analytics</h5>
+                        <h5 className="font-medium text-white">Organization Settings</h5>
                         <p className="text-sm text-gray-300 mt-1">
-                          View system-wide support metrics and reports
+                          Configure default settings for organization support
                         </p>
                         <Link
-                          to="/admin/support/analytics"
+                          to="/admin/support/organizations/settings"
                           className="inline-block mt-2 px-3 py-1 bg-electric-500 text-white rounded text-sm hover:bg-electric-600"
                         >
-                          View Analytics
+                          Configure Settings
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Analytics Tab */}
+              {activeTab === 'analytics' && (
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-4">
+                    Support Analytics
+                  </h3>
+                  <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                    <h4 className="font-medium text-white mb-2">Support Metrics Dashboard</h4>
+                    <p className="text-gray-300 text-sm mb-3">
+                      View comprehensive analytics and reports for your support system including ticket volumes, response times, and customer satisfaction.
+                    </p>
+                    <Link
+                      to="/admin/support/analytics"
+                      className="inline-block px-4 py-2 bg-electric-500 text-white rounded-md hover:bg-electric-600 text-sm"
+                    >
+                      View Full Analytics
+                    </Link>
+                  </div>
+                  
+                  <div className="mt-6">
+                    <h4 className="font-medium text-white mb-3">Quick Stats</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                        <h5 className="font-medium text-white">Ticket Reports</h5>
+                        <p className="text-sm text-gray-300 mt-1">
+                          Volume trends, status breakdown, and resolution times
+                        </p>
+                        <Link
+                          to="/admin/support/analytics/tickets"
+                          className="inline-block mt-2 px-3 py-1 bg-electric-500 text-white rounded text-sm hover:bg-electric-600"
+                        >
+                          View Reports
+                        </Link>
+                      </div>
+                      
+                      <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                        <h5 className="font-medium text-white">Agent Performance</h5>
+                        <p className="text-sm text-gray-300 mt-1">
+                          Response times, resolution rates, and workload distribution
+                        </p>
+                        <Link
+                          to="/admin/support/analytics/agents"
+                          className="inline-block mt-2 px-3 py-1 bg-electric-500 text-white rounded text-sm hover:bg-electric-600"
+                        >
+                          View Performance
+                        </Link>
+                      </div>
+                      
+                      <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                        <h5 className="font-medium text-white">Customer Satisfaction</h5>
+                        <p className="text-sm text-gray-300 mt-1">
+                          Feedback scores, trends, and improvement insights
+                        </p>
+                        <Link
+                          to="/admin/support/analytics/satisfaction"
+                          className="inline-block mt-2 px-3 py-1 bg-electric-500 text-white rounded text-sm hover:bg-electric-600"
+                        >
+                          View Feedback
                         </Link>
                       </div>
                     </div>
