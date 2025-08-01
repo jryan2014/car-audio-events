@@ -3,7 +3,8 @@ import {
   User, Trophy, Calendar, Users, TrendingUp, Star, ArrowRight, 
   Plus, Target, Award, MapPin, CreditCard, Package, Clock, 
   DollarSign, FileText, Shield, Activity, Heart, Settings,
-  ChevronRight, Home, BarChart3, Zap, Bell, X, CheckCircle, Crown
+  ChevronRight, Home, BarChart3, Zap, Bell, X, CheckCircle, Crown,
+  Edit, Save
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -20,6 +21,8 @@ import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, 
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
+import LogCAEEventModal from '../components/LogCAEEventModal';
+import { useNotifications } from '../components/NotificationSystem';
 
 // Resend Verification Email Component
 const ResendVerificationEmailButton: React.FC<{ userEmail: string }> = ({ userEmail }) => {
@@ -94,9 +97,43 @@ interface QuickAction {
   external?: boolean;
 }
 
+interface CompetitionResult {
+  id: string;
+  user_id: string;
+  event_id?: number;
+  is_cae_event: boolean;
+  event_name?: string;
+  event_date?: string;
+  event_location?: string;
+  event_organizer?: string;
+  event_title?: string;
+  competed_at?: string;
+  category: string;
+  class?: string;
+  vehicle_year?: string;
+  vehicle_make?: string;
+  vehicle_model?: string;
+  score?: number;
+  placement?: number;
+  total_participants?: number;
+  points_earned: number;
+  overall_score?: number;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  event?: {
+    id: number;
+    name: string;
+    start_date: string;
+    location: string;
+  };
+}
+
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const { showSuccess, showError } = useNotifications();
+  
   const [stats, setStats] = useState<DashboardStats>({
     totalCompetitions: 0,
     totalPoints: 0,
@@ -114,6 +151,28 @@ export default function Dashboard() {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [competitionData, setCompetitionData] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'overview' | 'profile' | 'competitions' | 'billing'>('overview');
+  
+  // Competition functionality state
+  const [competitionResults, setCompetitionResults] = useState<CompetitionResult[]>([]);
+  const [showLogCAEEventModal, setShowLogCAEEventModal] = useState(false);
+  const [showLogEventModal, setShowLogEventModal] = useState(false);
+  const [editingResult, setEditingResult] = useState<CompetitionResult | null>(null);
+  const [isLoadingCompetitions, setIsLoadingCompetitions] = useState(false);
+  const [eventFormData, setEventFormData] = useState({
+    event_name: '',
+    event_date: '',
+    event_location: '',
+    event_organizer: '',
+    category: '',
+    class: '',
+    vehicle_year: '',
+    vehicle_make: '',
+    vehicle_model: '',
+    score: '',
+    placement: '',
+    total_participants: '',
+    notes: ''
+  });
 
   const quickActions: QuickAction[] = [
     {
@@ -155,7 +214,8 @@ export default function Dashboard() {
             loadUserStats(),
             loadRecentResults(),
             loadBillingData(),
-            loadCompetitionHistory()
+            loadCompetitionHistory(),
+            loadCompetitionResults()
           ]);
           
           // Log dashboard access
@@ -219,6 +279,125 @@ export default function Dashboard() {
       setCompetitionData(chartData);
     } catch (error) {
       console.error('Error loading competition history:', error);
+    }
+  };
+
+  const loadCompetitionResults = async () => {
+    if (!user) return;
+    
+    setIsLoadingCompetitions(true);
+    try {
+      const { data, error } = await supabase
+        .from('competition_results')
+        .select(`
+          *,
+          events (
+            id,
+            name,
+            start_date,
+            location
+          )
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error loading competition results:', error);
+        setCompetitionResults([]);
+      } else {
+        setCompetitionResults(data || []);
+      }
+    } catch (error) {
+      console.error('Error loading competition results:', error);
+      setCompetitionResults([]);
+    } finally {
+      setIsLoadingCompetitions(false);
+    }
+  };
+
+  const handleEditResult = (result: CompetitionResult) => {
+    setEditingResult(result);
+    setEventFormData({
+      event_name: result.event_name || '',
+      event_date: result.event_date || '',
+      event_location: result.event_location || '',
+      event_organizer: result.event_organizer || '',
+      category: result.category,
+      class: result.class || '',
+      vehicle_year: result.vehicle_year || '',
+      vehicle_make: result.vehicle_make || '',
+      vehicle_model: result.vehicle_model || '',
+      score: result.score?.toString() || '',
+      placement: result.placement?.toString() || '',
+      total_participants: result.total_participants?.toString() || '',
+      notes: result.notes || ''
+    });
+    setShowLogEventModal(true);
+  };
+
+  const handleSaveResult = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    try {
+      const resultData = {
+        user_id: user.id,
+        is_cae_event: false,
+        event_name: eventFormData.event_name,
+        event_date: eventFormData.event_date,
+        event_location: eventFormData.event_location,
+        event_organizer: eventFormData.event_organizer,
+        category: eventFormData.category,
+        class: eventFormData.class || null,
+        vehicle_year: eventFormData.vehicle_year || null,
+        vehicle_make: eventFormData.vehicle_make || null,
+        vehicle_model: eventFormData.vehicle_model || null,
+        score: eventFormData.score ? parseFloat(eventFormData.score) : null,
+        placement: eventFormData.placement ? parseInt(eventFormData.placement) : null,
+        total_participants: eventFormData.total_participants ? parseInt(eventFormData.total_participants) : null,
+        points_earned: 0, // Calculate based on placement and category
+        notes: eventFormData.notes || null,
+        updated_at: new Date().toISOString()
+      };
+
+      if (editingResult) {
+        const { error } = await supabase
+          .from('competition_results')
+          .update(resultData)
+          .eq('id', editingResult.id);
+        
+        if (error) throw error;
+        showSuccess('Result Updated', 'Competition result has been updated successfully.');
+      } else {
+        const { error } = await supabase
+          .from('competition_results')
+          .insert([resultData]);
+        
+        if (error) throw error;
+        showSuccess('Result Added', 'Competition result has been added successfully.');
+      }
+
+      await loadCompetitionResults();
+      setShowLogEventModal(false);
+      setEditingResult(null);
+      setEventFormData({
+        event_name: '',
+        event_date: '',
+        event_location: '',
+        event_organizer: '',
+        category: '',
+        class: '',
+        vehicle_year: '',
+        vehicle_make: '',
+        vehicle_model: '',
+        score: '',
+        placement: '',
+        total_participants: '',
+        notes: ''
+      });
+    } catch (error: any) {
+      console.error('Error saving competition result:', error);
+      showError('Save Failed', error.message || 'Failed to save competition result. Please try again.');
     }
   };
 
@@ -938,117 +1117,333 @@ export default function Dashboard() {
 
         {activeTab === 'competitions' && (
           <div className="space-y-6">
-            {/* Competition Stats Overview */}
+            {/* Competition Results */}
             <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-              <h2 className="text-2xl font-bold text-white mb-6">Competition Statistics</h2>
+              <h2 className="text-2xl font-bold text-white mb-6 flex items-center space-x-2">
+                <Trophy className="h-6 w-6 text-electric-500" />
+                <span>Competition Results</span>
+              </h2>
               
-              {competitionData.length > 0 ? (
-                <div className="space-y-6">
-                  {/* Score Trend Chart */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-white mb-4">Score Trend</h3>
-                    <div className="h-64">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={competitionData}>
+              {/* Performance Summary Section */}
+              <div className="mb-8">
+                <h3 className="text-xl font-bold text-white mb-4">Performance Summary</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* SPL Performance Chart */}
+                  <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-700/50">
+                    <h4 className="text-white font-semibold mb-4 flex items-center justify-between">
+                      SPL Performance
+                      <span className="text-electric-400 text-sm">{competitionResults.filter(r => r.category === 'SPL (Sound Pressure Level)').length} Events</span>
+                    </h4>
+                    {competitionResults.filter(r => r.category === 'SPL (Sound Pressure Level)').length > 0 ? (
+                      <ResponsiveContainer width="100%" height={200}>
+                        <BarChart data={competitionResults
+                          .filter(r => r.category === 'SPL (Sound Pressure Level)')
+                          .map(r => ({
+                            date: new Date(r.event_date || r.competed_at || '').toLocaleDateString('en-US', { month: 'short' }),
+                            score: r.score || 0,
+                            event: r.event_name || r.event_title
+                          }))
+                          .slice(-6) // Last 6 events
+                        }>
                           <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                          <XAxis dataKey="date" stroke="#9CA3AF" />
-                          <YAxis stroke="#9CA3AF" />
+                          <XAxis dataKey="date" stroke="#9CA3AF" fontSize={12} />
+                          <YAxis stroke="#9CA3AF" fontSize={12} />
                           <Tooltip 
-                            contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151' }}
-                            labelStyle={{ color: '#F3F4F6' }}
+                            contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151', borderRadius: '8px' }}
+                            labelStyle={{ color: '#E5E7EB' }}
                           />
-                          <Line 
-                            type="monotone" 
-                            dataKey="score" 
-                            stroke="#A78BFA" 
-                            strokeWidth={2}
-                            dot={{ fill: '#A78BFA' }}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-
-                  {/* Points Accumulated Chart */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-white mb-4">Points Accumulated</h3>
-                    <div className="h-64">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={competitionData}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                          <XAxis dataKey="date" stroke="#9CA3AF" />
-                          <YAxis stroke="#9CA3AF" />
-                          <Tooltip 
-                            contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151' }}
-                            labelStyle={{ color: '#F3F4F6' }}
-                          />
-                          <Bar dataKey="points" fill="#10B981" />
+                          <Bar dataKey="score" fill="#0ea5e9" radius={[8, 8, 0, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
+                    ) : (
+                      <div className="flex items-center justify-center h-[200px] text-gray-500">
+                        <p className="text-center">No SPL data yet</p>
+                      </div>
+                    )}
+                    <div className="mt-2 text-center">
+                      <span className="text-gray-400 text-xs">Avg: </span>
+                      <span className="text-white font-semibold">
+                        {competitionResults.filter(r => r.category === 'SPL (Sound Pressure Level)').length > 0
+                          ? (competitionResults
+                              .filter(r => r.category === 'SPL (Sound Pressure Level)')
+                              .reduce((sum, r) => sum + (r.score || 0), 0) / 
+                              competitionResults.filter(r => r.category === 'SPL (Sound Pressure Level)').length
+                            ).toFixed(1) + ' dB'
+                          : '0.0 dB'
+                        }
+                      </span>
+                      <span className="text-gray-400 text-xs ml-4">Best: </span>
+                      <span className="text-white font-semibold">
+                        {competitionResults.filter(r => r.category === 'SPL (Sound Pressure Level)').length > 0
+                          ? Math.max(...competitionResults
+                              .filter(r => r.category === 'SPL (Sound Pressure Level)')
+                              .map(r => r.score || 0)
+                            ).toFixed(1) + ' dB'
+                          : '0.0 dB'
+                        }
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* SQ Performance Chart */}
+                  <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-700/50">
+                    <h4 className="text-white font-semibold mb-4 flex items-center justify-between">
+                      SQ Performance
+                      <span className="text-electric-400 text-sm">{competitionResults.filter(r => r.category === 'SQ (Sound Quality)').length} Events</span>
+                    </h4>
+                    {competitionResults.filter(r => r.category === 'SQ (Sound Quality)').length > 0 ? (
+                      <ResponsiveContainer width="100%" height={200}>
+                        <PieChart>
+                          <Pie
+                            data={[
+                              { name: 'Imaging', value: 30, color: '#f59e0b' },
+                              { name: 'Dynamics', value: 25, color: '#3b82f6' },
+                              { name: 'Noise', value: 20, color: '#10b981' },
+                              { name: 'Total', value: 25, color: '#8b5cf6' }
+                            ]}
+                            cx="50%"
+                            cy="50%"
+                            outerRadius={70}
+                            fill="#8884d8"
+                            dataKey="value"
+                          >
+                            {[
+                              { name: 'Imaging', value: 30, color: '#f59e0b' },
+                              { name: 'Dynamics', value: 25, color: '#3b82f6' },
+                              { name: 'Noise', value: 20, color: '#10b981' },
+                              { name: 'Total', value: 25, color: '#8b5cf6' }
+                            ].map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip 
+                            contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151', borderRadius: '8px' }}
+                            labelStyle={{ color: '#E5E7EB' }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex items-center justify-center h-[200px] text-gray-500">
+                        <p className="text-center">No SQ data yet</p>
+                      </div>
+                    )}
+                    <div className="mt-2 text-center">
+                      <span className="text-gray-400 text-xs">Avg: </span>
+                      <span className="text-white font-semibold">
+                        {competitionResults.filter(r => r.category === 'SQ (Sound Quality)').length > 0
+                          ? (competitionResults
+                              .filter(r => r.category === 'SQ (Sound Quality)')
+                              .reduce((sum, r) => sum + (r.score || 0), 0) / 
+                              competitionResults.filter(r => r.category === 'SQ (Sound Quality)').length
+                            ).toFixed(1)
+                          : '0.0'}
+                      </span>
+                      <span className="text-gray-400 text-xs ml-4">Best: </span>
+                      <span className="text-white font-semibold">
+                        {competitionResults.filter(r => r.category === 'SQ (Sound Quality)').length > 0
+                          ? Math.max(...competitionResults
+                              .filter(r => r.category === 'SQ (Sound Quality)')
+                              .map(r => r.score || 0)
+                            ).toFixed(1)
+                          : '0.0'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Placements Chart */}
+                  <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-700/50">
+                    <h4 className="text-white font-semibold mb-4 flex items-center justify-between">
+                      Placements
+                      <span className="text-electric-400 text-sm">{competitionResults.length} Total</span>
+                    </h4>
+                    {competitionResults.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={200}>
+                        <PieChart>
+                          <Pie
+                            data={[
+                              { 
+                                name: '1st', 
+                                value: competitionResults.filter(r => r.placement === 1).length,
+                                color: '#fbbf24'
+                              },
+                              { 
+                                name: '2nd', 
+                                value: competitionResults.filter(r => r.placement === 2).length,
+                                color: '#9ca3af'
+                              },
+                              { 
+                                name: '3rd', 
+                                value: competitionResults.filter(r => r.placement === 3).length,
+                                color: '#f97316'
+                              },
+                              { 
+                                name: 'Other', 
+                                value: competitionResults.filter(r => !r.placement || r.placement > 3).length,
+                                color: '#4b5563'
+                              }
+                            ].filter(d => d.value > 0)}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={40}
+                            outerRadius={70}
+                            fill="#8884d8"
+                            dataKey="value"
+                            label={({ value, percent }) => `${value} (${(percent * 100).toFixed(0)}%)`}
+                            labelLine={false}
+                          >
+                            {[
+                              { 
+                                name: '1st', 
+                                value: competitionResults.filter(r => r.placement === 1).length,
+                                color: '#fbbf24'
+                              },
+                              { 
+                                name: '2nd', 
+                                value: competitionResults.filter(r => r.placement === 2).length,
+                                color: '#9ca3af'
+                              },
+                              { 
+                                name: '3rd', 
+                                value: competitionResults.filter(r => r.placement === 3).length,
+                                color: '#f97316'
+                              },
+                              { 
+                                name: 'Other', 
+                                value: competitionResults.filter(r => !r.placement || r.placement > 3).length,
+                                color: '#4b5563'
+                              }
+                            ].filter(d => d.value > 0).map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip 
+                            contentStyle={{ backgroundColor: '#1F2937', border: '1px solid #374151', borderRadius: '8px' }}
+                            labelStyle={{ color: '#E5E7EB' }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex items-center justify-center h-[200px] text-gray-500">
+                        <p className="text-center">No placement data yet</p>
+                      </div>
+                    )}
+                    <div className="mt-2 text-center">
+                      <span className="text-gray-400 text-xs">Win Rate: </span>
+                      <span className="text-white font-semibold">
+                        {competitionResults.length > 0
+                          ? ((competitionResults.filter(r => r.placement === 1).length / competitionResults.length) * 100).toFixed(0) + '%'
+                          : '0%'}
+                      </span>
+                      <span className="text-gray-400 text-xs ml-4">Podium: </span>
+                      <span className="text-white font-semibold">
+                        {competitionResults.length > 0
+                          ? ((competitionResults.filter(r => r.placement && r.placement <= 3).length / competitionResults.length) * 100).toFixed(0) + '%'
+                          : '0%'}
+                      </span>
                     </div>
                   </div>
                 </div>
-              ) : (
-                <div className="text-center py-8">
-                  <BarChart3 className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-                  <p className="text-gray-400">No competition data to display</p>
-                </div>
-              )}
-            </div>
-
-            {/* Recent Competition Results */}
-            <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-white">All Competition Results</h2>
-                <Link
-                  to="/profile?tab=competitions"
-                  className="text-electric-400 hover:text-electric-300 text-sm font-medium"
-                >
-                  Manage Results
-                </Link>
               </div>
 
-              {recentResults.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="text-left border-b border-gray-700">
-                        <th className="pb-3 text-gray-400 font-medium">Event</th>
-                        <th className="pb-3 text-gray-400 font-medium">Category</th>
-                        <th className="pb-3 text-gray-400 font-medium">Date</th>
-                        <th className="pb-3 text-gray-400 font-medium text-center">Placement</th>
-                        <th className="pb-3 text-gray-400 font-medium text-right">Points</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-700">
-                      {recentResults.map((result) => (
-                        <tr key={result.id} className="hover:bg-gray-700/30 transition-colors">
-                          <td className="py-3 text-white">{result.eventTitle}</td>
-                          <td className="py-3">
-                            <span className="bg-gray-600 px-2 py-1 rounded text-xs text-white">
-                              {result.category}
-                            </span>
-                          </td>
-                          <td className="py-3 text-gray-400">{formatDateShort(result.date)}</td>
-                          <td className="py-3 text-center">
-                            <span className={`font-bold ${getPlacementColor(result.placement)}`}>
-                              #{result.placement}
-                            </span>
-                          </td>
-                          <td className="py-3 text-right text-electric-400 font-medium">
-                            +{result.points}
-                          </td>
+              {/* Competition Results Table */}
+              <div className="mb-6">
+                <h3 className="text-xl font-bold text-white mb-4">Competition History</h3>
+                {competitionResults.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="text-left border-b border-gray-700">
+                          <th className="py-3 text-gray-400 font-medium">Event</th>
+                          <th className="py-3 text-gray-400 font-medium">Date</th>
+                          <th className="py-3 text-gray-400 font-medium">Category</th>
+                          <th className="text-center py-3 text-gray-400 font-medium">Placement</th>
+                          <th className="text-center py-3 text-gray-400 font-medium">Score</th>
+                          <th className="text-center py-3 text-gray-400 font-medium">Points</th>
+                          <th className="text-right py-3 text-gray-400 font-medium">Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Trophy className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-                  <p className="text-gray-400">No competition results yet</p>
-                </div>
-              )}
+                      </thead>
+                      <tbody className="divide-y divide-gray-700/50">
+                        {competitionResults.map((result) => {
+                          const placementColor = 
+                            result.placement === 1 ? 'text-yellow-400' :
+                            result.placement === 2 ? 'text-gray-400' :
+                            result.placement === 3 ? 'text-orange-400' : 'text-white';
+                          
+                          return (
+                            <tr key={result.id} className="hover:bg-gray-700/20 transition-colors">
+                              <td className="py-4">
+                                <div className="flex items-center space-x-2">
+                                  {!result.is_cae_event && (
+                                    <span className="bg-gray-600 text-gray-300 px-2 py-1 rounded text-xs">Non-CAE</span>
+                                  )}
+                                  <span className="text-white font-medium">
+                                    {result.event_name || result.event_title}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="py-4 text-gray-300">
+                                {new Date(result.event_date || result.created_at).toLocaleDateString()}
+                              </td>
+                              <td className="py-4 text-gray-300">{result.category}</td>
+                              <td className="py-4 text-center">
+                                <span className={`font-bold ${placementColor}`}>
+                                  {result.placement ? `#${result.placement}` : '-'}
+                                </span>
+                                {result.total_participants && (
+                                  <span className="text-gray-500 text-sm ml-1">
+                                    /{result.total_participants}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-4 text-center text-white">
+                                {result.score || '-'}
+                              </td>
+                              <td className="py-4 text-center text-electric-400 font-medium">
+                                {result.points_earned}
+                              </td>
+                              <td className="py-4 text-right">
+                                {!result.is_cae_event && (
+                                  <button
+                                    onClick={() => handleEditResult(result)}
+                                    className="text-gray-400 hover:text-white transition-colors"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Trophy className="h-12 w-12 text-gray-600 mx-auto mb-4" />
+                    <p className="text-gray-400">No competition results yet</p>
+                    <p className="text-gray-500 text-sm mt-2">Start logging your competition results to see them here</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-4">
+                <button
+                  onClick={() => setShowLogCAEEventModal(true)}
+                  className="flex-1 bg-electric-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-electric-600 transition-all duration-200 flex items-center justify-center space-x-2"
+                >
+                  <Trophy className="h-5 w-5" />
+                  <span>Log CAE Event Score</span>
+                </button>
+                
+                <button
+                  onClick={() => setShowLogEventModal(true)}
+                  className="flex-1 bg-gray-700 text-white px-6 py-3 rounded-lg font-medium hover:bg-gray-600 transition-all duration-200 flex items-center justify-center space-x-2"
+                >
+                  <Plus className="h-5 w-5" />
+                  <span>Log Non-CAE Event</span>
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -1167,6 +1562,168 @@ export default function Dashboard() {
             <ServiceWorkerManager showFullInterface={false} />
           </div>
         </div>
+
+        {/* Competition Modals */}
+        {showLogEventModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-800 border border-gray-700 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="p-6 border-b border-gray-700">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-white flex items-center space-x-2">
+                    <Trophy className="h-6 w-6 text-electric-500" />
+                    <span>{editingResult ? 'Edit Result' : 'Log Non-CAE Event'}</span>
+                  </h2>
+                  <button
+                    onClick={() => {
+                      setShowLogEventModal(false);
+                      setEditingResult(null);
+                    }}
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
+              </div>
+
+              <form onSubmit={handleSaveResult} className="p-6 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Event Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={eventFormData.event_name}
+                      onChange={(e) => setEventFormData(prev => ({ ...prev, event_name: e.target.value }))}
+                      className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-electric-500"
+                      placeholder="Enter event name"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Event Date *
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={eventFormData.event_date}
+                      onChange={(e) => setEventFormData(prev => ({ ...prev, event_date: e.target.value }))}
+                      className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-electric-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Category *
+                    </label>
+                    <select
+                      required
+                      value={eventFormData.category}
+                      onChange={(e) => setEventFormData(prev => ({ ...prev, category: e.target.value }))}
+                      className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-electric-500"
+                    >
+                      <option value="">Select category</option>
+                      <option value="SPL (Sound Pressure Level)">SPL (Sound Pressure Level)</option>
+                      <option value="SQ (Sound Quality)">SQ (Sound Quality)</option>
+                      <option value="Bass Boxing">Bass Boxing</option>
+                      <option value="Trunk Rattle">Trunk Rattle</option>
+                      <option value="Street Class">Street Class</option>
+                      <option value="Show and Shine">Show and Shine</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Location
+                    </label>
+                    <input
+                      type="text"
+                      value={eventFormData.event_location}
+                      onChange={(e) => setEventFormData(prev => ({ ...prev, event_location: e.target.value }))}
+                      className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-electric-500"
+                      placeholder="Enter location"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Score
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={eventFormData.score}
+                      onChange={(e) => setEventFormData(prev => ({ ...prev, score: e.target.value }))}
+                      className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-electric-500"
+                      placeholder="Enter score"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Placement
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={eventFormData.placement}
+                      onChange={(e) => setEventFormData(prev => ({ ...prev, placement: e.target.value }))}
+                      className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-electric-500"
+                      placeholder="Enter placement"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Notes
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={eventFormData.notes}
+                    onChange={(e) => setEventFormData(prev => ({ ...prev, notes: e.target.value }))}
+                    className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-electric-500"
+                    placeholder="Enter any additional notes..."
+                  />
+                </div>
+
+                <div className="flex justify-end space-x-4 pt-4 border-t border-gray-700">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowLogEventModal(false);
+                      setEditingResult(null);
+                    }}
+                    className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-3 bg-electric-500 text-white rounded-lg hover:bg-electric-600 transition-colors flex items-center space-x-2"
+                  >
+                    <Save className="h-4 w-4" />
+                    <span>{editingResult ? 'Update Result' : 'Log Result'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Log CAE Event Modal */}
+        <LogCAEEventModal
+          isOpen={showLogCAEEventModal}
+          onClose={() => setShowLogCAEEventModal(false)}
+          userId={user?.id || ''}
+          onSuccess={() => {
+            // Reload competition results
+            loadCompetitionResults();
+            setShowLogCAEEventModal(false);
+          }}
+        />
       </div>
     </div>
   );
