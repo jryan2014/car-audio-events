@@ -45,20 +45,20 @@ export const systemConfigService = {
           case 'auto_assign_enabled':
           case 'email_notifications_enabled':
           case 'spam_detection_enabled':
-            settings[settingKey as keyof SupportGeneralSettings] = value === 'true';
+            (settings as any)[settingKey] = value === 'true';
             break;
           case 'max_attachments':
           case 'max_attachment_size':
           case 'auto_close_resolved_days':
-            settings[settingKey as keyof SupportGeneralSettings] = parseInt(value);
+            (settings as any)[settingKey] = parseInt(value);
             break;
           case 'allowed_file_types':
-            settings[settingKey as keyof SupportGeneralSettings] = JSON.parse(value);
+            (settings as any)[settingKey] = JSON.parse(value);
             break;
           case 'default_priority':
           case 'support_email':
           case 'ticket_number_prefix':
-            settings[settingKey as keyof SupportGeneralSettings] = value;
+            (settings as any)[settingKey] = value;
             break;
         }
       });

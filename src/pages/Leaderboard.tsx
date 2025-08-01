@@ -158,7 +158,7 @@ const Leaderboard: React.FC = () => {
 
       // Extract unique categories
       const uniqueCategories = [...new Set(results?.map((r: any) => r.category).filter(Boolean))];
-      setCategories(uniqueCategories);
+      setCategories(uniqueCategories as string[]);
 
     } catch (error) {
       console.error('Error loading leaderboard:', error);

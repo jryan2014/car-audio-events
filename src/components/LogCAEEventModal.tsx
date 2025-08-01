@@ -265,7 +265,7 @@ const LogCAEEventModal: React.FC<LogCAEEventModalProps> = ({
                   />
                   <button
                     type="button"
-                    onClick={searchEvents}
+                    onClick={() => searchEvents()}
                     className="px-4 py-2 bg-electric-500 text-white rounded-lg hover:bg-electric-600 transition-colors"
                   >
                     <Search className="h-5 w-5" />

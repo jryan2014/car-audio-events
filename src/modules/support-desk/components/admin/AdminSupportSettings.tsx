@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import LoadingSpinner from '../../../../components/LoadingSpinner';
 import { requestTypeService, fieldService, supportAgentService, systemConfigService } from '../../services/supabase-client';
+import type { SupportGeneralSettings } from '../../services/system-config-service';
 import RequestTypeModal from './RequestTypeModal';
 import CustomFieldModal from './CustomFieldModal';
 import SupportAgentModal from './SupportAgentModal';
@@ -28,12 +29,12 @@ const AdminSupportSettings: React.FC = () => {
   const [editingSupportAgent, setEditingSupportAgent] = useState<SupportAgentWithUser | undefined>();
 
   // General settings state
-  const [generalSettings, setGeneralSettings] = useState({
+  const [generalSettings, setGeneralSettings] = useState<SupportGeneralSettings>({
     system_enabled: true,
     allow_anonymous_tickets: true,
     require_captcha: true,
     auto_assign_enabled: false,
-    default_priority: 'normal' as const,
+    default_priority: 'normal',
     email_notifications_enabled: true,
     support_email: '',
     max_attachments: 5,
