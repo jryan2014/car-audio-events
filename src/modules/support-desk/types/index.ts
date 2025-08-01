@@ -63,7 +63,10 @@ export interface SupportTicket {
   status: TicketStatus;
   priority: TicketPriority;
   request_type_id?: string;
+  subcategory_id?: string;
   event_id?: string;
+  related_invoice_id?: string;
+  related_transaction_id?: string;
   routing_type: RoutingType;
   assigned_to_org_id?: number;
   assigned_to_user_id?: string;
@@ -95,6 +98,18 @@ export interface SupportRequestType {
   requires_event: boolean;
   allowed_roles: UserRole[];
   sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SupportRequestSubcategory {
+  id: string;
+  request_type_id: string;
+  name: string;
+  description?: string;
+  requires_additional_data?: 'invoice' | 'transaction' | 'event';
+  sort_order: number;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -271,6 +286,7 @@ export interface SupportAgentWithUser extends SupportAgent {
 // Extended types with relationships
 export interface SupportTicketWithRelations extends SupportTicket {
   request_type?: SupportRequestType;
+  subcategory?: SupportRequestSubcategory;
   user?: {
     id: string;
     email: string;
@@ -289,6 +305,21 @@ export interface SupportTicketWithRelations extends SupportTicket {
     event_name?: string;
     start_date: string;
     organization_id?: number;
+  };
+  related_invoice?: {
+    id: string;
+    stripe_invoice_id: string;
+    amount_due: number;
+    status: string;
+    period_start: string;
+  };
+  related_transaction?: {
+    id: string;
+    provider_transaction_id: string;
+    amount: number;
+    status: string;
+    created_at: string;
+    description?: string;
   };
   assigned_to_user?: {
     id: string;
@@ -309,7 +340,10 @@ export interface CreateTicketFormData {
   title: string;
   description: string;
   request_type_id: string;
+  subcategory_id?: string;
   event_id?: string;
+  related_invoice_id?: string;
+  related_transaction_id?: string;
   priority?: TicketPriority;
   custom_fields?: Record<string, any>;
   attachments?: File[];

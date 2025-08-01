@@ -215,12 +215,38 @@ const TicketDetail: React.FC<TicketDetailProps> = ({
               {ticket.request_type?.name || 'N/A'}
             </span>
           </div>
-          <div>
-            <span className="text-gray-500">Event:</span>
-            <span className="ml-2 text-gray-900 dark:text-white">
-              {ticket.event?.name || 'N/A'}
-            </span>
-          </div>
+          {ticket.subcategory && (
+            <div>
+              <span className="text-gray-500">Subcategory:</span>
+              <span className="ml-2 text-gray-900 dark:text-white">
+                {ticket.subcategory.name}
+              </span>
+            </div>
+          )}
+          {ticket.event && (
+            <div>
+              <span className="text-gray-500">Event:</span>
+              <span className="ml-2 text-gray-900 dark:text-white">
+                {ticket.event.event_name || ticket.event.title}
+              </span>
+            </div>
+          )}
+          {ticket.related_invoice && (
+            <div>
+              <span className="text-gray-500">Invoice:</span>
+              <span className="ml-2 text-gray-900 dark:text-white">
+                {ticket.related_invoice.stripe_invoice_id} - ${(ticket.related_invoice.amount_due / 100).toFixed(2)}
+              </span>
+            </div>
+          )}
+          {ticket.related_transaction && (
+            <div>
+              <span className="text-gray-500">Transaction:</span>
+              <span className="ml-2 text-gray-900 dark:text-white">
+                {ticket.related_transaction.description || ticket.related_transaction.provider_transaction_id} - ${(ticket.related_transaction.amount / 100).toFixed(2)}
+              </span>
+            </div>
+          )}
           <div>
             <span className="text-gray-500">Source:</span>
             <span className="ml-2 text-gray-900 dark:text-white">

@@ -5,6 +5,7 @@ import type {
   SupportTicketWithRelations,
   SupportTicketMessage,
   SupportRequestType,
+  SupportRequestSubcategory,
   CreateTicketFormData,
   CreateMessageFormData,
   UpdateTicketFormData,
@@ -29,9 +30,12 @@ function buildTicketQuery(includeRelations = true) {
     query = supabase.from('support_tickets').select(`
       *,
       request_type:support_request_types(*),
+      subcategory:support_request_subcategories!support_tickets_subcategory_id_fkey(*),
       organization:organizations!support_tickets_organization_id_fkey(id, name, logo_url),
       event:events!support_tickets_event_id_fkey(id, title, event_name, start_date, organization_id),
-      assigned_to_org:organizations!support_tickets_assigned_to_org_id_fkey(id, name)
+      assigned_to_org:organizations!support_tickets_assigned_to_org_id_fkey(id, name),
+      related_invoice:invoices!support_tickets_related_invoice_id_fkey(id, stripe_invoice_id, amount_due, status, period_start),
+      related_transaction:transactions!support_tickets_related_transaction_id_fkey(id, provider_transaction_id, amount, status, created_at, description)
     `);
   }
   
@@ -1010,6 +1014,128 @@ async function uploadAttachments(files: File[], ticketId: string): Promise<any[]
   
   return attachments;
 }
+
+// Event operations for support tickets
+export const eventService = {
+  // Get events for support ticket selection
+  async getEventsForSupport(userId?: string): Promise<Array<{id: string, title: string, event_name: string, start_date: string, organization_id: number}>> {
+    try {
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      
+      // Base query for events
+      let query = supabase
+        .from('events')
+        .select('id, title, event_name, start_date, organization_id')
+        .eq('status', 'published')
+        .gte('start_date', thirtyDaysAgo.toISOString())
+        .order('start_date', { ascending: false });
+      
+      // If user is logged in, prioritize their registered events
+      if (userId) {
+        // Get user's registered events
+        const { data: registrations } = await supabase
+          .from('event_registrations')
+          .select('event_id')
+          .eq('user_id', userId);
+        
+        const registeredEventIds = registrations?.map(r => r.event_id) || [];
+        
+        // Get all relevant events
+        const { data: allEvents, error } = await query;
+        
+        if (error) throw error;
+        
+        // Sort to put registered events first
+        const sortedEvents = (allEvents || []).sort((a, b) => {
+          const aRegistered = registeredEventIds.includes(a.id);
+          const bRegistered = registeredEventIds.includes(b.id);
+          
+          if (aRegistered && !bRegistered) return -1;
+          if (!aRegistered && bRegistered) return 1;
+          
+          // Otherwise sort by date
+          return new Date(b.start_date).getTime() - new Date(a.start_date).getTime();
+        });
+        
+        return sortedEvents;
+      }
+      
+      // For public users, just return all recent/upcoming events
+      const { data, error } = await query;
+      
+      if (error) throw error;
+      
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching events for support:', error);
+      throw error;
+    }
+  }
+};
+
+// Subcategory operations
+export const subcategoryService = {
+  // Get subcategories for a request type
+  async getSubcategoriesForRequestType(requestTypeId: string): Promise<SupportRequestSubcategory[]> {
+    try {
+      const { data, error } = await supabase
+        .from('support_request_subcategories')
+        .select('*')
+        .eq('request_type_id', requestTypeId)
+        .eq('is_active', true)
+        .order('sort_order');
+      
+      if (error) throw error;
+      
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching subcategories:', error);
+      throw error;
+    }
+  }
+};
+
+// Billing data operations
+export const billingDataService = {
+  // Get user's invoices for selection
+  async getUserInvoices(userId: string): Promise<Array<{id: string, stripe_invoice_id: string, amount_due: number, status: string, period_start: string}>> {
+    try {
+      const { data, error } = await supabase
+        .from('invoices')
+        .select('id, stripe_invoice_id, amount_due, status, period_start')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      
+      if (error) throw error;
+      
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching user invoices:', error);
+      throw error;
+    }
+  },
+  
+  // Get user's transactions for selection
+  async getUserTransactions(userId: string): Promise<Array<{id: string, provider_transaction_id: string, amount: number, status: string, created_at: string, description: string}>> {
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('id, provider_transaction_id, amount, status, created_at, description')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      
+      if (error) throw error;
+      
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching user transactions:', error);
+      throw error;
+    }
+  }
+};
 
 // Canned response operations
 export const cannedResponseService = {

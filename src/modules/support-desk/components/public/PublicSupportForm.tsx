@@ -3,14 +3,22 @@ import { useAuth } from '../../../../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import HCaptcha, { HCaptchaRef } from '../../../../components/HCaptcha';
 import LoadingSpinner from '../../../../components/LoadingSpinner';
-import { requestTypeService, fieldService, ticketService } from '../../services/supabase-client';
+import { 
+  requestTypeService, 
+  fieldService, 
+  ticketService, 
+  eventService,
+  subcategoryService,
+  billingDataService 
+} from '../../services/supabase-client';
 import { EmailVerificationModal } from './EmailVerificationModal';
 import { CustomFieldRenderer } from '../shared/CustomFieldRenderer';
 import { getCSRFToken } from '../../../../utils/csrfProtection';
 import type { 
   SupportRequestType, 
   CreateTicketFormData, 
-  SupportFieldDefinition 
+  SupportFieldDefinition,
+  SupportRequestSubcategory 
 } from '../../types';
 
 const PublicSupportForm: React.FC = () => {
@@ -28,7 +36,10 @@ const PublicSupportForm: React.FC = () => {
     title: '',
     description: '',
     request_type_id: '',
+    subcategory_id: undefined,
     event_id: undefined,
+    related_invoice_id: undefined,
+    related_transaction_id: undefined,
     priority: 'normal',
     custom_fields: {},
     email: '',
@@ -40,6 +51,11 @@ const PublicSupportForm: React.FC = () => {
   const [requestTypes, setRequestTypes] = useState<SupportRequestType[]>([]);
   const [customFields, setCustomFields] = useState<SupportFieldDefinition[]>([]);
   const [selectedRequestType, setSelectedRequestType] = useState<SupportRequestType | null>(null);
+  const [availableEvents, setAvailableEvents] = useState<Array<{id: string, title: string, event_name: string, start_date: string}>>([]);
+  const [subcategories, setSubcategories] = useState<SupportRequestSubcategory[]>([]);
+  const [selectedSubcategory, setSelectedSubcategory] = useState<SupportRequestSubcategory | null>(null);
+  const [userInvoices, setUserInvoices] = useState<Array<{id: string, stripe_invoice_id: string, amount_due: number, status: string, period_start: string}>>([]);
+  const [userTransactions, setUserTransactions] = useState<Array<{id: string, provider_transaction_id: string, amount: number, status: string, created_at: string, description: string}>>([]);
   
   // Email verification for public users
   const [showEmailVerification, setShowEmailVerification] = useState(false);
@@ -101,6 +117,45 @@ const PublicSupportForm: React.FC = () => {
     }
   };
   
+  const loadEvents = async () => {
+    try {
+      const events = await eventService.getEventsForSupport(user?.id);
+      setAvailableEvents(events);
+    } catch (error) {
+      console.error('Error loading events:', error);
+      setError('Failed to load events. Please try again.');
+    }
+  };
+  
+  const loadSubcategories = async (requestTypeId: string) => {
+    try {
+      const subs = await subcategoryService.getSubcategoriesForRequestType(requestTypeId);
+      setSubcategories(subs);
+    } catch (error) {
+      console.error('Error loading subcategories:', error);
+    }
+  };
+  
+  const loadUserInvoices = async () => {
+    if (!user) return;
+    try {
+      const invoices = await billingDataService.getUserInvoices(user.id);
+      setUserInvoices(invoices);
+    } catch (error) {
+      console.error('Error loading invoices:', error);
+    }
+  };
+  
+  const loadUserTransactions = async () => {
+    if (!user) return;
+    try {
+      const transactions = await billingDataService.getUserTransactions(user.id);
+      setUserTransactions(transactions);
+    } catch (error) {
+      console.error('Error loading transactions:', error);
+    }
+  };
+  
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -109,9 +164,46 @@ const PublicSupportForm: React.FC = () => {
       const requestType = requestTypes.find(rt => rt.id === value);
       setSelectedRequestType(requestType || null);
       
-      // Reset event if new request type doesn't require it
-      if (requestType && !requestType.requires_event) {
-        setFormData(prev => ({ ...prev, event_id: undefined }));
+      // Reset dependent fields
+      setFormData(prev => ({ 
+        ...prev, 
+        subcategory_id: undefined,
+        event_id: undefined,
+        related_invoice_id: undefined,
+        related_transaction_id: undefined
+      }));
+      setSubcategories([]);
+      setSelectedSubcategory(null);
+      
+      // Load events if required
+      if (requestType && requestType.requires_event) {
+        loadEvents();
+      }
+      
+      // Load subcategories if this is billing
+      if (requestType && requestType.name === 'Billing Question') {
+        loadSubcategories(value);
+      }
+    }
+    
+    if (name === 'subcategory_id') {
+      const subcategory = subcategories.find(sc => sc.id === value);
+      setSelectedSubcategory(subcategory || null);
+      
+      // Reset billing data fields
+      setFormData(prev => ({ 
+        ...prev, 
+        related_invoice_id: undefined,
+        related_transaction_id: undefined
+      }));
+      
+      // Load appropriate billing data based on subcategory
+      if (subcategory && user) {
+        if (subcategory.requires_additional_data === 'invoice') {
+          loadUserInvoices();
+        } else if (subcategory.requires_additional_data === 'transaction') {
+          loadUserTransactions();
+        }
       }
     }
   };
@@ -137,6 +229,24 @@ const PublicSupportForm: React.FC = () => {
     // Validation
     if (!formData.title || !formData.description || !formData.request_type_id) {
       setError('Please fill in all required fields');
+      return;
+    }
+    
+    // Validate subcategory if subcategories exist
+    if (subcategories.length > 0 && !formData.subcategory_id) {
+      setError('Please select a specific issue type');
+      return;
+    }
+    
+    // Validate invoice selection if required
+    if (selectedSubcategory?.requires_additional_data === 'invoice' && !formData.related_invoice_id) {
+      setError('Please select an invoice');
+      return;
+    }
+    
+    // Validate transaction selection if required
+    if (selectedSubcategory?.requires_additional_data === 'transaction' && !formData.related_transaction_id) {
+      setError('Please select a transaction');
       return;
     }
     
@@ -360,6 +470,91 @@ const PublicSupportForm: React.FC = () => {
             )}
           </div>
           
+          {/* Subcategory selector for billing questions */}
+          {subcategories.length > 0 && (
+            <div>
+              <label htmlFor="subcategory_id" className="block text-sm font-medium text-gray-300">
+                What type of billing issue? *
+              </label>
+              <select
+                id="subcategory_id"
+                name="subcategory_id"
+                value={formData.subcategory_id || ''}
+                onChange={handleInputChange}
+                required
+                className="mt-1 block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white focus:border-electric-500 focus:ring-electric-500"
+              >
+                <option value="">Select a specific issue</option>
+                {subcategories.map(sub => (
+                  <option key={sub.id} value={sub.id}>
+                    {sub.name}
+                  </option>
+                ))}
+              </select>
+              {selectedSubcategory?.description && (
+                <p className="mt-1 text-sm text-gray-400">
+                  {selectedSubcategory.description}
+                </p>
+              )}
+            </div>
+          )}
+          
+          {/* Invoice selector for invoice inquiries */}
+          {selectedSubcategory?.requires_additional_data === 'invoice' && userInvoices.length > 0 && (
+            <div>
+              <label htmlFor="related_invoice_id" className="block text-sm font-medium text-gray-300">
+                Which invoice? *
+              </label>
+              <select
+                id="related_invoice_id"
+                name="related_invoice_id"
+                value={formData.related_invoice_id || ''}
+                onChange={handleInputChange}
+                required
+                className="mt-1 block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white focus:border-electric-500 focus:ring-electric-500"
+              >
+                <option value="">Select an invoice</option>
+                {userInvoices.map(invoice => {
+                  const invoiceDate = new Date(invoice.period_start).toLocaleDateString();
+                  const amount = (invoice.amount_due / 100).toFixed(2);
+                  return (
+                    <option key={invoice.id} value={invoice.id}>
+                      Invoice {invoice.stripe_invoice_id} - ${amount} - {invoiceDate} ({invoice.status})
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+          )}
+          
+          {/* Transaction selector for refund requests */}
+          {selectedSubcategory?.requires_additional_data === 'transaction' && userTransactions.length > 0 && (
+            <div>
+              <label htmlFor="related_transaction_id" className="block text-sm font-medium text-gray-300">
+                Which transaction? *
+              </label>
+              <select
+                id="related_transaction_id"
+                name="related_transaction_id"
+                value={formData.related_transaction_id || ''}
+                onChange={handleInputChange}
+                required
+                className="mt-1 block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white focus:border-electric-500 focus:ring-electric-500"
+              >
+                <option value="">Select a transaction</option>
+                {userTransactions.map(transaction => {
+                  const transactionDate = new Date(transaction.created_at).toLocaleDateString();
+                  const amount = (transaction.amount / 100).toFixed(2);
+                  return (
+                    <option key={transaction.id} value={transaction.id}>
+                      {transaction.description || `Transaction ${transaction.provider_transaction_id}`} - ${amount} - {transactionDate}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+          )}
+          
           {/* Event selector if required */}
           {selectedRequestType?.requires_event && (
             <div>
@@ -375,7 +570,14 @@ const PublicSupportForm: React.FC = () => {
                 className="mt-1 block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white focus:border-electric-500 focus:ring-electric-500"
               >
                 <option value="">Select an event</option>
-                {/* TODO: Load events dynamically */}
+                {availableEvents.map(event => {
+                  const eventDate = new Date(event.start_date).toLocaleDateString();
+                  return (
+                    <option key={event.id} value={event.id}>
+                      {event.event_name || event.title} - {eventDate}
+                    </option>
+                  );
+                })}
               </select>
             </div>
           )}
