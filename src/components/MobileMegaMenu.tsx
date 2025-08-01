@@ -524,7 +524,7 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, onL
                         Newsletter Manager
                       </Link>
                       <Link
-                        to="/admin/notifications"
+                        to="/admin/settings?tab=notifications"
                         onClick={onLinkClick}
                         className="flex items-center text-gray-300 hover:text-white py-2 transition-colors"
                       >

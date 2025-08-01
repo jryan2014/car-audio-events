@@ -627,7 +627,7 @@ export default function AdminDashboard() {
           </Link>
 
           <Link
-            to="/admin/notifications"
+            to="/admin/settings?tab=notifications"
             className="bg-gradient-to-br from-amber-500/20 to-amber-600/20 border border-amber-500/30 rounded-xl p-6 hover:from-amber-500/30 hover:to-amber-600/30 transition-all duration-200 group"
           >
             <div className="flex items-center space-x-3">
