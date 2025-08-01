@@ -190,7 +190,7 @@ export default function Dashboard() {
   const loadBillingData = async () => {
     if (!user) return;
     try {
-      const overview = await billingService.getBillingOverview(user.id);
+      const overview = await billingService.getUserBillingOverview(user.id);
       setSubscription(overview.subscription);
     } catch (error) {
       console.error('Error loading billing data:', error);
@@ -729,7 +729,7 @@ export default function Dashboard() {
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-gray-400">Plan</span>
                         <span className="text-white font-medium capitalize">
-                          {subscription.plan_name || subscription.plan}
+                          {subscription.membership_plan?.name || 'Free'}
                         </span>
                       </div>
                       <div className="flex items-center justify-between mb-2">
@@ -800,7 +800,7 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between">
                     <span className="text-gray-400">Member Since</span>
                     <span className="text-white">
-                      {formatDateShort(user.createdAt || new Date().toISOString())}
+                      {formatDateShort(new Date().toISOString())}
                     </span>
                   </div>
                 </div>
@@ -984,7 +984,7 @@ export default function Dashboard() {
                     <div>
                       <p className="text-gray-400 text-sm mb-1">Plan</p>
                       <p className="text-white text-lg font-semibold capitalize">
-                        {subscription.plan_name || subscription.plan}
+                        {subscription.membership_plan?.name || 'Free'}
                       </p>
                     </div>
                     <div>
