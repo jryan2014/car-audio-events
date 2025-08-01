@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import LoadingSpinner from '../../../../components/LoadingSpinner';
-import { messageService } from '../../services/supabase-client';
-import type { SupportTicketWithRelations, SupportTicketMessage, CreateMessageFormData } from '../../types';
+import { messageService, cannedResponseService } from '../../services/supabase-client';
+import type { SupportTicketWithRelations, SupportTicketMessage, CreateMessageFormData, SupportCannedResponse } from '../../types';
 
 interface TicketDetailProps {
   ticket: SupportTicketWithRelations;
@@ -20,10 +20,16 @@ const TicketDetail: React.FC<TicketDetailProps> = ({
   const [loading, setLoading] = useState(true);
   const [replyText, setReplyText] = useState('');
   const [isReplying, setIsReplying] = useState(false);
+  const [cannedResponses, setCannedResponses] = useState<SupportCannedResponse[]>([]);
+  const [showCannedResponseModal, setShowCannedResponseModal] = useState(false);
+  const [newCannedResponse, setNewCannedResponse] = useState({ name: '', content: '', category: '' });
 
   useEffect(() => {
     loadMessages();
-  }, [ticket.id]);
+    if (canManage) {
+      loadCannedResponses();
+    }
+  }, [ticket.id, canManage]);
 
   const loadMessages = async () => {
     try {
@@ -33,6 +39,38 @@ const TicketDetail: React.FC<TicketDetailProps> = ({
       console.error('Error loading messages:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadCannedResponses = async () => {
+    try {
+      const data = await cannedResponseService.getCannedResponses();
+      setCannedResponses(data);
+    } catch (error) {
+      console.error('Error loading canned responses:', error);
+    }
+  };
+
+  const handleCannedResponseSelect = (response: SupportCannedResponse) => {
+    setReplyText(response.content);
+  };
+
+  const handleSaveAsCannedResponse = async () => {
+    if (!replyText.trim() || !newCannedResponse.name.trim()) return;
+
+    try {
+      await cannedResponseService.createCannedResponse({
+        name: newCannedResponse.name,
+        content: replyText,
+        category: newCannedResponse.category || null,
+        is_active: true
+      });
+      
+      setShowCannedResponseModal(false);
+      setNewCannedResponse({ name: '', content: '', category: '' });
+      await loadCannedResponses();
+    } catch (error) {
+      console.error('Error saving canned response:', error);
     }
   };
 
@@ -82,7 +120,7 @@ const TicketDetail: React.FC<TicketDetailProps> = ({
   return (
     <div className="space-y-6">
       {/* Ticket Header */}
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-6">
         <div className="flex justify-between items-start mb-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -101,6 +139,68 @@ const TicketDetail: React.FC<TicketDetailProps> = ({
             </span>
           </div>
         </div>
+        
+        {/* User Information Section */}
+        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mb-4">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">User Information</h3>
+          {ticket.user ? (
+            <div className="space-y-2">
+              <div className="flex items-center">
+                <span className="text-sm text-gray-500 w-24">Name:</span>
+                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                  {ticket.user.name}
+                </span>
+              </div>
+              <div className="flex items-center">
+                <span className="text-sm text-gray-500 w-24">Email:</span>
+                <span className="text-sm text-gray-900 dark:text-white">
+                  {ticket.user.email}
+                </span>
+              </div>
+              <div className="flex items-center">
+                <span className="text-sm text-gray-500 w-24">Membership:</span>
+                <span className="text-sm text-gray-900 dark:text-white">
+                  {ticket.user.membership_type || 'None'}
+                </span>
+              </div>
+              {canManage && (
+                <div className="flex items-center pt-2">
+                  <a 
+                    href={`/admin/users/${ticket.user.id}`}
+                    className="text-sm text-electric-500 hover:text-electric-400"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    View Full Profile →
+                  </a>
+                </div>
+              )}
+            </div>
+          ) : ticket.anonymous_email ? (
+            <div className="space-y-2">
+              <div className="flex items-center">
+                <span className="text-sm text-gray-500 w-24">Name:</span>
+                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                  {ticket.anonymous_first_name} {ticket.anonymous_last_name}
+                </span>
+              </div>
+              <div className="flex items-center">
+                <span className="text-sm text-gray-500 w-24">Email:</span>
+                <span className="text-sm text-gray-900 dark:text-white">
+                  {ticket.anonymous_email}
+                </span>
+              </div>
+              <div className="flex items-center">
+                <span className="text-sm text-gray-500 w-24">Status:</span>
+                <span className="text-sm text-yellow-600 font-medium">
+                  Anonymous User
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="text-sm text-gray-500">No user information available</div>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div>
@@ -116,15 +216,15 @@ const TicketDetail: React.FC<TicketDetailProps> = ({
             </span>
           </div>
           <div>
-            <span className="text-gray-500">User:</span>
-            <span className="ml-2 text-gray-900 dark:text-white">
-              {ticket.user?.name || 'Anonymous'} ({ticket.user?.email})
-            </span>
-          </div>
-          <div>
             <span className="text-gray-500">Event:</span>
             <span className="ml-2 text-gray-900 dark:text-white">
               {ticket.event?.name || 'N/A'}
+            </span>
+          </div>
+          <div>
+            <span className="text-gray-500">Source:</span>
+            <span className="ml-2 text-gray-900 dark:text-white">
+              {ticket.source || 'web'}
             </span>
           </div>
         </div>
@@ -138,7 +238,7 @@ const TicketDetail: React.FC<TicketDetailProps> = ({
       </div>
 
       {/* Messages */}
-      <div className="bg-white rounded-lg shadow-md">
+      <div className="bg-gray-800/50 rounded-lg border border-gray-700">
         <div className="p-6 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Messages ({messages.length})
@@ -160,7 +260,7 @@ const TicketDetail: React.FC<TicketDetailProps> = ({
                   className={`p-4 rounded-lg ${
                     message.is_internal_note 
                       ? 'bg-yellow-50 border-l-4 border-yellow-400'
-                      : 'bg-gray-50 dark:bg-gray-700'
+                      : 'bg-gray-700/50'
                   }`}
                 >
                   <div className="flex justify-between items-start mb-2">
@@ -206,36 +306,159 @@ const TicketDetail: React.FC<TicketDetailProps> = ({
         </div>
 
         {/* Reply Form */}
-        {!canManage && ticket.status !== 'closed' && (
+        {(canManage || ticket.status !== 'closed') && (
           <div className="p-6 border-t border-gray-200 dark:border-gray-700">
             <form onSubmit={handleReply}>
+              {/* Canned Response Dropdown (Admin only) */}
+              {canManage && cannedResponses.length > 0 && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Canned Response
+                  </label>
+                  <select
+                    onChange={(e) => {
+                      const response = cannedResponses.find(r => r.id === e.target.value);
+                      if (response) {
+                        handleCannedResponseSelect(response);
+                      }
+                    }}
+                    className="block w-full rounded-md bg-gray-700 border-gray-600 text-white shadow-sm focus:border-electric-500 focus:ring-electric-500"
+                    defaultValue=""
+                  >
+                    <option value="">Select a canned response...</option>
+                    {Object.entries(
+                      cannedResponses.reduce((acc, response) => {
+                        const category = response.category || 'Uncategorized';
+                        if (!acc[category]) acc[category] = [];
+                        acc[category].push(response);
+                        return acc;
+                      }, {} as Record<string, SupportCannedResponse[]>)
+                    ).map(([category, responses]) => (
+                      <optgroup key={category} label={category}>
+                        {responses.map(response => (
+                          <option key={response.id} value={response.id}>
+                            {response.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div className="mb-4">
                 <label htmlFor="reply" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Add Reply
+                  {canManage ? 'Reply' : 'Add Reply'}
                 </label>
                 <textarea
                   id="reply"
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
                   rows={4}
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
+                  className="block w-full rounded-md bg-gray-700 border-gray-600 text-white shadow-sm focus:border-electric-500 focus:ring-electric-500"
                   placeholder="Type your reply..."
                   required
                 />
               </div>
-              <div className="flex justify-end">
-                <button
-                  type="submit"
-                  disabled={isReplying || !replyText.trim()}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                >
-                  {isReplying ? 'Sending...' : 'Send Reply'}
-                </button>
+              
+              <div className="flex justify-between">
+                {/* Save as Canned Response Button (Admin only) */}
+                {canManage && replyText.trim() && (
+                  <button
+                    type="button"
+                    onClick={() => setShowCannedResponseModal(true)}
+                    className="px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                  >
+                    Save as Canned Response
+                  </button>
+                )}
+                
+                <div className={`${canManage && replyText.trim() ? '' : 'w-full'} flex justify-end`}>
+                  <button
+                    type="submit"
+                    disabled={isReplying || !replyText.trim()}
+                    className="px-4 py-2 bg-electric-500 text-white rounded-md hover:bg-electric-600 focus:outline-none focus:ring-2 focus:ring-electric-500 disabled:opacity-50"
+                  >
+                    {isReplying ? 'Sending...' : 'Send Reply'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
         )}
       </div>
+      
+      {/* Canned Response Save Modal */}
+      {showCannedResponseModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 border border-gray-700">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Save as Canned Response
+            </h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="canned-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Name *
+                </label>
+                <input
+                  id="canned-name"
+                  type="text"
+                  value={newCannedResponse.name}
+                  onChange={(e) => setNewCannedResponse({ ...newCannedResponse, name: e.target.value })}
+                  className="block w-full rounded-md bg-gray-700 border-gray-600 text-white shadow-sm focus:border-electric-500 focus:ring-electric-500"
+                  placeholder="e.g., Welcome Message"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="canned-category" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Category
+                </label>
+                <input
+                  id="canned-category"
+                  type="text"
+                  value={newCannedResponse.category}
+                  onChange={(e) => setNewCannedResponse({ ...newCannedResponse, category: e.target.value })}
+                  className="block w-full rounded-md bg-gray-700 border-gray-600 text-white shadow-sm focus:border-electric-500 focus:ring-electric-500"
+                  placeholder="e.g., General, Technical Support"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Content Preview
+                </label>
+                <div className="bg-gray-700/50 p-3 rounded-md text-sm text-gray-300 max-h-32 overflow-y-auto">
+                  {replyText}
+                </div>
+              </div>
+            </div>
+            
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCannedResponseModal(false);
+                  setNewCannedResponse({ name: '', content: '', category: '' });
+                }}
+                className="px-4 py-2 bg-gray-600 text-gray-200 rounded-md hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveAsCannedResponse}
+                disabled={!newCannedResponse.name.trim()}
+                className="px-4 py-2 bg-electric-500 text-white rounded-md hover:bg-electric-600 focus:outline-none focus:ring-2 focus:ring-electric-500 disabled:opacity-50"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

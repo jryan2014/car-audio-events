@@ -6,10 +6,11 @@ import { requestTypeService, fieldService, supportAgentService, systemConfigServ
 import RequestTypeModal from './RequestTypeModal';
 import CustomFieldModal from './CustomFieldModal';
 import SupportAgentModal from './SupportAgentModal';
+import CannedResponsesManager from './CannedResponsesManager';
 import type { SupportRequestType, SupportFieldDefinition, SupportAgentWithUser } from '../../types';
 
 const AdminSupportSettings: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'general' | 'request-types' | 'fields' | 'agents' | 'organizations' | 'analytics'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'request-types' | 'fields' | 'agents' | 'canned-responses' | 'organizations' | 'analytics'>('general');
   const [loading, setLoading] = useState(false);
   const [requestTypes, setRequestTypes] = useState<SupportRequestType[]>([]);
   const [customFields, setCustomFields] = useState<SupportFieldDefinition[]>([]);
@@ -200,6 +201,7 @@ const AdminSupportSettings: React.FC = () => {
     { id: 'request-types', label: 'Request Types', icon: '📋' },
     { id: 'fields', label: 'Custom Fields', icon: '📝' },
     { id: 'agents', label: 'Support Agents', icon: '👥' },
+    { id: 'canned-responses', label: 'Canned Responses', icon: '💬' },
     { id: 'organizations', label: 'Organizations', icon: '🏢' },
     { id: 'analytics', label: 'Analytics', icon: '📊' }
   ];
@@ -688,6 +690,11 @@ const AdminSupportSettings: React.FC = () => {
                     </div>
                   )}
                 </div>
+              )}
+
+              {/* Canned Responses Tab */}
+              {activeTab === 'canned-responses' && (
+                <CannedResponsesManager />
               )}
 
               {/* Organizations Tab */}

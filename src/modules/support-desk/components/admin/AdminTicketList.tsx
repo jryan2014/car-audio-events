@@ -14,7 +14,7 @@ const AdminTicketList: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [currentPage, setCurrentPage] = useState(1);
   
-  // Filters
+  // Filters - Default to showing all tickets
   const [statusFilter, setStatusFilter] = useState<TicketStatus[]>([]);
   const [priorityFilter, setPriorityFilter] = useState<TicketPriority[]>([]);
   const [assignedFilter, setAssignedFilter] = useState<'all' | 'unassigned' | 'assigned'>('all');
@@ -45,12 +45,8 @@ const AdminTicketList: React.FC = () => {
         is_spam: showSpam ? undefined : false
       };
       
-      // Apply assignment filter
-      if (assignedFilter === 'unassigned') {
-        filters.assigned_to_user_id = [null as any];
-      } else if (assignedFilter === 'assigned') {
-        // This would need backend support to filter for non-null
-      }
+      // Note: Assignment filtering would need backend support
+      // For now, we'll filter the results client-side after fetching
       
       const response = await ticketService.getTickets(filters, {
         page: currentPage,
@@ -59,7 +55,15 @@ const AdminTicketList: React.FC = () => {
         sort_order: 'desc'
       });
       
-      setTickets(response.data);
+      // Apply client-side assignment filtering
+      let filteredTickets = response.data;
+      if (assignedFilter === 'unassigned') {
+        filteredTickets = response.data.filter(ticket => !ticket.assigned_to_user_id && !ticket.assigned_to_org_id);
+      } else if (assignedFilter === 'assigned') {
+        filteredTickets = response.data.filter(ticket => ticket.assigned_to_user_id || ticket.assigned_to_org_id);
+      }
+      
+      setTickets(filteredTickets);
       setTotalPages(response.total_pages);
     } catch (error) {
       console.error('Error loading tickets:', error);
@@ -77,11 +81,15 @@ const AdminTicketList: React.FC = () => {
       const waitingTickets = await ticketService.getTickets({ status: ['waiting_on_user'] }, { page: 1, limit: 1 });
       const highPriorityTickets = await ticketService.getTickets({ priority: ['high', 'urgent'] }, { page: 1, limit: 1 });
       
+      // Get all tickets to count unassigned ones
+      const allTickets = await ticketService.getTickets({}, { page: 1, limit: 100 });
+      const unassignedCount = allTickets.data.filter(t => !t.assigned_to_user_id && !t.assigned_to_org_id).length;
+      
       setStats({
         open: openTickets.total,
         in_progress: inProgressTickets.total,
         waiting_on_user: waitingTickets.total,
-        unassigned: 0, // Would need backend support
+        unassigned: unassignedCount,
         high_priority: highPriorityTickets.total
       });
     } catch (error) {
@@ -188,7 +196,7 @@ const AdminTicketList: React.FC = () => {
                 setCurrentPage(1);
               }}
               placeholder="Search tickets..."
-              className="block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
+              className="block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
             />
           </div>
           
@@ -204,7 +212,7 @@ const AdminTicketList: React.FC = () => {
                 setStatusFilter(selected);
                 setCurrentPage(1);
               }}
-              className="block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
+              className="block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
               size={3}
             >
               <option value="open" className="py-1">Open</option>
@@ -227,7 +235,7 @@ const AdminTicketList: React.FC = () => {
                 setPriorityFilter(selected);
                 setCurrentPage(1);
               }}
-              className="block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
+              className="block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
               size={3}
             >
               <option value="urgent" className="py-1">Urgent</option>
@@ -247,7 +255,7 @@ const AdminTicketList: React.FC = () => {
                 setAssignedFilter(e.target.value as any);
                 setCurrentPage(1);
               }}
-              className="block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
+              className="block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
             >
               <option value="all">All Tickets</option>
               <option value="unassigned">Unassigned Only</option>
@@ -282,8 +290,8 @@ const AdminTicketList: React.FC = () => {
           <p className="text-red-600">{error}</p>
         </div>
       ) : tickets.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-md p-8 text-center">
-          <p className="text-gray-500">No tickets found matching your filters</p>
+        <div className="bg-gray-800/50 rounded-lg border border-gray-700 p-8 text-center">
+          <p className="text-gray-400">No tickets found matching your filters</p>
         </div>
       ) : (
         <>
@@ -324,9 +332,22 @@ const AdminTicketList: React.FC = () => {
                       #{ticket.ticket_number}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                      {ticket.user?.name || 'Anonymous'}
-                      <br />
-                      <span className="text-xs text-gray-400">{ticket.user?.email}</span>
+                      {ticket.user ? (
+                        <>
+                          {ticket.user.name}
+                          <br />
+                          <span className="text-xs text-gray-400">{ticket.user.email}</span>
+                        </>
+                      ) : ticket.anonymous_email ? (
+                        <>
+                          {ticket.anonymous_first_name} {ticket.anonymous_last_name}
+                          <br />
+                          <span className="text-xs text-gray-400">{ticket.anonymous_email}</span>
+                          <span className="ml-1 text-xs text-yellow-500">(Anonymous)</span>
+                        </>
+                      ) : (
+                        'Unknown User'
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm text-white font-medium">
@@ -399,17 +420,17 @@ const AdminTicketList: React.FC = () => {
                 <button
                   onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                   disabled={currentPage === 1}
-                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-600 bg-gray-700 text-sm font-medium text-gray-300 hover:bg-gray-600 disabled:opacity-50"
                 >
                   Previous
                 </button>
-                <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                <span className="relative inline-flex items-center px-4 py-2 border border-gray-600 bg-gray-700 text-sm font-medium text-gray-300">
                   Page {currentPage} of {totalPages}
                 </span>
                 <button
                   onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                   disabled={currentPage === totalPages}
-                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-600 bg-gray-700 text-sm font-medium text-gray-300 hover:bg-gray-600 disabled:opacity-50"
                 >
                   Next
                 </button>

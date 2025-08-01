@@ -205,6 +205,16 @@ const displayDate = parseLocalDate(event.start_date).toLocaleDateString();
 ## Future Features Tracking
 See `FUTURE_FEATURES_TODO.md` for planned enhancements that are not part of current priorities.
 
+## AI Agent System
+
+The Car Audio Events platform uses specialized AI agents to provide domain expertise:
+- **Support Desk Specialist**: Support system optimization
+- **Event Platform Architect**: Event management features  
+- **Payment Integration Specialist**: Payment security and compliance
+- Plus 20+ general purpose agents from Contains Studio
+
+See `.claude/agents/CAR_AUDIO_EVENTS_AGENTS.md` for full documentation.
+
 ---
 Last Updated: January 2025 (v1.26.32)
 Context preserved for AI assistants working on this project.

@@ -84,7 +84,10 @@
       "mcp__playwright__browser_navigate_back",
       "mcp__playwright__browser_handle_dialog",
       "Bash(wmic process where \"name='node.exe'\" call terminate:*)",
-      "Bash(tsc --noEmit)"
+      "Bash(tsc --noEmit)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(git clone:*)"
     ],
     "deny": []
   },

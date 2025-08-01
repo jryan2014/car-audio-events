@@ -94,9 +94,19 @@ export const supportEmailService = {
     try {
       const { ticket, user, message, action } = data;
       
-      // Determine email recipient
-      const toEmail = user?.email || 'admin@caraudioevents.com';
-      const toName = user?.name || 'User';
+      // Determine email recipient - check for anonymous user
+      let toEmail = user?.email || 'admin@caraudioevents.com';
+      let toName = user?.name || 'User';
+      
+      // If no user but ticket has anonymous email, use that
+      if (!user && ticket.anonymous_email) {
+        toEmail = ticket.anonymous_email;
+        if (ticket.anonymous_first_name) {
+          toName = `${ticket.anonymous_first_name} ${ticket.anonymous_last_name || ''}`.trim();
+        } else {
+          toName = ticket.anonymous_name || 'User';
+        }
+      }
       
       // Map action to template name
       const templateMap: Record<string, string> = {

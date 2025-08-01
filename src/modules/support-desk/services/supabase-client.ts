@@ -16,7 +16,8 @@ import type {
   SupportOrganizationSettings,
   OrganizationSupportSettings,
   SupportAgent,
-  SupportAgentWithUser
+  SupportAgentWithUser,
+  SupportCannedResponse
 } from '../types';
 
 // Helper function to build ticket query with relations
@@ -222,6 +223,49 @@ export const ticketService = {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
+      // For anonymous users, use the special function
+      if (!user && formData.anonymous_email) {
+        const { data: result, error } = await supabase.rpc('create_anonymous_support_ticket', {
+          p_title: formData.title,
+          p_description: formData.description,
+          p_anonymous_email: formData.anonymous_email,
+          p_anonymous_first_name: formData.anonymous_first_name || 'Anonymous',
+          p_anonymous_last_name: formData.anonymous_last_name || 'User',
+          p_priority: formData.priority || 'normal',
+          p_captcha_verified: !!formData.captcha_token
+        });
+        
+        if (error || !result?.success) {
+          throw new Error(result?.error || error?.message || 'Failed to create anonymous ticket');
+        }
+        
+        const ticket = result.ticket;
+        
+        // Handle attachments if any
+        if (formData.attachments?.length && ticket) {
+          const attachmentUrls = await uploadAttachments(formData.attachments, ticket.id);
+          
+          await supabase
+            .from('support_ticket_messages')
+            .insert([{
+              ticket_id: ticket.id,
+              user_id: null,
+              message: 'Initial attachments',
+              attachments: attachmentUrls,
+              message_type: 'reply'
+            }]);
+        }
+        
+        // Queue email notification for anonymous user
+        await supportEmailService.queueSupportEmail({
+          ticket,
+          action: 'ticket_created'
+        });
+        
+        return ticket;
+      }
+      
+      // For authenticated users, use direct insertion
       const ticketData: Partial<SupportTicket> = {
         title: formData.title,
         description: formData.description,
@@ -231,7 +275,7 @@ export const ticketService = {
         custom_fields: formData.custom_fields || {},
         user_id: user?.id,
         captcha_verified: !!formData.captcha_token,
-        source: 'web'
+        source: formData.source || 'web'
       };
       
       // Get request type to determine routing
@@ -273,6 +317,12 @@ export const ticketService = {
       // Send email notification
       if (user) {
         await supportEmailService.sendTicketCreatedEmail(data, user);
+      } else if (ticketData.anonymous_email) {
+        // For anonymous users, use queueSupportEmail directly
+        await supportEmailService.queueSupportEmail({
+          ticket: data,
+          action: 'ticket_created'
+        });
       }
       
       return data;
@@ -960,6 +1010,87 @@ async function uploadAttachments(files: File[], ticketId: string): Promise<any[]
   
   return attachments;
 }
+
+// Canned response operations
+export const cannedResponseService = {
+  // Get all canned responses
+  async getCannedResponses(): Promise<SupportCannedResponse[]> {
+    try {
+      const { data, error } = await supabase
+        .from('support_canned_responses')
+        .select('*')
+        .eq('is_active', true)
+        .order('category', { ascending: true })
+        .order('name', { ascending: true });
+      
+      if (error) throw error;
+      
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching canned responses:', error);
+      return [];
+    }
+  },
+
+  // Create new canned response
+  async createCannedResponse(response: Omit<SupportCannedResponse, 'id' | 'created_at' | 'updated_at'>): Promise<SupportCannedResponse | null> {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const { data, error } = await supabase
+        .from('support_canned_responses')
+        .insert([{
+          ...response,
+          created_by: user?.id
+        }])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      return data;
+    } catch (error) {
+      console.error('Error creating canned response:', error);
+      throw error;
+    }
+  },
+
+  // Update canned response
+  async updateCannedResponse(id: string, updates: Partial<SupportCannedResponse>): Promise<SupportCannedResponse | null> {
+    try {
+      const { data, error } = await supabase
+        .from('support_canned_responses')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      return data;
+    } catch (error) {
+      console.error('Error updating canned response:', error);
+      throw error;
+    }
+  },
+
+  // Delete canned response (soft delete by setting is_active to false)
+  async deleteCannedResponse(id: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('support_canned_responses')
+        .update({ is_active: false })
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      return true;
+    } catch (error) {
+      console.error('Error deleting canned response:', error);
+      throw error;
+    }
+  }
+};
 
 // Export system config service
 export { systemConfigService } from './system-config-service';

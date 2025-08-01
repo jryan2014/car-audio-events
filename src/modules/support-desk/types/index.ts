@@ -78,6 +78,10 @@ export interface SupportTicket {
   spam_score?: number;
   is_spam: boolean;
   captcha_verified: boolean;
+  anonymous_email?: string;
+  anonymous_name?: string; // Deprecated - use first/last name
+  anonymous_first_name?: string;
+  anonymous_last_name?: string;
 }
 
 export interface SupportRequestType {
@@ -312,6 +316,11 @@ export interface CreateTicketFormData {
   captcha_token?: string;
   email?: string; // For public users
   csrf_token?: string; // CSRF protection
+  anonymous_email?: string; // For anonymous users
+  anonymous_name?: string; // Deprecated - For anonymous users
+  anonymous_first_name?: string; // For anonymous users
+  anonymous_last_name?: string; // For anonymous users
+  source?: 'web' | 'email' | 'api';
 }
 
 export interface CreateMessageFormData {
@@ -377,4 +386,16 @@ export interface SupportPermissions {
   can_manage_custom_fields: boolean;
   can_view_organization_tickets: boolean;
   organization_ids: number[];
+}
+
+// Canned response types
+export interface SupportCannedResponse {
+  id: string;
+  name: string;
+  content: string;
+  category?: string;
+  is_active: boolean;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
 }

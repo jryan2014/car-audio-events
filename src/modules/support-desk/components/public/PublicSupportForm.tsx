@@ -31,7 +31,9 @@ const PublicSupportForm: React.FC = () => {
     event_id: undefined,
     priority: 'normal',
     custom_fields: {},
-    email: ''
+    email: '',
+    anonymous_first_name: '',
+    anonymous_last_name: ''
   });
   
   // Request types and fields
@@ -158,6 +160,11 @@ const PublicSupportForm: React.FC = () => {
         return;
       }
       
+      if (!formData.anonymous_first_name || !formData.anonymous_last_name) {
+        setError('First and last name are required');
+        return;
+      }
+      
       // Check if captcha is required (bypass only in development)
       const isDevelopment = import.meta.env.DEV;
       
@@ -183,6 +190,9 @@ const PublicSupportForm: React.FC = () => {
         ...formData,
         captcha_token: captchaToken || (import.meta.env.DEV ? 'test-token-for-development' : ''),
         email: user ? undefined : verifiedEmail,
+        anonymous_email: user ? undefined : verifiedEmail,
+        anonymous_first_name: user ? undefined : formData.anonymous_first_name,
+        anonymous_last_name: user ? undefined : formData.anonymous_last_name,
         csrf_token: getCSRFToken()
       };
       
@@ -264,28 +274,63 @@ const PublicSupportForm: React.FC = () => {
           )}
         
         <form id="support-form" onSubmit={handleSubmit} className="space-y-6">
-          {/* Email field for public users */}
+          {/* Name and Email fields for public users */}
           {!user && (
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-300">
-                Email Address *
-              </label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                required
-                disabled={!!verifiedEmail}
-                className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500 disabled:bg-gray-600"
-              />
-              {verifiedEmail && (
-                <p className="mt-1 text-sm text-green-400">
-                  ✓ Email verified
-                </p>
-              )}
-            </div>
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="anonymous_first_name" className="block text-sm font-medium text-gray-300">
+                    First Name *
+                  </label>
+                  <input
+                    type="text"
+                    id="anonymous_first_name"
+                    name="anonymous_first_name"
+                    value={formData.anonymous_first_name}
+                    onChange={handleInputChange}
+                    required
+                    className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
+                    placeholder="John"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="anonymous_last_name" className="block text-sm font-medium text-gray-300">
+                    Last Name *
+                  </label>
+                  <input
+                    type="text"
+                    id="anonymous_last_name"
+                    name="anonymous_last_name"
+                    value={formData.anonymous_last_name}
+                    onChange={handleInputChange}
+                    required
+                    className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
+                    placeholder="Doe"
+                  />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-300">
+                  Email Address *
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  required
+                  disabled={!!verifiedEmail}
+                  className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500 disabled:bg-gray-600"
+                  placeholder="john.doe@example.com"
+                />
+                {verifiedEmail && (
+                  <p className="mt-1 text-sm text-green-400">
+                    ✓ Email verified
+                  </p>
+                )}
+              </div>
+            </>
           )}
           
           {/* Request Type */}
