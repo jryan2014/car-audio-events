@@ -49,39 +49,15 @@ interface ResourceCategory {
   pages: CMSPage[];
 }
 
-// Anti-bot protection for email
-const obfuscateEmail = (email: string): string => {
-  if (!email) return '';
-  return email.replace('@', '&#64;').replace(/\./g, '&#46;');
-};
-
-const createProtectedEmailLink = (email: string, subject?: string) => {
-  const handleClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    const decodedEmail = email.replace(/&#64;/g, '@').replace(/&#46;/g, '.');
-    const subjectParam = subject ? `?subject=${encodeURIComponent(subject)}` : '';
-    window.location.href = `mailto:${decodedEmail}${subjectParam}`;
-  };
-  
-  return {
-    onClick: handleClick,
-    href: '#'
-  };
-};
 
 export default function Resources() {
   const { user } = useAuth();
   const [pages, setPages] = useState<CMSPage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [contactSettings, setContactSettings] = useState<{
-    support_email?: string;
-    contact_email?: string;
-  }>({});
 
   useEffect(() => {
     loadResourcePages();
-    loadContactSettings();
     
     // Log page visit
     if (user) {
@@ -120,24 +96,6 @@ export default function Resources() {
     }
   };
 
-  const loadContactSettings = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('organizations')
-        .select('system_config')
-        .eq('type', 'platform')
-        .single();
-
-      if (data?.system_config) {
-        setContactSettings({
-          support_email: data.system_config.support_email,
-          contact_email: data.system_config.contact_email
-        });
-      }
-    } catch (error) {
-      console.error('Error loading contact settings:', error);
-    }
-  };
 
   const getIconForPage = (title: string) => {
     const titleLower = title.toLowerCase();
@@ -271,14 +229,14 @@ export default function Resources() {
             <p className="text-gray-400 text-sm">Upgrade your account for premium features</p>
           </Link>
 
-          <a
-            {...createProtectedEmailLink(contactSettings.support_email || contactSettings.contact_email || 'support@caraudioevents.com')}
+          <Link
+            to="/support"
             className="bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-500/30 rounded-xl p-6 hover:border-orange-500/50 transition-all duration-300 group"
           >
             <HelpCircle className="h-8 w-8 text-orange-400 mb-4 group-hover:scale-110 transition-transform" />
             <h3 className="text-lg font-semibold text-white mb-2">Get Help</h3>
             <p className="text-gray-400 text-sm">Contact our support team for assistance</p>
-          </a>
+          </Link>
         </div>
 
         {/* Resource Categories */}
