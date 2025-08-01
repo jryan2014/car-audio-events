@@ -289,7 +289,7 @@ const PublicSupportForm: React.FC = () => {
                     value={formData.anonymous_first_name}
                     onChange={handleInputChange}
                     required
-                    className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
+                    className="mt-1 block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
                     placeholder="John"
                   />
                 </div>
@@ -304,7 +304,7 @@ const PublicSupportForm: React.FC = () => {
                     value={formData.anonymous_last_name}
                     onChange={handleInputChange}
                     required
-                    className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
+                    className="mt-1 block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500"
                     placeholder="Doe"
                   />
                 </div>
@@ -321,7 +321,7 @@ const PublicSupportForm: React.FC = () => {
                   onChange={handleInputChange}
                   required
                   disabled={!!verifiedEmail}
-                  className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500 disabled:bg-gray-600"
+                  className="mt-1 block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-electric-500 focus:ring-electric-500 disabled:bg-gray-600"
                   placeholder="john.doe@example.com"
                 />
                 {verifiedEmail && (
@@ -344,7 +344,7 @@ const PublicSupportForm: React.FC = () => {
               value={formData.request_type_id}
               onChange={handleInputChange}
               required
-              className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white focus:border-electric-500 focus:ring-electric-500"
+              className="mt-1 block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white focus:border-electric-500 focus:ring-electric-500"
             >
               <option value="">Select a category</option>
               {requestTypes.map(type => (
@@ -372,7 +372,7 @@ const PublicSupportForm: React.FC = () => {
                 value={formData.event_id || ''}
                 onChange={handleInputChange}
                 required
-                className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white focus:border-electric-500 focus:ring-electric-500"
+                className="mt-1 block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white focus:border-electric-500 focus:ring-electric-500"
               >
                 <option value="">Select an event</option>
                 {/* TODO: Load events dynamically */}
@@ -424,7 +424,7 @@ const PublicSupportForm: React.FC = () => {
               name="priority"
               value={formData.priority}
               onChange={handleInputChange}
-              className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white focus:border-electric-500 focus:ring-electric-500"
+              className="mt-1 block w-full px-3 py-2 rounded-md bg-gray-700 border-gray-600 text-white focus:border-electric-500 focus:ring-electric-500"
             >
               <option value="low">Low</option>
               <option value="normal">Normal</option>
