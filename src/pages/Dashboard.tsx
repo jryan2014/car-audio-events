@@ -3,7 +3,7 @@ import {
   User, Trophy, Calendar, Users, TrendingUp, Star, ArrowRight, 
   Plus, Target, Award, MapPin, CreditCard, Package, Clock, 
   DollarSign, FileText, Shield, Activity, Heart, Settings,
-  ChevronRight, Home, BarChart3, Zap, Bell
+  ChevronRight, Home, BarChart3, Zap, Bell, X, CheckCircle, Crown
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -204,13 +204,13 @@ export default function Dashboard() {
         .from('competition_results')
         .select('*')
         .eq('user_id', user.id)
-        .order('competed_at', { ascending: true });
+        .order('created_at', { ascending: true });
 
       if (error) throw error;
 
       // Transform data for charts
       const chartData = (data || []).map(result => ({
-        date: new Date(result.competed_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+        date: new Date(result.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
         score: result.score || 0,
         placement: result.placement || 0,
         points: result.points_earned || 0
@@ -307,25 +307,23 @@ export default function Dashboard() {
           placement,
           total_participants,
           points_earned,
-          competed_at,
-          score,
-          is_cae_event,
-          event_name
+          created_at,
+          score
         `)
         .eq('user_id', user.id)
-        .order('competed_at', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(5);
 
       if (error) throw error;
 
       const formattedResults = (data || []).map(result => ({
         id: result.id,
-        eventTitle: result.event_name || 'Event',
+        eventTitle: 'Competition Event',
         category: result.category,
         placement: result.placement || 0,
         totalParticipants: result.total_participants || 0,
         points: result.points_earned || 0,
-        date: result.competed_at
+        date: result.created_at
       }));
 
       setRecentResults(formattedResults);
@@ -762,15 +760,23 @@ export default function Dashboard() {
                     )}
                   </div>
                 ) : (
-                  <div className="text-center py-4">
-                    <Package className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-                    <p className="text-gray-400 mb-4">Free Member</p>
-                    <Link
-                      to="/pricing"
-                      className="bg-electric-500 text-white px-4 py-2 rounded-lg hover:bg-electric-600 transition-colors inline-block"
-                    >
-                      Upgrade to Pro
-                    </Link>
+                  <div className="space-y-6">
+                    <div className="text-center py-4">
+                      <Package className="h-12 w-12 text-gray-600 mx-auto mb-4" />
+                      <p className="text-gray-400 mb-4">Free Member</p>
+                    </div>
+
+                    {/* Pro Upgrade Section */}
+                    <div className="bg-gray-700/30 border border-electric-500/20 rounded-lg p-4 text-center">
+                      <div className="flex items-center justify-center gap-2 mb-2">
+                        <Crown className="h-5 w-5 text-electric-400" />
+                        <h4 className="font-semibold text-white">Upgrade to Pro</h4>
+                      </div>
+                      <p className="text-gray-400 text-sm mb-3">Get advanced analytics, priority support & exclusive events</p>
+                      <button className="bg-electric-500 text-white px-4 py-2 rounded-lg hover:bg-electric-600 transition-colors text-sm">
+                        View Benefits
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -779,76 +785,151 @@ export default function Dashboard() {
         )}
 
         {activeTab === 'profile' && (
-          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-            <h2 className="text-2xl font-bold text-white mb-6">Profile Overview</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h3 className="text-lg font-semibold text-white mb-4">Personal Information</h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-400">Name</span>
-                    <span className="text-white">{user.name}</span>
+          <div className="space-y-6">
+            {/* Profile Information Section */}
+            <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-white">Profile Information</h2>
+                <button
+                  onClick={() => setIsEditMode(prev => !prev)}
+                  className="bg-electric-500 text-white px-4 py-2 rounded-lg hover:bg-electric-600 transition-colors flex items-center gap-2"
+                >
+                  {isEditMode ? <X className="h-4 w-4" /> : <User className="h-4 w-4" />}
+                  {isEditMode ? 'Cancel' : 'Edit Profile'}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Full Name</label>
+                    {isEditMode ? (
+                      <input
+                        type="text"
+                        defaultValue={user.name}
+                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-electric-500"
+                      />
+                    ) : (
+                      <p className="text-white bg-gray-700/50 rounded-lg px-3 py-2">{user.name}</p>
+                    )}
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-400">Email</span>
-                    <span className="text-white">{user.email}</span>
+                  
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Email Address</label>
+                    <p className="text-white bg-gray-700/50 rounded-lg px-3 py-2">{user.email}</p>
+                    <span className="text-xs text-gray-500">Email cannot be changed</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-400">Location</span>
-                    <span className="text-white">{user.location || 'Not set'}</span>
+
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Location</label>
+                    {isEditMode ? (
+                      <input
+                        type="text"
+                        defaultValue={user.location || ''}
+                        placeholder="City, State"
+                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-electric-500"
+                      />
+                    ) : (
+                      <p className="text-white bg-gray-700/50 rounded-lg px-3 py-2">{user.location || 'Not set'}</p>
+                    )}
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-400">Member Since</span>
-                    <span className="text-white">
-                      {formatDateShort(new Date().toISOString())}
-                    </span>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Phone Number</label>
+                    {isEditMode ? (
+                      <input
+                        type="tel"
+                        defaultValue={user.phone || ''}
+                        placeholder="(555) 123-4567"
+                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-electric-500"
+                      />
+                    ) : (
+                      <p className="text-white bg-gray-700/50 rounded-lg px-3 py-2">{user.phone || 'Not set'}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Website</label>
+                    {isEditMode ? (
+                      <input
+                        type="url"
+                        defaultValue={user.website || ''}
+                        placeholder="https://yourwebsite.com"
+                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-electric-500"
+                      />
+                    ) : (
+                      <p className="text-white bg-gray-700/50 rounded-lg px-3 py-2">{user.website || 'Not set'}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Bio</label>
+                    {isEditMode ? (
+                      <textarea
+                        defaultValue={user.bio || ''}
+                        placeholder="Tell us about yourself..."
+                        rows={3}
+                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-electric-500 resize-none"
+                      />
+                    ) : (
+                      <p className="text-white bg-gray-700/50 rounded-lg px-3 py-2 min-h-[88px]">{user.bio || 'Not set'}</p>
+                    )}
                   </div>
                 </div>
               </div>
+
+              {isEditMode && (
+                <div className="flex items-center gap-3 mt-6 pt-6 border-t border-gray-700">
+                  <button className="bg-electric-500 text-white px-6 py-2 rounded-lg hover:bg-electric-600 transition-colors">
+                    Save Changes
+                  </button>
+                  <button
+                    onClick={() => setIsEditMode(false)}
+                    className="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Quick Actions Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <button
+                onClick={() => setActiveTab('competitions')}
+                className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 hover:border-electric-500/50 transition-colors text-left"
+              >
+                <Trophy className="h-8 w-8 text-electric-500 mb-3" />
+                <h3 className="text-lg font-semibold text-white mb-2">Competitions</h3>
+                <p className="text-gray-400 text-sm">View your competition history and results</p>
+              </button>
               
-              <div>
-                <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
-                <div className="space-y-3">
-                  <Link
-                    to="/profile"
-                    className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors"
-                  >
-                    <span className="flex items-center gap-2 text-white">
-                      <User className="h-4 w-4" />
-                      Edit Profile
-                    </span>
-                    <ChevronRight className="h-4 w-4 text-gray-400" />
-                  </Link>
-                  <Link
-                    to="/profile?tab=audio-systems"
-                    className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors"
-                  >
-                    <span className="flex items-center gap-2 text-white">
-                      <Zap className="h-4 w-4" />
-                      Manage Audio Systems
-                    </span>
-                    <ChevronRight className="h-4 w-4 text-gray-400" />
-                  </Link>
-                  <Link
-                    to="/profile?tab=saved-events"
-                    className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors"
-                  >
-                    <span className="flex items-center gap-2 text-white">
-                      <Heart className="h-4 w-4" />
-                      Saved Events
-                    </span>
-                    <ChevronRight className="h-4 w-4 text-gray-400" />
-                  </Link>
-                  <Link
-                    to="/profile?tab=notifications"
-                    className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors"
-                  >
-                    <span className="flex items-center gap-2 text-white">
-                      <Bell className="h-4 w-4" />
-                      Notification Settings
-                    </span>
-                    <ChevronRight className="h-4 w-4 text-gray-400" />
-                  </Link>
+              <button
+                onClick={() => setActiveTab('billing')}
+                className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 hover:border-electric-500/50 transition-colors text-left"
+              >
+                <CreditCard className="h-8 w-8 text-electric-500 mb-3" />
+                <h3 className="text-lg font-semibold text-white mb-2">Billing & Membership</h3>
+                <p className="text-gray-400 text-sm">Manage your subscription and payment methods</p>
+              </button>
+
+              <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+                <Settings className="h-8 w-8 text-electric-500 mb-3" />
+                <h3 className="text-lg font-semibold text-white mb-2">Account Status</h3>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-400" />
+                    <span className="text-sm text-gray-300">Email Verified</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-400" />
+                    <span className="text-sm text-gray-300">Account Active</span>
+                  </div>
+                  <div className="text-sm text-gray-400">
+                    Member since {formatDateShort(new Date().toISOString())}
+                  </div>
                 </div>
               </div>
             </div>
