@@ -295,7 +295,7 @@ const AdminTicketList: React.FC = () => {
         </div>
       ) : (
         <>
-          <div className="bg-gray-800/50 rounded-lg overflow-hidden border border-gray-700">
+          <div className="bg-gray-800/50 rounded-lg overflow-x-auto border border-gray-700">
             <table className="min-w-full divide-y divide-gray-700">
               <thead className="bg-gray-800">
                 <tr>
@@ -390,17 +390,17 @@ const AdminTicketList: React.FC = () => {
                       {new Date(ticket.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center justify-end space-x-2">
                         <Link
                           to={`/admin/support/ticket/${ticket.id}`}
-                          className="text-blue-600 hover:text-blue-900"
+                          className="text-blue-500 hover:text-blue-400 px-2 py-1 bg-blue-900/20 rounded"
                         >
                           View
                         </Link>
                         {!ticket.is_spam && (
                           <button
                             onClick={() => handleMarkAsSpam(ticket.id)}
-                            className="text-red-600 hover:text-red-900"
+                            className="text-red-500 hover:text-red-400 px-2 py-1 bg-red-900/20 rounded"
                           >
                             Spam
                           </button>

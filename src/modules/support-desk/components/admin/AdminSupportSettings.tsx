@@ -243,19 +243,20 @@ const AdminSupportSettings: React.FC = () => {
       {/* Tab Navigation */}
       <div className="bg-gray-800/50 rounded-lg mb-6">
         <div className="border-b border-gray-700">
-          <nav className="flex space-x-2 p-4">
+          <nav className="flex flex-wrap gap-2 p-4 overflow-x-auto">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                className={`px-3 py-2 rounded-lg font-medium text-sm transition-colors whitespace-nowrap flex-shrink-0 ${
                   activeTab === tab.id
                     ? 'bg-electric-500 text-white'
                     : 'text-gray-300 hover:text-white hover:bg-gray-700/50'
                 }`}
               >
-                <span className="mr-2">{tab.icon}</span>
-                {tab.label}
+                <span className="mr-1">{tab.icon}</span>
+                <span className="hidden sm:inline">{tab.label}</span>
+                <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
               </button>
             ))}
           </nav>

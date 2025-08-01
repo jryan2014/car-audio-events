@@ -87,7 +87,8 @@
       "Bash(tsc --noEmit)",
       "WebFetch(domain:api.github.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "Bash(git clone:*)"
+      "Bash(git clone:*)",
+      "mcp__playwright__browser_resize"
     ],
     "deny": []
   },
