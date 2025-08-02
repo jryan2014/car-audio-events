@@ -92,29 +92,52 @@ function App() {
   // Initialize CSRF protection
   useCSRFProtection();
   
+  // Use refs to prevent duplicate initialization
+  const initializationRef = React.useRef({
+    backup: false,
+    scripts: false
+  });
+  
   useEffect(() => {
-    // Initialize backup system when app starts
+    let isMounted = true;
+    
+    // Initialize backup system only once
     const initializeBackupSystem = async () => {
+      if (initializationRef.current.backup || !isMounted) return;
+      initializationRef.current.backup = true;
+      
       try {
         const { initializeBackupSystem } = await import('./utils/backup');
-        initializeBackupSystem();
+        if (isMounted) {
+          initializeBackupSystem();
+        }
       } catch (error) {
         console.error('Failed to initialize backup system:', error);
+        initializationRef.current.backup = false;
       }
     };
 
-    initializeBackupSystem();
-
-    // Load consented tracking scripts
-    loadConsentedScripts();
-
-    // Listen for consent changes
-    const handleConsentChange = () => {
+    // Load consented tracking scripts only once initially
+    const loadInitialScripts = () => {
+      if (initializationRef.current.scripts || !isMounted) return;
+      initializationRef.current.scripts = true;
       loadConsentedScripts();
     };
 
+    initializeBackupSystem();
+    loadInitialScripts();
+
+    // Listen for consent changes (but don't load scripts on mount)
+    const handleConsentChange = () => {
+      if (isMounted) {
+        loadConsentedScripts();
+      }
+    };
+
     window.addEventListener('cookieConsentChanged', handleConsentChange);
+    
     return () => {
+      isMounted = false;
       window.removeEventListener('cookieConsentChanged', handleConsentChange);
     };
   }, []);

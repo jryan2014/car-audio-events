@@ -4,9 +4,9 @@ import {
   Plus, Target, Award, MapPin, CreditCard, Package, Clock, 
   DollarSign, FileText, Shield, Activity, Heart, Settings,
   ChevronRight, Home, BarChart3, Zap, Bell, X, CheckCircle, Crown,
-  Edit, Save, LogOut
+  Edit, Save
 } from 'lucide-react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import DashboardWidgets, { Widget } from '../components/DashboardWidgets';
@@ -97,44 +97,31 @@ interface QuickAction {
   external?: boolean;
 }
 
-interface Division {
-  id: string;
-  name: string;
-  description?: string;
-  display_order: number;
-}
-
-interface CompetitionClass {
-  id: string;
-  division_id: string;
-  name: string;
-  description?: string;
-  display_order: number;
-}
-
 interface CompetitionResult {
   id: string;
   user_id: string;
   event_id?: number;
-  event_attendance_id?: string;
+  is_cae_event: boolean;
+  event_name?: string;
+  event_date?: string;
+  event_location?: string;
+  event_organizer?: string;
+  event_title?: string;
+  competed_at?: string;
   category: string;
   class?: string;
-  division_id?: string;
-  class_id?: string;
-  vehicle_year?: number;
+  vehicle_year?: string;
   vehicle_make?: string;
   vehicle_model?: string;
   score?: number;
   placement?: number;
   total_participants?: number;
   points_earned: number;
+  overall_score?: number;
   notes?: string;
-  verified?: boolean;
-  verified_by?: string;
-  verified_at?: string;
   created_at: string;
   updated_at: string;
-  events?: {
+  event?: {
     id: number;
     name: string;
     start_date: string;
@@ -145,7 +132,6 @@ interface CompetitionResult {
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const { showSuccess, showError } = useNotifications();
   
   const [stats, setStats] = useState<DashboardStats>({
@@ -172,12 +158,6 @@ export default function Dashboard() {
   const [showLogEventModal, setShowLogEventModal] = useState(false);
   const [editingResult, setEditingResult] = useState<CompetitionResult | null>(null);
   const [isLoadingCompetitions, setIsLoadingCompetitions] = useState(false);
-  const [divisions, setDivisions] = useState<Division[]>([]);
-  const [classes, setClasses] = useState<CompetitionClass[]>([]);
-  const [filteredClasses, setFilteredClasses] = useState<CompetitionClass[]>([]);
-  const [isLoadingDivisions, setIsLoadingDivisions] = useState(false);
-  const [isLoadingClasses, setIsLoadingClasses] = useState(false);
-  const [showNewClassInput, setShowNewClassInput] = useState(false);
   const [eventFormData, setEventFormData] = useState({
     event_name: '',
     event_date: '',
@@ -185,9 +165,6 @@ export default function Dashboard() {
     event_organizer: '',
     category: '',
     class: '',
-    division_id: '',
-    class_id: '',
-    class_name: '',
     vehicle_year: '',
     vehicle_make: '',
     vehicle_model: '',
@@ -227,33 +204,6 @@ export default function Dashboard() {
       color: 'orange'
     }
   ];
-
-  // Handle query parameters for logging competitions
-  useEffect(() => {
-    if (user && !authLoading) {
-      const logCAE = searchParams.get('logCAE');
-      const logNonCAE = searchParams.get('logNonCAE');
-      
-      if (logCAE === 'true' || logNonCAE === 'true') {
-        // Switch to competitions tab
-        setActiveTab('competitions');
-        
-        // Open appropriate modal after a short delay to ensure tab content is rendered
-        setTimeout(() => {
-          if (logCAE === 'true') {
-            setShowLogCAEEventModal(true);
-          } else if (logNonCAE === 'true') {
-            setShowLogEventModal(true);
-          }
-          
-          // Clear the query parameters to prevent reopening on refresh
-          searchParams.delete('logCAE');
-          searchParams.delete('logNonCAE');
-          setSearchParams(searchParams);
-        }, 100);
-      }
-    }
-  }, [user, authLoading, searchParams, setSearchParams]);
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -343,10 +293,9 @@ export default function Dashboard() {
           *,
           events (
             id,
-            title,
+            name,
             start_date,
-            city,
-            state
+            location
           )
         `)
         .eq('user_id', user.id)
@@ -366,57 +315,16 @@ export default function Dashboard() {
     }
   };
 
-  const loadDivisions = async () => {
-    setIsLoadingDivisions(true);
-    try {
-      const { data, error } = await supabase
-        .from('competition_divisions')
-        .select('*')
-        .eq('is_active', true)
-        .order('display_order');
-
-      if (error) throw error;
-      setDivisions(data || []);
-    } catch (error) {
-      console.error('Error loading divisions:', error);
-    } finally {
-      setIsLoadingDivisions(false);
-    }
-  };
-
-  const loadClasses = async (divisionId: string) => {
-    setIsLoadingClasses(true);
-    try {
-      const { data, error } = await supabase
-        .from('competition_classes')
-        .select('*')
-        .eq('division_id', divisionId)
-        .eq('is_active', true)
-        .order('display_order');
-
-      if (error) throw error;
-      setClasses(data || []);
-      setFilteredClasses(data || []);
-    } catch (error) {
-      console.error('Error loading classes:', error);
-    } finally {
-      setIsLoadingClasses(false);
-    }
-  };
-
   const handleEditResult = (result: CompetitionResult) => {
     setEditingResult(result);
     setEventFormData({
-      event_name: result.events?.name || '',
-      event_date: result.events?.start_date || '',
-      event_location: result.events?.location || '',
-      event_organizer: '',
+      event_name: result.event_name || '',
+      event_date: result.event_date || '',
+      event_location: result.event_location || '',
+      event_organizer: result.event_organizer || '',
       category: result.category,
       class: result.class || '',
-      division_id: result.division_id || '',
-      class_id: result.class_id || '',
-      class_name: '',
-      vehicle_year: result.vehicle_year?.toString() || '',
+      vehicle_year: result.vehicle_year || '',
       vehicle_make: result.vehicle_make || '',
       vehicle_model: result.vehicle_model || '',
       score: result.score?.toString() || '',
@@ -424,15 +332,6 @@ export default function Dashboard() {
       total_participants: result.total_participants?.toString() || '',
       notes: result.notes || ''
     });
-    
-    // Load divisions when opening modal
-    loadDivisions();
-    
-    // If there's a division_id, load classes for that division
-    if (result.division_id) {
-      loadClasses(result.division_id);
-    }
-    
     setShowLogEventModal(true);
   };
 
@@ -440,39 +339,17 @@ export default function Dashboard() {
     e.preventDefault();
     if (!user) return;
 
-    // Validate required fields
-    if (!eventFormData.division_id || (!eventFormData.class_id && !eventFormData.class_name)) {
-      showError('Validation Error', 'Please select a division and class.');
-      return;
-    }
-
     try {
-      let classId = eventFormData.class_id;
-      
-      // If creating a new class, call the function to create or get it
-      if (!classId && eventFormData.class_name) {
-        const { data: classResult, error: classError } = await supabase
-          .rpc('create_or_get_competition_class', {
-            p_division_id: eventFormData.division_id,
-            p_class_name: eventFormData.class_name,
-            p_created_by: user.id
-          });
-        
-        if (classError) throw classError;
-        classId = classResult;
-      }
-
       const resultData = {
         user_id: user.id,
         is_cae_event: false,
         event_name: eventFormData.event_name,
         event_date: eventFormData.event_date,
         event_location: eventFormData.event_location,
+        event_organizer: eventFormData.event_organizer,
         category: eventFormData.category,
         class: eventFormData.class || null,
-        division_id: eventFormData.division_id,
-        class_id: classId,
-        vehicle_year: eventFormData.vehicle_year ? parseInt(eventFormData.vehicle_year) : null,
+        vehicle_year: eventFormData.vehicle_year || null,
         vehicle_make: eventFormData.vehicle_make || null,
         vehicle_model: eventFormData.vehicle_model || null,
         score: eventFormData.score ? parseFloat(eventFormData.score) : null,
@@ -503,7 +380,6 @@ export default function Dashboard() {
       await loadCompetitionResults();
       setShowLogEventModal(false);
       setEditingResult(null);
-      setShowNewClassInput(false);
       setEventFormData({
         event_name: '',
         event_date: '',
@@ -511,9 +387,6 @@ export default function Dashboard() {
         event_organizer: '',
         category: '',
         class: '',
-        division_id: '',
-        class_id: '',
-        class_name: '',
         vehicle_year: '',
         vehicle_make: '',
         vehicle_model: '',
@@ -754,6 +627,15 @@ export default function Dashboard() {
               >
                 <Settings className="h-4 w-4" />
                 <span>Settings</span>
+              </Link>
+              <Link
+                to="/notifications"
+                className="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors flex items-center gap-2 relative"
+              >
+                <Bell className="h-4 w-4" />
+                <span className="absolute -top-1 -right-1 bg-electric-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  3
+                </span>
               </Link>
             </div>
           </div>
@@ -1124,7 +1006,7 @@ export default function Dashboard() {
                         type="text"
                         defaultValue={user.location || ''}
                         placeholder="City, State"
-                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-electric-500"
+                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-electric-500"
                       />
                     ) : (
                       <p className="text-white bg-gray-700/50 rounded-lg px-3 py-2">{user.location || 'Not set'}</p>
@@ -1140,7 +1022,7 @@ export default function Dashboard() {
                         type="tel"
                         defaultValue={user.phone || ''}
                         placeholder="(555) 123-4567"
-                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-electric-500"
+                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-electric-500"
                       />
                     ) : (
                       <p className="text-white bg-gray-700/50 rounded-lg px-3 py-2">{user.phone || 'Not set'}</p>
@@ -1154,7 +1036,7 @@ export default function Dashboard() {
                         type="url"
                         defaultValue={user.website || ''}
                         placeholder="https://yourwebsite.com"
-                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-electric-500"
+                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-electric-500"
                       />
                     ) : (
                       <p className="text-white bg-gray-700/50 rounded-lg px-3 py-2">{user.website || 'Not set'}</p>
@@ -1168,7 +1050,7 @@ export default function Dashboard() {
                         defaultValue={user.bio || ''}
                         placeholder="Tell us about yourself..."
                         rows={3}
-                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-electric-500 resize-none"
+                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-electric-500 resize-none"
                       />
                     ) : (
                       <p className="text-white bg-gray-700/50 rounded-lg px-3 py-2 min-h-[88px]">{user.bio || 'Not set'}</p>
@@ -1230,88 +1112,6 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
-
-            {/* Additional Settings Options */}
-            <div className="mt-6">
-              <h3 className="text-lg font-semibold text-white mb-4">Account Settings</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                <Link
-                  to="/profile?tab=verification"
-                  className="bg-gray-700/50 hover:bg-gray-700 transition-colors rounded-lg p-3 flex items-center gap-3"
-                >
-                  <Shield className="h-5 w-5 text-gray-400" />
-                  <span className="text-gray-300">Verification</span>
-                  <ChevronRight className="h-4 w-4 text-gray-500 ml-auto" />
-                </Link>
-                
-                <Link
-                  to="/profile?tab=audio-systems"
-                  className="bg-gray-700/50 hover:bg-gray-700 transition-colors rounded-lg p-3 flex items-center gap-3"
-                >
-                  <Zap className="h-5 w-5 text-gray-400" />
-                  <span className="text-gray-300">Audio Systems</span>
-                  <ChevronRight className="h-4 w-4 text-gray-500 ml-auto" />
-                </Link>
-                
-                <Link
-                  to="/profile?tab=saved-events"
-                  className="bg-gray-700/50 hover:bg-gray-700 transition-colors rounded-lg p-3 flex items-center gap-3"
-                >
-                  <Heart className="h-5 w-5 text-gray-400" />
-                  <span className="text-gray-300">Saved Events</span>
-                  <ChevronRight className="h-4 w-4 text-gray-500 ml-auto" />
-                </Link>
-                
-                <Link
-                  to="/profile?tab=teams"
-                  className="bg-gray-700/50 hover:bg-gray-700 transition-colors rounded-lg p-3 flex items-center gap-3"
-                >
-                  <Users className="h-5 w-5 text-gray-400" />
-                  <span className="text-gray-300">Teams</span>
-                  <ChevronRight className="h-4 w-4 text-gray-500 ml-auto" />
-                </Link>
-                
-                <Link
-                  to="/notifications"
-                  className="bg-gray-700/50 hover:bg-gray-700 transition-colors rounded-lg p-3 flex items-center gap-3"
-                >
-                  <Bell className="h-5 w-5 text-gray-400" />
-                  <span className="text-gray-300">Notifications</span>
-                  <ChevronRight className="h-4 w-4 text-gray-500 ml-auto" />
-                </Link>
-                
-                <Link
-                  to="/privacy-policy"
-                  className="bg-gray-700/50 hover:bg-gray-700 transition-colors rounded-lg p-3 flex items-center gap-3"
-                >
-                  <Shield className="h-5 w-5 text-gray-400" />
-                  <span className="text-gray-300">Privacy & Security</span>
-                  <ChevronRight className="h-4 w-4 text-gray-500 ml-auto" />
-                </Link>
-                
-                <Link
-                  to="/support"
-                  className="bg-gray-700/50 hover:bg-gray-700 transition-colors rounded-lg p-3 flex items-center gap-3"
-                >
-                  <Shield className="h-5 w-5 text-gray-400" />
-                  <span className="text-gray-300">Help & Support</span>
-                  <ChevronRight className="h-4 w-4 text-gray-500 ml-auto" />
-                </Link>
-                
-                <button
-                  onClick={() => {
-                    if (confirm('Are you sure you want to sign out?')) {
-                      window.location.href = '/logout';
-                    }
-                  }}
-                  className="bg-gray-700/50 hover:bg-gray-700 transition-colors rounded-lg p-3 flex items-center gap-3 text-left"
-                >
-                  <LogOut className="h-5 w-5 text-gray-400" />
-                  <span className="text-gray-300">Sign Out</span>
-                  <ChevronRight className="h-4 w-4 text-gray-500 ml-auto" />
-                </button>
-              </div>
-            </div>
           </div>
         )}
 
@@ -1339,9 +1139,9 @@ export default function Dashboard() {
                         <BarChart data={competitionResults
                           .filter(r => r.category === 'SPL (Sound Pressure Level)')
                           .map(r => ({
-                            date: new Date(r.created_at).toLocaleDateString('en-US', { month: 'short' }),
+                            date: new Date(r.event_date || r.competed_at || '').toLocaleDateString('en-US', { month: 'short' }),
                             score: r.score || 0,
-                            event: r.events?.name || 'Competition'
+                            event: r.event_name || r.event_title
                           }))
                           .slice(-6) // Last 6 events
                         }>
@@ -1573,16 +1373,16 @@ export default function Dashboard() {
                             <tr key={result.id} className="hover:bg-gray-700/20 transition-colors">
                               <td className="py-4">
                                 <div className="flex items-center space-x-2">
-                                  {!result.events && (
+                                  {!result.is_cae_event && (
                                     <span className="bg-gray-600 text-gray-300 px-2 py-1 rounded text-xs">Non-CAE</span>
                                   )}
                                   <span className="text-white font-medium">
-                                    {result.events?.name || 'Competition Event'}
+                                    {result.event_name || result.event_title}
                                   </span>
                                 </div>
                               </td>
                               <td className="py-4 text-gray-300">
-                                {new Date(result.events?.start_date || result.created_at).toLocaleDateString()}
+                                {new Date(result.event_date || result.created_at).toLocaleDateString()}
                               </td>
                               <td className="py-4 text-gray-300">{result.category}</td>
                               <td className="py-4 text-center">
@@ -1602,7 +1402,7 @@ export default function Dashboard() {
                                 {result.points_earned}
                               </td>
                               <td className="py-4 text-right">
-                                {!result.events && (
+                                {!result.is_cae_event && (
                                   <button
                                     onClick={() => handleEditResult(result)}
                                     className="text-gray-400 hover:text-white transition-colors"
@@ -1637,10 +1437,7 @@ export default function Dashboard() {
                 </button>
                 
                 <button
-                  onClick={() => {
-                    loadDivisions();
-                    setShowLogEventModal(true);
-                  }}
+                  onClick={() => setShowLogEventModal(true)}
                   className="flex-1 bg-gray-700 text-white px-6 py-3 rounded-lg font-medium hover:bg-gray-600 transition-all duration-200 flex items-center justify-center space-x-2"
                 >
                   <Plus className="h-5 w-5" />
@@ -1780,7 +1577,6 @@ export default function Dashboard() {
                     onClick={() => {
                       setShowLogEventModal(false);
                       setEditingResult(null);
-                      setShowNewClassInput(false);
                     }}
                     className="text-gray-400 hover:text-white transition-colors"
                   >
@@ -1790,178 +1586,93 @@ export default function Dashboard() {
               </div>
 
               <form onSubmit={handleSaveResult} className="p-6 space-y-6">
-                <div className="space-y-6">
-                  {/* Event Information */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Event Name *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={eventFormData.event_name}
-                        onChange={(e) => setEventFormData(prev => ({ ...prev, event_name: e.target.value }))}
-                        className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-electric-500"
-                        placeholder="Enter event name"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Event Date *
-                      </label>
-                      <input
-                        type="date"
-                        required
-                        value={eventFormData.event_date}
-                        onChange={(e) => setEventFormData(prev => ({ ...prev, event_date: e.target.value }))}
-                        className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-electric-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Location
-                      </label>
-                      <input
-                        type="text"
-                        value={eventFormData.event_location}
-                        onChange={(e) => setEventFormData(prev => ({ ...prev, event_location: e.target.value }))}
-                        className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-electric-500"
-                        placeholder="Enter location"
-                      />
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Event Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={eventFormData.event_name}
+                      onChange={(e) => setEventFormData(prev => ({ ...prev, event_name: e.target.value }))}
+                      className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-electric-500"
+                      placeholder="Enter event name"
+                    />
                   </div>
 
-                  {/* Division and Class */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Division <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        value={eventFormData.division_id}
-                        onChange={(e) => {
-                          const divisionId = e.target.value;
-                          setEventFormData(prev => ({ ...prev, division_id: divisionId, class_id: '', class_name: '' }));
-                          setShowNewClassInput(false);
-                          if (divisionId) {
-                            loadClasses(divisionId);
-                          } else {
-                            setFilteredClasses([]);
-                          }
-                        }}
-                        className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-electric-500"
-                        required
-                        disabled={isLoadingDivisions}
-                      >
-                        <option value="">Select division...</option>
-                        {divisions.map(division => (
-                          <option key={division.id} value={division.id}>
-                            {division.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Class <span className="text-red-500">*</span>
-                      </label>
-                      {!showNewClassInput ? (
-                        <select
-                          value={eventFormData.class_id}
-                          onChange={(e) => {
-                            if (e.target.value === 'new') {
-                              setShowNewClassInput(true);
-                              setEventFormData(prev => ({ ...prev, class_id: '', class_name: '' }));
-                            } else {
-                              setEventFormData(prev => ({ ...prev, class_id: e.target.value, class_name: '' }));
-                            }
-                          }}
-                          className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-electric-500"
-                          required
-                          disabled={!eventFormData.division_id || isLoadingClasses}
-                        >
-                          <option value="">Select class...</option>
-                          {filteredClasses.map(cls => (
-                            <option key={cls.id} value={cls.id}>
-                              {cls.name}
-                            </option>
-                          ))}
-                          {eventFormData.division_id && (
-                            <option value="new">+ Add New Class</option>
-                          )}
-                        </select>
-                      ) : (
-                        <div className="space-y-2">
-                          <input
-                            type="text"
-                            value={eventFormData.class_name}
-                            onChange={(e) => setEventFormData(prev => ({ ...prev, class_name: e.target.value }))}
-                            className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-electric-500"
-                            placeholder="Enter new class name..."
-                            required
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setShowNewClassInput(false);
-                              setEventFormData(prev => ({ ...prev, class_id: '', class_name: '' }));
-                            }}
-                            className="text-sm text-gray-400 hover:text-white"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Event Date *
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={eventFormData.event_date}
+                      onChange={(e) => setEventFormData(prev => ({ ...prev, event_date: e.target.value }))}
+                      className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-electric-500"
+                    />
                   </div>
 
-                  {/* Results */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Score
-                      </label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        value={eventFormData.score}
-                        onChange={(e) => setEventFormData(prev => ({ ...prev, score: e.target.value }))}
-                        className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-electric-500"
-                        placeholder="Enter score"
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Category *
+                    </label>
+                    <select
+                      required
+                      value={eventFormData.category}
+                      onChange={(e) => setEventFormData(prev => ({ ...prev, category: e.target.value }))}
+                      className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-electric-500"
+                    >
+                      <option value="">Select category</option>
+                      <option value="SPL (Sound Pressure Level)">SPL (Sound Pressure Level)</option>
+                      <option value="SQ (Sound Quality)">SQ (Sound Quality)</option>
+                      <option value="Bass Boxing">Bass Boxing</option>
+                      <option value="Trunk Rattle">Trunk Rattle</option>
+                      <option value="Street Class">Street Class</option>
+                      <option value="Show and Shine">Show and Shine</option>
+                    </select>
+                  </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Placement
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={eventFormData.placement}
-                        onChange={(e) => setEventFormData(prev => ({ ...prev, placement: e.target.value }))}
-                        className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-electric-500"
-                        placeholder="Enter placement"
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Location
+                    </label>
+                    <input
+                      type="text"
+                      value={eventFormData.event_location}
+                      onChange={(e) => setEventFormData(prev => ({ ...prev, event_location: e.target.value }))}
+                      className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-electric-500"
+                      placeholder="Enter location"
+                    />
+                  </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Total Participants
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={eventFormData.total_participants}
-                        onChange={(e) => setEventFormData(prev => ({ ...prev, total_participants: e.target.value }))}
-                        className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-electric-500"
-                        placeholder="Total participants"
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Score
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={eventFormData.score}
+                      onChange={(e) => setEventFormData(prev => ({ ...prev, score: e.target.value }))}
+                      className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-electric-500"
+                      placeholder="Enter score"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Placement
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={eventFormData.placement}
+                      onChange={(e) => setEventFormData(prev => ({ ...prev, placement: e.target.value }))}
+                      className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-electric-500"
+                      placeholder="Enter placement"
+                    />
                   </div>
                 </div>
 
@@ -1984,7 +1695,6 @@ export default function Dashboard() {
                     onClick={() => {
                       setShowLogEventModal(false);
                       setEditingResult(null);
-                      setShowNewClassInput(false);
                     }}
                     className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition-colors"
                   >

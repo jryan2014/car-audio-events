@@ -310,31 +310,48 @@ function formatFileSize(bytes: number): string {
 /**
  * Initialize backup system
  */
+// Track initialization to prevent duplicates
+let backupSystemInitialized = false;
+
 export function initializeBackupSystem() {
+  if (backupSystemInitialized) {
+    console.log('⚠️ Backup system already initialized, skipping');
+    return;
+  }
+  
+  backupSystemInitialized = true;
   console.log('🔧 Initializing backup system...');
   
   // Clean up old backups on startup
-  cleanupOldBackups();
+  try {
+    cleanupOldBackups();
+  } catch (error) {
+    console.warn('Failed to cleanup old backups on init:', error);
+  }
   
   // Initialize cron service for automatic backups
   const initializeCronService = async () => {
     try {
       if (isDevelopment()) {
-    console.log('🔄 Loading cron service...');
-  }
+        console.log('🔄 Loading cron service...');
+      }
       const { initializeCronService, cronService } = await import('./cronService');
       if (import.meta.env.MODE === 'development') {
-    console.log('📦 Cron service loaded, initializing...');
-  }
+        console.log('📦 Cron service loaded, initializing...');
+      }
       initializeCronService();
       console.log('🚀 Cron service initialization complete');
       
-      // Log current status
+      // Log current status with delay to avoid race conditions
       setTimeout(() => {
-        const status = cronService.getStatus();
-        if (import.meta.env.MODE === 'development') {
-      console.log('📊 Cron service status:', status);
-    }
+        try {
+          const status = cronService.getStatus();
+          if (import.meta.env.MODE === 'development') {
+            console.log('📊 Cron service status:', status);
+          }
+        } catch (statusError) {
+          console.warn('Failed to get cron service status:', statusError);
+        }
       }, 1000);
     } catch (error) {
       console.error('❌ Failed to initialize cron service:', error);

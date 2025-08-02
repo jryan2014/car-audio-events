@@ -95,18 +95,23 @@ export function isCategoryAllowed(category: keyof CookiePreferences): boolean {
   return preferences[category] === true;
 }
 
+// Track loaded scripts to prevent duplicates
+const loadedScripts = new Set<string>();
+
 // Load external scripts based on consent
 export function loadConsentedScripts(): void {
   const preferences = getConsentPreferences();
 
   // Analytics scripts
-  if (preferences.analytics) {
+  if (preferences.analytics && !loadedScripts.has('analytics')) {
+    loadedScripts.add('analytics');
     loadGoogleAnalytics();
     // Add other analytics scripts here
   }
 
   // Advertising scripts
-  if (preferences.advertising) {
+  if (preferences.advertising && !loadedScripts.has('advertising')) {
+    loadedScripts.add('advertising');
     loadAdvertisingScripts();
   }
 

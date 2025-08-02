@@ -30,6 +30,7 @@ class CronService {
   private jobs: Map<string, CronJob> = new Map();
   private intervals: Map<string, NodeJS.Timeout> = new Map();
   private isRunning = false;
+  private isInitialized = false;
   private settings: CronSettings;
 
   constructor() {
@@ -291,7 +292,10 @@ class CronService {
    * Start the cron service
    */
   start() {
-    if (this.isRunning) return;
+    if (this.isRunning) {
+      console.log('⚠️ Cron service already running, skipping start');
+      return;
+    }
     
     this.isRunning = true;
     console.log('🚀 Starting cron service...');
@@ -434,23 +438,34 @@ class CronService {
 // Global cron service instance
 export const cronService = new CronService();
 
+// Track initialization to prevent duplicates
+let isInitialized = false;
+
 /**
  * Initialize and start the cron service
  */
 export function initializeCronService() {
+  if (isInitialized) {
+    console.log('⚠️ Cron service already initialized, skipping');
+    return;
+  }
+  
+  isInitialized = true;
   console.log('🔧 Initializing cron service...');
   
   // Start the service
   cronService.start();
   
   // Stop the service when the page is unloaded
-  window.addEventListener('beforeunload', () => {
+  const handleBeforeUnload = () => {
     cronService.stop();
-  });
+  };
   
-      if (import.meta.env.MODE === 'development') {
-      console.log('✅ Cron service initialized');
-    }
+  window.addEventListener('beforeunload', handleBeforeUnload);
+  
+  if (import.meta.env.MODE === 'development') {
+    console.log('✅ Cron service initialized');
+  }
 }
 
 /**

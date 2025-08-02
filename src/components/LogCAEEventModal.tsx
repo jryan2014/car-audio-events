@@ -19,10 +19,26 @@ interface Event {
   state: string;
 }
 
+interface Division {
+  id: string;
+  name: string;
+  description?: string;
+  display_order: number;
+}
+
+interface CompetitionClass {
+  id: string;
+  division_id: string;
+  name: string;
+  description?: string;
+  display_order: number;
+}
+
 interface EventFormData {
   event_id: string;
-  category: string;
-  class: string;
+  division_id: string;
+  class_id: string;
+  class_name: string; // For new class creation
   vehicle_year: string;
   vehicle_make: string;
   vehicle_model: string;
@@ -40,16 +56,23 @@ const LogCAEEventModal: React.FC<LogCAEEventModalProps> = ({
   onSuccess 
 }) => {
   const [events, setEvents] = useState<Event[]>([]);
+  const [divisions, setDivisions] = useState<Division[]>([]);
+  const [classes, setClasses] = useState<CompetitionClass[]>([]);
+  const [filteredClasses, setFilteredClasses] = useState<CompetitionClass[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
+  const [isLoadingDivisions, setIsLoadingDivisions] = useState(false);
+  const [isLoadingClasses, setIsLoadingClasses] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+  const [showNewClassInput, setShowNewClassInput] = useState(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const [formData, setFormData] = useState<EventFormData>({
     event_id: '',
-    category: '',
-    class: '',
+    division_id: '',
+    class_id: '',
+    class_name: '',
     vehicle_year: '',
     vehicle_make: '',
     vehicle_model: '',
@@ -60,10 +83,11 @@ const LogCAEEventModal: React.FC<LogCAEEventModalProps> = ({
     notes: ''
   });
 
-  // Load recent events on mount
+  // Load recent events and divisions on mount
   useEffect(() => {
     if (isOpen) {
       loadRecentEvents();
+      loadDivisions();
     }
     
     // Cleanup timeout on unmount
@@ -74,6 +98,16 @@ const LogCAEEventModal: React.FC<LogCAEEventModalProps> = ({
     };
   }, [isOpen]);
 
+  // Load classes when division changes
+  useEffect(() => {
+    if (formData.division_id) {
+      loadClasses(formData.division_id);
+    } else {
+      setFilteredClasses([]);
+      setShowNewClassInput(false);
+    }
+  }, [formData.division_id]);
+
   const loadRecentEvents = async () => {
     setIsLoadingEvents(true);
     try {
@@ -83,7 +117,7 @@ const LogCAEEventModal: React.FC<LogCAEEventModalProps> = ({
       
       const { data, error } = await supabase
         .from('events')
-        .select('id, title, start_date, end_date, location_name, city, state')
+        .select('id, title, start_date, end_date, city, state')
         .gte('start_date', oneYearAgo.toISOString())
         .order('start_date', { ascending: false })
         .limit(50);
@@ -109,7 +143,7 @@ const LogCAEEventModal: React.FC<LogCAEEventModalProps> = ({
     try {
       const { data, error } = await supabase
         .from('events')
-        .select('id, title, start_date, end_date, location_name, city, state')
+        .select('id, title, start_date, end_date, city, state')
         .or(`title.ilike.%${searchQuery}%,city.ilike.%${searchQuery}%,state.ilike.%${searchQuery}%`)
         .order('start_date', { ascending: false })
         .limit(50);
@@ -120,6 +154,44 @@ const LogCAEEventModal: React.FC<LogCAEEventModalProps> = ({
       console.error('Error searching events:', error);
     } finally {
       setIsLoadingEvents(false);
+    }
+  };
+
+  const loadDivisions = async () => {
+    setIsLoadingDivisions(true);
+    try {
+      const { data, error } = await supabase
+        .from('competition_divisions')
+        .select('*')
+        .eq('is_active', true)
+        .order('display_order');
+
+      if (error) throw error;
+      setDivisions(data || []);
+    } catch (error) {
+      console.error('Error loading divisions:', error);
+    } finally {
+      setIsLoadingDivisions(false);
+    }
+  };
+
+  const loadClasses = async (divisionId: string) => {
+    setIsLoadingClasses(true);
+    try {
+      const { data, error } = await supabase
+        .from('competition_classes')
+        .select('*')
+        .eq('division_id', divisionId)
+        .eq('is_active', true)
+        .order('display_order');
+
+      if (error) throw error;
+      setClasses(data || []);
+      setFilteredClasses(data || []);
+    } catch (error) {
+      console.error('Error loading classes:', error);
+    } finally {
+      setIsLoadingClasses(false);
     }
   };
 
@@ -137,7 +209,7 @@ const LogCAEEventModal: React.FC<LogCAEEventModalProps> = ({
     }
 
     // Validate required fields
-    if (!formData.category || !formData.class || !formData.score || !formData.placement || !formData.points_earned) {
+    if (!formData.division_id || (!formData.class_id && !formData.class_name) || !formData.score || !formData.placement || !formData.points_earned) {
       alert('Please fill in all required fields');
       return;
     }
@@ -145,6 +217,21 @@ const LogCAEEventModal: React.FC<LogCAEEventModalProps> = ({
     setSaveStatus('saving');
     
     try {
+      let classId = formData.class_id;
+      
+      // If creating a new class, call the function to create or get it
+      if (!classId && formData.class_name) {
+        const { data: classResult, error: classError } = await supabase
+          .rpc('create_or_get_competition_class', {
+            p_division_id: formData.division_id,
+            p_class_name: formData.class_name,
+            p_created_by: userId
+          });
+        
+        if (classError) throw classError;
+        classId = classResult;
+      }
+
       const competitionData = {
         user_id: userId,
         event_id: parseInt(formData.event_id),
@@ -152,9 +239,9 @@ const LogCAEEventModal: React.FC<LogCAEEventModalProps> = ({
         event_name: selectedEvent.title,
         event_date: selectedEvent.start_date,
         event_location: `${selectedEvent.city}, ${selectedEvent.state}`,
-        category: formData.category,
-        class: formData.class || null,
-        vehicle_year: formData.vehicle_year || null,
+        division_id: formData.division_id,
+        class_id: classId,
+        vehicle_year: formData.vehicle_year ? parseInt(formData.vehicle_year) : null,
         vehicle_make: formData.vehicle_make || null,
         vehicle_model: formData.vehicle_model || null,
         score: formData.score ? parseFloat(formData.score) : null,
@@ -165,7 +252,7 @@ const LogCAEEventModal: React.FC<LogCAEEventModalProps> = ({
       };
 
       const { error } = await supabase
-        .from('user_competition_results')
+        .from('competition_results')
         .insert(competitionData);
 
       if (error) throw error;
@@ -188,8 +275,9 @@ const LogCAEEventModal: React.FC<LogCAEEventModalProps> = ({
   const resetForm = () => {
     setFormData({
       event_id: '',
-      category: '',
-      class: '',
+      division_id: '',
+      class_id: '',
+      class_name: '',
       vehicle_year: '',
       vehicle_make: '',
       vehicle_model: '',
@@ -202,6 +290,7 @@ const LogCAEEventModal: React.FC<LogCAEEventModalProps> = ({
     setSelectedEvent(null);
     setSearchTerm('');
     setSaveStatus('idle');
+    setShowNewClassInput(false);
   };
 
   if (!isOpen) return null;
@@ -298,7 +387,7 @@ const LogCAEEventModal: React.FC<LogCAEEventModalProps> = ({
                           <div>
                             <h5 className="text-white font-medium">{event.title}</h5>
                             <p className="text-gray-400 text-sm">
-                              {event.location_name} • {event.city}, {event.state}
+                              {event.city}, {event.state}
                             </p>
                             <p className="text-gray-500 text-xs mt-1">
                               {new Date(event.start_date).toLocaleDateString()} - {new Date(event.end_date).toLocaleDateString()}
@@ -332,20 +421,21 @@ const LogCAEEventModal: React.FC<LogCAEEventModalProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-gray-400 text-sm mb-2">
-                    Category/Division <span className="text-red-500">*</span>
+                    Division <span className="text-red-500">*</span>
                   </label>
                   <select
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    value={formData.division_id}
+                    onChange={(e) => setFormData({ ...formData, division_id: e.target.value, class_id: '', class_name: '' })}
                     className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
                     required
+                    disabled={isLoadingDivisions}
                   >
-                    <option value="">Select category/division...</option>
-                    <option value="SPL (Sound Pressure Level)">SPL (Sound Pressure Level)</option>
-                    <option value="SQ (Sound Quality)">SQ (Sound Quality)</option>
-                    <option value="Install Quality">Install Quality</option>
-                    <option value="Bass Race">Bass Race</option>
-                    <option value="Demo">Demo</option>
+                    <option value="">Select division...</option>
+                    {divisions.map(division => (
+                      <option key={division.id} value={division.id}>
+                        {division.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 
@@ -353,14 +443,53 @@ const LogCAEEventModal: React.FC<LogCAEEventModalProps> = ({
                   <label className="block text-gray-400 text-sm mb-2">
                     Class <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="text"
-                    value={formData.class}
-                    onChange={(e) => setFormData({ ...formData, class: e.target.value })}
-                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                    placeholder="e.g., Street 1, Street 2, Pro"
-                    required
-                  />
+                  {!showNewClassInput ? (
+                    <select
+                      value={formData.class_id}
+                      onChange={(e) => {
+                        if (e.target.value === 'new') {
+                          setShowNewClassInput(true);
+                          setFormData({ ...formData, class_id: '', class_name: '' });
+                        } else {
+                          setFormData({ ...formData, class_id: e.target.value, class_name: '' });
+                        }
+                      }}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                      required
+                      disabled={!formData.division_id || isLoadingClasses}
+                    >
+                      <option value="">Select class...</option>
+                      {filteredClasses.map(cls => (
+                        <option key={cls.id} value={cls.id}>
+                          {cls.name}
+                        </option>
+                      ))}
+                      {formData.division_id && (
+                        <option value="new">+ Add New Class</option>
+                      )}
+                    </select>
+                  ) : (
+                    <div className="space-y-2">
+                      <input
+                        type="text"
+                        value={formData.class_name}
+                        onChange={(e) => setFormData({ ...formData, class_name: e.target.value })}
+                        className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                        placeholder="Enter new class name..."
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowNewClassInput(false);
+                          setFormData({ ...formData, class_id: '', class_name: '' });
+                        }}
+                        className="text-sm text-gray-400 hover:text-white"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
