@@ -91,7 +91,15 @@
       "mcp__playwright__browser_resize",
       "Bash(del \"E:\\2025-car-audio-events\\car-audio-events\\src\\pages\\TestAnalyticsMobile.tsx\")",
       "Bash(copy \"E:\\2025-car-audio-events\\car-audio-events\\src\\pages\\Dashboard.tsx\" \"E:\\2025-car-audio-events\\car-audio-events\\src\\pages\\Dashboard.backup.tsx\")",
-      "Bash(del \"E:\\2025-car-audio-events\\car-audio-events\\src\\pages\\LeaderboardEnhanced.tsx\")"
+      "Bash(del \"E:\\2025-car-audio-events\\car-audio-events\\src\\pages\\LeaderboardEnhanced.tsx\")",
+      "Bash(git pull:*)",
+      "Bash(del:*)",
+      "Bash(rg:*)",
+      "mcp__playwright__browser_install",
+      "Bash(del create-stats-function.cjs)",
+      "mcp__playwright__browser_tab_list",
+      "mcp__playwright__browser_tab_new",
+      "Bash(psql:*)"
     ],
     "deny": []
   },

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Calendar, DollarSign, TrendingUp, Activity, Shield, AlertTriangle, CheckCircle, UserCheck, FileText, Target, Settings, Archive, Mail, Building2, Menu, Brain, Zap, MessageSquare } from '../components/icons';
-import { Bell } from 'lucide-react';
+import { Bell, Trophy } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -479,6 +479,19 @@ export default function AdminDashboard() {
               <div>
                 <h3 className="text-white font-semibold">Manage Events</h3>
                 <p className="text-gray-400 text-sm">Review and manage events</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            to="/admin/competition-results"
+            className="bg-gradient-to-br from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30 rounded-xl p-6 hover:from-yellow-500/30 hover:to-yellow-600/30 transition-all duration-200 group"
+          >
+            <div className="flex items-center space-x-3">
+              <Trophy className="h-8 w-8 text-yellow-400 group-hover:scale-110 transition-transform" />
+              <div>
+                <h3 className="text-white font-semibold">Competition Results</h3>
+                <p className="text-gray-400 text-sm">Manage leaderboard and competition results</p>
               </div>
             </div>
           </Link>

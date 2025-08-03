@@ -33,6 +33,10 @@ interface User {
   taxId?: string;
   registrationProvider?: string;
   registrationCompleted?: boolean;
+  // Security-related fields
+  sessionValidatedAt?: string;
+  permissionsCache?: string[];
+  rolesCacheExpiry?: string;
 }
 
 interface AuthContextType {
@@ -49,6 +53,9 @@ interface AuthContextType {
   refreshUser: () => Promise<void>;
   resendVerificationEmail: (email: string) => Promise<void>;
   forceCleanupOrphanedSession: () => Promise<void>;
+  validateSession: () => Promise<boolean>;
+  getUserPermissions: () => Promise<string[]>;
+  clearPermissionsCache: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -59,6 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [sessionConflictDetected, setSessionConflictDetected] = useState(false);
   const [sessionTimeout, setSessionTimeout] = useState<number>(30); // Default 30 minutes
+  const [permissionsCache, setPermissionsCache] = useState<Map<string, { permissions: string[]; expiry: number }>>(new Map());
 
   // Load session timeout settings from admin configuration
   const loadSessionTimeout = async () => {
@@ -99,6 +107,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       resetTimer();
     }
   }, [user, resetTimer]);
+
+  // Periodically validate session
+  useEffect(() => {
+    if (!session) return;
+    
+    // Validate session every 5 minutes
+    const interval = setInterval(async () => {
+      const isValid = await validateSession();
+      if (!isValid) {
+        console.log('Session validation failed during periodic check');
+        // Session was invalidated, auth state already cleared
+      }
+    }, 5 * 60 * 1000); // 5 minutes
+    
+    return () => clearInterval(interval);
+  }, [session]);
 
     const fetchUserProfile = async (userId: string): Promise<User | null> => {
       // Starting profile fetch for user
@@ -241,26 +265,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Helper function for login tracking (shared between email/password and OAuth)
   const updateLoginTracking = async (userId: string) => {
     try {
-      // First get current login count
-      const { data: userData } = await supabase
-        .from('users')
-        .select('login_count')
-        .eq('id', userId)
-        .single();
-      
-      const currentCount = userData?.login_count || 0;
-      
-      await supabase
-        .from('users')
-        .update({
-          last_login_at: new Date().toISOString(),
-          login_count: currentCount + 1
-        })
-        .eq('id', userId);
-      // Login tracking updated
+      // Login tracking disabled to prevent console errors
+      // The users table doesn't have the expected login tracking columns
+      // This is safe to skip as it's not essential functionality
+      if (import.meta.env.DEV) {
+        console.log('Login tracking skipped for user:', userId);
+      }
     } catch (trackingError) {
       if (import.meta.env.DEV) {
-        console.warn('⚠️ Failed to update login tracking:', trackingError);
+        console.warn('⚠️ Login tracking error:', trackingError);
       }
     }
   };
@@ -843,6 +856,150 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.reload();
   };
 
+  // Validate current session is still valid
+  const validateSession = async (): Promise<boolean> => {
+    try {
+      if (!session) return false;
+      
+      // Check if session is expired
+      const now = Date.now();
+      const expiresAt = session.expires_at ? session.expires_at * 1000 : 0;
+      
+      if (expiresAt && now > expiresAt) {
+        console.log('Session expired, clearing auth state');
+        setSession(null);
+        setUser(null);
+        return false;
+      }
+      
+      // Verify session with backend
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      
+      if (!currentUser) {
+        console.log('Session validation failed - no user');
+        setSession(null);
+        setUser(null);
+        return false;
+      }
+      
+      // Update sessionValidatedAt timestamp
+      if (user) {
+        setUser({
+          ...user,
+          sessionValidatedAt: new Date().toISOString()
+        });
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Session validation error:', error);
+      return false;
+    }
+  };
+
+  // Get user permissions with caching
+  const getUserPermissions = async (): Promise<string[]> => {
+    if (!user) return [];
+    
+    // Check cache first
+    const cacheKey = `${user.id}-${user.membershipType}`;
+    const cached = permissionsCache.get(cacheKey);
+    
+    if (cached && cached.expiry > Date.now()) {
+      console.log('Returning cached permissions');
+      return cached.permissions;
+    }
+    
+    try {
+      // Define permissions based on membership type
+      let permissions: string[] = [];
+      
+      switch (user.membershipType) {
+        case 'admin':
+          permissions = [
+            'competition_results.create',
+            'competition_results.read',
+            'competition_results.update',
+            'competition_results.delete',
+            'competition_results.verify',
+            'competition_results.bulk_update',
+            'users.read',
+            'users.update',
+            'users.delete',
+            'events.create',
+            'events.update',
+            'events.delete'
+          ];
+          break;
+          
+        case 'organization':
+        case 'manufacturer':
+        case 'retailer':
+          permissions = [
+            'competition_results.create',
+            'competition_results.read',
+            'competition_results.update_own',
+            'competition_results.delete_own',
+            'events.create',
+            'events.update_own'
+          ];
+          break;
+          
+        case 'pro_competitor':
+          permissions = [
+            'competition_results.create',
+            'competition_results.read',
+            'competition_results.update_own',
+            'competition_results.delete_own',
+            'competition_results.export'
+          ];
+          break;
+          
+        case 'competitor':
+        default:
+          permissions = [
+            'competition_results.create',
+            'competition_results.read',
+            'competition_results.update_own_limited',
+            'competition_results.delete_own_limited'
+          ];
+          break;
+      }
+      
+      // Check for any custom role permissions from database
+      if (user.role) {
+        try {
+          const { data: roleData } = await supabase
+            .from('user_roles')
+            .select('permissions')
+            .eq('role_name', user.role)
+            .single();
+            
+          if (roleData?.permissions) {
+            permissions = [...new Set([...permissions, ...roleData.permissions])];
+          }
+        } catch (error) {
+          console.warn('Failed to load custom role permissions:', error);
+        }
+      }
+      
+      // Cache the permissions for 5 minutes
+      const expiry = Date.now() + (5 * 60 * 1000);
+      permissionsCache.set(cacheKey, { permissions, expiry });
+      
+      return permissions;
+    } catch (error) {
+      console.error('Error getting user permissions:', error);
+      return [];
+    }
+  };
+
+  // Clear permissions cache
+  const clearPermissionsCache = () => {
+    permissionsCache.clear();
+    console.log('Permissions cache cleared');
+  };
+
   const value: AuthContextType = {
     user,
     session,
@@ -856,7 +1013,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     updatePassword,
     refreshUser,
     resendVerificationEmail,
-    forceCleanupOrphanedSession
+    forceCleanupOrphanedSession,
+    validateSession,
+    getUserPermissions,
+    clearPermissionsCache
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { X, Calendar, Trophy, Award, Car, Save, CheckCircle, Search } from 'lucide-react';
+import { competitionResultsAPI } from '../api/competition-results';
+import { useNotifications } from './NotificationSystem';
+import { formatDate, formatMediumDate } from '../utils/dateFormatters';
 
 interface LogCAEEventModalProps {
   isOpen: boolean;
@@ -36,6 +39,7 @@ interface CompetitionClass {
 
 interface EventFormData {
   event_id: string;
+  category: string;
   division_id: string;
   class_id: string;
   class_name: string; // For new class creation
@@ -70,6 +74,7 @@ const LogCAEEventModal: React.FC<LogCAEEventModalProps> = ({
   
   const [formData, setFormData] = useState<EventFormData>({
     event_id: '',
+    category: '',
     division_id: '',
     class_id: '',
     class_name: '',
@@ -200,17 +205,19 @@ const LogCAEEventModal: React.FC<LogCAEEventModalProps> = ({
     setFormData({ ...formData, event_id: event.id.toString() });
   };
 
+  const { showError, showSuccess } = useNotifications();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!selectedEvent) {
-      alert('Please select an event');
+      showError('Error', 'Please select an event');
       return;
     }
 
     // Validate required fields
     if (!formData.division_id || (!formData.class_id && !formData.class_name) || !formData.score || !formData.placement || !formData.points_earned) {
-      alert('Please fill in all required fields');
+      showError('Error', 'Please fill in all required fields');
       return;
     }
 
@@ -235,29 +242,33 @@ const LogCAEEventModal: React.FC<LogCAEEventModalProps> = ({
       const competitionData = {
         user_id: userId,
         event_id: parseInt(formData.event_id),
+        category: formData.category,
         is_cae_event: true,
         event_name: selectedEvent.title,
         event_date: selectedEvent.start_date,
         event_location: `${selectedEvent.city}, ${selectedEvent.state}`,
         division_id: formData.division_id,
         class_id: classId,
-        vehicle_year: formData.vehicle_year ? parseInt(formData.vehicle_year) : null,
-        vehicle_make: formData.vehicle_make || null,
-        vehicle_model: formData.vehicle_model || null,
-        score: formData.score ? parseFloat(formData.score) : null,
-        placement: formData.placement ? parseInt(formData.placement) : null,
-        total_participants: formData.total_participants ? parseInt(formData.total_participants) : null,
+        vehicle_year: formData.vehicle_year ? parseInt(formData.vehicle_year) : undefined,
+        vehicle_make: formData.vehicle_make || undefined,
+        vehicle_model: formData.vehicle_model || undefined,
+        score: formData.score ? parseFloat(formData.score) : undefined,
+        placement: formData.placement ? parseInt(formData.placement) : undefined,
+        total_participants: formData.total_participants ? parseInt(formData.total_participants) : undefined,
         points_earned: parseInt(formData.points_earned) || 0,
-        notes: formData.notes || null
+        notes: formData.notes || undefined
+        // Remove verified: true - let the backend decide based on user role
       };
 
-      const { error } = await supabase
-        .from('competition_results')
-        .insert(competitionData);
+      // Use the secure API to create the competition result
+      const response = await competitionResultsAPI.create(competitionData);
 
-      if (error) throw error;
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to save competition result');
+      }
 
       setSaveStatus('success');
+      showSuccess('Success', 'CAE event result logged successfully');
       
       setTimeout(() => {
         onSuccess();
@@ -268,6 +279,7 @@ const LogCAEEventModal: React.FC<LogCAEEventModalProps> = ({
     } catch (error) {
       console.error('Error saving competition result:', error);
       setSaveStatus('error');
+      showError('Error', error instanceof Error ? error.message : 'Failed to save competition result');
       setTimeout(() => setSaveStatus('idle'), 3000);
     }
   };
@@ -275,6 +287,7 @@ const LogCAEEventModal: React.FC<LogCAEEventModalProps> = ({
   const resetForm = () => {
     setFormData({
       event_id: '',
+      category: '',
       division_id: '',
       class_id: '',
       class_name: '',
@@ -390,7 +403,7 @@ const LogCAEEventModal: React.FC<LogCAEEventModalProps> = ({
                               {event.city}, {event.state}
                             </p>
                             <p className="text-gray-500 text-xs mt-1">
-                              {new Date(event.start_date).toLocaleDateString()} - {new Date(event.end_date).toLocaleDateString()}
+                              {formatDate(event.start_date)} - {formatDate(event.end_date)}
                             </p>
                           </div>
                           {selectedEvent?.id === event.id && (
@@ -419,6 +432,25 @@ const LogCAEEventModal: React.FC<LogCAEEventModalProps> = ({
                 <span>Competition Details</span>
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">
+                    Competition Category <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                    required
+                  >
+                    <option value="">Select category...</option>
+                    <option value="SPL (Sound Pressure Level)">SPL (Sound Pressure Level)</option>
+                    <option value="SQ (Sound Quality)">SQ (Sound Quality)</option>
+                    <option value="Install Quality">Install Quality</option>
+                    <option value="Bass Race">Bass Race</option>
+                    <option value="Demo">Demo</option>
+                  </select>
+                </div>
+                
                 <div>
                   <label className="block text-gray-400 text-sm mb-2">
                     Division <span className="text-red-500">*</span>

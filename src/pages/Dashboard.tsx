@@ -82,7 +82,7 @@ interface RecentResult {
   id: string;
   eventTitle: string;
   category: string;
-  placement: number;
+  position: number;
   totalParticipants: number;
   points: number;
   date: string;
@@ -125,7 +125,7 @@ interface CompetitionResult {
   vehicle_make?: string;
   vehicle_model?: string;
   score?: number;
-  placement?: number;
+  position?: number;
   total_participants?: number;
   points_earned: number;
   notes?: string;
@@ -192,7 +192,7 @@ export default function Dashboard() {
     vehicle_make: '',
     vehicle_model: '',
     score: '',
-    placement: '',
+    position: '',
     total_participants: '',
     notes: ''
   });
@@ -322,7 +322,7 @@ export default function Dashboard() {
       const chartData = (data || []).map(result => ({
         date: new Date(result.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
         score: result.score || 0,
-        placement: result.placement || 0,
+        position: result.position || 0,
         points: result.points_earned || 0
       }));
 
@@ -420,7 +420,7 @@ export default function Dashboard() {
       vehicle_make: result.vehicle_make || '',
       vehicle_model: result.vehicle_model || '',
       score: result.score?.toString() || '',
-      placement: result.placement?.toString() || '',
+      position: result.position?.toString() || '',
       total_participants: result.total_participants?.toString() || '',
       notes: result.notes || ''
     });
@@ -476,9 +476,9 @@ export default function Dashboard() {
         vehicle_make: eventFormData.vehicle_make || null,
         vehicle_model: eventFormData.vehicle_model || null,
         score: eventFormData.score ? parseFloat(eventFormData.score) : null,
-        placement: eventFormData.placement ? parseInt(eventFormData.placement) : null,
+        position: eventFormData.position ? parseInt(eventFormData.position) : null,
         total_participants: eventFormData.total_participants ? parseInt(eventFormData.total_participants) : null,
-        points_earned: 0, // Calculate based on placement and category
+        points_earned: 0, // Calculate based on position and category
         notes: eventFormData.notes || null,
         updated_at: new Date().toISOString()
       };
@@ -518,7 +518,7 @@ export default function Dashboard() {
         vehicle_make: '',
         vehicle_model: '',
         score: '',
-        placement: '',
+        position: '',
         total_participants: '',
         notes: ''
       });
@@ -545,10 +545,10 @@ export default function Dashboard() {
         ? results.reduce((sum, r) => sum + (r.score || 0), 0) / results.length 
         : 0;
       const bestPlace = results.length > 0
-        ? Math.min(...results.map(r => r.placement || 999))
+        ? Math.min(...results.map(r => r.position || 999))
         : 0;
-      const wins = results.filter(r => r.placement === 1).length;
-      const podiums = results.filter(r => r.placement && r.placement <= 3).length;
+      const wins = results.filter(r => r.position === 1).length;
+      const podiums = results.filter(r => r.position && r.position <= 3).length;
 
       setStats({
         totalCompetitions: totalComps,
@@ -626,7 +626,7 @@ export default function Dashboard() {
         id: result.id,
         eventTitle: 'Competition Event',
         category: result.category,
-        placement: result.placement || 0,
+        position: result.placement || 0,
         totalParticipants: result.total_participants || 0,
         points: result.points_earned || 0,
         date: result.created_at
@@ -647,10 +647,10 @@ export default function Dashboard() {
     });
   };
 
-  const getPlacementColor = (placement: number) => {
-    if (placement === 1) return 'text-yellow-400';
-    if (placement <= 3) return 'text-orange-400';
-    if (placement <= 10) return 'text-green-400';
+  const getPositionColor = (position: number) => {
+    if (position === 1) return 'text-yellow-400';
+    if (position <= 3) return 'text-orange-400';
+    if (position <= 10) return 'text-green-400';
     return 'text-gray-400';
   };
 
@@ -980,8 +980,8 @@ export default function Dashboard() {
                             </div>
                           </div>
                           <div className="text-right">
-                            <div className={`text-lg font-bold ${getPlacementColor(result.placement)}`}>
-                              #{result.placement}
+                            <div className={`text-lg font-bold ${getPositionColor(result.position)}`}>
+                              #{result.position}
                             </div>
                             <div className="text-electric-400 text-sm font-medium">
                               +{result.points} pts
@@ -1463,22 +1463,22 @@ export default function Dashboard() {
                             data={[
                               { 
                                 name: '1st', 
-                                value: competitionResults.filter(r => r.placement === 1).length,
+                                value: competitionResults.filter(r => r.position === 1).length,
                                 color: '#fbbf24'
                               },
                               { 
                                 name: '2nd', 
-                                value: competitionResults.filter(r => r.placement === 2).length,
+                                value: competitionResults.filter(r => r.position === 2).length,
                                 color: '#9ca3af'
                               },
                               { 
                                 name: '3rd', 
-                                value: competitionResults.filter(r => r.placement === 3).length,
+                                value: competitionResults.filter(r => r.position === 3).length,
                                 color: '#f97316'
                               },
                               { 
                                 name: 'Other', 
-                                value: competitionResults.filter(r => !r.placement || r.placement > 3).length,
+                                value: competitionResults.filter(r => !r.position || r.position > 3).length,
                                 color: '#4b5563'
                               }
                             ].filter(d => d.value > 0)}
@@ -1494,22 +1494,22 @@ export default function Dashboard() {
                             {[
                               { 
                                 name: '1st', 
-                                value: competitionResults.filter(r => r.placement === 1).length,
+                                value: competitionResults.filter(r => r.position === 1).length,
                                 color: '#fbbf24'
                               },
                               { 
                                 name: '2nd', 
-                                value: competitionResults.filter(r => r.placement === 2).length,
+                                value: competitionResults.filter(r => r.position === 2).length,
                                 color: '#9ca3af'
                               },
                               { 
                                 name: '3rd', 
-                                value: competitionResults.filter(r => r.placement === 3).length,
+                                value: competitionResults.filter(r => r.position === 3).length,
                                 color: '#f97316'
                               },
                               { 
                                 name: 'Other', 
-                                value: competitionResults.filter(r => !r.placement || r.placement > 3).length,
+                                value: competitionResults.filter(r => !r.position || r.position > 3).length,
                                 color: '#4b5563'
                               }
                             ].filter(d => d.value > 0).map((entry, index) => (
@@ -1524,20 +1524,20 @@ export default function Dashboard() {
                       </ResponsiveContainer>
                     ) : (
                       <div className="flex items-center justify-center h-[200px] text-gray-500">
-                        <p className="text-center">No placement data yet</p>
+                        <p className="text-center">No position data yet</p>
                       </div>
                     )}
                     <div className="mt-2 text-center">
                       <span className="text-gray-400 text-xs">Win Rate: </span>
                       <span className="text-white font-semibold">
                         {competitionResults.length > 0
-                          ? ((competitionResults.filter(r => r.placement === 1).length / competitionResults.length) * 100).toFixed(0) + '%'
+                          ? ((competitionResults.filter(r => r.position === 1).length / competitionResults.length) * 100).toFixed(0) + '%'
                           : '0%'}
                       </span>
                       <span className="text-gray-400 text-xs ml-4">Podium: </span>
                       <span className="text-white font-semibold">
                         {competitionResults.length > 0
-                          ? ((competitionResults.filter(r => r.placement && r.placement <= 3).length / competitionResults.length) * 100).toFixed(0) + '%'
+                          ? ((competitionResults.filter(r => r.position && r.position <= 3).length / competitionResults.length) * 100).toFixed(0) + '%'
                           : '0%'}
                       </span>
                     </div>
@@ -1564,10 +1564,10 @@ export default function Dashboard() {
                       </thead>
                       <tbody className="divide-y divide-gray-700/50">
                         {competitionResults.map((result) => {
-                          const placementColor = 
-                            result.placement === 1 ? 'text-yellow-400' :
-                            result.placement === 2 ? 'text-gray-400' :
-                            result.placement === 3 ? 'text-orange-400' : 'text-white';
+                          const positionColor = 
+                            result.position === 1 ? 'text-yellow-400' :
+                            result.position === 2 ? 'text-gray-400' :
+                            result.position === 3 ? 'text-orange-400' : 'text-white';
                           
                           return (
                             <tr key={result.id} className="hover:bg-gray-700/20 transition-colors">
@@ -1586,8 +1586,8 @@ export default function Dashboard() {
                               </td>
                               <td className="py-4 text-gray-300">{result.category}</td>
                               <td className="py-4 text-center">
-                                <span className={`font-bold ${placementColor}`}>
-                                  {result.placement ? `#${result.placement}` : '-'}
+                                <span className={`font-bold ${positionColor}`}>
+                                  {result.position ? `#${result.position}` : '-'}
                                 </span>
                                 {result.total_participants && (
                                   <span className="text-gray-500 text-sm ml-1">
@@ -1942,10 +1942,10 @@ export default function Dashboard() {
                       <input
                         type="number"
                         min="1"
-                        value={eventFormData.placement}
-                        onChange={(e) => setEventFormData(prev => ({ ...prev, placement: e.target.value }))}
+                        value={eventFormData.position}
+                        onChange={(e) => setEventFormData(prev => ({ ...prev, position: e.target.value }))}
                         className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-electric-500"
-                        placeholder="Enter placement"
+                        placeholder="Enter position"
                       />
                     </div>
 

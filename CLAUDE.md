@@ -6,13 +6,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 🚨 CRITICAL INSTRUCTIONS FOR AI AGENTS 🚨
 
+### BROWSER TAB RESTRICTIONS - ABSOLUTELY MANDATORY
+**NEVER OPEN ANY BROWSER TABS OR NAVIGATE TO ANY PAGES UNLESS EXPLICITLY TOLD TO DO SO**
+1. **NO PLAYWRIGHT BROWSER NAVIGATION** - NEVER use browser_navigate, browser_tab_new, or any browser automation unless the user explicitly requests it
+2. **NO AUTOMATIC BROWSER TESTING** - NEVER open tabs for testing, verification, or any other purpose
+3. **USER CONTROLS BROWSER** - The user will tell you exactly which tab to use and when
+4. **VIOLATION = IMMEDIATE STOP** - If you attempt to open browser tabs without explicit permission, you are violating user instructions
+5. **ASK FIRST ALWAYS** - If you think browser automation is needed, ASK the user first, never assume
+
 ### DEV SERVER RULES - ABSOLUTELY MANDATORY
-1. **ALWAYS USE PORT 5173 ONLY** - NO EXCEPTIONS
-2. **KILL ALL NODE PROCESSES BEFORE STARTING DEV SERVER**
-3. **NEVER LET VITE INCREMENT PORTS** (NO 5174, 5175, etc.)
-4. **USE THIS EXACT COMMAND**:
+1. **CHECK PORT 5173 FIRST** - ALWAYS check if dev server is already running on port 5173 before doing ANYTHING
+2. **IF PORT 5173 IS RUNNING** - USE IT! DO NOT KILL PROCESSES, DO NOT START NEW SERVERS, DO NOT DO ANYTHING
+3. **NEVER START MULTIPLE DEV SERVERS** - If 5173 is active, you are FORBIDDEN from starting another server
+4. **NEVER USE OTHER PORTS** - NO 5174, 5175, 3000, 8080, or ANY OTHER PORT EVER
+5. **ONLY START SERVER IF 5173 IS DOWN** - Only use this command if port 5173 is completely dead:
    ```bash
    taskkill /F /IM node.exe 2>nul & npm run dev
+   ```
+6. **CHECK COMMAND**:
+   ```bash
+   netstat -an | findstr :5173
    ```
 
 ### YOU HAVE FULL CLI ACCESS - USE IT!

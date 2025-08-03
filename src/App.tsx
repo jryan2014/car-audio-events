@@ -71,6 +71,7 @@ const NewsletterConfirm = React.lazy(() => import('./pages/NewsletterConfirm'));
 const NewsletterUnsubscribe = React.lazy(() => import('./pages/NewsletterUnsubscribe'));
 const AdminNewsletterManager = React.lazy(() => import('./pages/AdminNewsletterManager'));
 const Leaderboard = React.lazy(() => import('./pages/Leaderboard'));
+const AdminLeaderboardManager = React.lazy(() => import('./components/AdminLeaderboardManager'));
 
 // Support Desk components
 const PublicSupportForm = React.lazy(() => import('./modules/support-desk/components/public/PublicSupportForm'));
@@ -212,6 +213,7 @@ function App() {
               <Route path="/admin/users/:userId/edit" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><EditUser /></Suspense></AdminLayout>} />
               <Route path="/admin/membership" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminMembership /></Suspense></AdminLayout>} />
               <Route path="/admin/events" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminEvents /></Suspense></AdminLayout>} />
+              <Route path="/admin/competition-results" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminLeaderboardManager /></Suspense></AdminLayout>} />
               <Route path="/admin/backup" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminBackup /></Suspense></AdminLayout>} />
               <Route path="/admin/analytics" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminAnalytics /></Suspense></AdminLayout>} />
               <Route path="/admin/ad-management" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdManagement /></Suspense></AdminLayout>} />
