@@ -258,6 +258,8 @@ export default function Profile() {
   const [showSystemModal, setShowSystemModal] = useState(false);
   const [editingSystem, setEditingSystem] = useState<AudioSystem | null>(null);
   const [showComponentModal, setShowComponentModal] = useState(false);
+  const [showEditComponentModal, setShowEditComponentModal] = useState(false);
+  const [editingComponent, setEditingComponent] = useState<any>(null);
   const [selectedSystemId, setSelectedSystemId] = useState<string | null>(null);
   const [showSystemLinksModal, setShowSystemLinksModal] = useState(false);
   const [systemLinks, setSystemLinks] = useState<any[]>([]);
@@ -425,7 +427,10 @@ export default function Profile() {
     try {
       const { data: systems, error } = await supabase
         .from('user_audio_systems')
-        .select('*')
+        .select(`
+          *,
+          components:audio_components(*)
+        `)
         .eq('user_id', user!.id)
         .order('is_primary', { ascending: false });
 
@@ -434,10 +439,10 @@ export default function Profile() {
         return;
       }
 
-      // Ensure components array exists for each system
+      // Map the data to ensure components is always an array
       setAudioSystems((systems || []).map(system => ({
         ...system,
-        components: Array.isArray(system.components) ? system.components : []
+        components: system.components || []
       })));
     } catch (error) {
       console.error('Error in loadAudioSystems:', error);
@@ -723,6 +728,35 @@ export default function Profile() {
       console.error('Error deleting system:', error);
       alert('Error deleting system. Please try again.');
     }
+  };
+
+  const handleDeleteComponent = async (componentId: string) => {
+    if (!confirm('Are you sure you want to delete this component?')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('audio_components')
+        .delete()
+        .eq('id', componentId);
+
+      if (error) throw error;
+
+      showSuccess('Component Deleted', 'Component has been removed from your system.');
+      await loadAudioSystems();
+    } catch (error) {
+      console.error('Error deleting component:', error);
+      alert('Error deleting component. Please try again.');
+    }
+  };
+
+  const handleEditComponent = (component: any, systemId: string) => {
+    setEditingComponent({
+      ...component,
+      audio_system_id: systemId
+    });
+    setShowEditComponentModal(true);
   };
 
   const handleAddSystemLink = async (e: React.FormEvent) => {
@@ -1873,9 +1907,22 @@ export default function Profile() {
                           <h4 className="text-white font-semibold capitalize">
                             {(component.category || '').replace('_', ' ')}
                           </h4>
-                          <button className="text-gray-400 hover:text-red-400">
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          <div className="flex items-center space-x-1">
+                            <button 
+                              onClick={() => handleEditComponent(component, system.id)}
+                              className="text-gray-400 hover:text-electric-400"
+                              title="Edit component"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteComponent(component.id)}
+                              className="text-gray-400 hover:text-red-400"
+                              title="Delete component"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
                         </div>
                         <p className="text-electric-400 font-medium">{component.brand} {component.model}</p>
                         {(component.notes || component.description) && (
@@ -4008,6 +4055,185 @@ export default function Profile() {
                   className="bg-electric-500 text-white px-6 py-2 rounded-lg hover:bg-electric-600 transition-colors"
                 >
                   Add Component
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Component Modal */}
+      {showEditComponentModal && editingComponent && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-xl max-w-2xl w-full">
+            <div className="p-6 border-b border-gray-700">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-white">Edit Component</h3>
+                <button
+                  onClick={() => {
+                    setShowEditComponentModal(false);
+                    setEditingComponent(null);
+                  }}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+            
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                const { error } = await supabase
+                  .from('audio_components')
+                  .update({
+                    category: editingComponent.category,
+                    brand: editingComponent.brand,
+                    model: editingComponent.model,
+                    description: editingComponent.description,
+                    power_watts: editingComponent.power_watts,
+                    impedance_ohms: editingComponent.impedance_ohms ? parseFloat(editingComponent.impedance_ohms) : null,
+                    frequency_response: editingComponent.frequency_response,
+                    price: editingComponent.price ? parseFloat(editingComponent.price) : null,
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq('id', editingComponent.id);
+
+                if (error) throw error;
+
+                showSuccess('Component Updated', 'Component has been updated successfully.');
+                setShowEditComponentModal(false);
+                setEditingComponent(null);
+                await loadAudioSystems();
+              } catch (error) {
+                console.error('Error updating component:', error);
+                alert('Failed to update component. Please try again.');
+              }
+            }} className="p-6 space-y-4">
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Component Category *</label>
+                <select
+                  value={editingComponent.category}
+                  onChange={(e) => setEditingComponent({ ...editingComponent, category: e.target.value })}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  required
+                >
+                  <option value="">Select category...</option>
+                  <option value="head_unit">Head Unit</option>
+                  <option value="amplifier">Amplifier</option>
+                  <option value="subwoofer">Subwoofer</option>
+                  <option value="speakers">Speakers</option>
+                  <option value="dsp">DSP (Digital Signal Processor)</option>
+                  <option value="wiring">Wiring</option>
+                  <option value="alternator">Alternator</option>
+                  <option value="battery">Battery</option>
+                  <option value="capacitor">Capacitor</option>
+                  <option value="sound_dampening">Sound Dampening</option>
+                  <option value="enclosure">Enclosure</option>
+                  <option value="accessories">Accessories</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">Brand *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingComponent.brand}
+                    onChange={(e) => setEditingComponent({ ...editingComponent, brand: e.target.value })}
+                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                    placeholder="e.g., Alpine, JL Audio"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">Model *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingComponent.model}
+                    onChange={(e) => setEditingComponent({ ...editingComponent, model: e.target.value })}
+                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                    placeholder="e.g., 12W7AE-3"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Description</label>
+                <textarea
+                  value={editingComponent.description || ''}
+                  onChange={(e) => setEditingComponent({ ...editingComponent, description: e.target.value })}
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                  rows={2}
+                  placeholder="Additional details about this component..."
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">Power (Watts)</label>
+                  <input
+                    type="number"
+                    value={editingComponent.power_watts || ''}
+                    onChange={(e) => setEditingComponent({ ...editingComponent, power_watts: parseInt(e.target.value) || null })}
+                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                    placeholder="e.g., 1000"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">Impedance (Ohms)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={editingComponent.impedance_ohms || ''}
+                    onChange={(e) => setEditingComponent({ ...editingComponent, impedance_ohms: e.target.value })}
+                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                    placeholder="e.g., 1, 2, 4"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">Frequency Response</label>
+                  <input
+                    type="text"
+                    value={editingComponent.frequency_response || ''}
+                    onChange={(e) => setEditingComponent({ ...editingComponent, frequency_response: e.target.value })}
+                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                    placeholder="e.g., 20Hz-20kHz"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">Price ($)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editingComponent.price || ''}
+                    onChange={(e) => setEditingComponent({ ...editingComponent, price: e.target.value })}
+                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                    placeholder="e.g., 299.99"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-4 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditComponentModal(false);
+                    setEditingComponent(null);
+                  }}
+                  className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="bg-electric-500 text-white px-6 py-2 rounded-lg hover:bg-electric-600 transition-colors"
+                >
+                  Update Component
                 </button>
               </div>
             </form>
