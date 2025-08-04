@@ -1129,7 +1129,7 @@ export default function UserBilling() {
                               </td>
                               <td className="py-3 px-2 text-gray-300">{formatDate(invoice.created_at)}</td>
                               <td className="py-3 px-2 text-white">
-                                {invoice.subscriptions?.membership_plans?.name || 'Subscription Payment'}
+                                {(invoice as any).subscriptions?.membership_plans?.name || 'Subscription Payment'}
                               </td>
                               <td className="py-3 px-2">
                                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -1145,7 +1145,7 @@ export default function UserBilling() {
                                 </span>
                               </td>
                               <td className="py-3 px-2 text-right font-medium text-white">
-                                {formatCurrency(invoice.total || invoice.amount_paid || 0)}
+                                {formatCurrency(invoice.total || (invoice as any).amount_paid || 0)}
                               </td>
                               <td className="py-3 px-2 text-center">
                                 <button
