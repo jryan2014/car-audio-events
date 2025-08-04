@@ -16,13 +16,11 @@ const originalConsole = {
 
 export function initializeConsoleManager() {
   if (!isDevelopment) {
-    // In production, disable info and warn messages
+    // In production, disable log, info, warn, and debug messages
+    console.log = () => {};
     console.info = () => {};
     console.warn = () => {};
     console.debug = () => {};
-    
-    // Optionally disable regular logs too (uncomment if needed)
-    // console.log = () => {};
     
     // Keep error messages for debugging
     // console.error remains unchanged
