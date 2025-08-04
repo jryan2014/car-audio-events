@@ -95,6 +95,19 @@ export class AuditLogger {
     RATE_LIMIT_EXCEEDED: 'rate_limit_exceeded',
     SECURITY_ALERT: 'security_alert',
     INVALID_SIGNATURE: 'invalid_signature',
-    UNAUTHORIZED_ACCESS: 'unauthorized_access'
+    UNAUTHORIZED_ACCESS: 'unauthorized_access',
+    
+    // Payment method actions
+    PAYMENT_METHOD_ADDED: 'payment_method_added',
+    PAYMENT_METHOD_REMOVED: 'payment_method_removed',
+    PAYMENT_METHOD_DEFAULT_CHANGED: 'payment_method_default_changed',
+    PAYMENT_METHOD_ERROR: 'payment_method_error',
+    
+    // Setup intent actions
+    SETUP_INTENT_CREATED: 'setup_intent_created',
+    SETUP_INTENT_FAILED: 'setup_intent_failed',
+    
+    // Customer actions
+    STRIPE_CUSTOMER_CREATED: 'stripe_customer_created'
   };
 }

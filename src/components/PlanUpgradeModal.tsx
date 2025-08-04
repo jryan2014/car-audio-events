@@ -9,7 +9,7 @@ interface MembershipPlan {
   price: number;
   billing_period: 'monthly' | 'yearly';
   features: string[];
-  tier: number;
+  display_order: number;
 }
 
 interface PlanUpgradeModalProps {
@@ -60,7 +60,7 @@ export const PlanUpgradeModal: React.FC<PlanUpgradeModalProps> = ({
         .from('membership_plans')
         .select('*')
         .eq('is_active', true)
-        .order('tier', { ascending: true });
+        .order('display_order', { ascending: true });
 
       if (error) throw error;
 
@@ -184,15 +184,34 @@ export const PlanUpgradeModal: React.FC<PlanUpgradeModalProps> = ({
             <div className="flex items-center justify-center py-12">
               <Loader className="h-8 w-8 text-electric-500 animate-spin" />
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {plans
-                .filter(plan => plan.billing_period === billingPeriod)
-                .map((plan) => {
+          ) : (() => {
+            const filteredPlans = plans.filter(plan => {
+              // Filter by billing period
+              if (plan.billing_period !== billingPeriod) return false;
+              
+              // Get current plan's display order
+              const currentPlan = plans.find(p => p.id === currentPlanId);
+              const currentOrder = currentPlan?.display_order || 0;
+              
+              // Only show plans that are upgrades (higher display_order)
+              // Special case: If user is on Competitor or Pro Competitor, show Retailer and Manufacturer
+              // Exclude Organization plan from upgrades (it's for different use case)
+              if (currentPlan?.name === 'Competitor' || currentPlan?.name === 'Pro Competitor') {
+                return plan.name === 'Retailer' || plan.name === 'Manufacturer';
+              }
+              
+              // For other plans, show upgrades but exclude Organization
+              return plan.display_order > currentOrder && plan.name !== 'Organization';
+            });
+
+            return filteredPlans.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {filteredPlans.map((plan) => {
                   const isCurrentPlan = plan.id === currentPlanId;
                   const isSelected = selectedPlan?.id === plan.id;
-                  const isUpgrade = plan.tier > (plans.find(p => p.id === currentPlanId)?.tier || 0);
-                  const isDowngrade = plan.tier < (plans.find(p => p.id === currentPlanId)?.tier || 999);
+                  const currentPlan = plans.find(p => p.id === currentPlanId);
+                  const isUpgrade = plan.display_order > (currentPlan?.display_order || 0);
+                  const isDowngrade = plan.display_order < (currentPlan?.display_order || 999);
 
                   return (
                     <div
@@ -268,8 +287,14 @@ export const PlanUpgradeModal: React.FC<PlanUpgradeModalProps> = ({
                     </div>
                   );
                 })}
-            </div>
-          )}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-gray-400 text-lg">No upgrade options available for your current plan.</p>
+                <p className="text-gray-500 mt-2">You're already on the highest tier available.</p>
+              </div>
+            );
+          })()}
 
           {/* Proration Details */}
           {proration && selectedPlan && (

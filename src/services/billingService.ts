@@ -507,40 +507,19 @@ class BillingService {
     setAsDefault = false
   ) {
     try {
-      const { data: user } = await supabase
-        .from('users')
-        .select('stripe_customer_id, email')
-        .eq('id', userId)
-        .single();
-
-      if (!user) throw new Error('User not found');
-
-      // For now, just save a mock payment method
-      // In production, this would integrate with Stripe/PayPal
-      
-      if (setAsDefault) {
-        await supabase
-          .from('payment_methods')
-          .update({ is_default: false })
-          .eq('user_id', userId);
-      }
-
-      // Save to our database
-      const { data, error } = await supabase
-        .from('payment_methods')
-        .insert({
-          user_id: userId,
-          type: type,
-          provider: type === 'card' ? 'stripe' : 'paypal',
-          provider_payment_method_id: paymentMethodId,
-          is_default: setAsDefault,
-          last4: '4242', // Mock data
-          brand: 'Visa', // Mock data
-          exp_month: 12,
-          exp_year: 2025,
-        });
+      // Use edge function for secure payment method handling
+      const { data, error } = await supabase.functions.invoke('payment-methods', {
+        body: {
+          action: 'add',
+          userId,
+          paymentMethodId,
+          paymentMethodType: type,
+          setAsDefault
+        }
+      });
 
       if (error) throw error;
+      
       return data;
     } catch (error) {
       console.error('Error adding payment method:', error);
@@ -550,36 +529,18 @@ class BillingService {
 
   async removePaymentMethod(userId: string, paymentMethodId: string) {
     try {
-      // Get the payment method
-      const { data: paymentMethod } = await supabase
-        .from('payment_methods')
-        .select('*')
-        .eq('id', paymentMethodId)
-        .eq('user_id', userId)
-        .single();
-
-      if (!paymentMethod) {
-        throw new Error('Payment method not found');
-      }
-
-      // Remove from Stripe if it's a Stripe method
-      if (paymentMethod.provider === 'stripe' && paymentMethod.provider_payment_method_id) {
-        await supabase.functions.invoke('stripe-detach-payment-method', {
-          body: {
-            paymentMethodId: paymentMethod.provider_payment_method_id,
-          }
-        });
-      }
-
-      // Remove from database
-      const { error } = await supabase
-        .from('payment_methods')
-        .delete()
-        .eq('id', paymentMethodId);
+      // Use edge function for secure payment method removal
+      const { data, error } = await supabase.functions.invoke('payment-methods', {
+        body: {
+          action: 'remove',
+          userId,
+          paymentMethodId
+        }
+      });
 
       if (error) throw error;
-
-      return { success: true };
+      
+      return data;
     } catch (error) {
       console.error('Error removing payment method:', error);
       throw error;
@@ -588,49 +549,18 @@ class BillingService {
 
   async setDefaultPaymentMethod(userId: string, paymentMethodId: string) {
     try {
-      // Get the payment method
-      const { data: paymentMethod } = await supabase
-        .from('payment_methods')
-        .select('*')
-        .eq('id', paymentMethodId)
-        .eq('user_id', userId)
-        .single();
-
-      if (!paymentMethod) {
-        throw new Error('Payment method not found');
-      }
-
-      // Update all methods to not default
-      await supabase
-        .from('payment_methods')
-        .update({ is_default: false })
-        .eq('user_id', userId);
-
-      // Set this one as default
-      await supabase
-        .from('payment_methods')
-        .update({ is_default: true })
-        .eq('id', paymentMethodId);
-
-      // Update Stripe default if applicable
-      if (paymentMethod.provider === 'stripe') {
-        const { data: user } = await supabase
-          .from('users')
-          .select('stripe_customer_id')
-          .eq('id', userId)
-          .single();
-
-        if (user?.stripe_customer_id) {
-          await supabase.functions.invoke('stripe-update-customer-default-payment-method', {
-            body: {
-              customerId: user.stripe_customer_id,
-              paymentMethodId: paymentMethod.provider_payment_method_id,
-            }
-          });
+      // Use edge function for secure default payment method update
+      const { data, error } = await supabase.functions.invoke('payment-methods', {
+        body: {
+          action: 'setDefault',
+          userId,
+          paymentMethodId
         }
-      }
+      });
 
-      return { success: true };
+      if (error) throw error;
+      
+      return data;
     } catch (error) {
       console.error('Error setting default payment method:', error);
       throw error;

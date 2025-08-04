@@ -13,6 +13,7 @@ import { Elements, useStripe, useElements, CardElement } from '@stripe/react-str
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
 import { loadPayPalSDK } from '../lib/payments';
 import { getStripeConfig, getPaymentConfig } from '../services/paymentConfigService';
+import { PaymentMethodForm } from '../components/PaymentMethodForm';
 
 interface BillingOverview {
   subscription: Subscription | null;
@@ -22,377 +23,8 @@ interface BillingOverview {
   invoices?: Invoice[];
 }
 
-// Add Payment Method Modal Component
-const AddPaymentMethodModal: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  onSuccess: () => void;
-  userId: string;
-}> = ({ isOpen, onClose, onSuccess, userId }) => {
-  const stripe = useStripe();
-  const elements = useElements();
-  const { user } = useAuth();
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [error, setError] = useState('');
-  const [paymentType, setPaymentType] = useState<'card' | 'paypal'>('card');
-  const [paypalClientId, setPaypalClientId] = useState<string>('');
-  const paypalRef = useRef<HTMLDivElement>(null);
-  const [useProfileAddress, setUseProfileAddress] = useState(false);
-  const [billingAddress, setBillingAddress] = useState({
-    line1: '',
-    city: '',
-    state: '',
-    postal_code: '',
-    country: 'US'
-  });
-  const [paypalAvailable, setPaypalAvailable] = useState(false);
-
-  // Check PayPal availability when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      const checkPayPalAvailability = async () => {
-        try {
-          const paymentConfig = await getPaymentConfig();
-          setPaypalAvailable(paymentConfig.paypal_active);
-          // If PayPal isn't available and it's selected, switch to card
-          if (!paymentConfig.paypal_active && paymentType === 'paypal') {
-            setPaymentType('card');
-          }
-        } catch (error) {
-          console.error('Error checking PayPal availability:', error);
-          setPaypalAvailable(false);
-        }
-      };
-      checkPayPalAvailability();
-    }
-  }, [isOpen]);
-
-  // Handle profile address checkbox
-  useEffect(() => {
-    if (useProfileAddress && user) {
-      setBillingAddress({
-        line1: user.address || '',
-        city: user.city || '',
-        state: user.state || '',
-        postal_code: user.zip || '',
-        country: 'US'
-      });
-    } else if (!useProfileAddress) {
-      setBillingAddress({
-        line1: '',
-        city: '',
-        state: '',
-        postal_code: '',
-        country: 'US'
-      });
-    }
-  }, [useProfileAddress, user]);
-
-  // Load PayPal client ID
-  useEffect(() => {
-    if (isOpen && paymentType === 'paypal') {
-      const loadPayPalConfig = async () => {
-        try {
-          // First check if PayPal is active in payment config
-          const paymentConfig = await getPaymentConfig();
-          if (!paymentConfig.paypal_active) {
-            setError('PayPal payment method is currently unavailable. Please use a credit/debit card.');
-            return;
-          }
-          
-          await loadPayPalSDK();
-          // PayPal SDK is loaded, we can use it
-        } catch (error: any) {
-          console.error('Error loading PayPal:', error);
-          if (error.message?.includes('PayPal is not active')) {
-            setError('PayPal payment method is currently unavailable. Please use a credit/debit card.');
-          } else if (error.message?.includes('PayPal client ID not configured')) {
-            setError('PayPal is not properly configured. Please use a credit/debit card.');
-          } else {
-            setError('Failed to load PayPal. Please try again or use a credit/debit card.');
-          }
-        }
-      };
-      loadPayPalConfig();
-    }
-  }, [isOpen, paymentType]);
-
-  const handleStripeSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!stripe || !elements) return;
-
-    setIsProcessing(true);
-    setError('');
-
-    try {
-      const cardElement = elements.getElement(CardElement);
-      if (!cardElement) return;
-
-      // Create payment method with billing details
-      const { error, paymentMethod } = await stripe.createPaymentMethod({
-        type: 'card',
-        card: cardElement,
-        billing_details: {
-          address: {
-            line1: billingAddress.line1,
-            city: billingAddress.city,
-            state: billingAddress.state,
-            postal_code: billingAddress.postal_code,
-            country: billingAddress.country,
-          }
-        }
-      });
-
-      if (error) {
-        setError(error.message || 'Failed to add payment method');
-        return;
-      }
-
-      // Save to backend
-      await billingService.addPaymentMethod(userId, paymentMethod.id, 'card', true);
-      onSuccess();
-      onClose();
-    } catch (err: any) {
-      setError(err.message || 'Failed to add payment method');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handlePayPalApproval = async (data: any) => {
-    try {
-      setIsProcessing(true);
-      setError('');
-      
-      // Save PayPal payment method to backend
-      await billingService.addPaymentMethod(userId, data.paymentID || data.orderID, 'paypal', true);
-      onSuccess();
-      onClose();
-    } catch (error: any) {
-      setError(error.message || 'Failed to add PayPal payment method');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
-      <div className="bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
-        <h3 className="text-xl font-semibold text-white mb-4">Add Payment Method</h3>
-
-        <div className="flex gap-2 mb-4">
-          <button
-            onClick={() => setPaymentType('card')}
-            className={`${paypalAvailable ? 'flex-1' : 'w-full'} py-2 px-4 rounded-lg font-medium transition-colors ${
-              paymentType === 'card'
-                ? 'bg-electric-500 text-white'
-                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-            }`}
-          >
-            <div className="flex items-center justify-center space-x-2">
-              <CreditCard className="h-4 w-4" />
-              <span>Credit/Debit Card</span>
-            </div>
-          </button>
-          {paypalAvailable && (
-            <button
-              onClick={() => setPaymentType('paypal')}
-              className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
-                paymentType === 'paypal'
-                  ? 'bg-electric-500 text-white'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-              }`}
-            >
-              <div className="flex items-center justify-center space-x-2">
-                <div className="w-4 h-4 bg-blue-600 rounded flex items-center justify-center">
-                  <span className="text-white text-xs font-bold">P</span>
-                </div>
-                <span>PayPal</span>
-              </div>
-            </button>
-          )}
-        </div>
-
-        {paymentType === 'card' ? (
-          <form onSubmit={handleStripeSubmit}>
-            <div className="mb-4">
-              <label className="block text-gray-400 text-sm mb-2">Card Details</label>
-              <div className="p-3 bg-gray-700/50 border border-gray-600 rounded-lg">
-                <CardElement
-                  options={{
-                    style: {
-                      base: {
-                        fontSize: '16px',
-                        color: '#ffffff',
-                        '::placeholder': {
-                          color: '#9ca3af',
-                        },
-                      },
-                    },
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Billing Address Section */}
-            <div className="mb-4">
-              <label className="block text-gray-400 text-sm mb-2">Billing Address</label>
-              
-              {/* Use Profile Address Checkbox */}
-              {user && (user.address || user.city || user.state || user.zip) && (
-                <label className="flex items-center mb-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={useProfileAddress}
-                    onChange={(e) => setUseProfileAddress(e.target.checked)}
-                    className="w-4 h-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500"
-                  />
-                  <span className="ml-2 text-gray-300 text-sm">Use my profile address for billing</span>
-                </label>
-              )}
-              
-              <div className="space-y-3">
-                <input
-                  type="text"
-                  placeholder="Street Address"
-                  value={billingAddress.line1}
-                  onChange={(e) => setBillingAddress({ ...billingAddress, line1: e.target.value })}
-                  disabled={useProfileAddress}
-                  required
-                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500 disabled:opacity-50"
-                />
-                
-                <div className="grid grid-cols-2 gap-3">
-                  <input
-                    type="text"
-                    placeholder="City"
-                    value={billingAddress.city}
-                    onChange={(e) => setBillingAddress({ ...billingAddress, city: e.target.value })}
-                    disabled={useProfileAddress}
-                    required
-                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500 disabled:opacity-50"
-                  />
-                  <input
-                    type="text"
-                    placeholder="State"
-                    value={billingAddress.state}
-                    onChange={(e) => setBillingAddress({ ...billingAddress, state: e.target.value })}
-                    disabled={useProfileAddress}
-                    maxLength={2}
-                    required
-                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500 disabled:opacity-50"
-                  />
-                </div>
-                
-                <input
-                  type="text"
-                  placeholder="Zip Code"
-                  value={billingAddress.postal_code}
-                  onChange={(e) => setBillingAddress({ ...billingAddress, postal_code: e.target.value })}
-                  disabled={useProfileAddress}
-                  required
-                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500 disabled:opacity-50"
-                />
-              </div>
-            </div>
-
-            {error && (
-              <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
-                <p className="text-red-400 text-sm">{error}</p>
-              </div>
-            )}
-
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 py-2 px-4 bg-gray-700 text-white rounded-lg font-medium hover:bg-gray-600 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isProcessing || !stripe}
-                className="flex-1 py-2 px-4 bg-electric-500 text-white rounded-lg font-medium hover:bg-electric-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-              >
-                {isProcessing ? (
-                  <Loader className="h-5 w-5 animate-spin" />
-                ) : (
-                  'Add Card'
-                )}
-              </button>
-            </div>
-          </form>
-        ) : (
-          <div>
-            <div className="mb-4">
-              <label className="block text-gray-400 text-sm mb-2">Connect PayPal Account</label>
-              <p className="text-gray-400 text-sm mb-4">
-                Set up PayPal as a payment method for future purchases.
-              </p>
-            </div>
-
-            {error && (
-              <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
-                <p className="text-red-400 text-sm">{error}</p>
-              </div>
-            )}
-
-            {(window as any).paypal ? (
-              <div ref={paypalRef} className="mb-4">
-                <PayPalButtons
-                  style={{
-                    layout: 'vertical',
-                    color: 'blue',
-                    shape: 'rect',
-                    label: 'paypal',
-                    height: 45
-                  }}
-                  createOrder={(data, actions) => {
-                    return actions.order.create({
-                      purchase_units: [{
-                        amount: {
-                          currency_code: 'USD',
-                          value: '0.01' // Minimal amount for setup
-                        }
-                      }],
-                      intent: 'AUTHORIZE' // Just authorize, don't capture
-                    });
-                  }}
-                  onApprove={handlePayPalApproval}
-                  onError={(err) => {
-                    console.error('PayPal error:', err);
-                    setError('PayPal setup failed. Please try again.');
-                  }}
-                  onCancel={() => {
-                    setError('PayPal setup was cancelled');
-                  }}
-                />
-              </div>
-            ) : (
-              <div className="mb-4 flex items-center justify-center py-8">
-                <Loader className="animate-spin h-6 w-6 text-electric-500 mr-2" />
-                <span className="text-gray-300">Loading PayPal...</span>
-              </div>
-            )}
-
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 py-2 px-4 bg-gray-700 text-white rounded-lg font-medium hover:bg-gray-600 transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
+// Payment method handling moved to secure PaymentMethodForm component
+// Old AddPaymentMethodModal removed - was using mock data and has been replaced with production-ready implementation
 
 // Cancel Subscription Modal
 const CancelSubscriptionModal: React.FC<{
@@ -501,16 +133,24 @@ export default function UserBilling() {
       try {
         const stripeConfig = await getStripeConfig();
         if (stripeConfig.publishableKey) {
-          const stripe = loadStripe(stripeConfig.publishableKey);
-          setStripePromise(stripe);
+          const stripePromise = loadStripe(stripeConfig.publishableKey);
+          setStripePromise(stripePromise);
+        } else {
+          console.error('No Stripe publishable key found in config');
+          // Try environment variable as fallback
+          const envKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+          if (envKey) {
+            const stripePromise = loadStripe(envKey);
+            setStripePromise(stripePromise);
+          }
         }
       } catch (error) {
         console.error('Failed to load Stripe config:', error);
         // Fallback to environment variable if payment settings fetch fails
         const envKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
         if (envKey) {
-          const stripe = loadStripe(envKey);
-          setStripePromise(stripe);
+          const stripePromise = loadStripe(envKey);
+          setStripePromise(stripePromise);
         }
       }
     };
@@ -1310,15 +950,23 @@ export default function UserBilling() {
           </div>
 
           {/* Modals */}
-          <AddPaymentMethodModal
-            isOpen={showAddPaymentMethod}
-            onClose={() => setShowAddPaymentMethod(false)}
-            onSuccess={() => {
-              setSuccess('Payment method added successfully');
-              loadBillingData();
-            }}
-            userId={user.id}
-          />
+          {showAddPaymentMethod && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+              <div className="bg-gray-900 rounded-lg p-6 max-w-md w-full">
+                <h2 className="text-2xl font-bold text-white mb-6">Add Payment Method</h2>
+                <PaymentMethodForm
+                  userId={user.id}
+                  onSuccess={() => {
+                    setShowAddPaymentMethod(false);
+                    setSuccess('Payment method added successfully');
+                    loadBillingData();
+                  }}
+                  onCancel={() => setShowAddPaymentMethod(false)}
+                  setAsDefault={billingData?.paymentMethods.length === 0}
+                />
+              </div>
+            </div>
+          )}
 
           <CancelSubscriptionModal
             isOpen={showCancelModal}
