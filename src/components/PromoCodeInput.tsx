@@ -28,25 +28,37 @@ export const PromoCodeInput: React.FC<PromoCodeInputProps> = ({
     try {
       const result = await billingService.applyPromoCode(userId, promoCode);
       
-      setStatus('success');
-      setMessage(result.message || 'Promo code applied successfully!');
-      
-      if (onSuccess) {
-        onSuccess(result.discount);
-      }
+      if (result.success) {
+        setStatus('success');
+        setMessage(result.message || 'Promo code applied successfully!');
+        
+        if (onSuccess) {
+          onSuccess(result.discount);
+        }
 
-      // Clear the input after successful application
-      setTimeout(() => {
-        setPromoCode('');
-        setStatus('idle');
-        setMessage('');
-      }, 3000);
+        // Clear the input after successful application
+        setTimeout(() => {
+          setPromoCode('');
+          setStatus('idle');
+          setMessage('');
+        }, 3000);
+      } else {
+        // Handle invalid promo code without console errors
+        setStatus('error');
+        setMessage(result.message || 'Invalid promo code');
+        
+        if (onError) {
+          onError(result.message || 'Invalid promo code');
+        }
+      }
     } catch (error: any) {
+      // Only log unexpected errors, not validation failures
+      console.error('Unexpected error applying promo code:', error);
       setStatus('error');
-      setMessage(error.message || 'Invalid promo code');
+      setMessage('An unexpected error occurred');
       
       if (onError) {
-        onError(error.message);
+        onError('An unexpected error occurred');
       }
     } finally {
       setIsApplying(false);

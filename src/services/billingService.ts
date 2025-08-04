@@ -596,16 +596,19 @@ class BillingService {
   
   async validatePromoCode(code: string, userId: string, planId?: string) {
     try {
-      const { data: promo, error } = await supabase
+      // Use .maybeSingle() instead of .single() to avoid 406 errors when no rows found
+      const { data: promos, error } = await supabase
         .from('promo_codes')
         .select('*')
         .eq('code', code.toUpperCase())
-        .eq('is_active', true)
-        .single();
+        .eq('is_active', true);
 
-      if (error || !promo) {
+      // Check if we got any results
+      if (error || !promos || promos.length === 0) {
         return { valid: false, message: 'Invalid promo code' };
       }
+
+      const promo = promos[0];
 
       // Check expiration
       if (promo.valid_until && new Date(promo.valid_until) < new Date()) {
@@ -655,7 +658,11 @@ class BillingService {
       const validation = await this.validatePromoCode(promoCode, userId);
       
       if (!validation.valid) {
-        throw new Error(validation.message);
+        // Return error response without throwing (no console error for invalid codes)
+        return { 
+          success: false, 
+          message: validation.message 
+        };
       }
 
       // Get user's active subscription
