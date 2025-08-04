@@ -490,10 +490,7 @@ export default function UserBilling() {
                         </div>
                       )}
 
-                      {/* Removed promo code section - should only be at checkout */
-                          />
-                        </div>
-                      )}
+                      {/* Removed promo code section - should only be at checkout */}
 
                       {/* Show active discount if any */}
                       {billingData.subscription.promo_code_id && (
