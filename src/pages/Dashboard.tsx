@@ -496,6 +496,30 @@ export default function Dashboard() {
     setShowLogEventModal(true);
   };
 
+  const handleDeleteResult = async (resultId: string) => {
+    if (!confirm('Are you sure you want to delete this competition result?')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('competition_results')
+        .delete()
+        .eq('id', resultId);
+
+      if (error) throw error;
+
+      // Refresh the competition results
+      await loadCompetitionResults();
+      
+      // Show success message
+      alert('Competition result deleted successfully');
+    } catch (error) {
+      console.error('Error deleting result:', error);
+      alert('Failed to delete competition result. Please try again.');
+    }
+  };
+
   const handleSaveResult = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -1777,14 +1801,22 @@ export default function Dashboard() {
                                 {result.points_earned}
                               </td>
                               <td className="py-4 text-right">
-                                {!result.events && (
+                                <div className="flex items-center justify-end space-x-2">
                                   <button
                                     onClick={() => handleEditResult(result)}
-                                    className="text-gray-400 hover:text-white transition-colors"
+                                    className="text-gray-400 hover:text-electric-400 transition-colors"
+                                    title="Edit result"
                                   >
                                     <Edit className="h-4 w-4" />
                                   </button>
-                                )}
+                                  <button
+                                    onClick={() => handleDeleteResult(result.id)}
+                                    className="text-gray-400 hover:text-red-400 transition-colors"
+                                    title="Delete result"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           );
