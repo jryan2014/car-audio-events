@@ -228,11 +228,27 @@ class BillingService {
         upcomingInvoice = invoice;
       }
 
+      // Get all invoices
+      const { data: invoices } = await supabase
+        .from('invoices')
+        .select(`
+          *,
+          subscriptions!subscription_id (
+            membership_plans (
+              name,
+              billing_period
+            )
+          )
+        `)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
       return {
         subscription: subscriptionWithPlan,
         transactions: transactions || [],
         paymentMethods: paymentMethods || [],
-        upcomingInvoice
+        upcomingInvoice,
+        invoices: invoices || []
       };
     } catch (error) {
       console.error('Error fetching billing overview:', error);

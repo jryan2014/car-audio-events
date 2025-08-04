@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { CreditCard, Calendar, Download, AlertCircle, Plus, Trash2, Check, X, Pause, Play, Package, Clock, DollarSign, FileText, Tag, ChevronRight, Shield, RefreshCw, Loader } from 'lucide-react';
+import { CreditCard, Calendar, Download, AlertCircle, Plus, Trash2, Check, X, Pause, Play, Package, Clock, DollarSign, FileText, Tag, ChevronRight, ChevronDown, Shield, RefreshCw, Loader } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
 import { billingService, Subscription, Transaction, PaymentMethod, Invoice } from '../services/billingService';
@@ -19,6 +19,7 @@ interface BillingOverview {
   transactions: Transaction[];
   paymentMethods: PaymentMethod[];
   upcomingInvoice: Invoice | null;
+  invoices?: Invoice[];
 }
 
 // Add Payment Method Modal Component
@@ -479,6 +480,7 @@ export default function UserBilling() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [processingAction, setProcessingAction] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [showTabMenu, setShowTabMenu] = useState(false);
   const [success, setSuccess] = useState('');
   const [stripePromise, setStripePromise] = useState<any>(null);
 
@@ -614,6 +616,13 @@ export default function UserBilling() {
     }).format(amount / 100); // Convert cents to dollars
   };
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount); // Already in dollars
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -656,12 +665,12 @@ export default function UserBilling() {
               </div>
             )}
 
-            {/* Tab Navigation */}
-            <div className="mb-6 bg-gray-800/50 p-1 rounded-lg overflow-x-auto">
-              <div className="flex space-x-1 min-w-max">
+            {/* Tab Navigation - Desktop */}
+            <div className="hidden sm:block mb-6 bg-gray-800/50 p-1 rounded-lg">
+              <div className="flex space-x-1">
                 <button
                   onClick={() => setActiveTab('overview')}
-                  className={`py-2 px-4 rounded-md font-medium transition-colors whitespace-nowrap ${
+                  className={`py-2 px-4 rounded-md font-medium transition-colors ${
                     activeTab === 'overview'
                       ? 'bg-electric-500 text-white'
                       : 'text-gray-400 hover:text-white'
@@ -671,17 +680,17 @@ export default function UserBilling() {
                 </button>
                 <button
                   onClick={() => setActiveTab('history')}
-                  className={`py-2 px-4 rounded-md font-medium transition-colors whitespace-nowrap ${
+                  className={`py-2 px-4 rounded-md font-medium transition-colors ${
                     activeTab === 'history'
                       ? 'bg-electric-500 text-white'
                       : 'text-gray-400 hover:text-white'
                   }`}
                 >
-                  <span className="hidden sm:inline">Transaction </span>History
+                  Transaction History
                 </button>
                 <button
                   onClick={() => setActiveTab('invoices')}
-                  className={`py-2 px-4 rounded-md font-medium transition-colors whitespace-nowrap ${
+                  className={`py-2 px-4 rounded-md font-medium transition-colors ${
                     activeTab === 'invoices'
                       ? 'bg-electric-500 text-white'
                       : 'text-gray-400 hover:text-white'
@@ -691,14 +700,81 @@ export default function UserBilling() {
                 </button>
                 <button
                   onClick={() => setActiveTab('methods')}
-                  className={`py-2 px-4 rounded-md font-medium transition-colors whitespace-nowrap ${
+                  className={`py-2 px-4 rounded-md font-medium transition-colors ${
                     activeTab === 'methods'
                       ? 'bg-electric-500 text-white'
                       : 'text-gray-400 hover:text-white'
                   }`}
                 >
-                  <span className="hidden sm:inline">Payment </span>Methods
+                  Payment Methods
                 </button>
+              </div>
+            </div>
+
+            {/* Tab Navigation - Mobile Dropdown */}
+            <div className="sm:hidden mb-6">
+              <div className="relative">
+                <button
+                  onClick={() => setShowTabMenu(!showTabMenu)}
+                  className="w-full flex items-center justify-between bg-gray-800/50 px-4 py-3 rounded-lg text-left"
+                >
+                  <span className="text-white font-medium">
+                    {activeTab === 'overview' && 'Overview'}
+                    {activeTab === 'history' && 'Transaction History'}
+                    {activeTab === 'invoices' && 'Invoices'}
+                    {activeTab === 'methods' && 'Payment Methods'}
+                  </span>
+                  <ChevronDown className={`h-5 w-5 text-gray-400 transition-transform ${showTabMenu ? 'rotate-180' : ''}`} />
+                </button>
+                
+                {showTabMenu && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden z-10">
+                    <button
+                      onClick={() => {
+                        setActiveTab('overview');
+                        setShowTabMenu(false);
+                      }}
+                      className={`w-full text-left px-4 py-3 hover:bg-gray-700/50 transition-colors ${
+                        activeTab === 'overview' ? 'text-electric-500 font-medium' : 'text-gray-300'
+                      }`}
+                    >
+                      Overview
+                    </button>
+                    <button
+                      onClick={() => {
+                        setActiveTab('history');
+                        setShowTabMenu(false);
+                      }}
+                      className={`w-full text-left px-4 py-3 hover:bg-gray-700/50 transition-colors ${
+                        activeTab === 'history' ? 'text-electric-500 font-medium' : 'text-gray-300'
+                      }`}
+                    >
+                      Transaction History
+                    </button>
+                    <button
+                      onClick={() => {
+                        setActiveTab('invoices');
+                        setShowTabMenu(false);
+                      }}
+                      className={`w-full text-left px-4 py-3 hover:bg-gray-700/50 transition-colors ${
+                        activeTab === 'invoices' ? 'text-electric-500 font-medium' : 'text-gray-300'
+                      }`}
+                    >
+                      Invoices
+                    </button>
+                    <button
+                      onClick={() => {
+                        setActiveTab('methods');
+                        setShowTabMenu(false);
+                      }}
+                      className={`w-full text-left px-4 py-3 hover:bg-gray-700/50 transition-colors ${
+                        activeTab === 'methods' ? 'text-electric-500 font-medium' : 'text-gray-300'
+                      }`}
+                    >
+                      Payment Methods
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1045,30 +1121,35 @@ export default function UserBilling() {
                         </tr>
                       </thead>
                       <tbody>
-                        {billingData.transactions
-                          .filter(t => t.invoice_id)
-                          .map((transaction) => (
-                            <tr key={transaction.id} className="border-b border-gray-700/50 hover:bg-gray-700/30">
+                        {billingData.invoices && billingData.invoices.length > 0 ? (
+                          billingData.invoices.map((invoice) => (
+                            <tr key={invoice.id} className="border-b border-gray-700/50 hover:bg-gray-700/30">
                               <td className="py-3 px-2 text-white">
-                                #{transaction.invoice_id?.slice(-8) || 'N/A'}
+                                {invoice.invoice_number || `#${invoice.id.slice(-8)}`}
                               </td>
-                              <td className="py-3 px-2 text-gray-300">{formatDate(transaction.created_at)}</td>
-                              <td className="py-3 px-2 text-white">{transaction.description || 'Subscription Payment'}</td>
+                              <td className="py-3 px-2 text-gray-300">{formatDate(invoice.created_at)}</td>
+                              <td className="py-3 px-2 text-white">
+                                {invoice.subscriptions?.membership_plans?.name || 'Subscription Payment'}
+                              </td>
                               <td className="py-3 px-2">
                                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                  transaction.status === 'succeeded'
+                                  invoice.status === 'paid'
                                     ? 'bg-green-500/20 text-green-400'
-                                    : 'bg-yellow-500/20 text-yellow-400'
+                                    : invoice.status === 'open'
+                                    ? 'bg-yellow-500/20 text-yellow-400'
+                                    : 'bg-gray-500/20 text-gray-400'
                                 }`}>
-                                  {transaction.status === 'succeeded' ? 'Paid' : 'Pending'}
+                                  {invoice.status === 'paid' ? 'Paid' : 
+                                   invoice.status === 'open' ? 'Open' : 
+                                   invoice.status}
                                 </span>
                               </td>
                               <td className="py-3 px-2 text-right font-medium text-white">
-                                {formatAmount(transaction.amount)}
+                                {formatCurrency(invoice.total || invoice.amount_paid || 0)}
                               </td>
                               <td className="py-3 px-2 text-center">
                                 <button
-                                  onClick={() => transaction.invoice_id && handleDownloadInvoice(transaction.invoice_id)}
+                                  onClick={() => handleDownloadInvoice(invoice.id)}
                                   className="inline-flex items-center px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 transition-colors"
                                 >
                                   <Download className="h-4 w-4 mr-1" />
@@ -1076,7 +1157,41 @@ export default function UserBilling() {
                                 </button>
                               </td>
                             </tr>
-                          ))}
+                          ))
+                        ) : (
+                          billingData.transactions
+                            .filter(t => t.invoice_id)
+                            .map((transaction) => (
+                              <tr key={transaction.id} className="border-b border-gray-700/50 hover:bg-gray-700/30">
+                                <td className="py-3 px-2 text-white">
+                                  #{transaction.invoice_id?.slice(-8) || 'N/A'}
+                                </td>
+                                <td className="py-3 px-2 text-gray-300">{formatDate(transaction.created_at)}</td>
+                                <td className="py-3 px-2 text-white">{transaction.description || 'Subscription Payment'}</td>
+                                <td className="py-3 px-2">
+                                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                    transaction.status === 'succeeded'
+                                      ? 'bg-green-500/20 text-green-400'
+                                      : 'bg-yellow-500/20 text-yellow-400'
+                                  }`}>
+                                    {transaction.status === 'succeeded' ? 'Paid' : 'Pending'}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-2 text-right font-medium text-white">
+                                  {formatAmount(transaction.amount)}
+                                </td>
+                                <td className="py-3 px-2 text-center">
+                                  <button
+                                    onClick={() => transaction.invoice_id && handleDownloadInvoice(transaction.invoice_id)}
+                                    className="inline-flex items-center px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 transition-colors"
+                                  >
+                                    <Download className="h-4 w-4 mr-1" />
+                                    Download
+                                  </button>
+                                </td>
+                              </tr>
+                            ))
+                        )}
                       </tbody>
                     </table>
                   </div>
