@@ -657,47 +657,49 @@ export default function UserBilling() {
             )}
 
             {/* Tab Navigation */}
-            <div className="flex space-x-1 mb-6 bg-gray-800/50 p-1 rounded-lg">
-              <button
-                onClick={() => setActiveTab('overview')}
-                className={`flex-1 py-2 px-4 rounded-md font-medium transition-colors ${
-                  activeTab === 'overview'
-                    ? 'bg-electric-500 text-white'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                Overview
-              </button>
-              <button
-                onClick={() => setActiveTab('history')}
-                className={`flex-1 py-2 px-4 rounded-md font-medium transition-colors ${
-                  activeTab === 'history'
-                    ? 'bg-electric-500 text-white'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                Transaction History
-              </button>
-              <button
-                onClick={() => setActiveTab('invoices')}
-                className={`flex-1 py-2 px-4 rounded-md font-medium transition-colors ${
-                  activeTab === 'invoices'
-                    ? 'bg-electric-500 text-white'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                Invoices
-              </button>
-              <button
-                onClick={() => setActiveTab('methods')}
-                className={`flex-1 py-2 px-4 rounded-md font-medium transition-colors ${
-                  activeTab === 'methods'
-                    ? 'bg-electric-500 text-white'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                Payment Methods
-              </button>
+            <div className="mb-6 bg-gray-800/50 p-1 rounded-lg overflow-x-auto">
+              <div className="flex space-x-1 min-w-max">
+                <button
+                  onClick={() => setActiveTab('overview')}
+                  className={`py-2 px-4 rounded-md font-medium transition-colors whitespace-nowrap ${
+                    activeTab === 'overview'
+                      ? 'bg-electric-500 text-white'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  Overview
+                </button>
+                <button
+                  onClick={() => setActiveTab('history')}
+                  className={`py-2 px-4 rounded-md font-medium transition-colors whitespace-nowrap ${
+                    activeTab === 'history'
+                      ? 'bg-electric-500 text-white'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <span className="hidden sm:inline">Transaction </span>History
+                </button>
+                <button
+                  onClick={() => setActiveTab('invoices')}
+                  className={`py-2 px-4 rounded-md font-medium transition-colors whitespace-nowrap ${
+                    activeTab === 'invoices'
+                      ? 'bg-electric-500 text-white'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  Invoices
+                </button>
+                <button
+                  onClick={() => setActiveTab('methods')}
+                  className={`py-2 px-4 rounded-md font-medium transition-colors whitespace-nowrap ${
+                    activeTab === 'methods'
+                      ? 'bg-electric-500 text-white'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <span className="hidden sm:inline">Payment </span>Methods
+                </button>
+              </div>
             </div>
 
             {/* Content */}
