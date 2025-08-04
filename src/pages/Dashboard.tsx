@@ -677,6 +677,7 @@ export default function Dashboard() {
           score,
           event_name,
           event_id,
+          user_id,
           events (
             id,
             title
@@ -687,7 +688,7 @@ export default function Dashboard() {
         .limit(5);
 
       if (error) throw error;
-
+      
       const formattedResults = (data || []).map(result => ({
         id: result.id,
         eventTitle: result.event_name || result.events?.title || 'Non-CAE Event',
