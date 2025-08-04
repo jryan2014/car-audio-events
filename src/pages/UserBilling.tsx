@@ -877,15 +877,24 @@ export default function UserBilling() {
                           <div className="w-12 h-8 bg-gray-600 rounded flex items-center justify-center">
                             {method.type === 'card' ? (
                               <CreditCard className="h-5 w-5 text-gray-400" />
+                            ) : method.type === 'paypal' ? (
+                              <div className="flex items-center">
+                                <span className="text-blue-400 font-bold text-xs">Pay</span>
+                                <span className="text-blue-300 font-bold text-xs">Pal</span>
+                              </div>
                             ) : (
-                              <span className="text-xs text-gray-400">PP</span>
+                              <span className="text-xs text-gray-400">PM</span>
                             )}
                           </div>
                           <div>
                             <p className="text-white font-medium">
-                              {method.brand ? `${method.brand} •••• ${method.last4}` : 'Payment Method'}
+                              {method.type === 'card' && method.brand 
+                                ? `${method.brand} •••• ${method.last4}` 
+                                : method.type === 'paypal' 
+                                ? 'PayPal Account' 
+                                : 'Payment Method'}
                             </p>
-                            {method.exp_month && method.exp_year && (
+                            {method.type === 'card' && method.exp_month && method.exp_year && (
                               <p className="text-gray-400 text-sm">
                                 Expires {method.exp_month}/{method.exp_year}
                               </p>

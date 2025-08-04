@@ -8,6 +8,7 @@ import {
 import { CreditCard, Shield, AlertTriangle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { billingService } from '../services/billingService';
+import { PayPalPaymentForm } from './PayPalPaymentForm';
 
 interface PaymentMethodFormProps {
   userId: string;
@@ -41,6 +42,7 @@ function PaymentMethodFormContent({ userId, onSuccess, onCancel, setAsDefault }:
   const [error, setError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
   const [succeeded, setSucceeded] = useState(false);
+  const [paymentType, setPaymentType] = useState<'card' | 'paypal'>('card');
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -90,15 +92,56 @@ function PaymentMethodFormContent({ userId, onSuccess, onCancel, setAsDefault }:
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <div className="space-y-6">
+      {/* Payment Type Selection */}
       <div>
-        <label className="block text-sm font-medium text-gray-300 mb-2">
-          Card Information
+        <label className="block text-sm font-medium text-gray-300 mb-3">
+          Payment Method Type
         </label>
-        <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-          <CardElement options={CARD_ELEMENT_OPTIONS} />
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => setPaymentType('card')}
+            className={`p-4 rounded-lg border-2 transition-all ${
+              paymentType === 'card'
+                ? 'border-electric-500 bg-electric-500/10'
+                : 'border-gray-600 bg-gray-800 hover:border-gray-500'
+            }`}
+          >
+            <CreditCard className="h-6 w-6 mx-auto mb-2 text-white" />
+            <p className="text-white font-medium">Credit/Debit Card</p>
+            <p className="text-gray-400 text-xs mt-1">Visa, Mastercard, Amex</p>
+          </button>
+          <button
+            type="button"
+            onClick={() => setPaymentType('paypal')}
+            className={`p-4 rounded-lg border-2 transition-all ${
+              paymentType === 'paypal'
+                ? 'border-electric-500 bg-electric-500/10'
+                : 'border-gray-600 bg-gray-800 hover:border-gray-500'
+            }`}
+          >
+            <div className="h-6 w-20 mx-auto mb-2 flex items-center justify-center">
+              <span className="text-blue-400 font-bold">Pay</span>
+              <span className="text-blue-300 font-bold">Pal</span>
+            </div>
+            <p className="text-white font-medium">PayPal</p>
+            <p className="text-gray-400 text-xs mt-1">PayPal account</p>
+          </button>
         </div>
       </div>
+
+      {/* Payment Form Based on Type */}
+      {paymentType === 'card' ? (
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Card Information
+            </label>
+            <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+              <CardElement options={CARD_ELEMENT_OPTIONS} />
+            </div>
+          </div>
 
       {/* Security Badge */}
       <div className="flex items-center space-x-2 text-sm text-gray-400">
@@ -157,6 +200,14 @@ function PaymentMethodFormContent({ userId, onSuccess, onCancel, setAsDefault }:
         </button>
       </div>
     </form>
+      ) : (
+        <PayPalPaymentForm
+          onSuccess={onSuccess || (() => {})}
+          onCancel={onCancel || (() => {})}
+          setAsDefault={setAsDefault}
+        />
+      )}
+    </div>
   );
 }
 

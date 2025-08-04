@@ -86,6 +86,71 @@ serve(async (req) => {
           throw new Error('Payment method ID required')
         }
 
+        // Handle PayPal payment method
+        if (paymentMethodType === 'paypal') {
+          // Get PayPal payer info if needed
+          const paypalPayerId = paymentMethodId; // For PayPal, this would be the payer ID
+          
+          // Update user's PayPal customer ID
+          await adminClient
+            .from('users')
+            .update({ paypal_customer_id: paypalPayerId })
+            .eq('id', userId)
+
+          // Set as default if requested
+          if (setAsDefault) {
+            // Update all existing methods to not default
+            await adminClient
+              .from('payment_methods')
+              .update({ is_default: false })
+              .eq('user_id', userId)
+          }
+
+          // Store PayPal payment method reference
+          const { error: insertError } = await adminClient
+            .from('payment_methods')
+            .insert({
+              user_id: userId,
+              type: 'paypal',
+              provider: 'paypal',
+              provider_payment_method_id: paypalPayerId,
+              is_default: setAsDefault || false,
+              metadata: {
+                payer_id: paypalPayerId
+              }
+            })
+
+          if (insertError) {
+            throw insertError
+          }
+
+          // Log action
+          await auditLogger.log({
+            user_id: userId,
+            action: AuditLogger.Actions.PAYMENT_METHOD_ADDED,
+            metadata: {
+              payment_method_id: paypalPayerId,
+              type: 'paypal'
+            },
+            ...requestInfo
+          })
+
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              paymentMethod: {
+                id: paypalPayerId,
+                type: 'paypal',
+                paypal: {
+                  payer_id: paypalPayerId
+                }
+              }
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+
+        // Handle Stripe card payment method
         // Attach payment method to customer
         const paymentMethod = await stripe.paymentMethods.attach(paymentMethodId, {
           customer: customerId
@@ -167,7 +232,7 @@ serve(async (req) => {
         // Get payment method from database
         const { data: dbPaymentMethod, error: fetchError } = await adminClient
           .from('payment_methods')
-          .select('provider_payment_method_id')
+          .select('provider_payment_method_id, provider')
           .eq('id', paymentMethodId)
           .eq('user_id', userId)
           .single()
@@ -176,8 +241,11 @@ serve(async (req) => {
           throw new Error('Payment method not found')
         }
 
-        // Detach from Stripe
-        await stripe.paymentMethods.detach(dbPaymentMethod.provider_payment_method_id)
+        // Only detach from Stripe if it's a Stripe payment method
+        if (dbPaymentMethod.provider === 'stripe') {
+          await stripe.paymentMethods.detach(dbPaymentMethod.provider_payment_method_id)
+        }
+        // For PayPal, we just remove the reference (no API call needed)
 
         // Remove from database
         const { error: deleteError } = await adminClient
@@ -195,7 +263,8 @@ serve(async (req) => {
           user_id: userId,
           action: AuditLogger.Actions.PAYMENT_METHOD_REMOVED,
           metadata: {
-            payment_method_id: paymentMethodId
+            payment_method_id: paymentMethodId,
+            provider: dbPaymentMethod.provider
           },
           ...requestInfo
         })
@@ -214,7 +283,7 @@ serve(async (req) => {
         // Get payment method
         const { data: dbPaymentMethod, error: fetchError } = await adminClient
           .from('payment_methods')
-          .select('provider_payment_method_id')
+          .select('provider_payment_method_id, provider')
           .eq('id', paymentMethodId)
           .eq('user_id', userId)
           .single()
@@ -223,12 +292,15 @@ serve(async (req) => {
           throw new Error('Payment method not found')
         }
 
-        // Update Stripe customer default
-        await stripe.customers.update(customerId, {
-          invoice_settings: {
-            default_payment_method: dbPaymentMethod.provider_payment_method_id
-          }
-        })
+        // Only update Stripe if it's a Stripe payment method
+        if (dbPaymentMethod.provider === 'stripe') {
+          await stripe.customers.update(customerId, {
+            invoice_settings: {
+              default_payment_method: dbPaymentMethod.provider_payment_method_id
+            }
+          })
+        }
+        // For PayPal, we only update our database
 
         // Update database
         await adminClient
@@ -246,7 +318,8 @@ serve(async (req) => {
           user_id: userId,
           action: AuditLogger.Actions.PAYMENT_METHOD_DEFAULT_CHANGED,
           metadata: {
-            payment_method_id: paymentMethodId
+            payment_method_id: paymentMethodId,
+            provider: dbPaymentMethod.provider
           },
           ...requestInfo
         })
