@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { activityLogger } from '../services/activityLogger';
+import SEO from '../components/SEO';
 import { 
   BookOpen, 
   FileText, 
@@ -175,6 +176,12 @@ export default function Resources() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-purple-900/20 to-black">
+      <SEO 
+        title="Car Audio Resources & Knowledge Base"
+        description="Access comprehensive car audio guides, competition rules, installation tips, and educational resources. Learn from experts in SPL, SQ, and car audio technology."
+        keywords="car audio guides, competition rules, installation guides, SPL tips, sound quality tuning, car audio education, wiring diagrams, box building guides"
+        url="https://caraudioevents.com/resources"
+      />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="text-center mb-12">

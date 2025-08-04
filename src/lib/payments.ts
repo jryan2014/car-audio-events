@@ -338,6 +338,12 @@ export const loadPayPalSDK = async (): Promise<any> => {
     }
 
     try {
+      const paymentConfig = await getPaymentConfig();
+      if (!paymentConfig.paypal_active) {
+        reject(new Error('PayPal is not active in payment configuration'));
+        return;
+      }
+      
       const paypalConfig = await getPayPalConfig();
       if (!paypalConfig || !paypalConfig.clientId) {
         reject(new Error('PayPal client ID not configured'));

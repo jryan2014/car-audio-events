@@ -11,13 +11,16 @@ import {
   Heart,
   MessageSquare,
   Award,
-  Megaphone
+  Megaphone,
+  Users
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   notificationService, 
   NotificationWithType 
 } from '../services/notificationService';
+import TeamInvitationHandler from './TeamInvitationHandler';
+import TeamJoinRequestHandler from './TeamJoinRequestHandler';
 
 // ================================
 // TYPES & INTERFACES
@@ -121,7 +124,8 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ classNam
       Award,
       Bell,
       Clock,
-      AlertCircle
+      AlertCircle,
+      Users
     };
     
     const IconComponent = iconMap[iconName] || Bell;
@@ -320,6 +324,53 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({ classNam
                              <p className="text-gray-400 text-sm mt-1 line-clamp-2">
                                {notification.message}
                              </p>
+                             
+                             {/* Team invitation actions */}
+                             {notification.notification_type === 'team_invitations' && 
+                              notification.metadata?.invitation_id && 
+                              notification.metadata?.team_id &&
+                              notification.metadata?.status === 'pending' && (
+                               <div className="mt-3">
+                                 <TeamInvitationHandler
+                                   invitationId={notification.metadata.invitation_id}
+                                   teamId={notification.metadata.team_id}
+                                   teamName={notification.metadata.team_name || 'the team'}
+                                   onAccept={() => {
+                                     handleMarkAsRead(notification.id);
+                                     loadNotifications();
+                                   }}
+                                   onDecline={() => {
+                                     handleMarkAsRead(notification.id);
+                                     loadNotifications();
+                                   }}
+                                 />
+                               </div>
+                             )}
+                             
+                             {/* Team join request actions */}
+                             {notification.notification_type === 'team_join_requests' && 
+                              notification.metadata?.request_id && 
+                              notification.metadata?.team_id &&
+                              notification.metadata?.action === 'join_request_received' && (
+                               <div className="mt-3">
+                                 <TeamJoinRequestHandler
+                                   requestId={notification.metadata.request_id}
+                                   userId={notification.metadata.user_id}
+                                   userName={notification.metadata.user_name || 'User'}
+                                   teamId={notification.metadata.team_id}
+                                   teamName={notification.metadata.team_name || 'your team'}
+                                   onApprove={() => {
+                                     handleMarkAsRead(notification.id);
+                                     loadNotifications();
+                                   }}
+                                   onReject={() => {
+                                     handleMarkAsRead(notification.id);
+                                     loadNotifications();
+                                   }}
+                                 />
+                               </div>
+                             )}
+                             
                              <div className="flex items-center justify-between mt-2">
                                <span className="text-gray-500 text-xs">
                                  {formatTimeAgo(notification.sent_at)}

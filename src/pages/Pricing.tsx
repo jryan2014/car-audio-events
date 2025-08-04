@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import PricingPlans from '../components/PricingPlans';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import SEO from '../components/SEO';
 
 export default function Pricing() {
   const navigate = useNavigate();
@@ -134,6 +135,12 @@ export default function Pricing() {
 
   return (
     <div className="min-h-screen py-8">
+      <SEO 
+        title="Competitor Membership Pricing"
+        description="Join Car Audio Events as a competitor. Access exclusive member pricing, event registrations, competition tracking, and connect with the car audio community."
+        keywords="car audio membership, competitor pricing, IASCA membership, MECA membership, competition registration, member benefits, car audio community"
+        url="https://caraudioevents.com/pricing"
+      />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Back Button */}
         <Link 

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Calendar, MapPin, Trophy, Users, Star, ArrowRight, Volume2, Zap } from 'lucide-react';
 import GoogleMap from '../components/GoogleMap';
 import AdDisplay from '../components/AdDisplay';
+import SEO from '../components/SEO';
 import { supabase } from '../lib/supabase';
 import { parseLocalDate } from '../utils/dateHelpers';
 import { useAuth } from '../contexts/AuthContext';
@@ -190,6 +191,12 @@ export default function Home() {
 
   return (
     <div className="animate-fade-in">
+      <SEO 
+        title="Home - Official Car Audio Competition Platform"
+        description="Find and register for car audio competitions near you. Connect with IASCA, MECA, Bass Wars, and Sound Quality events. Join thousands of competitors nationwide."
+        keywords="car audio competitions, IASCA events, MECA competitions, Bass Wars, SPL competition, sound quality events, car stereo competition, dB drag racing"
+        url="https://caraudioevents.com"
+      />
       {/* Hero Section - Map Only */}
       <section className="block relative" style={{ height: '40vh', minHeight: '400px' }}>
         <div className="h-full w-full relative">

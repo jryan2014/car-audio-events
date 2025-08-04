@@ -6,6 +6,7 @@ import PricingPlans from '../components/PricingPlans';
 import LoadingSpinner from '../components/LoadingSpinner';
 import logger from '../utils/logger';
 import { useNotifications } from '../components/NotificationSystem';
+import SEO from '../components/SEO';
 
 export default function OrganizationPricing() {
   const navigate = useNavigate();
@@ -95,6 +96,12 @@ export default function OrganizationPricing() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+      <SEO 
+        title="Organization Membership - IASCA, MECA & Competition Organizers"
+        description="Official membership for car audio competition organizations. Manage events, teams, and connect with the global car audio competition community."
+        keywords="car audio organization membership, IASCA membership, MECA membership, competition organizer, event management, car audio sanctioning"
+        url="https://caraudioevents.com/organizations"
+      />
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-electric-500/20"></div>

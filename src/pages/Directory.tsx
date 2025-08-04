@@ -7,6 +7,7 @@ import PageHeader from '../components/PageHeader';
 import { AdvancedSearch } from '../components/AdvancedSearch';
 import { DirectoryListView } from '../components/DirectoryListView';
 import { activityLogger } from '../services/activityLogger';
+import SEO from '../components/SEO';
 
 interface DirectoryListing {
   id: string;
@@ -304,6 +305,12 @@ export default function Directory() {
 
   return (
     <div className="min-h-screen py-8">
+      <SEO 
+        title="Car Audio Business Directory"
+        description="Find car audio retailers, manufacturers, and installers near you. Browse reviews, contact information, and services offered by trusted car audio businesses nationwide."
+        keywords="car audio shops, car stereo installers, audio retailers, car audio manufacturers, installation services, car audio dealers, audio equipment suppliers"
+        url="https://caraudioevents.com/directory"
+      />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <PageHeader
           title={<>Business <span className="text-electric-400">Directory</span></>}

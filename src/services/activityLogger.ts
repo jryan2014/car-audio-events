@@ -53,17 +53,12 @@ class ActivityLogger {
         userId = user?.id || null;
       }
 
-      // Use direct insert since we have policies set up
-      const { error } = await supabase
-        .from('activity_logs')
-        .insert([{
-          user_id: userId,
-          activity_type: activityType,
-          description,
-          metadata,
-          ip_address: ipAddress,
-          user_agent: userAgent || navigator.userAgent
-        }]);
+      // Use the RPC function instead of direct insert to handle permissions properly
+      const { error } = await supabase.rpc('log_activity', {
+        p_activity_type: activityType,
+        p_description: description,
+        p_metadata: metadata || {}
+      });
 
       if (error) {
         console.error('Failed to log activity:', error);

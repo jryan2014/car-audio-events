@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase';
 import { memoryManager } from '../utils/memoryManager';
 import { parseLocalDate, formatTime12Hour } from '../utils/dateHelpers';
 import { MemoryTestComponent } from '../components/MemoryTestComponent';
+import SEO from '../components/SEO';
 
 const EventDetails = React.memo(function EventDetails() {
   const { id } = useParams();
@@ -472,8 +473,122 @@ const EventDetails = React.memo(function EventDetails() {
     );
   }
 
+  // Enhanced keyword generation
+  const generateKeywords = () => {
+    const keywords = [];
+    
+    // Basic event keywords
+    keywords.push(event.title);
+    keywords.push(`${event.city} car audio event`);
+    keywords.push(`${event.state} car audio competition`);
+    
+    // Competition format keywords
+    if (event.competition_format) {
+      const formatMap = {
+        'spl': 'SPL competition, sound pressure level',
+        'sq': 'SQ competition, sound quality',
+        'spl_sq': 'SPL and SQ competition',
+        'demo': 'demo competition, bass demo',
+        'show_shine': 'show and shine, car show'
+      };
+      keywords.push(formatMap[event.competition_format] || event.competition_format);
+    }
+    
+    // Sanctioning body keywords
+    if (event.sanctioning_body) {
+      keywords.push(`${event.sanctioning_body} event`);
+      keywords.push(`${event.sanctioning_body} ${event.state}`);
+    }
+    
+    // Competition class keywords
+    if (event.competition_classes?.length) {
+      event.competition_classes.forEach(cls => {
+        keywords.push(`${cls} class`);
+      });
+    }
+    
+    // Event feature keywords
+    if (event.event_features?.length) {
+      const featureMap = {
+        'vendor_booths': 'vendor expo, car audio vendors',
+        'demo_vehicles': 'demo cars, show vehicles',
+        'workshops': 'car audio workshops, installation clinic',
+        'meet_greet': 'meet and greet',
+        'dyno_testing': 'dyno test, SPL testing',
+        'installation_demos': 'install demos, installation showcase'
+      };
+      
+      event.event_features.forEach(feature => {
+        keywords.push(featureMap[feature] || feature.replace('_', ' '));
+      });
+    }
+    
+    // Custom keywords if provided
+    if (event.seo_keywords?.length) {
+      keywords.push(...event.seo_keywords);
+    }
+    
+    return keywords.join(', ');
+  };
+
+  // Create enhanced structured data for the event
+  const eventStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    "name": event.title,
+    "description": event.description,
+    "startDate": event.start_date,
+    "endDate": event.end_date,
+    "location": {
+      "@type": "Place",
+      "name": event.venue_name || "TBA",
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": event.city,
+        "addressRegion": event.state,
+        "addressCountry": event.country || "USA"
+      }
+    },
+    "organizer": {
+      "@type": "Organization",
+      "name": event.sanctioning_body || event.organizations?.name || "Car Audio Events"
+    },
+    "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+    "eventStatus": "https://schema.org/EventScheduled",
+    "offers": {
+      "@type": "Offer",
+      "price": event.registration_fee || 0,
+      "priceCurrency": "USD",
+      "availability": "https://schema.org/InStock",
+      "validFrom": new Date().toISOString()
+    },
+    "performer": {
+      "@type": "Organization",
+      "name": "Car Audio Competitors"
+    },
+    // Add competition-specific structured data
+    ...(event.competition_format && {
+      "additionalType": `https://schema.org/SportsEvent`,
+      "sport": event.competition_format === 'spl' ? "Sound Pressure Level Competition" :
+               event.competition_format === 'sq' ? "Sound Quality Competition" :
+               "Car Audio Competition"
+    }),
+    ...(event.awards_prizes && {
+      "award": event.awards_prizes
+    })
+  };
+
   return (
     <div className="min-h-screen py-8">
+      <SEO 
+        title={event.seo_title || `${event.title} - Car Audio Competition Event`}
+        description={event.seo_description || `${event.title} in ${event.city}, ${event.state}. ${event.description?.substring(0, 150) || 'Join us for this exciting car audio competition event.'}`}
+        keywords={generateKeywords()}
+        url={`https://caraudioevents.com/events/${id}`}
+        type="event"
+        image={event.image || undefined}
+        jsonLd={eventStructuredData}
+      />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Back Button */}
         <Link 

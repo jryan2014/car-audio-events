@@ -147,7 +147,8 @@ export const getPayPalConfig = async (): Promise<PayPalConfig> => {
     const paymentConfig = await getPaymentConfig();
     
     if (!paymentConfig.paypal_active) {
-      throw new Error('PayPal is not active in payment configuration');
+      console.log('PayPal is not active in payment configuration');
+      return getEnvironmentPayPalConfig();
     }
 
     const isTestMode = paymentConfig.mode === 'test';

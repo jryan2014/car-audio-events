@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, Volume2, AlertCircle, Loader, UserPlus } from '../components/icons';
 import { useAuth } from '../contexts/AuthContext';
 import { loginRateLimiter, getClientIdentifier } from '../utils/rateLimiter';
+import SEO from '../components/SEO';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -111,6 +112,12 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <SEO 
+        title="Login"
+        description="Login to your Car Audio Events account to register for competitions, track your scores, and connect with the car audio community."
+        keywords="car audio login, member login, competitor login, event registration login"
+        url="https://caraudioevents.com/login"
+      />
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <div className="flex items-center justify-center space-x-2 mb-6">

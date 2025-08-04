@@ -1,0 +1,78 @@
+# Car Audio Events Robots.txt
+# Last updated: January 2025
+
+# Allow all search engines
+User-agent: *
+Allow: /
+
+# Disallow private/admin areas
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /billing/
+Disallow: /profile/
+Disallow: /api/
+Disallow: /auth/
+Disallow: /admin/*
+Disallow: /dashboard/*
+Disallow: /organization/support/*
+
+# Disallow temporary and system files
+Disallow: /*.json$
+Disallow: /*.js.map$
+Disallow: /src/
+Disallow: /node_modules/
+Disallow: /.git/
+
+# Allow specific public pages
+Allow: /events
+Allow: /events/*
+Allow: /directory
+Allow: /directory/*
+Allow: /resources
+Allow: /resources/*
+Allow: /pages/*
+Allow: /pricing
+Allow: /business
+Allow: /business-features
+Allow: /organizations
+Allow: /organization-features
+Allow: /support
+Allow: /support/*
+Allow: /leaderboard
+Allow: /spl-calculator
+Allow: /search
+Allow: /privacy-policy
+Allow: /newsletter/*
+
+# Sitemap locations
+Sitemap: https://caraudioevents.com/sitemap.xml
+Sitemap: https://nqvisvranvjaghvrdaaz.supabase.co/functions/v1/sitemap
+
+# Crawl delay for respectful crawling
+Crawl-delay: 1
+
+# Specific bot rules
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Slurp
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+# Block bad bots
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /

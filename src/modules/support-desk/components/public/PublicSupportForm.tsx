@@ -3,6 +3,7 @@ import { useAuth } from '../../../../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import HCaptcha, { HCaptchaRef } from '../../../../components/HCaptcha';
 import LoadingSpinner from '../../../../components/LoadingSpinner';
+import SEO from '../../../../components/SEO';
 import { 
   requestTypeService, 
   fieldService, 
@@ -371,6 +372,12 @@ const PublicSupportForm: React.FC = () => {
   
   return (
     <div className="min-h-screen bg-gray-900 text-white">
+      <SEO 
+        title="Contact Support"
+        description="Get help with your Car Audio Events account, event registration, billing, or technical issues. Our support team is here to assist you."
+        keywords="car audio support, contact us, help center, customer service, technical support, billing help"
+        url="https://caraudioevents.com/support"
+      />
       <div className="max-w-2xl mx-auto p-6">
         <div className="bg-gray-800/50 border border-gray-700 rounded-lg shadow-md p-6">
           <h1 className="text-2xl font-bold text-white mb-6">

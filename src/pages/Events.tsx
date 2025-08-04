@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import PageHeader from '../components/PageHeader';
 import AdDisplay from '../components/AdDisplay';
+import SEO from '../components/SEO';
 import { parseLocalDate } from '../utils/dateHelpers';
 import { activityLogger } from '../services/activityLogger';
 
@@ -289,6 +290,12 @@ export default function Events() {
 
   return (
     <div className="min-h-screen py-8">
+      <SEO 
+        title="Car Audio Competition Events"
+        description="Browse and register for upcoming car audio competitions. Find IASCA, MECA, Bass Wars, and SPL events across the country. Filter by date, location, and competition type."
+        keywords="car audio events, upcoming competitions, IASCA schedule, MECA calendar, Bass Wars events, SPL competitions, sound quality events, car stereo shows"
+        url="https://caraudioevents.com/events"
+      />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <PageHeader
           title="Car Audio Events"

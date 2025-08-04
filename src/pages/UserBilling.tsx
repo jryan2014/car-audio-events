@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { CreditCard, Calendar, Download, AlertCircle, Plus, Trash2, Check, X, Pause, Play, Package, Clock, DollarSign, FileText, Tag, ChevronRight, Shield, RefreshCw, Loader, RotateCcw } from 'lucide-react';
+import { CreditCard, Calendar, Download, AlertCircle, Plus, Trash2, Check, X, Pause, Play, Package, Clock, DollarSign, FileText, Tag, ChevronRight, Shield, RefreshCw, Loader } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
 import { billingService, Subscription, Transaction, PaymentMethod, Invoice } from '../services/billingService';
@@ -7,13 +7,12 @@ import { invoiceService } from '../services/invoiceService';
 import { PromoCodeInput } from '../components/PromoCodeInput';
 import { FailedPaymentRetry } from '../components/FailedPaymentRetry';
 import { PlanUpgradeModal } from '../components/PlanUpgradeModal';
-import RefundManager from '../components/RefundManager';
 import { formatDate } from '../utils/date-utils';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
 import { loadPayPalSDK } from '../lib/payments';
-import { getStripeConfig } from '../services/paymentConfigService';
+import { getStripeConfig, getPaymentConfig } from '../services/paymentConfigService';
 
 interface BillingOverview {
   subscription: Subscription | null;
@@ -31,22 +30,86 @@ const AddPaymentMethodModal: React.FC<{
 }> = ({ isOpen, onClose, onSuccess, userId }) => {
   const stripe = useStripe();
   const elements = useElements();
+  const { user } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState('');
   const [paymentType, setPaymentType] = useState<'card' | 'paypal'>('card');
   const [paypalClientId, setPaypalClientId] = useState<string>('');
   const paypalRef = useRef<HTMLDivElement>(null);
+  const [useProfileAddress, setUseProfileAddress] = useState(false);
+  const [billingAddress, setBillingAddress] = useState({
+    line1: '',
+    city: '',
+    state: '',
+    postal_code: '',
+    country: 'US'
+  });
+  const [paypalAvailable, setPaypalAvailable] = useState(false);
+
+  // Check PayPal availability when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      const checkPayPalAvailability = async () => {
+        try {
+          const paymentConfig = await getPaymentConfig();
+          setPaypalAvailable(paymentConfig.paypal_active);
+          // If PayPal isn't available and it's selected, switch to card
+          if (!paymentConfig.paypal_active && paymentType === 'paypal') {
+            setPaymentType('card');
+          }
+        } catch (error) {
+          console.error('Error checking PayPal availability:', error);
+          setPaypalAvailable(false);
+        }
+      };
+      checkPayPalAvailability();
+    }
+  }, [isOpen]);
+
+  // Handle profile address checkbox
+  useEffect(() => {
+    if (useProfileAddress && user) {
+      setBillingAddress({
+        line1: user.address || '',
+        city: user.city || '',
+        state: user.state || '',
+        postal_code: user.zip || '',
+        country: 'US'
+      });
+    } else if (!useProfileAddress) {
+      setBillingAddress({
+        line1: '',
+        city: '',
+        state: '',
+        postal_code: '',
+        country: 'US'
+      });
+    }
+  }, [useProfileAddress, user]);
 
   // Load PayPal client ID
   useEffect(() => {
     if (isOpen && paymentType === 'paypal') {
       const loadPayPalConfig = async () => {
         try {
+          // First check if PayPal is active in payment config
+          const paymentConfig = await getPaymentConfig();
+          if (!paymentConfig.paypal_active) {
+            setError('PayPal payment method is currently unavailable. Please use a credit/debit card.');
+            return;
+          }
+          
           await loadPayPalSDK();
           // PayPal SDK is loaded, we can use it
-        } catch (error) {
+        } catch (error: any) {
           console.error('Error loading PayPal:', error);
-          setError('Failed to load PayPal. Please try again.');
+          if (error.message?.includes('PayPal is not active')) {
+            setError('PayPal payment method is currently unavailable. Please use a credit/debit card.');
+          } else if (error.message?.includes('PayPal client ID not configured')) {
+            setError('PayPal is not properly configured. Please use a credit/debit card.');
+          } else {
+            setError('Failed to load PayPal. Please try again or use a credit/debit card.');
+          }
         }
       };
       loadPayPalConfig();
@@ -64,10 +127,19 @@ const AddPaymentMethodModal: React.FC<{
       const cardElement = elements.getElement(CardElement);
       if (!cardElement) return;
 
-      // Create payment method
+      // Create payment method with billing details
       const { error, paymentMethod } = await stripe.createPaymentMethod({
         type: 'card',
         card: cardElement,
+        billing_details: {
+          address: {
+            line1: billingAddress.line1,
+            city: billingAddress.city,
+            state: billingAddress.state,
+            postal_code: billingAddress.postal_code,
+            country: billingAddress.country,
+          }
+        }
       });
 
       if (error) {
@@ -112,7 +184,7 @@ const AddPaymentMethodModal: React.FC<{
         <div className="flex gap-2 mb-4">
           <button
             onClick={() => setPaymentType('card')}
-            className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
+            className={`${paypalAvailable ? 'flex-1' : 'w-full'} py-2 px-4 rounded-lg font-medium transition-colors ${
               paymentType === 'card'
                 ? 'bg-electric-500 text-white'
                 : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
@@ -123,21 +195,23 @@ const AddPaymentMethodModal: React.FC<{
               <span>Credit/Debit Card</span>
             </div>
           </button>
-          <button
-            onClick={() => setPaymentType('paypal')}
-            className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
-              paymentType === 'paypal'
-                ? 'bg-electric-500 text-white'
-                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-            }`}
-          >
-            <div className="flex items-center justify-center space-x-2">
-              <div className="w-4 h-4 bg-blue-600 rounded flex items-center justify-center">
-                <span className="text-white text-xs font-bold">P</span>
+          {paypalAvailable && (
+            <button
+              onClick={() => setPaymentType('paypal')}
+              className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
+                paymentType === 'paypal'
+                  ? 'bg-electric-500 text-white'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              <div className="flex items-center justify-center space-x-2">
+                <div className="w-4 h-4 bg-blue-600 rounded flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">P</span>
+                </div>
+                <span>PayPal</span>
               </div>
-              <span>PayPal</span>
-            </div>
-          </button>
+            </button>
+          )}
         </div>
 
         {paymentType === 'card' ? (
@@ -157,6 +231,68 @@ const AddPaymentMethodModal: React.FC<{
                       },
                     },
                   }}
+                />
+              </div>
+            </div>
+
+            {/* Billing Address Section */}
+            <div className="mb-4">
+              <label className="block text-gray-400 text-sm mb-2">Billing Address</label>
+              
+              {/* Use Profile Address Checkbox */}
+              {user && (user.address || user.city || user.state || user.zip) && (
+                <label className="flex items-center mb-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={useProfileAddress}
+                    onChange={(e) => setUseProfileAddress(e.target.checked)}
+                    className="w-4 h-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500"
+                  />
+                  <span className="ml-2 text-gray-300 text-sm">Use my profile address for billing</span>
+                </label>
+              )}
+              
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  placeholder="Street Address"
+                  value={billingAddress.line1}
+                  onChange={(e) => setBillingAddress({ ...billingAddress, line1: e.target.value })}
+                  disabled={useProfileAddress}
+                  required
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500 disabled:opacity-50"
+                />
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    type="text"
+                    placeholder="City"
+                    value={billingAddress.city}
+                    onChange={(e) => setBillingAddress({ ...billingAddress, city: e.target.value })}
+                    disabled={useProfileAddress}
+                    required
+                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500 disabled:opacity-50"
+                  />
+                  <input
+                    type="text"
+                    placeholder="State"
+                    value={billingAddress.state}
+                    onChange={(e) => setBillingAddress({ ...billingAddress, state: e.target.value })}
+                    disabled={useProfileAddress}
+                    maxLength={2}
+                    required
+                    className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500 disabled:opacity-50"
+                  />
+                </div>
+                
+                <input
+                  type="text"
+                  placeholder="Zip Code"
+                  value={billingAddress.postal_code}
+                  onChange={(e) => setBillingAddress({ ...billingAddress, postal_code: e.target.value })}
+                  disabled={useProfileAddress}
+                  required
+                  className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-electric-500 disabled:opacity-50"
                 />
               </div>
             </div>
@@ -337,7 +473,7 @@ export default function UserBilling() {
   const { user } = useAuth();
   const [billingData, setBillingData] = useState<BillingOverview | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'history' | 'invoices' | 'methods' | 'refunds'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'history' | 'invoices' | 'methods'>('overview');
   const [showAddPaymentMethod, setShowAddPaymentMethod] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -551,16 +687,6 @@ export default function UserBilling() {
                 }`}
               >
                 Invoices
-              </button>
-              <button
-                onClick={() => setActiveTab('refunds')}
-                className={`flex-1 py-2 px-4 rounded-md font-medium transition-colors ${
-                  activeTab === 'refunds'
-                    ? 'bg-electric-500 text-white'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                Refunds
               </button>
               <button
                 onClick={() => setActiveTab('methods')}
@@ -962,73 +1088,6 @@ export default function UserBilling() {
               </div>
             )}
 
-            {activeTab === 'refunds' && (
-              <div className="space-y-6">
-                <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 p-6">
-                  <h2 className="text-xl font-semibold text-white mb-4 flex items-center">
-                    <RotateCcw className="h-5 w-5 mr-2 text-electric-500" />
-                    Refund Management
-                  </h2>
-                  <p className="text-gray-400 mb-6">
-                    Manage your refunds and process refund requests. You can request refunds for eligible transactions.
-                  </p>
-                  
-                  <RefundManager />
-                </div>
-
-                {/* Refund History */}
-                <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 p-6">
-                  <h2 className="text-xl font-semibold text-white mb-4">Refund History</h2>
-                  
-                  {billingData?.transactions && billingData.transactions.filter(t => t.type === 'refund').length > 0 ? (
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-gray-700">
-                            <th className="text-left py-3 px-2 text-gray-400 font-medium">Date</th>
-                            <th className="text-left py-3 px-2 text-gray-400 font-medium">Transaction</th>
-                            <th className="text-left py-3 px-2 text-gray-400 font-medium">Reason</th>
-                            <th className="text-left py-3 px-2 text-gray-400 font-medium">Status</th>
-                            <th className="text-right py-3 px-2 text-gray-400 font-medium">Amount</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {billingData.transactions
-                            .filter(t => t.type === 'refund')
-                            .map((refund) => (
-                              <tr key={refund.id} className="border-b border-gray-700/50 hover:bg-gray-700/30">
-                                <td className="py-3 px-2 text-gray-300">{formatDate(refund.created_at)}</td>
-                                <td className="py-3 px-2 text-white">{refund.description || 'Refund'}</td>
-                                <td className="py-3 px-2 text-gray-300">{refund.metadata?.reason || 'Not specified'}</td>
-                                <td className="py-3 px-2">
-                                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                    refund.status === 'succeeded'
-                                      ? 'bg-green-500/20 text-green-400'
-                                      : refund.status === 'failed'
-                                      ? 'bg-red-500/20 text-red-400'
-                                      : 'bg-yellow-500/20 text-yellow-400'
-                                  }`}>
-                                    {refund.status}
-                                  </span>
-                                </td>
-                                <td className="py-3 px-2 text-right font-medium text-green-400">
-                                  +{formatAmount(refund.amount)}
-                                </td>
-                              </tr>
-                            ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <RotateCcw className="h-12 w-12 text-gray-500 mx-auto mb-4" />
-                      <p className="text-gray-400">No refunds yet</p>
-                      <p className="text-gray-400 text-sm mt-2">Refunds will appear here when processed</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
 
             {activeTab === 'methods' && (
               <div className="bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-700 p-6">

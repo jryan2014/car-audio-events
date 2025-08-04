@@ -1,5 +1,6 @@
 import React, { useEffect, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { HelmetProvider } from 'react-helmet-async';
 import Layout from './components/Layout';
 import AdminLayout from './components/AdminLayout';
 import { AuthProvider } from './contexts/AuthContext';
@@ -34,6 +35,7 @@ const AdminUsers = React.lazy(() => import('./pages/AdminUsers'));
 const AdminMembership = React.lazy(() => import('./pages/AdminMembership'));
 const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
 const AdminEvents = React.lazy(() => import('./pages/AdminEvents'));
+const AdminTeams = React.lazy(() => import('./pages/AdminTeams'));
 const CreateEvent = React.lazy(() => import('./pages/CreateEvent'));
 const EditEvent = React.lazy(() => import('./pages/EditEvent'));
 const EventResults = React.lazy(() => import('./pages/EventResults'));
@@ -72,6 +74,7 @@ const NewsletterUnsubscribe = React.lazy(() => import('./pages/NewsletterUnsubsc
 const AdminNewsletterManager = React.lazy(() => import('./pages/AdminNewsletterManager'));
 const Leaderboard = React.lazy(() => import('./pages/Leaderboard'));
 const AdminLeaderboardManager = React.lazy(() => import('./components/AdminLeaderboardManager'));
+const SPLCalculator = React.lazy(() => import('./pages/SPLCalculator'));
 
 // Support Desk components
 const PublicSupportForm = React.lazy(() => import('./modules/support-desk/components/public/PublicSupportForm'));
@@ -144,17 +147,18 @@ function App() {
   }, []);
   
   return (
-    <AuthProvider>
-      <NotificationProvider>
-        <Router
-          future={{
-            v7_startTransition: true,
-            v7_relativeSplatPath: true
-          }}
-        >
-          <ScrollToTop />
-          <Suspense fallback={<LoadingSpinner />}>
-            <Routes>
+    <HelmetProvider>
+      <AuthProvider>
+        <NotificationProvider>
+          <Router
+            future={{
+              v7_startTransition: true,
+              v7_relativeSplatPath: true
+            }}
+          >
+            <ScrollToTop />
+            <Suspense fallback={<LoadingSpinner />}>
+              <Routes>
               {/* Routes with Layout wrapper */}
               <Route path="/" element={<Layout><Home /></Layout>} />
               <Route path="/dashboard" element={<Layout><ProtectedRoute requireProfileComplete={true}><Dashboard /></ProtectedRoute></Layout>} />
@@ -200,6 +204,7 @@ function App() {
               <Route path="/newsletter/confirm/:token" element={<Layout><NewsletterConfirm /></Layout>} />
               <Route path="/newsletter/unsubscribe/:token" element={<Layout><NewsletterUnsubscribe /></Layout>} />
               <Route path="/leaderboard" element={<Layout><Leaderboard /></Layout>} />
+              <Route path="/spl-calculator" element={<Layout><SPLCalculator /></Layout>} />
               
               {/* Billing routes with their own layout */}
               <Route path="/billing" element={<Layout><ProtectedRoute requireProfileComplete={true}><UserBilling /></ProtectedRoute></Layout>} />
@@ -213,6 +218,7 @@ function App() {
               <Route path="/admin/users/:userId/edit" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><EditUser /></Suspense></AdminLayout>} />
               <Route path="/admin/membership" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminMembership /></Suspense></AdminLayout>} />
               <Route path="/admin/events" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminEvents /></Suspense></AdminLayout>} />
+              <Route path="/admin/teams" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminTeams /></Suspense></AdminLayout>} />
               <Route path="/admin/competition-results" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminLeaderboardManager /></Suspense></AdminLayout>} />
               <Route path="/admin/backup" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminBackup /></Suspense></AdminLayout>} />
               <Route path="/admin/analytics" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminAnalytics /></Suspense></AdminLayout>} />
@@ -238,6 +244,7 @@ function App() {
         </Router>
       </NotificationProvider>
     </AuthProvider>
+    </HelmetProvider>
   );
 }
 

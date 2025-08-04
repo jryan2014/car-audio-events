@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../../../contexts/AuthContext';
 import LoadingSpinner from '../../../../components/LoadingSpinner';
 import { ticketService } from '../../services/supabase-client';
@@ -80,6 +81,15 @@ const TicketList: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       <div className="max-w-6xl mx-auto p-6">
+      {/* Back to Dashboard Link */}
+      <Link
+        to="/dashboard"
+        className="inline-flex items-center text-gray-400 hover:text-white mb-4 transition-colors"
+      >
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        Back to Dashboard
+      </Link>
+      
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-white">
           My Support Tickets

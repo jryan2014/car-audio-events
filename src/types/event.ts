@@ -88,15 +88,19 @@ export interface EventFormData {
   seo_description: string;
   seo_keywords: string[];
   
+  // Competition Details
+  competition_format?: 'spl' | 'sq' | 'spl_sq' | 'demo' | 'show_shine';
+  sanctioning_body?: string;
+  competition_classes?: string[];
+  event_features?: string[];
+  awards_prizes?: string;
+  
   // Visibility
   is_public: boolean;
   is_featured: boolean;
   is_active: boolean;
   status: EventStatus;
   approval_status: ApprovalStatus;
-  
-  // Competition Classes
-  competition_classes?: string[];
   
   // Online Registration
   allows_online_registration?: boolean;

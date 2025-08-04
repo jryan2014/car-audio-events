@@ -96,10 +96,10 @@ interface AvailableTeam {
   description: string;
   team_type: 'competitive' | 'social' | 'professional' | 'club';
   location?: string;
+  logo_url?: string;
   member_count: number;
   max_members: number;
   total_points: number;
-  owner_name: string;
   is_public: boolean;
   requires_approval: boolean;
 }
@@ -488,141 +488,6 @@ export default function Profile() {
       }));
 
       setCompetitionResults(formattedResults);
-      
-      // TEMPORARY: Mock data to demonstrate charts functionality
-      if (formattedResults.length === 0) {
-        const mockData: CompetitionResult[] = [
-          {
-            id: 'mock-1',
-            user_id: user.id,
-            is_cae_event: false,
-            event_name: 'West Coast Audio Festival',
-            event_date: '2024-12-15',
-            event_location: 'Los Angeles, CA',
-            event_organizer: 'WCAF',
-            category: 'SPL (Sound Pressure Level)',
-            class: 'Street',
-            vehicle_year: '2023',
-            vehicle_make: 'Toyota',
-            vehicle_model: 'Camry',
-            score: 155.3,
-            placement: 2,
-            total_participants: 15,
-            points_earned: 85,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-          {
-            id: 'mock-2',
-            user_id: user.id,
-            is_cae_event: false,
-            event_name: 'Midwest Bass Challenge',
-            event_date: '2024-11-20',
-            event_location: 'Chicago, IL',
-            event_organizer: 'MBC',
-            category: 'SPL (Sound Pressure Level)',
-            class: 'Street',
-            vehicle_year: '2023',
-            vehicle_make: 'Toyota',
-            vehicle_model: 'Camry',
-            score: 159.7,
-            placement: 1,
-            total_participants: 20,
-            points_earned: 100,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-          {
-            id: 'mock-3',
-            user_id: user.id,
-            is_cae_event: false,
-            event_name: 'Southern Sound Showdown',
-            event_date: '2024-10-10',
-            event_location: 'Atlanta, GA',
-            event_organizer: 'SSS',
-            category: 'SQ (Sound Quality)',
-            class: 'Street',
-            vehicle_year: '2023',
-            vehicle_make: 'Toyota',
-            vehicle_model: 'Camry',
-            score: 84.6,
-            placement: 3,
-            total_participants: 12,
-            points_earned: 70,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-          {
-            id: 'mock-4',
-            user_id: user.id,
-            is_cae_event: false,
-            event_name: 'East Coast Audio Open',
-            event_date: '2024-09-05',
-            event_location: 'New York, NY',
-            event_organizer: 'ECAO',
-            category: 'SQ (Sound Quality)',
-            class: 'Street',
-            vehicle_year: '2023',
-            vehicle_make: 'Toyota',
-            vehicle_model: 'Camry',
-            score: 92.1,
-            placement: 1,
-            total_participants: 18,
-            points_earned: 100,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-          {
-            id: 'mock-5',
-            user_id: user.id,
-            is_cae_event: false,
-            event_name: 'Texas Thunder Tournament',
-            event_date: '2024-08-12',
-            event_location: 'Houston, TX',
-            event_organizer: 'TTT',
-            category: 'SPL (Sound Pressure Level)',
-            class: 'Street',
-            vehicle_year: '2023',
-            vehicle_make: 'Toyota',
-            vehicle_model: 'Camry',
-            score: 153.8,
-            placement: 4,
-            total_participants: 25,
-            points_earned: 60,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-          {
-            id: 'mock-6',
-            user_id: user.id,
-            is_cae_event: false,
-            event_name: 'Arizona Audio Attack',
-            event_date: '2024-07-20',
-            event_location: 'Phoenix, AZ',
-            event_organizer: 'AAA',
-            category: 'Install Quality',
-            class: 'Street',
-            vehicle_year: '2023',
-            vehicle_make: 'Toyota',
-            vehicle_model: 'Camry',
-            score: 76.2,
-            placement: 2,
-            total_participants: 10,
-            points_earned: 85,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          }
-        ];
-        
-        // Add formatted date for SPL chart
-        const mockDataWithFormattedDates = mockData.map(result => ({
-          ...result,
-          date: new Date(result.event_date!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-        }));
-        
-        setCompetitionResults(mockDataWithFormattedDates);
-        console.log('Mock competition data loaded for demonstration:', mockDataWithFormattedDates);
-      }
     } catch (error) {
       console.error('Error in loadCompetitionResults:', error);
       showError('Failed to load competition results');
@@ -925,7 +790,8 @@ export default function Profile() {
 
   const loadAvailableTeams = async () => {
     try {
-      const { data, error } = await supabase
+      // First get only public teams
+      const { data: teamsData, error: teamsError } = await supabase
         .from('teams')
         .select(`
           id,
@@ -937,29 +803,40 @@ export default function Profile() {
           total_points,
           is_public,
           requires_approval,
-          users (name),
-          team_members(count)
+          owner_id,
+          logo_url
         `)
-        .eq('is_public', true)
+        .eq('is_public', true)  // Only show public teams in the browse list
+        .eq('is_active', true)  // Only show active teams
         .order('total_points', { ascending: false });
 
-      if (error) throw error;
+      if (teamsError) throw teamsError;
 
-      const transformedTeams: AvailableTeam[] = (data || []).map((team: any) => ({
-        id: team.id,
-        name: team.name,
-        description: team.description || '',
-        team_type: team.team_type || 'competitive',
-        location: team.location,
-        member_count: Array.isArray(team.team_members) ? team.team_members.length : 0,
-        max_members: team.max_members,
-        total_points: team.total_points,
-        owner_name: team.users?.name || 'Unknown',
-        is_public: team.is_public,
-        requires_approval: team.requires_approval
+      // Then get member counts for each team
+      const teamsWithDetails = await Promise.all((teamsData || []).map(async (team) => {
+        // Get member count
+        const { count: memberCount } = await supabase
+          .from('team_members')
+          .select('*', { count: 'exact', head: true })
+          .eq('team_id', team.id)
+          .eq('is_active', true);
+
+        return {
+          id: team.id,
+          name: team.name,
+          description: team.description || '',
+          team_type: team.team_type || 'competitive',
+          location: team.location,
+          logo_url: team.logo_url,
+          member_count: memberCount || 0,
+          max_members: team.max_members,
+          total_points: team.total_points,
+          is_public: team.is_public,
+          requires_approval: team.requires_approval
+        };
       }));
 
-      setAvailableTeams(transformedTeams);
+      setAvailableTeams(teamsWithDetails);
     } catch (error) {
       console.error('Failed to load available teams:', error);
     }
@@ -1096,20 +973,55 @@ export default function Profile() {
 
   const handleJoinTeam = async (teamId: string, requiresApproval: boolean) => {
     try {
+      // First check if user is already a member
+      const { data: existingMember } = await supabase
+        .from('team_members')
+        .select('id')
+        .eq('team_id', teamId)
+        .eq('user_id', user!.id)
+        .eq('is_active', true)
+        .single();
+
+      if (existingMember) {
+        showInfo('Already a Member', 'You are already a member of this team.');
+        return;
+      }
+
       if (requiresApproval) {
-        // Create an invitation request
+        // Check if there's already a pending request
+        const { data: existingRequest } = await supabase
+          .from('team_join_requests')
+          .select('id, status')
+          .eq('team_id', teamId)
+          .eq('user_id', user!.id)
+          .eq('status', 'pending')
+          .single();
+
+        if (existingRequest) {
+          showInfo('Request Pending', 'You already have a pending request to join this team. Please watch your notifications for updates.');
+          return;
+        }
+
+        // Create a join request
         const { error } = await supabase
-          .from('team_invitations')
+          .from('team_join_requests')
           .insert([{
             team_id: teamId,
-            invited_user_id: user!.id,
-            invited_by_user_id: user!.id, // Self-invitation (join request)
-            message: 'Requesting to join the team',
-            status: 'pending'
+            user_id: user!.id,
+            status: 'pending',
+            message: 'Request to join your team'
           }]);
 
-        if (error) throw error;
-        alert('Join request sent! The team owner will review your request.');
+        if (error) {
+          console.error('Error creating join request:', error);
+          throw error;
+        }
+
+        showSuccess(
+          'Join Request Sent',
+          'Your request to join the team has been sent. The team admins will review your request and you\'ll be notified once they respond. Please watch your notifications for updates.'
+        );
+        setShowBrowseTeamsModal(false);
       } else {
         // Join directly
         const { error } = await supabase
@@ -1122,14 +1034,25 @@ export default function Profile() {
             points_contributed: 0
           }]);
 
-        if (error) throw error;
-        alert('Successfully joined the team!');
-        loadTeams();
+        if (error) {
+          // Check if it's a unique constraint violation
+          if (error.code === '23505') {
+            showInfo('Already a Member', 'You are already a member of this team.');
+          } else {
+            throw error;
+          }
+        } else {
+          showSuccess('Team Joined!', 'You have successfully joined the team.');
+          loadTeams();
+          setShowBrowseTeamsModal(false);
+        }
       }
-      setShowBrowseTeamsModal(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to join team:', error);
-      alert('Failed to join team. You may already be a member.');
+      showError(
+        'Failed to Join Team',
+        error.message || 'An error occurred while trying to join the team.'
+      );
     }
   };
 
@@ -2457,13 +2380,19 @@ export default function Profile() {
             <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-white">Teams</h2>
-                <button 
-                  onClick={() => setShowCreateTeamModal(true)}
-                  className="bg-electric-500 text-white px-4 py-2 rounded-lg hover:bg-electric-600 transition-colors flex items-center space-x-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Create Team</span>
-                </button>
+                {/* Only show Create Team button for Pro competitors, retailers, manufacturers, and organizations */}
+                {(user?.membershipType === 'retailer' || 
+                  user?.membershipType === 'manufacturer' || 
+                  user?.membershipType === 'organization' ||
+                  (user?.membershipType === 'competitor' && user?.subscriptionPlan === 'pro')) && (
+                  <button 
+                    onClick={() => setShowCreateTeamModal(true)}
+                    className="bg-electric-500 text-white px-4 py-2 rounded-lg hover:bg-electric-600 transition-colors flex items-center space-x-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Create Team</span>
+                  </button>
+                )}
               </div>
               
               {teams.length > 0 ? (
@@ -2531,7 +2460,15 @@ export default function Profile() {
                 <div className="text-center py-12">
                   <Users className="h-16 w-16 text-gray-600 mx-auto mb-4" />
                   <h3 className="text-xl font-semibold text-gray-400 mb-2">No Teams</h3>
-                  <p className="text-gray-500 mb-4">Join or create a team to collaborate with other enthusiasts</p>
+                  <p className="text-gray-500 mb-4">
+                    {/* Show appropriate message based on user's ability to create teams */}
+                    {(user?.membershipType === 'retailer' || 
+                      user?.membershipType === 'manufacturer' || 
+                      user?.membershipType === 'organization' ||
+                      (user?.membershipType === 'competitor' && user?.subscriptionPlan === 'pro'))
+                      ? "Join or create a team to collaborate with other enthusiasts"
+                      : "Browse and join teams to collaborate with other enthusiasts"}
+                  </p>
                   <div className="flex justify-center space-x-4">
                     <button 
                       onClick={() => {
@@ -2542,12 +2479,18 @@ export default function Profile() {
                     >
                       Browse Teams
                     </button>
-                    <button 
-                      onClick={() => setShowCreateTeamModal(true)}
-                      className="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
-                    >
-                      Create Team
-                    </button>
+                    {/* Only show Create Team button for eligible users */}
+                    {(user?.membershipType === 'retailer' || 
+                      user?.membershipType === 'manufacturer' || 
+                      user?.membershipType === 'organization' ||
+                      (user?.membershipType === 'competitor' && user?.subscriptionPlan === 'pro')) && (
+                      <button 
+                        onClick={() => setShowCreateTeamModal(true)}
+                        className="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+                      >
+                        Create Team
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -4113,11 +4056,21 @@ export default function Profile() {
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center space-x-3">
-                          <div className={`inline-flex items-center justify-center w-10 h-10 rounded-full bg-${typeColor}-500`}>
-                            <TypeIcon className="h-5 w-5 text-white" />
-                          </div>
+                          {team.logo_url ? (
+                            <img 
+                              src={team.logo_url} 
+                              alt={`${team.name} logo`}
+                              className="w-10 h-10 rounded-full object-cover border-2 border-gray-600"
+                            />
+                          ) : (
+                            <div className={`inline-flex items-center justify-center w-10 h-10 rounded-full bg-${typeColor}-500`}>
+                              <TypeIcon className="h-5 w-5 text-white" />
+                            </div>
+                          )}
                           <div>
-                            <h4 className="text-white font-semibold">{team.name}</h4>
+                            <h4 className="text-white font-semibold flex items-center gap-2">
+                              {team.name}
+                            </h4>
                             <div className={`text-xs font-medium px-2 py-1 rounded-full bg-${typeColor}-500/20 text-${typeColor}-400 inline-block`}>
                               {team.team_type.charAt(0).toUpperCase() + team.team_type.slice(1)}
                             </div>
@@ -4125,20 +4078,27 @@ export default function Profile() {
                         </div>
                         <button
                           onClick={() => handleJoinTeam(team.id, team.requires_approval)}
-                          className="bg-electric-500 text-white px-3 py-1 rounded text-sm hover:bg-electric-600 transition-colors flex items-center space-x-1"
+                          className={`px-3 py-1 rounded text-sm transition-colors flex items-center space-x-1 ${
+                            team.requires_approval
+                              ? 'bg-blue-600 text-white hover:bg-blue-700'
+                              : 'bg-electric-500 text-white hover:bg-electric-600'
+                          }`}
+                          title={
+                            team.requires_approval 
+                              ? 'Click to request to join this team'
+                              : 'Click to join this team'
+                          }
                         >
                           <UserPlus className="h-3 w-3" />
-                          <span>{team.requires_approval ? 'Request' : 'Join'}</span>
+                          <span>
+                            {team.requires_approval ? 'Request' : 'Join'}
+                          </span>
                         </button>
                       </div>
                       
                       <p className="text-gray-300 text-sm mb-3 line-clamp-2">{team.description}</p>
                       
                       <div className="space-y-1 text-xs text-gray-400">
-                        <div className="flex justify-between">
-                          <span>Owner:</span>
-                          <span className="text-white">{team.owner_name}</span>
-                        </div>
                         <div className="flex justify-between">
                           <span>Members:</span>
                           <span className="text-white">{team.member_count}/{team.max_members}</span>

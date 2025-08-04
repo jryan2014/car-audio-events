@@ -9,6 +9,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import LogCAEEventModal from '../components/LogCAEEventModal';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import SEO from '../components/SEO';
 import { 
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, 
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -395,6 +396,12 @@ const Leaderboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-black text-white">
+      <SEO 
+        title="Competition Leaderboard - Top Car Audio Competitors"
+        description="View the top car audio competitors across IASCA, MECA, and Bass Wars events. Real-time rankings, scores, and competition statistics for the 2025 season."
+        keywords="car audio leaderboard, competition rankings, top competitors, IASCA rankings, MECA standings, Bass Wars scores, car audio champions"
+        url="https://caraudioevents.com/leaderboard"
+      />
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">

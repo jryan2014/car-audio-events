@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import HCaptcha, { HCaptchaRef } from '../components/HCaptcha';
 import { supabase } from '../lib/supabase';
 import { registerRateLimiter, getClientIdentifier } from '../utils/rateLimiter';
+import SEO from '../components/SEO';
 
 interface MembershipPlan {
   id: string;
@@ -923,6 +924,12 @@ export default function Register() {
 
   return (
     <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+      <SEO 
+        title="Register - Join the Car Audio Community"
+        description="Create your Car Audio Events account. Choose from competitor, retailer, manufacturer, or organization memberships. Join thousands in the car audio competition community."
+        keywords="car audio registration, become a member, competitor registration, retailer signup, manufacturer membership, join car audio events"
+        url="https://caraudioevents.com/register"
+      />
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center space-x-2 mb-6">

@@ -4,7 +4,7 @@ import {
   Plus, Target, Award, MapPin, CreditCard, Package, Clock, 
   DollarSign, FileText, Shield, Activity, Heart, Settings,
   ChevronRight, Home, BarChart3, Zap, Bell, X, CheckCircle, Crown,
-  Edit, Save, LogOut
+  Edit, Save, LogOut, Car
 } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -143,7 +143,7 @@ interface CompetitionResult {
 }
 
 export default function Dashboard() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, refreshUser } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { showSuccess, showError } = useNotifications();
@@ -164,7 +164,7 @@ export default function Dashboard() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [competitionData, setCompetitionData] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'overview' | 'profile' | 'competitions' | 'billing'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'profile' | 'competitions' | 'billing' | 'audio-system'>('overview');
   
   // Competition functionality state
   const [competitionResults, setCompetitionResults] = useState<CompetitionResult[]>([]);
@@ -175,6 +175,8 @@ export default function Dashboard() {
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [classes, setClasses] = useState<CompetitionClass[]>([]);
   const [filteredClasses, setFilteredClasses] = useState<CompetitionClass[]>([]);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [audioSystems, setAudioSystems] = useState<any[]>([]);
   const [isLoadingDivisions, setIsLoadingDivisions] = useState(false);
   const [isLoadingClasses, setIsLoadingClasses] = useState(false);
   const [showNewClassInput, setShowNewClassInput] = useState(false);
@@ -206,25 +208,25 @@ export default function Dashboard() {
       color: 'blue'
     },
     {
-      title: 'Update Audio System',
-      description: 'Manage your setup',
-      icon: Zap,
-      link: '/profile?tab=audio-systems',
-      color: 'purple'
+      title: 'View Leaderboard',
+      description: 'See top competitors',
+      icon: Trophy,
+      link: '/leaderboard',
+      color: 'yellow'
+    },
+    {
+      title: 'SPL Calculator',
+      description: 'Calculate your competition class',
+      icon: TrendingUp,
+      link: '/spl-calculator',
+      color: 'orange'
     },
     {
       title: 'Support Desk',
       description: 'Get help or report issues',
       icon: Shield,
-      link: '/support',
+      link: '/dashboard/support',
       color: 'green'
-    },
-    {
-      title: 'View Leaderboard',
-      description: 'See top competitors',
-      icon: Trophy,
-      link: '/leaderboard',
-      color: 'orange'
     }
   ];
 
@@ -254,6 +256,46 @@ export default function Dashboard() {
       }
     }
   }, [user, authLoading, searchParams, setSearchParams]);
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    
+    setIsSavingProfile(true);
+    try {
+      // Get all form values
+      const form = document.getElementById('profileForm') as HTMLFormElement;
+      if (!form) return;
+      
+      const formData = new FormData(form);
+      const updateData = {
+        name: formData.get('name') as string,
+        phone: formData.get('phone') as string,
+        address: formData.get('address') as string,
+        city: formData.get('city') as string,
+        state: formData.get('state') as string,
+        zip: formData.get('zip') as string,
+        website: formData.get('website') as string,
+        bio: formData.get('bio') as string,
+        updated_at: new Date().toISOString()
+      };
+      
+      const { error } = await supabase
+        .from('users')
+        .update(updateData)
+        .eq('id', user.id);
+        
+      if (error) throw error;
+      
+      showSuccess('Profile updated successfully!');
+      await refreshUser();
+      setIsEditMode(false);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      showError('Failed to update profile');
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -401,6 +443,27 @@ export default function Dashboard() {
       console.error('Error loading classes:', error);
     } finally {
       setIsLoadingClasses(false);
+    }
+  };
+
+  const loadAudioSystems = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('user_audio_systems')
+        .select(`
+          *,
+          components:audio_components(*)
+        `)
+        .eq('user_id', user.id)
+        .order('is_primary', { ascending: false })
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setAudioSystems(data || []);
+    } catch (error) {
+      console.error('Error loading audio systems:', error);
     }
   };
 
@@ -654,12 +717,27 @@ export default function Dashboard() {
     return 'text-gray-400';
   };
 
+  // Load audio systems when audio-system tab is active
+  useEffect(() => {
+    if (activeTab === 'audio-system' && user) {
+      loadAudioSystems();
+    }
+  }, [activeTab, user]);
+
+  // Load billing data when billing tab is active
+  useEffect(() => {
+    if (activeTab === 'billing' && user) {
+      loadBillingData();
+    }
+  }, [activeTab, user]);
+
   const getActionColor = (color: string) => {
     const colors = {
       blue: 'from-blue-500/20 to-blue-600/20 border-blue-500/30 hover:from-blue-500/30 hover:to-blue-600/30',
       purple: 'from-purple-500/20 to-purple-600/20 border-purple-500/30 hover:from-purple-500/30 hover:to-purple-600/30',
       green: 'from-green-500/20 to-green-600/20 border-green-500/30 hover:from-green-500/30 hover:to-green-600/30',
-      orange: 'from-orange-500/20 to-orange-600/20 border-orange-500/30 hover:from-orange-500/30 hover:to-orange-600/30'
+      orange: 'from-orange-500/20 to-orange-600/20 border-orange-500/30 hover:from-orange-500/30 hover:to-orange-600/30',
+      yellow: 'from-yellow-500/20 to-yellow-600/20 border-yellow-500/30 hover:from-yellow-500/30 hover:to-yellow-600/30'
     };
     return colors[color as keyof typeof colors] || colors.blue;
   };
@@ -805,6 +883,17 @@ export default function Dashboard() {
             >
               <CreditCard className="h-4 w-4" />
               Billing
+            </button>
+            <button
+              onClick={() => setActiveTab('audio-system')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                activeTab === 'audio-system'
+                  ? 'bg-electric-500 text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+              }`}
+            >
+              <Zap className="h-4 w-4" />
+              Audio System
             </button>
           </nav>
         </div>
@@ -1096,6 +1185,7 @@ export default function Dashboard() {
                 </button>
               </div>
 
+              <form id="profileForm">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div>
@@ -1103,6 +1193,8 @@ export default function Dashboard() {
                     {isEditMode ? (
                       <input
                         type="text"
+                        id="name"
+                        name="name"
                         defaultValue={user.name}
                         className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-electric-500"
                       />
@@ -1138,6 +1230,8 @@ export default function Dashboard() {
                     {isEditMode ? (
                       <input
                         type="tel"
+                        id="phone"
+                        name="phone"
                         defaultValue={user.phone || ''}
                         placeholder="(555) 123-4567"
                         className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-electric-500"
@@ -1148,10 +1242,79 @@ export default function Dashboard() {
                   </div>
 
                   <div>
+                    <label className="block text-gray-400 text-sm mb-2">Street Address</label>
+                    {isEditMode ? (
+                      <input
+                        type="text"
+                        id="address"
+                        name="address"
+                        defaultValue={user.address || ''}
+                        placeholder="123 Main Street"
+                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-electric-500"
+                      />
+                    ) : (
+                      <p className="text-white bg-gray-700/50 rounded-lg px-3 py-2">{user.address || 'Not set'}</p>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2">City</label>
+                      {isEditMode ? (
+                        <input
+                          type="text"
+                          id="city"
+                          name="city"
+                          defaultValue={user.city || ''}
+                          placeholder="City"
+                          className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-electric-500"
+                        />
+                      ) : (
+                        <p className="text-white bg-gray-700/50 rounded-lg px-3 py-2">{user.city || 'Not set'}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2">State</label>
+                      {isEditMode ? (
+                        <input
+                          type="text"
+                          id="state"
+                          name="state"
+                          defaultValue={user.state || ''}
+                          placeholder="State"
+                          maxLength={2}
+                          className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-electric-500"
+                        />
+                      ) : (
+                        <p className="text-white bg-gray-700/50 rounded-lg px-3 py-2">{user.state || 'Not set'}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Zip Code</label>
+                    {isEditMode ? (
+                      <input
+                        type="text"
+                        id="zip"
+                        name="zip"
+                        defaultValue={user.zip || ''}
+                        placeholder="12345"
+                        maxLength={10}
+                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-electric-500"
+                      />
+                    ) : (
+                      <p className="text-white bg-gray-700/50 rounded-lg px-3 py-2">{user.zip || 'Not set'}</p>
+                    )}
+                  </div>
+
+                  <div>
                     <label className="block text-gray-400 text-sm mb-2">Website</label>
                     {isEditMode ? (
                       <input
                         type="url"
+                        id="website"
+                        name="website"
                         defaultValue={user.website || ''}
                         placeholder="https://yourwebsite.com"
                         className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-electric-500"
@@ -1165,6 +1328,8 @@ export default function Dashboard() {
                     <label className="block text-gray-400 text-sm mb-2">Bio</label>
                     {isEditMode ? (
                       <textarea
+                        id="bio"
+                        name="bio"
                         defaultValue={user.bio || ''}
                         placeholder="Tell us about yourself..."
                         rows={3}
@@ -1177,10 +1342,16 @@ export default function Dashboard() {
                 </div>
               </div>
 
+              </form>
+              
               {isEditMode && (
                 <div className="flex items-center gap-3 mt-6 pt-6 border-t border-gray-700">
-                  <button className="bg-electric-500 text-white px-6 py-2 rounded-lg hover:bg-electric-600 transition-colors">
-                    Save Changes
+                  <button 
+                    onClick={handleSaveProfile}
+                    disabled={isSavingProfile}
+                    className="bg-electric-500 text-white px-6 py-2 rounded-lg hover:bg-electric-600 transition-colors disabled:opacity-50"
+                  >
+                    {isSavingProfile ? 'Saving...' : 'Save Changes'}
                   </button>
                   <button
                     onClick={() => setIsEditMode(false)}
@@ -1744,27 +1915,136 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Saved Events Widget (Always visible) */}
-        <div className="mt-8 bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-white">Saved Events</h2>
-            <Link
-              to="/profile?tab=saved-events"
-              className="text-electric-400 hover:text-electric-300 text-sm font-medium flex items-center gap-1"
-            >
-              <span>View All</span>
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-          <SavedEvents limit={3} showActions={false} />
-        </div>
+        {activeTab === 'audio-system' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-white">Audio Systems</h2>
+              <Link
+                to="/profile?tab=system"
+                className="bg-electric-500 text-white px-4 py-2 rounded-lg hover:bg-electric-600 transition-colors flex items-center space-x-2"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Manage Systems</span>
+              </Link>
+            </div>
 
-        {/* System Status */}
-        <div className="mt-8 flex justify-end">
-          <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-700/30 rounded-lg p-3">
-            <ServiceWorkerManager showFullInterface={false} />
+            {audioSystems.length > 0 ? (
+              <div className="space-y-4">
+                {audioSystems.map((system) => (
+                  <div key={system.id} className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="text-xl font-bold text-white flex items-center space-x-2">
+                          <span>{system.name}</span>
+                          {system.is_primary && (
+                            <span className="bg-electric-500 text-white px-2 py-1 rounded text-xs">Primary</span>
+                          )}
+                        </h3>
+                        {system.vehicle_make && (
+                          <p className="text-gray-400">
+                            {system.vehicle_year} {system.vehicle_make} {system.vehicle_model}
+                          </p>
+                        )}
+                        {system.description && (
+                          <p className="text-gray-300 mt-2">{system.description}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {system.components && system.components.length > 0 && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {system.components.map((component: any) => (
+                          <div key={component.id} className="bg-gray-700/30 p-4 rounded-lg">
+                            <h4 className="text-white font-semibold capitalize mb-1">
+                              {(component.category || '').replace('_', ' ')}
+                            </h4>
+                            <p className="text-electric-400 font-medium">{component.brand} {component.model}</p>
+                            {(component.notes || component.description) && (
+                              <p className="text-gray-400 text-sm mt-1">{component.notes || component.description}</p>
+                            )}
+                            <div className="mt-2 text-xs text-gray-500 space-y-1">
+                              {(() => {
+                                const type = component.category;
+                                const specs = component.specifications || {};
+                                
+                                if (type === 'amplifier') {
+                                  return (
+                                    <div>
+                                      {specs.rms_watts && `RMS: ${specs.rms_watts}W`}
+                                      {specs.size && ` • ${specs.size}`}
+                                    </div>
+                                  );
+                                }
+                                if (type === 'subwoofer') {
+                                  return (
+                                    <div>
+                                      {specs.size && `${specs.size}"`} 
+                                      {specs.quantity && specs.quantity > 1 && ` x${specs.quantity}`}
+                                      {specs.rms_watts && ` • ${specs.rms_watts}W RMS`}
+                                      {specs.impedance && ` • ${specs.impedance}`}
+                                    </div>
+                                  );
+                                }
+                                if (type === 'speakers') {
+                                  return (
+                                    <div>
+                                      {specs.size && `${specs.size}"`}
+                                      {specs.quantity && ` x${specs.quantity}`}
+                                      {specs.type && ` • ${specs.type}`}
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              })()}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12 bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl">
+                <Car className="h-16 w-16 text-gray-600 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-gray-400 mb-2">No Audio Systems</h3>
+                <p className="text-gray-500 mb-4">Add your first audio system to get started</p>
+                <Link
+                  to="/profile?tab=system"
+                  className="bg-electric-500 text-white px-6 py-2 rounded-lg hover:bg-electric-600 transition-colors"
+                >
+                  Add Audio System
+                </Link>
+              </div>
+            )}
           </div>
-        </div>
+        )}
+
+        {/* Saved Events Widget (Only show on overview tab) */}
+        {activeTab === 'overview' && (
+          <div className="mt-8 bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-white">Saved Events</h2>
+              <Link
+                to="/profile?tab=saved-events"
+                className="text-electric-400 hover:text-electric-300 text-sm font-medium flex items-center gap-1"
+              >
+                <span>View All</span>
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+            <SavedEvents limit={3} showActions={false} />
+          </div>
+        )}
+
+        {/* System Status (Only show on overview tab) */}
+        {activeTab === 'overview' && (
+          <div className="mt-8 flex justify-end">
+            <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-700/30 rounded-lg p-3">
+              <ServiceWorkerManager showFullInterface={false} />
+            </div>
+          </div>
+        )}
 
         {/* Competition Modals */}
         {showLogEventModal && (

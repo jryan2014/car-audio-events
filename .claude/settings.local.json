@@ -99,7 +99,12 @@
       "Bash(del create-stats-function.cjs)",
       "mcp__playwright__browser_tab_list",
       "mcp__playwright__browser_tab_new",
-      "Bash(psql:*)"
+      "Bash(psql:*)",
+      "Bash(set SUPABASE_ACCESS_TOKEN=sbp_1c13a87b3d24e7ceefec1bb66cc3ce7ef8ab4b81)",
+      "WebFetch(domain:mecacaraudio.com)",
+      "WebFetch(domain:iasca.com)",
+      "WebFetch(domain:www.termpro.com)",
+      "WebFetch(domain:www.basswars.org)"
     ],
     "deny": []
   },

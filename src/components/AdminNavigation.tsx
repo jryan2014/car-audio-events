@@ -88,6 +88,12 @@ const adminNavGroups: AdminNavGroup[] = [
         description: 'Membership management'
       },
       {
+        name: 'Teams',
+        href: '/admin/teams',
+        icon: Users,
+        description: 'Team management'
+      },
+      {
         name: 'Directory',
         href: '/admin/directory-manager',
         icon: Building2,

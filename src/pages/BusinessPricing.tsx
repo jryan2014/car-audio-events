@@ -6,6 +6,7 @@ import PricingPlans from '../components/PricingPlans';
 import LoadingSpinner from '../components/LoadingSpinner';
 import logger from '../utils/logger';
 import { useNotifications } from '../components/NotificationSystem';
+import SEO from '../components/SEO';
 
 export default function BusinessPricing() {
   const navigate = useNavigate();
@@ -77,6 +78,12 @@ export default function BusinessPricing() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+      <SEO 
+        title="Business Membership - Car Audio Retailers & Manufacturers"
+        description="Join Car Audio Events as a business member. Get premium event listings, priority support, directory features, and connect with thousands of car audio enthusiasts."
+        keywords="car audio business membership, retailer membership, manufacturer membership, shop directory, business advertising, car audio marketing"
+        url="https://caraudioevents.com/business"
+      />
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-electric-500/20 to-purple-500/20"></div>
