@@ -674,7 +674,13 @@ export default function Dashboard() {
           total_participants,
           points_earned,
           created_at,
-          score
+          score,
+          event_name,
+          event_id,
+          events (
+            id,
+            title
+          )
         `)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
@@ -684,7 +690,7 @@ export default function Dashboard() {
 
       const formattedResults = (data || []).map(result => ({
         id: result.id,
-        eventTitle: 'Competition Event',
+        eventTitle: result.event_name || result.events?.title || 'Non-CAE Event',
         category: result.category,
         position: result.placement || 0,
         totalParticipants: result.total_participants || 0,
