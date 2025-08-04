@@ -92,7 +92,7 @@ const TicketList: React.FC = () => {
       
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-white">
-          My Support Tickets
+          My Support <span className="text-electric-400">Tickets</span>
         </h1>
         <Link
           to="/support"
