@@ -253,7 +253,14 @@ export default function UserBilling() {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD'
-    }).format(amount); // Amount is already in dollars
+    }).format(amount); // Amount is already in dollars (for membership plans)
+  };
+
+  const formatTransactionAmount = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount / 100); // Convert cents to dollars (for transactions)
   };
 
   const formatCurrency = (amount: number) => {
@@ -674,7 +681,7 @@ export default function UserBilling() {
                           <p className={`font-medium ${
                             transaction.type === 'refund' ? 'text-red-400' : 'text-white'
                           }`}>
-                            {transaction.type === 'refund' ? '-' : ''}{formatAmount(transaction.amount)}
+                            {transaction.type === 'refund' ? '-' : ''}{formatTransactionAmount(transaction.amount)}
                           </p>
                         </div>
                       ))}
@@ -730,7 +737,7 @@ export default function UserBilling() {
                               </span>
                             </td>
                             <td className="py-3 px-2 text-right font-medium text-white">
-                              {transaction.type === 'refund' ? '-' : ''}{formatAmount(transaction.amount)}
+                              {transaction.type === 'refund' ? '-' : ''}{formatTransactionAmount(transaction.amount)}
                             </td>
                           </tr>
                         ))}
@@ -818,7 +825,7 @@ export default function UserBilling() {
                                   </span>
                                 </td>
                                 <td className="py-3 px-2 text-right font-medium text-white">
-                                  {formatAmount(transaction.amount)}
+                                  {formatTransactionAmount(transaction.amount)}
                                 </td>
                                 <td className="py-3 px-2 text-center">
                                   <button
