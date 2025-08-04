@@ -4,7 +4,7 @@ import {
   Plus, Target, Award, MapPin, CreditCard, Package, Clock, 
   DollarSign, FileText, Shield, Activity, Heart, Settings,
   ChevronRight, Home, BarChart3, Zap, Bell, X, CheckCircle, Crown,
-  Edit, Save, LogOut, Car
+  Edit, Save, LogOut, Car, Trash2
 } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
