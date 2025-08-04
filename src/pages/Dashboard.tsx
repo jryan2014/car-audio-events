@@ -452,10 +452,7 @@ export default function Dashboard() {
     try {
       const { data, error } = await supabase
         .from('user_audio_systems')
-        .select(`
-          *,
-          audio_components(*)
-        `)
+        .select('*')
         .eq('user_id', user.id)
         .order('is_primary', { ascending: false })
         .order('created_at', { ascending: false });
@@ -1951,42 +1948,46 @@ export default function Dashboard() {
                       </div>
                     </div>
 
-                    {system.audio_components && system.audio_components.length > 0 && (
+                    {system.components && system.components.length > 0 && (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {system.audio_components.map((component: any) => (
+                        {system.components.map((component: any) => (
                           <div key={component.id} className="bg-gray-700/30 p-4 rounded-lg">
                             <h4 className="text-white font-semibold capitalize mb-1">
                               {(component.category || '').replace('_', ' ')}
                             </h4>
                             <p className="text-electric-400 font-medium">{component.brand} {component.model}</p>
-                            {component.description && (
-                              <p className="text-gray-400 text-sm mt-1">{component.description}</p>
+                            {(component.notes || component.description) && (
+                              <p className="text-gray-400 text-sm mt-1">{component.notes || component.description}</p>
                             )}
                             <div className="mt-2 text-xs text-gray-500 space-y-1">
                               {(() => {
                                 const type = component.category;
+                                const specs = component.specifications || {};
                                 
-                                if (type === 'amplifier' && component.power_watts) {
+                                if (type === 'amplifier') {
                                   return (
                                     <div>
-                                      RMS: {component.power_watts}W
-                                      {component.impedance_ohms && ` • ${component.impedance_ohms}Ω`}
+                                      {specs.rms_watts && `RMS: ${specs.rms_watts}W`}
+                                      {specs.size && ` • ${specs.size}`}
                                     </div>
                                   );
                                 }
                                 if (type === 'subwoofer') {
                                   return (
                                     <div>
-                                      {component.power_watts && `${component.power_watts}W RMS`}
-                                      {component.impedance_ohms && ` • ${component.impedance_ohms}Ω`}
+                                      {specs.size && `${specs.size}"`} 
+                                      {specs.quantity && specs.quantity > 1 && ` x${specs.quantity}`}
+                                      {specs.rms_watts && ` • ${specs.rms_watts}W RMS`}
+                                      {specs.impedance && ` • ${specs.impedance}`}
                                     </div>
                                   );
                                 }
                                 if (type === 'speakers') {
                                   return (
                                     <div>
-                                      {component.power_watts && `${component.power_watts}W`}
-                                      {component.frequency_response && ` • ${component.frequency_response}`}
+                                      {specs.size && `${specs.size}"`}
+                                      {specs.quantity && ` x${specs.quantity}`}
+                                      {specs.type && ` • ${specs.type}`}
                                     </div>
                                   );
                                 }

@@ -427,10 +427,7 @@ export default function Profile() {
     try {
       const { data: systems, error } = await supabase
         .from('user_audio_systems')
-        .select(`
-          *,
-          components:audio_components(*)
-        `)
+        .select('*')
         .eq('user_id', user!.id)
         .order('is_primary', { ascending: false });
 
@@ -439,10 +436,10 @@ export default function Profile() {
         return;
       }
 
-      // Map the data to ensure components is always an array
+      // Ensure components array exists for each system
       setAudioSystems((systems || []).map(system => ({
         ...system,
-        components: system.components || []
+        components: Array.isArray(system.components) ? system.components : []
       })));
     } catch (error) {
       console.error('Error in loadAudioSystems:', error);
@@ -730,16 +727,29 @@ export default function Profile() {
     }
   };
 
-  const handleDeleteComponent = async (componentId: string) => {
+  const handleDeleteComponent = async (componentId: string, systemId: string) => {
     if (!confirm('Are you sure you want to delete this component?')) {
       return;
     }
 
     try {
+      // Find the system and update its components
+      const system = audioSystems.find(s => s.id === systemId);
+      if (!system) throw new Error('System not found');
+
+      // Filter out the component to delete
+      const updatedComponents = (system.components || []).filter(
+        (c: any) => c.id !== componentId
+      );
+
+      // Update the system with new components array
       const { error } = await supabase
-        .from('audio_components')
-        .delete()
-        .eq('id', componentId);
+        .from('user_audio_systems')
+        .update({
+          components: updatedComponents,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', systemId);
 
       if (error) throw error;
 
@@ -752,9 +762,17 @@ export default function Profile() {
   };
 
   const handleEditComponent = (component: any, systemId: string) => {
+    // Extract data from the JSONB structure
+    const specifications = component.specifications || {};
     setEditingComponent({
       ...component,
-      audio_system_id: systemId
+      audio_system_id: systemId,
+      power_watts: specifications.power_watts || '',
+      rms_watts: specifications.rms_watts || '',
+      impedance_ohms: specifications.impedance || '',
+      frequency_response: specifications.frequency_response || '',
+      size: specifications.size || '',
+      quantity: specifications.quantity || 1
     });
     setShowEditComponentModal(true);
   };
@@ -1916,7 +1934,7 @@ export default function Profile() {
                               <Edit className="h-4 w-4" />
                             </button>
                             <button 
-                              onClick={() => handleDeleteComponent(component.id)}
+                              onClick={() => handleDeleteComponent(component.id, system.id)}
                               className="text-gray-400 hover:text-red-400"
                               title="Delete component"
                             >
@@ -4084,20 +4102,43 @@ export default function Profile() {
             <form onSubmit={async (e) => {
               e.preventDefault();
               try {
+                // Find the system containing this component
+                const system = audioSystems.find(s => s.id === editingComponent.audio_system_id);
+                if (!system) throw new Error('System not found');
+
+                // Update the component in the components array
+                const updatedComponents = (system.components || []).map((c: any) => {
+                  if (c.id === editingComponent.id) {
+                    return {
+                      ...c,
+                      category: editingComponent.category,
+                      brand: editingComponent.brand,
+                      model: editingComponent.model,
+                      description: editingComponent.description,
+                      specifications: {
+                        ...c.specifications,
+                        power_watts: editingComponent.power_watts || null,
+                        rms_watts: editingComponent.rms_watts || null,
+                        impedance: editingComponent.impedance_ohms || null,
+                        frequency_response: editingComponent.frequency_response || null,
+                        size: editingComponent.size || null,
+                        quantity: editingComponent.quantity || 1
+                      },
+                      price: editingComponent.price ? parseFloat(editingComponent.price) : null,
+                      updated_at: new Date().toISOString()
+                    };
+                  }
+                  return c;
+                });
+
+                // Update the system with the modified components array
                 const { error } = await supabase
-                  .from('audio_components')
+                  .from('user_audio_systems')
                   .update({
-                    category: editingComponent.category,
-                    brand: editingComponent.brand,
-                    model: editingComponent.model,
-                    description: editingComponent.description,
-                    power_watts: editingComponent.power_watts,
-                    impedance_ohms: editingComponent.impedance_ohms ? parseFloat(editingComponent.impedance_ohms) : null,
-                    frequency_response: editingComponent.frequency_response,
-                    price: editingComponent.price ? parseFloat(editingComponent.price) : null,
+                    components: updatedComponents,
                     updated_at: new Date().toISOString()
                   })
-                  .eq('id', editingComponent.id);
+                  .eq('id', editingComponent.audio_system_id);
 
                 if (error) throw error;
 
