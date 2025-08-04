@@ -78,7 +78,49 @@ serve(async (req) => {
 
     let subscriptionResult
 
-    if (currentSub && currentSub.provider_subscription_id && currentSub.payment_provider === 'stripe') {
+    // Check if this is a downgrade to free plan
+    const isDowngradeToFree = newPlan.price === 0 && currentSub && currentSub.membership_plan?.price > 0
+
+    if (isDowngradeToFree) {
+      // Handle downgrade to free plan - cancel at period end
+      if (currentSub.provider_subscription_id && currentSub.payment_provider === 'stripe') {
+        // Cancel Stripe subscription at period end
+        const stripeResponse = await fetch(`https://api.stripe.com/v1/subscriptions/${currentSub.provider_subscription_id}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${stripeSecretKey}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            'cancel_at_period_end': 'true'
+          })
+        })
+
+        if (!stripeResponse.ok) {
+          const errorData = await stripeResponse.json()
+          console.error('Stripe subscription cancellation failed:', errorData)
+          throw new Error('Failed to cancel Stripe subscription')
+        }
+
+        subscriptionResult = await stripeResponse.json()
+      }
+
+      // Update our database to reflect the downgrade
+      await supabase
+        .from('subscriptions')
+        .update({
+          cancel_at_period_end: true,
+          cancellation_reason: 'Downgrade to free plan',
+          updated_at: new Date().toISOString(),
+          metadata: {
+            ...currentSub.metadata,
+            downgrade_to_plan_id: planId,
+            downgrade_scheduled: new Date().toISOString()
+          }
+        })
+        .eq('id', currentSub.id)
+
+    } else if (currentSub && currentSub.provider_subscription_id && currentSub.payment_provider === 'stripe') {
       // Update existing Stripe subscription with proration
       const stripeResponse = await fetch(`https://api.stripe.com/v1/subscriptions/${currentSub.provider_subscription_id}`, {
         method: 'POST',
@@ -163,17 +205,26 @@ serve(async (req) => {
         }
       })
 
-    // Queue email notification
+    // Queue email notification with appropriate message
+    const emailTemplateData = {
+      user_name: user.user_metadata?.name || userData.email,
+      new_plan_name: newPlan.name,
+      billing_period: billingPeriod
+    }
+
+    if (isDowngradeToFree) {
+      // Add downgrade-specific data
+      emailTemplateData.is_downgrade = true
+      emailTemplateData.current_period_end = currentSub.current_period_end
+      emailTemplateData.message = `Your Pro Competitor benefits will continue until ${new Date(currentSub.current_period_end).toLocaleDateString()}. After that, your account will switch to the free Competitor membership.`
+    }
+
     await supabase
       .from('email_queue')
       .insert({
         to_email: userData.email,
         template_id: 'plan_changed',
-        template_data: {
-          user_name: user.user_metadata?.name || userData.email,
-          new_plan_name: newPlan.name,
-          billing_period: billingPeriod
-        },
+        template_data: emailTemplateData,
         priority: 'normal'
       })
 

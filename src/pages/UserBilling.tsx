@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
 import { billingService, Subscription, Transaction, PaymentMethod, Invoice } from '../services/billingService';
 import { invoiceService } from '../services/invoiceService';
-import { PromoCodeInput } from '../components/PromoCodeInput';
+// import { PromoCodeInput } from '../components/PromoCodeInput'; // Removed - only for checkout
 import { FailedPaymentRetry } from '../components/FailedPaymentRetry';
 import { PlanUpgradeModal } from '../components/PlanUpgradeModal';
 import { formatDate } from '../utils/date-utils';
@@ -490,21 +490,7 @@ export default function UserBilling() {
                         </div>
                       )}
 
-                      {/* Promo Code Section */}
-                      {billingData.subscription.status === 'active' && !billingData.subscription.promo_code_id && (
-                        <div className="pt-4 border-t border-gray-700">
-                          <p className="text-gray-400 text-sm mb-2">Have a promo code?</p>
-                          <PromoCodeInput
-                            userId={user.id}
-                            onSuccess={(discount) => {
-                              setSuccess(`Promo code applied! You saved ${
-                                discount.type === 'percentage' 
-                                  ? `${discount.value}%` 
-                                  : formatAmount(discount.value)
-                              }`);
-                              loadBillingData();
-                            }}
-                            onError={(error) => setError(error)}
+                      {/* Removed promo code section - should only be at checkout */
                           />
                         </div>
                       )}

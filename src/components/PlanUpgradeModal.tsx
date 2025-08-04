@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Check, AlertCircle, Loader, ArrowUp, ArrowDown } from 'lucide-react';
 import { billingService } from '../services/billingService';
 import { supabase } from '../lib/supabase';
+import { formatDate } from '../utils/date-utils';
 
 interface MembershipPlan {
   id: string;
@@ -185,22 +186,29 @@ export const PlanUpgradeModal: React.FC<PlanUpgradeModalProps> = ({
               <Loader className="h-8 w-8 text-electric-500 animate-spin" />
             </div>
           ) : (() => {
+            const currentPlan = plans.find(p => p.id === currentPlanId);
+            const currentOrder = currentPlan?.display_order || 0;
+            
             const filteredPlans = plans.filter(plan => {
-              // Filter by billing period
-              if (plan.billing_period !== billingPeriod) return false;
-              
-              // Get current plan's display order
-              const currentPlan = plans.find(p => p.id === currentPlanId);
-              const currentOrder = currentPlan?.display_order || 0;
-              
-              // Only show plans that are upgrades (higher display_order)
-              // Special case: If user is on Competitor or Pro Competitor, show Retailer and Manufacturer
-              // Exclude Organization plan from upgrades (it's for different use case)
-              if (currentPlan?.name === 'Competitor' || currentPlan?.name === 'Pro Competitor') {
+              // Special handling for Pro Competitor - can downgrade to free Competitor
+              if (currentPlan?.name === 'Pro Competitor') {
+                // Show free Competitor as downgrade option
+                if (plan.name === 'Competitor' && plan.price === 0) {
+                  return true;
+                }
+                // Also show upgrade options: Retailer and Manufacturer
                 return plan.name === 'Retailer' || plan.name === 'Manufacturer';
               }
               
-              // For other plans, show upgrades but exclude Organization
+              // Filter by billing period for paid plans
+              if (plan.price > 0 && plan.billing_period !== billingPeriod) return false;
+              
+              // If user is on free Competitor, show Pro Competitor, Retailer and Manufacturer
+              if (currentPlan?.name === 'Competitor') {
+                return plan.name === 'Pro Competitor' || plan.name === 'Retailer' || plan.name === 'Manufacturer';
+              }
+              
+              // For other plans, show upgrades but exclude Organization (it's for different use case)
               return plan.display_order > currentOrder && plan.name !== 'Organization';
             });
 
@@ -303,20 +311,39 @@ export const PlanUpgradeModal: React.FC<PlanUpgradeModalProps> = ({
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between text-gray-300">
                   <span>New plan ({selectedPlan.name})</span>
-                  <span>{formatAmount(selectedPlan.price)}/{billingPeriod}</span>
+                  <span>{selectedPlan.price === 0 ? 'Free' : `${formatAmount(selectedPlan.price)}/${billingPeriod}`}</span>
                 </div>
-                <div className="flex justify-between text-gray-300">
-                  <span>{proration.description}</span>
-                  <span className={proration.isUpgrade ? 'text-white' : 'text-green-400'}>
-                    {proration.isUpgrade ? '+' : '-'}{formatAmount(proration.amount)}
-                  </span>
-                </div>
-                <div className="border-t border-gray-600 pt-2 flex justify-between font-medium">
-                  <span className="text-white">Due today</span>
-                  <span className={proration.isUpgrade ? 'text-white' : 'text-green-400'}>
-                    {proration.isUpgrade ? formatAmount(proration.amount) : '$0.00'}
-                  </span>
-                </div>
+                
+                {/* Special message for downgrade to free */}
+                {selectedPlan.name === 'Competitor' && selectedPlan.price === 0 && (
+                  <div className="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                    <p className="text-yellow-400 text-sm">
+                      <strong>Important:</strong> Your Pro Competitor benefits will continue until {formatDate(currentSubscription.current_period_end)}. 
+                      After that, your account will automatically switch to the free Competitor membership.
+                    </p>
+                    <p className="text-yellow-400 text-sm mt-2">
+                      No refunds will be issued for the remaining time on your current plan.
+                    </p>
+                  </div>
+                )}
+                
+                {/* Normal proration for upgrades */}
+                {proration.isUpgrade && (
+                  <>
+                    <div className="flex justify-between text-gray-300">
+                      <span>{proration.description}</span>
+                      <span className="text-white">
+                        +{formatAmount(proration.amount)}
+                      </span>
+                    </div>
+                    <div className="border-t border-gray-600 pt-2 flex justify-between font-medium">
+                      <span className="text-white">Due today</span>
+                      <span className="text-white">
+                        {formatAmount(proration.amount)}
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}
