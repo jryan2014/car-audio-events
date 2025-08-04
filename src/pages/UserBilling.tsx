@@ -253,7 +253,7 @@ export default function UserBilling() {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD'
-    }).format(amount / 100); // Convert cents to dollars
+    }).format(amount); // Amount is already in dollars
   };
 
   const formatCurrency = (amount: number) => {
