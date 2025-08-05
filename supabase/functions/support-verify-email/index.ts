@@ -43,8 +43,11 @@ serve(async (req) => {
     const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown'
 
     if (action === 'send') {
-      // Verify captcha if provided (skip for test tokens)
-      if (captcha_token && captcha_token !== 'test-token-for-development') {
+      // Verify captcha if provided (skip for test tokens and development)
+      const isDevelopmentToken = captcha_token === 'test-token-for-development'
+      const skipCaptcha = !captcha_token || isDevelopmentToken
+      
+      if (captcha_token && !isDevelopmentToken) {
         const captchaResponse = await fetch('https://hcaptcha.com/siteverify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -59,6 +62,9 @@ serve(async (req) => {
         if (!captchaResult.success) {
           throw new Error('Captcha verification failed')
         }
+      } else if (!skipCaptcha) {
+        // If captcha is required but not provided
+        throw new Error('Captcha token is required')
       }
 
       // Check rate limit

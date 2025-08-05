@@ -41,10 +41,15 @@ const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
     setError('');
     
     try {
+      // Use development token if no real captcha token is available
+      const tokenToUse = captchaToken || (import.meta.env.DEV ? 'test-token-for-development' : '');
+      
+      console.log('Sending verification email with token:', tokenToUse ? 'present' : 'missing');
+      
       const { data, error } = await supabase.functions.invoke('support-verify-email', {
         body: {
           email,
-          captcha_token: captchaToken,
+          captcha_token: tokenToUse,
           action: 'send'
         }
       });
