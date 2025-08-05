@@ -83,7 +83,6 @@ export default function EditUserEnhanced() {
     membership_plan: 'free_competitor' as EnhancedUser['membership_plan'],
     permissions: [] as EnhancedUser['permissions'],
     status: 'active' as EnhancedUser['status'],
-    location: '',
     address: '',
     city: '',
     state: '',
@@ -229,7 +228,6 @@ export default function EditUserEnhanced() {
         membership_plan: membershipPlan,
         permissions: permissions,
         status: userData.status || 'active',
-        location: userData.location || '',
         address: userData.address || '',
         city: userData.city || '',
         state: userData.state || '',
@@ -304,7 +302,6 @@ export default function EditUserEnhanced() {
         last_name: formData.last_name,
         membership_type: dbMembershipType, // Store the mapped value
         status: formData.status,
-        location: formData.location || null,
         address: formData.address || null,
         city: formData.city || null,
         state: formData.state || null,
@@ -734,16 +731,6 @@ export default function EditUserEnhanced() {
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-gray-400 text-sm mb-2">Location (General)</label>
-                      <input
-                        type="text"
-                        value={formData.location}
-                        onChange={(e) => handleInputChange('location', e.target.value)}
-                        placeholder="City, State (for display)"
-                        className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                      />
-                    </div>
 
                     {(formData.membership_plan === 'retailer' || 
                       formData.membership_plan === 'manufacturer' || 
