@@ -165,7 +165,8 @@ export default function EditUserEnhanced() {
       // Load subscription data
       let subscriptionData = null;
       try {
-        subscriptionData = await billingService.getSubscription(userId);
+        const billingOverview = await billingService.getUserBillingOverview(userId);
+        subscriptionData = billingOverview.subscription;
       } catch (err) {
         console.log('No subscription data found');
       }
@@ -291,9 +292,11 @@ export default function EditUserEnhanced() {
       setError(null);
 
       // Map membership plan to database membership_type field
-      let dbMembershipType = formData.membership_plan;
+      let dbMembershipType: string = formData.membership_plan;
       if (formData.membership_plan === 'free_competitor') {
         dbMembershipType = 'competitor';
+      } else if (formData.membership_plan === 'pro_competitor') {
+        dbMembershipType = 'pro_competitor';
       }
       
       const updateData: any = {
@@ -795,9 +798,9 @@ export default function EditUserEnhanced() {
                             checked={formData.permissions.includes('admin')}
                             onChange={(e) => {
                               const newPermissions = e.target.checked 
-                                ? [...formData.permissions, 'admin']
+                                ? [...formData.permissions, 'admin' as const]
                                 : formData.permissions.filter(p => p !== 'admin');
-                              setFormData(prev => ({ ...prev, permissions: newPermissions }));
+                              setFormData(prev => ({ ...prev, permissions: newPermissions as EnhancedUser['permissions'] }));
                             }}
                             className="rounded border-gray-600 bg-gray-700 text-electric-500"
                           />
@@ -809,9 +812,9 @@ export default function EditUserEnhanced() {
                             checked={formData.permissions.includes('support')}
                             onChange={(e) => {
                               const newPermissions = e.target.checked 
-                                ? [...formData.permissions, 'support']
+                                ? [...formData.permissions, 'support' as const]
                                 : formData.permissions.filter(p => p !== 'support');
-                              setFormData(prev => ({ ...prev, permissions: newPermissions }));
+                              setFormData(prev => ({ ...prev, permissions: newPermissions as EnhancedUser['permissions'] }));
                             }}
                             className="rounded border-gray-600 bg-gray-700 text-electric-500"
                           />
@@ -823,9 +826,9 @@ export default function EditUserEnhanced() {
                             checked={formData.permissions.includes('moderator')}
                             onChange={(e) => {
                               const newPermissions = e.target.checked 
-                                ? [...formData.permissions, 'moderator']
+                                ? [...formData.permissions, 'moderator' as const]
                                 : formData.permissions.filter(p => p !== 'moderator');
-                              setFormData(prev => ({ ...prev, permissions: newPermissions }));
+                              setFormData(prev => ({ ...prev, permissions: newPermissions as EnhancedUser['permissions'] }));
                             }}
                             className="rounded border-gray-600 bg-gray-700 text-electric-500"
                           />
@@ -863,7 +866,7 @@ export default function EditUserEnhanced() {
                       </select>
                     </div>
 
-                    {formData.membership_type === 'competitor' && (
+                    {(formData.membership_plan === 'free_competitor' || formData.membership_plan === 'pro_competitor') && (
                       <>
                         <div>
                           <label className="block text-gray-400 text-sm mb-2">Competition Type</label>
