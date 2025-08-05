@@ -574,8 +574,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         // Regular email/password registration - use edge function to avoid timeouts
         console.log('🚀 Using edge function to register:', userData.email.trim());
+        console.log('Full userData object:', userData);
         
         // Call our custom edge function instead of Supabase signUp
+        console.log('Calling edge function with supabase client:', supabase);
+        
         const { data, error: registerError } = await supabase.functions.invoke('register-user', {
           body: {
             email: userData.email.trim(),
@@ -594,11 +597,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('📧 Edge function response:', { data, error: registerError });
 
         if (registerError) {
+          console.error('Edge function error:', registerError);
+          // Try to extract more details from the error
+          if (registerError instanceof Error) {
+            console.error('Error details:', {
+              message: registerError.message,
+              stack: registerError.stack,
+              // Check if it's a FunctionsHttpError with response data
+              response: (registerError as any).response,
+              data: (registerError as any).data,
+              status: (registerError as any).status
+            });
+          }
           throw registerError;
         }
 
-        if (!data?.success || !data?.user) {
-          throw new Error(data?.error || 'User creation failed');
+        if (!data) {
+          throw new Error('No response from registration service');
+        }
+
+        // Check if the edge function returned an error
+        if (data.error) {
+          console.error('Registration error from edge function:', data.error);
+          throw new Error(data.error);
+        }
+
+        if (!data.success || !data.user) {
+          throw new Error('User creation failed');
         }
         
         // Edge function returns user data differently

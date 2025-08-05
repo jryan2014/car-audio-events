@@ -280,6 +280,15 @@ export default function Register() {
     setCaptchaError('');
     setDebugInfo('✅ Captcha completed successfully.');
   };
+  
+  // Auto-complete captcha in development
+  useEffect(() => {
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      console.log('🔧 Development mode: Auto-completing captcha');
+      setCaptchaToken('test-token-for-development');
+      setDebugInfo('🔧 Development mode: Captcha auto-completed');
+    }
+  }, []);
 
   const handleCaptchaError = (err: any) => {
     // Check for specific mobile issues
@@ -914,38 +923,53 @@ export default function Register() {
               </div>
 
               {/* Captcha */}
-              <div className="flex flex-col items-center">
-                <div className="w-full max-w-sm">
-                  <p className="text-sm text-gray-400 text-center mb-2">
-                    Please complete the security check below:
-                  </p>
-                  <HCaptcha
-                    onVerify={(token) => {
-                      setCaptchaLoading(false);
-                      handleCaptchaVerify(token);
-                    }}
-                    onError={() => {
-                      setCaptchaLoading(false);
-                      handleCaptchaError('script-error');
-                    }}
-                    onExpire={() => {
-                      setCaptchaToken(null);
-                      setDebugInfo('⏰ Captcha expired. Please complete it again.');
-                    }}
-                    ref={captchaRef}
-                    theme="dark"
-                    size="normal"
-                  />
-                  {captchaError && (
-                    <div className="mt-3 p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
-                      <p className="text-sm text-red-400">{captchaError}</p>
+              {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? (
+                <div className="flex flex-col items-center">
+                  <div className="w-full max-w-sm">
+                    <div className="p-4 bg-yellow-500/20 border border-yellow-500/50 rounded-lg text-center">
+                      <p className="text-sm text-yellow-300">
+                        🔧 Development Mode: Captcha auto-completed
+                      </p>
                       <p className="text-xs text-gray-400 mt-1">
-                        If you're having trouble, try refreshing the page or using a different browser.
+                        HCaptcha doesn't work on localhost
                       </p>
                     </div>
-                  )}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="flex flex-col items-center">
+                  <div className="w-full max-w-sm">
+                    <p className="text-sm text-gray-400 text-center mb-2">
+                      Please complete the security check below:
+                    </p>
+                    <HCaptcha
+                      onVerify={(token) => {
+                        setCaptchaLoading(false);
+                        handleCaptchaVerify(token);
+                      }}
+                      onError={() => {
+                        setCaptchaLoading(false);
+                        handleCaptchaError('script-error');
+                      }}
+                      onExpire={() => {
+                        setCaptchaToken(null);
+                        setDebugInfo('⏰ Captcha expired. Please complete it again.');
+                      }}
+                      ref={captchaRef}
+                      theme="dark"
+                      size="normal"
+                    />
+                    {captchaError && (
+                      <div className="mt-3 p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
+                        <p className="text-sm text-red-400">{captchaError}</p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          If you're having trouble, try refreshing the page or using a different browser.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         );
