@@ -202,13 +202,21 @@ export default function NotificationDetail() {
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-6">
-          <Link
-            to="/notifications"
-            className="inline-flex items-center space-x-2 text-gray-400 hover:text-white mb-4"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span>Back to Notifications</span>
-          </Link>
+          <div className="flex items-center justify-between">
+            <Link
+              to="/dashboard"
+              className="inline-flex items-center space-x-2 text-gray-400 hover:text-white"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>Back to Dashboard</span>
+            </Link>
+            <Link
+              to="/notifications"
+              className="text-electric-400 hover:text-electric-300"
+            >
+              View All Notifications
+            </Link>
+          </div>
         </div>
 
         {/* Notification Detail */}

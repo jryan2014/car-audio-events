@@ -19,7 +19,8 @@ import {
   MoreVertical,
   Info,
   CheckCircle,
-  AlertTriangle
+  AlertTriangle,
+  ArrowLeft
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { 
@@ -399,6 +400,15 @@ export default function NotificationHistory() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-violet-900">
       <div className="max-w-6xl mx-auto px-4 py-8">
+        {/* Back to Dashboard Link */}
+        <Link
+          to="/dashboard"
+          className="inline-flex items-center text-gray-400 hover:text-white mb-6 transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Dashboard
+        </Link>
+
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">

@@ -865,91 +865,29 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Tab Navigation - Mobile Optimized */}
-        <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl mb-6 overflow-hidden">
-          {/* Mobile Tab Navigation - Horizontal Scroll */}
-          <nav className="lg:hidden">
-            <div className="flex overflow-x-auto scrollbar-hide p-2 gap-2">
-              {[
-                { id: 'overview', icon: Home, label: 'Overview' },
-                { id: 'profile', icon: User, label: 'Profile' },
-                { id: 'competitions', icon: Trophy, label: 'Competitions' },
-                { id: 'billing', icon: CreditCard, label: 'Billing' },
-                { id: 'audio-system', icon: Zap, label: 'Audio System' }
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
-                    activeTab === tab.id
-                      ? 'bg-electric-500 text-white shadow-lg'
-                      : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
-                  }`}
-                >
-                  <tab.icon className="h-4 w-4" />
-                  <span className="text-sm">{tab.label}</span>
-                </button>
-              ))}
-            </div>
-          </nav>
-
-          {/* Desktop Tab Navigation */}
-          <nav className="hidden lg:flex flex-wrap p-2 gap-2">
-            <button
-              onClick={() => setActiveTab('overview')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                activeTab === 'overview'
-                  ? 'bg-electric-500 text-white'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
-              }`}
-            >
-              <Home className="h-4 w-4" />
-              Overview
-            </button>
-            <button
-              onClick={() => setActiveTab('profile')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                activeTab === 'profile'
-                  ? 'bg-electric-500 text-white'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
-              }`}
-            >
-              <User className="h-4 w-4" />
-              Profile
-            </button>
-            <button
-              onClick={() => setActiveTab('competitions')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                activeTab === 'competitions'
-                  ? 'bg-electric-500 text-white'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
-              }`}
-            >
-              <Trophy className="h-4 w-4" />
-              Competitions
-            </button>
-            <button
-              onClick={() => setActiveTab('billing')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                activeTab === 'billing'
-                  ? 'bg-electric-500 text-white'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
-              }`}
-            >
-              <CreditCard className="h-4 w-4" />
-              Billing
-            </button>
-            <button
-              onClick={() => setActiveTab('audio-system')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                activeTab === 'audio-system'
-                  ? 'bg-electric-500 text-white'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
-              }`}
-            >
-              <Zap className="h-4 w-4" />
-              Audio System
-            </button>
+        {/* Tab Navigation - Impressive Mobile Design */}
+        <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl mb-6">
+          <nav className="flex p-2">
+            {[
+              { id: 'overview', icon: Home, label: 'Overview' },
+              { id: 'profile', icon: User, label: 'Profile' },
+              { id: 'competitions', icon: Trophy, label: 'Competitions' },
+              { id: 'billing', icon: CreditCard, label: 'Billing' },
+              { id: 'audio-system', icon: Zap, label: 'Audio' }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-3 px-2 sm:px-4 rounded-lg font-medium transition-all duration-200 ${
+                  activeTab === tab.id
+                    ? 'bg-electric-500 text-white shadow-lg transform scale-105'
+                    : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+                }`}
+              >
+                <tab.icon className={`${activeTab === tab.id ? 'h-5 w-5' : 'h-4 w-4'} transition-all`} />
+                <span className="text-xs sm:text-sm mt-1 sm:mt-0">{tab.label}</span>
+              </button>
+            ))}
           </nav>
         </div>
 

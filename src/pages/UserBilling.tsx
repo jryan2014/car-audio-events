@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { CreditCard, Calendar, Download, AlertCircle, Plus, Trash2, Check, X, Pause, Play, Package, Clock, DollarSign, FileText, Tag, ChevronRight, ChevronDown, Shield, RefreshCw, Loader } from 'lucide-react';
+import { CreditCard, Calendar, Download, AlertCircle, Plus, Trash2, Check, X, Pause, Play, Package, Clock, DollarSign, FileText, Tag, ChevronRight, ChevronDown, Shield, RefreshCw, Loader, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
 import { billingService, Subscription, Transaction, PaymentMethod, Invoice } from '../services/billingService';
@@ -281,6 +281,15 @@ export default function UserBilling() {
   const content = (
     <div className="min-h-screen py-8">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Back to Dashboard Link */}
+          <Link
+            to="/dashboard"
+            className="inline-flex items-center text-gray-400 hover:text-white mb-6 transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Dashboard
+          </Link>
+
           {/* Page Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-white">Billing & Subscription</h1>

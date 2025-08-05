@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { User, MapPin, Phone, Building, AlertTriangle, CheckCircle, Loader } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { User, MapPin, Phone, Building, AlertTriangle, CheckCircle, Loader, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { COUNTRIES, getCountryByCode, getStatesForCountry, getPostalCodeLabel, getStateLabel, validatePostalCode } from '../data/countries';
@@ -217,6 +217,15 @@ export default function CompleteProfile() {
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       <div className="container mx-auto px-4 py-8 max-w-2xl">
+        {/* Back to Dashboard Link */}
+        <Link
+          to="/dashboard"
+          className="inline-flex items-center text-gray-400 hover:text-white mb-6 transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Dashboard
+        </Link>
+
         <div className="bg-gray-800 rounded-lg shadow-xl p-8">
           <div className="mb-8 text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-electric-500 rounded-full mb-4">
