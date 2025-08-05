@@ -89,6 +89,7 @@ export default function Register() {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaError, setCaptchaError] = useState('');
   const [captchaLoading, setCaptchaLoading] = useState(true);
+  const [captchaUsed, setCaptchaUsed] = useState(false);
   const [membershipPlans, setMembershipPlans] = useState<MembershipPlan[]>([]);
   const [plansLoading, setPlansLoading] = useState(true);
   const [selectedPlanDetails, setSelectedPlanDetails] = useState<MembershipPlan | null>(null);
@@ -278,6 +279,7 @@ export default function Register() {
   const handleCaptchaVerify = (token: string) => {
     setCaptchaToken(token);
     setCaptchaError('');
+    setCaptchaUsed(false); // Reset the used flag when new captcha is completed
     setDebugInfo('✅ Captcha completed successfully.');
   };
   
@@ -286,6 +288,7 @@ export default function Register() {
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
       console.log('🔧 Development mode: Auto-completing captcha');
       setCaptchaToken('test-token-for-development');
+      setCaptchaUsed(false); // In dev, we can reuse the test token
       setDebugInfo('🔧 Development mode: Captcha auto-completed');
     }
   }, []);
@@ -330,6 +333,12 @@ export default function Register() {
     setError('');
     setDebugInfo('🎯 Registration form submitted');
     
+    // Prevent double submission
+    if (isLoading) {
+      console.log('Registration already in progress, ignoring duplicate submission');
+      return;
+    }
+    
     // Check rate limiting
     const clientId = getClientIdentifier(formData.email);
     if (registerRateLimiter.isLimited(clientId)) {
@@ -370,9 +379,25 @@ export default function Register() {
       return;
     }
     
+    // Check if captcha has already been used
+    if (captchaUsed) {
+      setCaptchaError('This captcha has already been used. Please complete it again.');
+      setDebugInfo('❌ Captcha token already used.');
+      // Reset the captcha widget
+      if (captchaRef.current && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        try {
+          captchaRef.current.reset();
+        } catch (e) {
+          console.warn('Could not reset captcha:', e);
+        }
+      }
+      return;
+    }
+    
     setIsLoading(true);
     setDebugInfo('🔄 Verifying captcha...');
     setCaptchaError('');
+    setCaptchaUsed(true); // Mark captcha as used to prevent reuse
 
     try {
       // Step 1: Verify hCaptcha token with our backend
@@ -440,9 +465,11 @@ export default function Register() {
       
       // Only show specific messages for safe cases
       if (error?.message) {
-        if (error.message.includes('hCaptcha')) {
-          errorMessage = 'Bot verification failed. Please try the captcha again.';
-          debugMessage += '\n\n💡 hCaptcha verification failed';
+        if (error.message.includes('hCaptcha') || error.message.includes('Captcha') || error.message.includes('already-seen-response')) {
+          errorMessage = 'Bot verification failed. Please complete the captcha again.';
+          debugMessage += '\n\n💡 hCaptcha verification failed - token already used';
+          // Clear the captcha error flag
+          setCaptchaError('');
         } else if (error.message.includes('already registered') || error.message.includes('already exists')) {
           errorMessage = 'An account with this email already exists. Please try logging in instead.';
           debugMessage += '\n\n💡 User already exists';
@@ -464,8 +491,16 @@ export default function Register() {
       
       // Reset captcha on failed registration
       setCaptchaToken(null);
-      // Don't try to reset captcha if it's already been removed/failed
-      // This prevents the "invalid-captcha-id" error
+      setCaptchaUsed(false); // Reset the used flag
+      // Reset the actual HCaptcha widget so user can complete it again
+      if (captchaRef.current && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        try {
+          captchaRef.current.reset();
+          setDebugInfo(debugMessage + '\n\n🔄 Captcha has been reset. Please complete it again.');
+        } catch (resetError) {
+          console.warn('Could not reset captcha:', resetError);
+        }
+      }
     } finally {
       setIsLoading(false);
     }
