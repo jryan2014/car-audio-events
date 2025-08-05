@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { ActivityLogger } from '../utils/activityLogger';
 import { useNotifications } from '../components/NotificationSystem';
 import { getMembershipDisplayName, getMembershipBadgeStyles } from '../utils/membershipUtils';
+import ResendVerificationEmail from '../components/admin/ResendVerificationEmail';
 
 const USERS_PER_PAGE = 25;
 
@@ -744,6 +745,11 @@ export default function AdminUsers() {
               <Ban className="h-8 w-8 text-red-500" />
             </div>
           </div>
+        </div>
+
+        {/* Resend Verification Email */}
+        <div className="mb-8">
+          <ResendVerificationEmail />
         </div>
 
         {/* Users Table */}

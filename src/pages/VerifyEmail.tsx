@@ -24,41 +24,18 @@ export default function VerifyEmail() {
 
   const verifyEmail = async () => {
     try {
-      // Verify the token
-      const { data: tokenData, error: tokenError } = await supabase
-        .from('email_verification_tokens')
-        .select('*')
-        .eq('token', token)
-        .eq('type', 'email_verification')
-        .single();
+      // Call the edge function to verify the token
+      const { data, error } = await supabase.functions.invoke('verify-email-link', {
+        body: { token }
+      });
 
-      if (tokenError || !tokenData) {
-        throw new Error('Invalid or expired verification link');
+      if (error) {
+        throw error;
       }
 
-      // Check if token is expired
-      if (new Date(tokenData.expires_at) < new Date()) {
-        throw new Error('This verification link has expired');
+      if (!data?.success) {
+        throw new Error(data?.error || 'Failed to verify email');
       }
-
-      // Update user's email verification status
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({ 
-          verification_status: 'verified',
-          email_verified_at: new Date().toISOString()
-        })
-        .eq('id', tokenData.user_id);
-
-      if (updateError) {
-        throw new Error('Failed to verify email');
-      }
-
-      // Delete the used token
-      await supabase
-        .from('email_verification_tokens')
-        .delete()
-        .eq('token', token);
 
       setVerified(true);
       
