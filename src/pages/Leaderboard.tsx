@@ -415,7 +415,7 @@ const Leaderboard: React.FC = () => {
 
         {/* View Mode Tabs */}
         <div className="flex justify-center mb-8">
-          <div className="bg-gray-800/50 rounded-lg p-1 flex space-x-1">
+          <div className="bg-gray-800/50 rounded-lg p-1 flex flex-wrap justify-center gap-1 sm:flex-nowrap sm:space-x-1">
             {[
               { key: 'rankings', label: 'Rankings', icon: Trophy },
               { key: 'charts', label: 'Analytics', icon: BarChart3 },
@@ -424,13 +424,13 @@ const Leaderboard: React.FC = () => {
               <button
                 key={key}
                 onClick={() => setViewMode(key as any)}
-                className={`px-6 py-3 rounded-md flex items-center space-x-2 transition-all ${
+                className={`px-3 sm:px-6 py-2 sm:py-3 rounded-md flex items-center space-x-1 sm:space-x-2 transition-all text-sm sm:text-base ${
                   viewMode === key
                     ? 'bg-electric-500 text-white shadow-lg'
                     : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
                 }`}
               >
-                <Icon className="h-5 w-5" />
+                <Icon className="h-4 sm:h-5 w-4 sm:w-5" />
                 <span>{label}</span>
               </button>
             ))}
@@ -439,12 +439,13 @@ const Leaderboard: React.FC = () => {
 
         {/* Filters */}
         <div className="mb-8">
-          <div className="flex flex-wrap gap-4 items-center justify-between">
-            <div className="flex flex-wrap gap-4">
+          <div className="flex flex-col gap-4">
+            {/* Filter Dropdowns */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <select
                 value={filters.organization}
                 onChange={(e) => setFilters({ ...filters, organization: e.target.value })}
-                className="bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-electric-500"
+                className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-electric-500"
               >
                 {organizations.map(org => (
                   <option key={org.id} value={org.id}>{org.name}</option>
@@ -454,7 +455,7 @@ const Leaderboard: React.FC = () => {
               <select
                 value={filters.division}
                 onChange={(e) => setFilters({ ...filters, division: e.target.value })}
-                className="bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-electric-500"
+                className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-electric-500"
               >
                 {availableDivisions.map(division => (
                   <option key={division} value={division}>
@@ -466,7 +467,7 @@ const Leaderboard: React.FC = () => {
               <select
                 value={filters.class}
                 onChange={(e) => setFilters({ ...filters, class: e.target.value })}
-                className="bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-electric-500"
+                className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-electric-500"
               >
                 {availableClasses.map(cls => (
                   <option key={cls} value={cls}>
@@ -478,7 +479,7 @@ const Leaderboard: React.FC = () => {
               <select
                 value={filters.season}
                 onChange={(e) => setFilters({ ...filters, season: e.target.value })}
-                className="bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-electric-500"
+                className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-electric-500"
               >
                 <option value="2025">2025 Season</option>
                 <option value="2024">2024 Season</option>
@@ -486,10 +487,11 @@ const Leaderboard: React.FC = () => {
               </select>
             </div>
 
+            {/* Log Results Button */}
             {user && (
               <button
                 onClick={() => setShowLogResultsModal(true)}
-                className="bg-electric-500 hover:bg-electric-600 text-white px-6 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+                className="w-full sm:w-auto bg-electric-500 hover:bg-electric-600 text-white px-6 py-2 rounded-lg flex items-center justify-center space-x-2 transition-colors"
               >
                 <Trophy className="h-5 w-5" />
                 <span>Log Results</span>

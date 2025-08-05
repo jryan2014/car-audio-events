@@ -59,6 +59,16 @@
   display: none; /* Chrome, Safari and Opera */
 }
 
+/* Utility class for hiding scrollbars */
+.scrollbar-hide {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
+}
+
 .ad-container {
   position: relative;
   display: block;
