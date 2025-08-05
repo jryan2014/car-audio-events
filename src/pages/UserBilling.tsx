@@ -597,7 +597,7 @@ export default function UserBilling() {
                       <div>
                         <p className="text-gray-400 text-sm">Total Spent</p>
                         <p className="text-2xl font-bold text-white">
-                          {formatAmount(
+                          {formatTransactionAmount(
                             billingData?.transactions
                               .filter(t => t.type === 'payment' && t.status === 'succeeded')
                               .reduce((sum, t) => sum + t.amount, 0) || 0
