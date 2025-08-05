@@ -38,34 +38,43 @@ serve(async (req) => {
     )
 
     const { email, captcha_token, code, action } = await req.json() as RequestBody
+    
+    console.log('Request received:', { email, action, captcha_token: captcha_token ? 'present' : 'missing' })
 
-    // Get IP address for rate limiting
-    const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown'
+    // Get IP address for rate limiting (take first IP if multiple)
+    const forwardedFor = req.headers.get('x-forwarded-for')
+    const ip = forwardedFor 
+      ? forwardedFor.split(',')[0].trim() 
+      : req.headers.get('x-real-ip') || 'unknown'
 
     if (action === 'send') {
-      // Verify captcha if provided (skip for test tokens and development)
+      // Check if this is a development/test scenario
       const isDevelopmentToken = captcha_token === 'test-token-for-development'
-      const skipCaptcha = !captcha_token || isDevelopmentToken
       
+      // Only verify real captcha tokens
       if (captcha_token && !isDevelopmentToken) {
-        const captchaResponse = await fetch('https://hcaptcha.com/siteverify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({
-            secret: Deno.env.get('HCAPTCHA_SECRET_KEY') ?? '',
-            response: captcha_token,
-            remoteip: ip,
-          }),
-        })
+        const hcaptchaSecret = Deno.env.get('HCAPTCHA_SECRET_KEY')
+        if (!hcaptchaSecret) {
+          console.warn('HCAPTCHA_SECRET_KEY not configured - skipping captcha verification')
+        } else {
+          const captchaResponse = await fetch('https://hcaptcha.com/siteverify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+              secret: hcaptchaSecret,
+              response: captcha_token,
+              remoteip: ip,
+            }),
+          })
 
-        const captchaResult = await captchaResponse.json()
-        if (!captchaResult.success) {
-          throw new Error('Captcha verification failed')
+          const captchaResult = await captchaResponse.json()
+          if (!captchaResult.success) {
+            console.error('Captcha verification failed:', captchaResult)
+            throw new Error('Captcha verification failed')
+          }
         }
-      } else if (!skipCaptcha) {
-        // If captcha is required but not provided
-        throw new Error('Captcha token is required')
       }
+      // No else clause - we allow missing captcha for development
 
       // Check rate limit
       try {
