@@ -88,6 +88,7 @@ export default function EditUserEnhanced() {
     city: '',
     state: '',
     zip: '',
+    country: '',
     phone: '',
     company_name: '',
     competition_type: 'none' as EnhancedUser['competition_type'],
@@ -233,6 +234,7 @@ export default function EditUserEnhanced() {
         city: userData.city || '',
         state: userData.state || '',
         zip: userData.zip || '',
+        country: userData.country || 'US',
         phone: userData.phone || '',
         company_name: userData.company_name || '',
         competition_type: userData.competition_type || 'none',
@@ -307,6 +309,7 @@ export default function EditUserEnhanced() {
         city: formData.city || null,
         state: formData.state || null,
         zip: formData.zip || null,
+        country: formData.country || null,
         phone: formData.phone || null,
         company_name: formData.company_name || null,
         competition_type: formData.competition_type,
@@ -673,17 +676,73 @@ export default function EditUserEnhanced() {
                       </div>
                     </div>
 
-                    <div>
-                      <label className="block text-gray-400 text-sm mb-2">Location</label>
+                    <div className="md:col-span-2">
+                      <label className="block text-gray-400 text-sm mb-2">Street Address</label>
                       <div className="relative">
                         <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                         <input
                           type="text"
-                          value={formData.location}
-                          onChange={(e) => handleInputChange('location', e.target.value)}
+                          value={formData.address}
+                          onChange={(e) => handleInputChange('address', e.target.value)}
+                          placeholder="123 Main Street"
                           className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
                         />
                       </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2">City</label>
+                      <input
+                        type="text"
+                        value={formData.city}
+                        onChange={(e) => handleInputChange('city', e.target.value)}
+                        placeholder="City"
+                        className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2">State</label>
+                      <input
+                        type="text"
+                        value={formData.state}
+                        onChange={(e) => handleInputChange('state', e.target.value)}
+                        placeholder="State / Province"
+                        className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2">ZIP / Postal Code</label>
+                      <input
+                        type="text"
+                        value={formData.zip}
+                        onChange={(e) => handleInputChange('zip', e.target.value)}
+                        placeholder="12345"
+                        className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2">Country</label>
+                      <input
+                        type="text"
+                        value={formData.country || 'US'}
+                        onChange={(e) => handleInputChange('country', e.target.value)}
+                        placeholder="US"
+                        className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2">Location (General)</label>
+                      <input
+                        type="text"
+                        value={formData.location}
+                        onChange={(e) => handleInputChange('location', e.target.value)}
+                        placeholder="City, State (for display)"
+                        className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                      />
                     </div>
 
                     {(formData.membership_plan === 'retailer' || 
