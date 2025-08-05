@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Mail, Lock, User, MapPin, Eye, EyeOff, Volume2, Building, Wrench, Users, AlertTriangle, Loader, CheckCircle, ArrowLeft, Edit, Phone, CreditCard, Globe } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import HCaptcha, { HCaptchaRef } from '../components/HCaptcha';
+import RegistrationVerificationModal from '../components/RegistrationVerificationModal';
 import { supabase } from '../lib/supabase';
 import { registerRateLimiter, getClientIdentifier } from '../utils/rateLimiter';
 import SEO from '../components/SEO';
@@ -83,6 +84,8 @@ export default function Register() {
   const [error, setError] = useState('');
   const [debugInfo, setDebugInfo] = useState('');
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState('');
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaError, setCaptchaError] = useState('');
   const [captchaLoading, setCaptchaLoading] = useState(true);
@@ -385,14 +388,20 @@ export default function Register() {
         shippingCountry: formData.shippingSameAsBilling ? formData.billingCountry : formData.shippingCountry,
       };
 
-      await register(enhancedUserData);
+      await register({
+        ...enhancedUserData,
+        captchaToken: captchaToken
+      });
       // Registration successful - clear rate limit
       registerRateLimiter.clear(clientId);
-      setDebugInfo('✅ Registration successful, navigating to dashboard');
-      setRegistrationSuccess(true);
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 3000);
+      setDebugInfo('✅ Registration successful, please verify your email');
+      
+      // Show verification modal
+      setRegisteredEmail(formData.email);
+      setShowVerificationModal(true);
+      
+      // Note: Verification email is handled by the RegistrationVerificationModal component
+      // which will use the simple-email-verify edge function
     } catch (error: any) {
       // Record failed attempt
       registerRateLimiter.recordAttempt(clientId);
@@ -428,9 +437,12 @@ export default function Register() {
         } else if (error.message.includes('already registered') || error.message.includes('already exists')) {
           errorMessage = 'An account with this email already exists. Please try logging in instead.';
           debugMessage += '\n\n💡 User already exists';
-        } else if (error.message.includes('timeout') || error.message.includes('aborted')) {
-          errorMessage = 'Registration timed out. Please check your internet connection and try again.';
-          debugMessage += '\n\n💡 Network timeout';
+        } else if (error.message.includes('timeout') || error.message.includes('aborted') || error.message.includes('504')) {
+          errorMessage = 'Registration is taking longer than expected. Your account may have been created - please try logging in. If that doesn\'t work, please try registering again in a moment.';
+          debugMessage += '\n\n💡 Network timeout - account may have been created';
+        } else if (error.message.includes('Registration timeout')) {
+          errorMessage = 'Registration is taking too long. Please try again in a moment.';
+          debugMessage += '\n\n💡 Registration timeout';
         }
         // Don't expose other error details
       }
@@ -442,14 +454,9 @@ export default function Register() {
       setDebugInfo(debugMessage);
       
       // Reset captcha on failed registration
-      if (captchaRef.current) {
-        try {
-          captchaRef.current.reset();
-        } catch (resetError) {
-          console.error('Error resetting captcha:', resetError);
-        }
-      }
       setCaptchaToken(null);
+      // Don't try to reset captcha if it's already been removed/failed
+      // This prevents the "invalid-captcha-id" error
     } finally {
       setIsLoading(false);
     }
@@ -1255,6 +1262,21 @@ export default function Register() {
           </p>
         </div>
       </div>
+      
+      {/* Email Verification Modal */}
+      {showVerificationModal && (
+        <RegistrationVerificationModal
+          email={registeredEmail}
+          onVerified={() => {
+            setShowVerificationModal(false);
+            setRegistrationSuccess(true);
+            setTimeout(() => {
+              navigate('/dashboard');
+            }, 2000);
+          }}
+          onClose={() => setShowVerificationModal(false)}
+        />
+      )}
     </div>
   );
 }

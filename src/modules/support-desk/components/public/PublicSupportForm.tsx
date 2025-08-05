@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import HCaptcha, { HCaptchaRef } from '../../../../components/HCaptcha';
 import LoadingSpinner from '../../../../components/LoadingSpinner';
 import SEO from '../../../../components/SEO';
+import { supabase } from '../../../../lib/supabase';
 import { 
   requestTypeService, 
   fieldService, 
@@ -289,7 +290,24 @@ const PublicSupportForm: React.FC = () => {
         setCaptchaToken('test-token-for-development');
       }
       
-      setShowEmailVerification(true);
+      // Send verification email first
+      try {
+        const { data, error } = await supabase.functions.invoke('simple-email-verify', {
+          body: {
+            email: formData.email,
+            action: 'send',
+            captcha_token: captchaToken || 'test-token-for-development'
+          }
+        });
+        
+        if (error) throw error;
+        
+        // Show verification modal without auto-sending
+        setShowEmailVerification(true);
+      } catch (error: any) {
+        console.error('Failed to send verification email:', error);
+        setError('Failed to send verification email. Please try again.');
+      }
       return;
     }
     
@@ -332,13 +350,42 @@ const PublicSupportForm: React.FC = () => {
     }
   };
   
-  const handleEmailVerified = (email: string) => {
+  const handleEmailVerified = async (email: string) => {
     setVerifiedEmail(email);
     setShowEmailVerification(false);
     
-    // Auto-submit form after email verification
-    const form = document.getElementById('support-form') as HTMLFormElement;
-    form?.requestSubmit();
+    // Don't auto-submit - instead, directly proceed with ticket creation
+    setLoading(true);
+    
+    try {
+      const ticketData: CreateTicketFormData = {
+        ...formData,
+        captcha_token: captchaToken || (import.meta.env.DEV ? 'test-token-for-development' : ''),
+        email: email,
+        anonymous_email: email,
+        anonymous_first_name: formData.anonymous_first_name,
+        anonymous_last_name: formData.anonymous_last_name,
+        csrf_token: getCSRFToken()
+      };
+      
+      const ticket = await ticketService.createTicket(ticketData);
+      
+      if (ticket) {
+        setSuccess(true);
+        
+        // Redirect after 3 seconds
+        setTimeout(() => {
+          navigate('/support/success', { 
+            state: { ticketNumber: ticket.ticket_number } 
+          });
+        }, 3000);
+      }
+    } catch (error: any) {
+      console.error('Error creating ticket:', error);
+      setError(error.message || 'Failed to create support ticket');
+    } finally {
+      setLoading(false);
+    }
   };
   
   if (success) {
@@ -693,6 +740,7 @@ const PublicSupportForm: React.FC = () => {
           captchaToken={captchaToken}
           onVerified={handleEmailVerified}
           onClose={() => setShowEmailVerification(false)}
+          autoSend={false}
         />
       )}
     </div>

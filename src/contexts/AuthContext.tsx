@@ -572,88 +572,101 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         authData = { user };
         console.log('📝 Creating profile for Google OAuth user:', user.email);
       } else {
-        // Regular email/password registration
-        const { data, error: authError } = await supabase.auth.signUp({
-          email: userData.email.trim(),
-          password: userData.password,
-          options: {
-            data: {
+        // Regular email/password registration - use edge function to avoid timeouts
+        console.log('🚀 Using edge function to register:', userData.email.trim());
+        
+        // Call our custom edge function instead of Supabase signUp
+        const { data, error: registerError } = await supabase.functions.invoke('register-user', {
+          body: {
+            email: userData.email.trim(),
+            password: userData.password,
+            userData: {
               name: userData.name,
-              membership_type: userData.membershipType,
+              membershipType: userData.membershipType,
               location: userData.location,
               phone: userData.phone,
-              company_name: userData.companyName
-            }
+              companyName: userData.companyName
+            },
+            captchaToken: userData.captchaToken || 'test-token-for-development'
           }
         });
+        
+        console.log('📧 Edge function response:', { data, error: registerError });
 
-        if (authError) {
-          throw authError;
+        if (registerError) {
+          throw registerError;
         }
 
-        if (!data.user) {
-          throw new Error('User creation failed');
+        if (!data?.success || !data?.user) {
+          throw new Error(data?.error || 'User creation failed');
         }
         
-        authData = data;
+        // Edge function returns user data differently
+        authData = { user: data.user };
       }
 
-      // Determine proper status based on membership type and registration method
-      let initialStatus = 'active';
-      let verificationStatus = 'pending';
-      
-      // Business accounts need manual approval after email verification
-      if (['retailer', 'manufacturer', 'organization'].includes(userData.membershipType)) {
-        initialStatus = 'pending'; // Will be pending until manual approval
-        verificationStatus = 'pending'; // Must verify email first
-      }
-      
-      // Google OAuth users still need email verification
+      // For Google OAuth users, we still need to create the profile
       if (googleUserData && userData.isGoogleOAuth) {
-        verificationStatus = 'pending';
+        // Determine proper status based on membership type and registration method
+        let initialStatus = 'active';
+        let verificationStatus = 'pending';
+        
+        // Business accounts need manual approval after email verification
+        if (['retailer', 'manufacturer', 'organization'].includes(userData.membershipType)) {
+          initialStatus = 'pending'; // Will be pending until manual approval
+          verificationStatus = 'pending'; // Must verify email first
+        }
+        
         console.log('🔐 Google OAuth user requires email verification');
-      }
 
-      // Create user profile with basic data only
-      console.log('📝 Creating user profile for:', userData.email, 'with membership type:', userData.membershipType);
-      
-      const { error: profileError } = await supabase
-        .from('users')
-        .insert([{
-          id: authData.user.id,
-          email: userData.email.trim(),
-          membership_type: userData.membershipType,
-          phone: userData.phone || null,
-          company_name: userData.companyName || null,
-          status: initialStatus,
-          verification_status: verificationStatus
-        }]);
+        // Create user profile with basic data only
+        console.log('📝 Creating user profile for Google OAuth user:', userData.email, 'with membership type:', userData.membershipType);
+        
+        const { error: profileError } = await supabase
+          .from('users')
+          .insert([{
+            id: authData.user.id,
+            email: userData.email.trim(),
+            membership_type: userData.membershipType,
+            phone: userData.phone || null,
+            company_name: userData.companyName || null,
+            status: initialStatus,
+            verification_status: verificationStatus,
+            // Add more fields to avoid issues
+            name: userData.name || null,
+            first_name: userData.name ? userData.name.split(' ')[0] : null,
+            last_name: userData.name ? userData.name.split(' ').slice(1).join(' ') : null,
+            location: userData.location || null
+          }]);
 
-      if (profileError) {
-        console.error('❌ Profile creation failed:', profileError);
-        console.error('Profile error details:', {
-          code: profileError.code,
-          message: profileError.message,
-          details: profileError.details,
-          hint: profileError.hint
-        });
-        
-        // If profile creation fails, we need to clean up the auth user
-        // Note: We can't use admin.deleteUser from client side, so we'll sign them out
-        try {
-          await supabase.auth.signOut();
-        } catch (cleanupError) {
-          console.error('Failed to cleanup auth session after profile error:', cleanupError);
+        if (profileError) {
+          console.error('❌ Profile creation failed:', profileError);
+          console.error('Profile error details:', {
+            code: profileError.code,
+            message: profileError.message,
+            details: profileError.details,
+            hint: profileError.hint
+          });
+          
+          // If profile creation fails, we need to clean up the auth user
+          try {
+            await supabase.auth.signOut();
+          } catch (cleanupError) {
+            console.error('Failed to cleanup auth session after profile error:', cleanupError);
+          }
+          
+          // Provide more specific error messages
+          if (profileError.code === '42501') {
+            throw new Error('Registration is temporarily unavailable. Please try again in a few moments.');
+          } else if (profileError.message?.includes('duplicate key')) {
+            throw new Error('An account with this email already exists. Please try logging in instead.');
+          } else {
+            throw new Error(`Registration failed: ${profileError.message || 'Unable to create user profile'}`);
+          }
         }
-        
-        // Provide more specific error messages
-        if (profileError.code === '42501') {
-          throw new Error('Registration is temporarily unavailable. Please try again in a few moments.');
-        } else if (profileError.message?.includes('duplicate key')) {
-          throw new Error('An account with this email already exists. Please try logging in instead.');
-        } else {
-          throw new Error(`Registration failed: ${profileError.message || 'Unable to create user profile'}`);
-        }
+      } else {
+        // For regular registration, the edge function already created the profile
+        console.log('✅ Edge function already created user profile');
       }
       
       console.log('✅ Registration successful for:', userData.email);
@@ -664,43 +677,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('🧹 Cleaned up Google OAuth registration data');
       }
 
-      // Queue the welcome email using the new system
-      try {
-        await supabase.functions.invoke('queue-email', {
-          body: {
-            recipient: userData.email,
-            template_name: 'welcome-email',
-            variables: {
-              name: userData.name,
-              email: userData.email
-            }
-          }
-        });
-        console.log('✅ Welcome email queued successfully.');
-      } catch (emailError) {
-        console.error('⚠️ Failed to queue welcome email:', emailError);
-        // Do not block registration if email queueing fails
-      }
-
-      // Send verification email for all new users (including Google OAuth)
-      if (verificationStatus === 'pending') {
-        try {
-          const { error: verificationError } = await supabase.auth.resend({
-            type: 'signup',
-            email: userData.email,
-            options: {
-              emailRedirectTo: `${window.location.origin}/dashboard`
-            }
-          });
-          
-          if (verificationError) {
-            console.warn('⚠️ Failed to send verification email:', verificationError);
-          } else {
-            console.log('📧 Verification email sent to:', userData.email);
-          }
-        } catch (verificationError) {
-          console.warn('⚠️ Verification email error:', verificationError);
-        }
+      // Supabase Auth automatically sends verification email on signup
+      // No need to manually queue or resend emails - this was causing the 504 timeout
+      // The built-in auth system handles email delivery, retries, and confirmation
+      
+      console.log('📧 Verification email will be sent automatically by Supabase Auth');
+      
+      // For business accounts that need approval, we'll handle the welcome email
+      // after they verify their email and get approved
+      if (['retailer', 'manufacturer', 'organization'].includes(userData.membershipType)) {
+        console.log('📋 Business account registered - pending email verification and approval');
       }
 
       // Don't return the user, just complete successfully

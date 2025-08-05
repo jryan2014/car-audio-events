@@ -104,7 +104,8 @@
       "WebFetch(domain:mecacaraudio.com)",
       "WebFetch(domain:iasca.com)",
       "WebFetch(domain:www.termpro.com)",
-      "WebFetch(domain:www.basswars.org)"
+      "WebFetch(domain:www.basswars.org)",
+      "mcp__supabase__search_docs"
     ],
     "deny": []
   },

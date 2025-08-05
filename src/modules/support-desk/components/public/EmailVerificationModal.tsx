@@ -7,13 +7,15 @@ interface EmailVerificationModalProps {
   captchaToken: string;
   onVerified: (email: string) => void;
   onClose: () => void;
+  autoSend?: boolean; // Add flag to control auto-send
 }
 
 const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
   email,
   captchaToken,
   onVerified,
-  onClose
+  onClose,
+  autoSend = true
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -22,9 +24,14 @@ const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
   const [resendCooldown, setResendCooldown] = useState(0);
   
   useEffect(() => {
-    // Start verification process
-    sendVerificationEmail();
-  }, []);
+    // Start verification process only if autoSend is true
+    if (autoSend) {
+      sendVerificationEmail();
+    } else {
+      // If not auto-sending, mark as sent since it's handled elsewhere
+      setVerificationSent(true);
+    }
+  }, [autoSend]);
   
   useEffect(() => {
     // Countdown timer for resend cooldown
@@ -46,11 +53,11 @@ const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
       
       console.log('Sending verification email with token:', tokenToUse ? 'present' : 'missing');
       
-      const { data, error } = await supabase.functions.invoke('support-verify-email', {
+      const { data, error } = await supabase.functions.invoke('simple-email-verify', {
         body: {
           email,
-          captcha_token: tokenToUse,
-          action: 'send'
+          action: 'send',
+          captcha_token: tokenToUse
         }
       });
       
@@ -86,7 +93,7 @@ const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
     setError('');
     
     try {
-      const { data, error } = await supabase.functions.invoke('support-verify-email', {
+      const { data, error } = await supabase.functions.invoke('simple-email-verify', {
         body: {
           email,
           code: verificationCode,
@@ -162,7 +169,7 @@ const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
                 value={verificationCode}
                 onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 placeholder="Enter 6-digit code"
-                className="block w-full text-center text-2xl tracking-widest rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="block w-full text-center text-2xl text-gray-900 tracking-widest rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 maxLength={6}
                 autoComplete="off"
                 disabled={loading}

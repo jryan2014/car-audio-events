@@ -139,12 +139,21 @@ const HCaptcha = forwardRef<HCaptchaRef, HCaptchaProps>(({
 
     return () => {
       mounted = false;
-      if (widgetID.current && window.hcaptcha) {
+      if (widgetID.current !== null && window.hcaptcha) {
         try {
-          window.hcaptcha.remove(widgetID.current);
-          widgetID.current = null;
+          // Check if the widget still exists before trying to remove it
+          const container = captchaRef.current;
+          if (container && container.querySelector('.h-captcha')) {
+            window.hcaptcha.remove(widgetID.current);
+          }
         } catch (error) {
-          console.error('Error removing hCaptcha widget:', error);
+          // Only log the error if it's not an "invalid-captcha-id" error
+          // This error happens when the widget has already been removed
+          if (error && error.cause !== 'invalid-captcha-id') {
+            console.error('Error removing hCaptcha widget:', error);
+          }
+        } finally {
+          widgetID.current = null;
         }
       }
     };
