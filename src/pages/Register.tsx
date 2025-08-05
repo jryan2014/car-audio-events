@@ -399,6 +399,23 @@ export default function Register() {
       const remainingAttempts = registerRateLimiter.getRemainingAttempts(clientId);
       console.error('Registration failed:', error);
       
+      // Log detailed error info for debugging
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      console.error('Registration error details:', {
+        error: error,
+        message: error?.message,
+        code: error?.code,
+        details: error?.details,
+        isMobile: isMobile,
+        userAgent: navigator.userAgent,
+        formData: {
+          email: formData.email,
+          membershipType: formData.membershipType,
+          phone: formData.phone,
+          hasCaptcha: !!captchaToken
+        }
+      });
+      
       // Use generic error messages to prevent information disclosure
       let errorMessage = 'Registration failed. Please try again.';
       let debugMessage = '❌ Registration error';

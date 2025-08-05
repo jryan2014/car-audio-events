@@ -615,19 +615,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // Create user profile with basic data only
+      console.log('📝 Creating user profile for:', userData.email, 'with membership type:', userData.membershipType);
+      
       const { error: profileError } = await supabase
         .from('users')
         .insert([{
           id: authData.user.id,
           email: userData.email.trim(),
           membership_type: userData.membershipType,
-          phone: userData.phone,
-          company_name: userData.companyName,
-          status: initialStatus
+          phone: userData.phone || null,
+          company_name: userData.companyName || null,
+          status: initialStatus,
+          verification_status: verificationStatus
         }]);
 
       if (profileError) {
-        throw profileError;
+        console.error('❌ Profile creation failed:', profileError);
+        console.error('Profile error details:', {
+          code: profileError.code,
+          message: profileError.message,
+          details: profileError.details,
+          hint: profileError.hint
+        });
+        
+        // If profile creation fails, we need to clean up the auth user
+        // Note: We can't use admin.deleteUser from client side, so we'll sign them out
+        try {
+          await supabase.auth.signOut();
+        } catch (cleanupError) {
+          console.error('Failed to cleanup auth session after profile error:', cleanupError);
+        }
+        
+        // Provide more specific error messages
+        if (profileError.code === '42501') {
+          throw new Error('Registration is temporarily unavailable. Please try again in a few moments.');
+        } else if (profileError.message?.includes('duplicate key')) {
+          throw new Error('An account with this email already exists. Please try logging in instead.');
+        } else {
+          throw new Error(`Registration failed: ${profileError.message || 'Unable to create user profile'}`);
+        }
       }
       
       console.log('✅ Registration successful for:', userData.email);

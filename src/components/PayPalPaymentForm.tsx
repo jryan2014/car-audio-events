@@ -96,9 +96,6 @@ const PayPalButtonWrapper: React.FC<PayPalPaymentFormProps> = ({
               console.error('PayPal error:', err);
               setError('An error occurred with PayPal. Please try again.');
             }}
-            // Enable vault flow for saving payment methods
-            vault={true}
-            intent="tokenize"
           />
         </div>
       )}
