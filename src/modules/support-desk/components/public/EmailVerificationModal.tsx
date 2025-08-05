@@ -49,7 +49,17 @@ const EmailVerificationModal: React.FC<EmailVerificationModalProps> = ({
         }
       });
       
-      if (error) throw error;
+      console.log('Email verification response:', { data, error });
+      
+      if (error) {
+        console.error('Edge function error details:', error);
+        throw error;
+      }
+      
+      // Check if the response indicates an error even without error object
+      if (data && data.error) {
+        throw new Error(data.error);
+      }
       
       setVerificationSent(true);
       setResendCooldown(60); // 60 second cooldown

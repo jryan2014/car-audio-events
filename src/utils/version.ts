@@ -1,13 +1,13 @@
 // Auto-generated version file - DO NOT EDIT MANUALLY
-// Generated at: 2025-08-05T00:29:36.763Z
-// Source: package.json v1.26.102
+// Generated at: 2025-08-05T00:51:12.827Z
+// Source: package.json v1.26.103
 
 export const VERSION = {
   MAJOR: 1,
   MINOR: 26,
-  PATCH: 102,
-  VERSION_STRING: '1.26.102',
-  BUILD: 1754353776763, // Build timestamp
+  PATCH: 103,
+  VERSION_STRING: '1.26.103',
+  BUILD: 1754355072828, // Build timestamp
   RELEASE_DATE: '2025-06-06',
   CODENAME: 'Blood Brothers'
 } as const;

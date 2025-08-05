@@ -73,35 +73,64 @@ const HCaptcha = forwardRef<HCaptchaRef, HCaptchaProps>(({
   };
 
   const renderCaptcha = async () => {
-    if (!captchaRef.current) return;
+    console.log('HCaptcha renderCaptcha called');
+    
+    if (!captchaRef.current) {
+      console.log('HCaptcha: No captcha ref');
+      return;
+    }
     
     // Check if captcha is already rendered
-    if (widgetID.current !== null) return;
+    if (widgetID.current !== null) {
+      console.log('HCaptcha: Already rendered, widget ID:', widgetID.current);
+      return;
+    }
     
     // Check if container already has a captcha
-    if (captchaRef.current.querySelector('.h-captcha')) return;
+    if (captchaRef.current.querySelector('.h-captcha')) {
+      console.log('HCaptcha: Container already has h-captcha element');
+      return;
+    }
 
     const siteKey = import.meta.env.VITE_HCAPTCHA_SITE_KEY || 'acc27e90-e7ae-451e-bbfa-c738c53420fe';
+    console.log('HCaptcha site key:', siteKey);
+    
     if (!siteKey) {
       console.warn('hCaptcha site key not found. Please add VITE_HCAPTCHA_SITE_KEY to your environment variables.');
       return;
     }
 
+    console.log('HCaptcha: Loading script...');
     await loadHCaptchaScript();
+    console.log('HCaptcha: Script loaded, window.hcaptcha:', !!window.hcaptcha);
 
     if (window.hcaptcha && captchaRef.current && widgetID.current === null) {
       try {
+        console.log('HCaptcha: Attempting to render with options:', {
+          sitekey: siteKey,
+          size,
+          theme
+        });
+        
         widgetID.current = window.hcaptcha.render(captchaRef.current, {
           sitekey: siteKey,
           size,
           theme,
           callback: onVerify,
-          'error-callback': onError,
+          'error-callback': onError || (() => console.error('HCaptcha error')),
           'expired-callback': onExpire
         });
+        
+        console.log('HCaptcha: Successfully rendered, widget ID:', widgetID.current);
       } catch (error) {
         console.error('Error rendering hCaptcha:', error);
       }
+    } else {
+      console.log('HCaptcha: Cannot render - missing requirements', {
+        'window.hcaptcha': !!window.hcaptcha,
+        'captchaRef.current': !!captchaRef.current,
+        'widgetID.current': widgetID.current
+      });
     }
   };
 
@@ -138,9 +167,20 @@ const HCaptcha = forwardRef<HCaptchaRef, HCaptchaProps>(({
           display: 'flex', 
           justifyContent: 'center',
           marginTop: '1rem',
-          marginBottom: '1rem'
+          marginBottom: '1rem',
+          minHeight: '78px', // Reserve space for normal size captcha
+          minWidth: '303px', // Reserve space for normal size captcha
+          backgroundColor: '#1a1a1a', // Dark background to see if container is visible
+          border: '1px solid #333' // Border to see container bounds
         }}
-      />
+      >
+        {/* Temporary loading indicator */}
+        {widgetID.current === null && (
+          <div style={{ color: '#666', padding: '20px', textAlign: 'center' }}>
+            Loading HCaptcha...
+          </div>
+        )}
+      </div>
     </div>
   );
 });
