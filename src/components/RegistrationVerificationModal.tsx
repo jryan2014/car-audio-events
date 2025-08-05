@@ -87,6 +87,28 @@ const RegistrationVerificationModal: React.FC<RegistrationVerificationModalProps
       if (error) throw error;
       
       if (data.verified) {
+        // Code verified successfully, now send the email verification link
+        try {
+          // Get the current user to get their ID
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            // Send the verification link email
+            const { error: linkError } = await supabase.functions.invoke('send-email-verification-link', {
+              body: {
+                email: email,
+                userId: user.id
+              }
+            });
+            
+            if (linkError) {
+              console.error('Failed to send verification link:', linkError);
+            }
+          }
+        } catch (linkError) {
+          console.error('Error sending verification link:', linkError);
+          // Don't block the flow if link email fails
+        }
+        
         onVerified();
       } else {
         setError('Invalid verification code');
@@ -164,8 +186,12 @@ const RegistrationVerificationModal: React.FC<RegistrationVerificationModalProps
             disabled={loading || verificationCode.length !== 6}
             className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? <LoadingSpinner size="small" /> : 'Verify Email'}
+            {loading ? <LoadingSpinner size="small" /> : 'Verify & Continue'}
           </button>
+          
+          <p className="mt-3 text-xs text-gray-500 text-center">
+            After verifying this code, we'll send you an email with a link to complete your account setup.
+          </p>
           
           <div className="mt-4 text-center">
             <p className="text-sm text-gray-500">

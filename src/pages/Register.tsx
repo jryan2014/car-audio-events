@@ -1011,13 +1011,27 @@ export default function Register() {
       <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">
-            <CheckCircle className="mx-auto h-16 w-16 text-green-500 animate-bounce" />
+            <CheckCircle className="mx-auto h-16 w-16 text-green-500" />
             <h2 className="mt-6 text-3xl font-black text-white">
               Registration <span className="text-green-400">Successful!</span>
             </h2>
-            <p className="mt-2 text-gray-400">
-              Welcome to Car Audio Events! Redirecting you to the dashboard...
+            <p className="mt-4 text-gray-300">
+              Thank you for registering! We've sent you an email with a link to verify your email address and complete your account setup.
             </p>
+            <p className="mt-2 text-gray-400">
+              Please check your inbox and click the verification link to continue.
+            </p>
+            <div className="mt-8 space-y-3">
+              <button
+                onClick={() => navigate('/login')}
+                className="w-full bg-electric-600 hover:bg-electric-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+              >
+                Go to Login
+              </button>
+              <p className="text-sm text-gray-500">
+                Didn't receive the email? Check your spam folder or contact support.
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -1320,9 +1334,7 @@ export default function Register() {
           onVerified={() => {
             setShowVerificationModal(false);
             setRegistrationSuccess(true);
-            setTimeout(() => {
-              navigate('/dashboard');
-            }, 2000);
+            // Don't navigate automatically - let them know to check email
           }}
           onClose={() => setShowVerificationModal(false)}
         />

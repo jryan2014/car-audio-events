@@ -154,52 +154,8 @@ serve(async (req) => {
       throw new Error('Failed to create user profile');
     }
 
-    // Queue verification email using our system
-    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-    
-    // Store verification code
-    await supabaseAdmin
-      .from('email_verification_codes')
-      .insert({
-        email: email.trim(),
-        code: verificationCode,
-        type: 'registration',
-        expires_at: new Date(Date.now() + 600000).toISOString(), // 10 minutes
-      });
-
-    // Queue the email
-    await supabaseAdmin
-      .from('email_queue')
-      .insert({
-        to_email: email.trim(),
-        subject: 'Verify Your Email - Car Audio Events',
-        html_content: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2>Welcome to Car Audio Events!</h2>
-            <p>Please verify your email address by entering this code:</p>
-            <div style="background-color: #f0f0f0; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px;">
-              <h1 style="font-size: 36px; letter-spacing: 8px; margin: 0; font-family: monospace;">${verificationCode}</h1>
-            </div>
-            <p style="color: #666;">This code expires in 10 minutes.</p>
-          </div>
-        `,
-        body: `Welcome to Car Audio Events!\n\nYour verification code is: ${verificationCode}\n\nThis code expires in 10 minutes.`,
-        status: 'pending',
-        priority: 3,
-        metadata: { 
-          type: 'registration_verification',
-          immediate: true
-        }
-      });
-
-    // Trigger email processor immediately
-    try {
-      await supabaseAdmin.functions.invoke('process-email-queue', {
-        body: {}
-      });
-    } catch (processError) {
-      console.error('Could not trigger email processor:', processError);
-    }
+    // Don't send verification email here - the RegistrationVerificationModal will handle it
+    // This prevents duplicate emails from being sent
 
     return new Response(
       JSON.stringify({ 

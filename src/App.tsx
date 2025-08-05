@@ -75,6 +75,7 @@ const AdminNewsletterManager = React.lazy(() => import('./pages/AdminNewsletterM
 const Leaderboard = React.lazy(() => import('./pages/Leaderboard'));
 const AdminLeaderboardManager = React.lazy(() => import('./components/AdminLeaderboardManager'));
 const SPLCalculator = React.lazy(() => import('./pages/SPLCalculator'));
+const VerifyEmail = React.lazy(() => import('./pages/VerifyEmail'));
 
 // Support Desk components
 const PublicSupportForm = React.lazy(() => import('./modules/support-desk/components/public/PublicSupportForm'));
@@ -187,6 +188,7 @@ function App() {
               
               <Route path="/login" element={<Layout><Login /></Layout>} />
               <Route path="/register" element={<Layout><Register /></Layout>} />
+              <Route path="/verify-email" element={<Layout><VerifyEmail /></Layout>} />
               <Route path="/forgot-password" element={<Layout><ForgotPassword /></Layout>} />
               <Route path="/reset-password" element={<Layout><ResetPassword /></Layout>} />
               {/* <Route path="/test-ads" element={<Layout><TestAds /></Layout>} /> */}
