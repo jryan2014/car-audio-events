@@ -85,6 +85,7 @@ export default function Register() {
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaError, setCaptchaError] = useState('');
+  const [captchaLoading, setCaptchaLoading] = useState(true);
   const [membershipPlans, setMembershipPlans] = useState<MembershipPlan[]>([]);
   const [plansLoading, setPlansLoading] = useState(true);
   const [selectedPlanDetails, setSelectedPlanDetails] = useState<MembershipPlan | null>(null);
@@ -278,9 +279,19 @@ export default function Register() {
   };
 
   const handleCaptchaError = (err: any) => {
-    setCaptchaError('Captcha verification failed. Please try again.');
+    // Check for specific mobile issues
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    let errorMessage = 'Captcha verification failed. Please try again.';
+    
+    if (err === 'script-error' || err === 'HCaptcha script loading timeout') {
+      errorMessage = isMobile 
+        ? 'Security check failed to load. Please check your internet connection and try again.'
+        : 'Unable to load security check. Please refresh the page and try again.';
+    }
+    
+    setCaptchaError(errorMessage);
     setCaptchaToken(null);
-    setDebugInfo(`❌ Captcha error: Error: ${err || 'script-error'}`);
+    setDebugInfo(`❌ Captcha error: ${err || 'unknown error'}`);
     console.error('hCaptcha error:', err);
   };
 
@@ -880,19 +891,36 @@ export default function Register() {
 
               {/* Captcha */}
               <div className="flex flex-col items-center">
-                <HCaptcha
-                  onVerify={handleCaptchaVerify}
-                  onError={() => handleCaptchaError('script-error')}
-                  onExpire={() => {
-                    setCaptchaToken(null);
-                    setDebugInfo('⏰ Captcha expired. Please complete it again.');
-                  }}
-                  ref={captchaRef}
-                  theme="dark"
-                />
-                {captchaError && (
-                  <p className="mt-2 text-sm text-red-400">{captchaError}</p>
-                )}
+                <div className="w-full max-w-sm">
+                  <p className="text-sm text-gray-400 text-center mb-2">
+                    Please complete the security check below:
+                  </p>
+                  <HCaptcha
+                    onVerify={(token) => {
+                      setCaptchaLoading(false);
+                      handleCaptchaVerify(token);
+                    }}
+                    onError={() => {
+                      setCaptchaLoading(false);
+                      handleCaptchaError('script-error');
+                    }}
+                    onExpire={() => {
+                      setCaptchaToken(null);
+                      setDebugInfo('⏰ Captcha expired. Please complete it again.');
+                    }}
+                    ref={captchaRef}
+                    theme="dark"
+                    size="normal"
+                  />
+                  {captchaError && (
+                    <div className="mt-3 p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
+                      <p className="text-sm text-red-400">{captchaError}</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        If you're having trouble, try refreshing the page or using a different browser.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>

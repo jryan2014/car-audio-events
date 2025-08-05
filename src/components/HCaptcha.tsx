@@ -34,6 +34,7 @@ const HCaptcha = forwardRef<HCaptchaRef, HCaptchaProps>(({
   const captchaRef = useRef<HTMLDivElement>(null);
   const widgetID = useRef<string | null>(null);
   const scriptLoaded = useRef(false);
+  const [isLoading, setIsLoading] = React.useState(true);
 
   useImperativeHandle(ref, () => ({
     execute: () => {
@@ -51,7 +52,7 @@ const HCaptcha = forwardRef<HCaptchaRef, HCaptchaProps>(({
   const loadHCaptchaScript = () => {
     if (scriptLoaded.current) return Promise.resolve();
 
-    return new Promise<void>((resolve) => {
+    return new Promise<void>((resolve, reject) => {
       if (window.hcaptcha) {
         scriptLoaded.current = true;
         resolve();
@@ -63,9 +64,20 @@ const HCaptcha = forwardRef<HCaptchaRef, HCaptchaProps>(({
       script.async = true;
       script.defer = true;
       
+      // Add timeout for slow connections
+      const timeout = setTimeout(() => {
+        reject(new Error('HCaptcha script loading timeout'));
+      }, 15000); // 15 second timeout
+      
       script.onload = () => {
+        clearTimeout(timeout);
         scriptLoaded.current = true;
         resolve();
+      };
+      
+      script.onerror = () => {
+        clearTimeout(timeout);
+        reject(new Error('Failed to load HCaptcha script'));
       };
 
       document.head.appendChild(script);
@@ -87,21 +99,31 @@ const HCaptcha = forwardRef<HCaptchaRef, HCaptchaProps>(({
       return;
     }
 
-    await loadHCaptchaScript();
+    try {
+      await loadHCaptchaScript();
 
-    if (window.hcaptcha && captchaRef.current && widgetID.current === null) {
-      try {
+      if (window.hcaptcha && captchaRef.current && widgetID.current === null) {
+        // Check if we're on mobile and adjust size
+        const isMobile = window.innerWidth <= 768;
+        const captchaSize = isMobile ? 'compact' : size;
+        
         widgetID.current = window.hcaptcha.render(captchaRef.current, {
           sitekey: siteKey,
-          size,
+          size: captchaSize,
           theme,
           callback: onVerify,
-          'error-callback': onError,
-          'expired-callback': onExpire
+          'error-callback': onError || (() => console.error('HCaptcha error')),
+          'expired-callback': onExpire,
+          'chalexpired-callback': onExpire,
+          'open-callback': () => console.log('HCaptcha opened'),
+          'close-callback': () => console.log('HCaptcha closed')
         });
-      } catch (error) {
-        console.error('Error rendering hCaptcha:', error);
+        setIsLoading(false);
       }
+    } catch (error) {
+      console.error('Error loading or rendering hCaptcha:', error);
+      setIsLoading(false);
+      if (onError) onError();
     }
   };
 
@@ -130,7 +152,7 @@ const HCaptcha = forwardRef<HCaptchaRef, HCaptchaProps>(({
   }, []);
 
   return (
-    <div className="hcaptcha-container">
+    <div className="hcaptcha-container relative">
       <div 
         ref={captchaRef} 
         className="hcaptcha-widget"
@@ -138,9 +160,20 @@ const HCaptcha = forwardRef<HCaptchaRef, HCaptchaProps>(({
           display: 'flex', 
           justifyContent: 'center',
           marginTop: '1rem',
-          marginBottom: '1rem'
+          marginBottom: '1rem',
+          minHeight: size === 'normal' ? '78px' : '59px', // Reserve space for captcha
+          minWidth: size === 'normal' ? '303px' : '164px'
         }}
       />
+      {/* Loading indicator */}
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400 mx-auto mb-2"></div>
+            <p className="text-gray-400 text-sm">Loading security check...</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 });
