@@ -431,15 +431,24 @@ class BillingService {
         throw new Error('No active subscription found');
       }
 
-      // Update status to paused
+      // Update status to paused - but keep the membership plan intact!
+      // The user should retain their Pro/Retail/etc status until the period ends
       await supabase
         .from('subscriptions')
         .update({
           status: 'paused',
-          metadata: { resume_date: resumeDate },
+          metadata: { 
+            ...subscription.metadata,
+            resume_date: resumeDate,
+            paused_at: new Date().toISOString(),
+            original_period_end: subscription.current_period_end // Save original end date
+          },
           updated_at: new Date().toISOString()
         })
         .eq('id', subscription.id);
+
+      // DO NOT change the user's membership_type when pausing!
+      // They keep their plan until the period ends
 
       return { success: true, paused: true };
     } catch (error) {
@@ -461,14 +470,24 @@ class BillingService {
         throw new Error('No paused subscription found');
       }
 
-      // Calculate new billing period based on pause duration
-      const pausedAt = new Date(subscription.updated_at);
+      // Get the paused date from metadata
+      const pausedAt = subscription.metadata?.paused_at 
+        ? new Date(subscription.metadata.paused_at)
+        : new Date(subscription.updated_at);
       const now = new Date();
       const pauseDuration = now.getTime() - pausedAt.getTime();
       
-      // Extend the current period end by the pause duration
-      const currentPeriodEnd = new Date(subscription.current_period_end);
-      const newPeriodEnd = new Date(currentPeriodEnd.getTime() + pauseDuration);
+      // Use original period end if stored, otherwise use current
+      const originalPeriodEnd = subscription.metadata?.original_period_end 
+        ? new Date(subscription.metadata.original_period_end)
+        : new Date(subscription.current_period_end);
+      
+      // Only extend if we're resuming before the original end date
+      let newPeriodEnd = originalPeriodEnd;
+      if (now < originalPeriodEnd) {
+        // Still within the original period, so extend by pause duration
+        newPeriodEnd = new Date(originalPeriodEnd.getTime() + pauseDuration);
+      }
 
       // Update status back to active
       await supabase
@@ -476,7 +495,11 @@ class BillingService {
         .update({
           status: 'active',
           current_period_end: newPeriodEnd.toISOString(),
-          metadata: { ...subscription.metadata, resumed_at: now.toISOString() },
+          metadata: { 
+            ...subscription.metadata, 
+            resumed_at: now.toISOString(),
+            pause_duration_ms: pauseDuration
+          },
           updated_at: now.toISOString()
         })
         .eq('id', subscription.id);

@@ -18,8 +18,8 @@ interface EnhancedUser {
   name: string;
   first_name?: string;
   last_name?: string;
-  membership_type: 'competitor' | 'retailer' | 'manufacturer' | 'organization' | 'admin';
-  membership_plan?: string; // Free Competitor, Pro Competitor, Retail, Manufacturer, Organization
+  membership_plan: 'free_competitor' | 'pro_competitor' | 'retailer' | 'manufacturer' | 'organization';
+  permissions: ('admin' | 'support' | 'moderator')[];
   status: 'active' | 'suspended' | 'pending' | 'banned';
   location?: string;
   address?: string;
@@ -32,7 +32,8 @@ interface EnhancedUser {
   team_id?: string;
   team_name?: string;
   verification_status: 'unverified' | 'pending' | 'verified' | 'rejected';
-  subscription_status?: 'active' | 'past_due' | 'canceled' | 'trialing' | 'none';
+  subscription_status?: 'active' | 'paused' | 'past_due' | 'canceled' | 'trialing' | 'none';
+  subscription_start_date?: string;
   subscription_end_date?: string;
   stripe_customer_id?: string;
   last_login_at?: string;
@@ -41,6 +42,7 @@ interface EnhancedUser {
   failed_login_attempts: number;
   total_spent?: number;
   credits_balance?: number;
+  metadata?: any;
 }
 
 interface Transaction {
@@ -78,8 +80,8 @@ export default function EditUserEnhanced() {
     name: '',
     first_name: '',
     last_name: '',
-    membership_type: 'competitor' as EnhancedUser['membership_type'],
-    membership_plan: 'free_competitor',
+    membership_plan: 'free_competitor' as EnhancedUser['membership_plan'],
+    permissions: [] as EnhancedUser['permissions'],
     status: 'active' as EnhancedUser['status'],
     location: '',
     address: '',
@@ -95,8 +97,17 @@ export default function EditUserEnhanced() {
     credits_balance: 0
   });
 
-  // Membership plan options based on type
-  const getMembershipPlans = (type: string) => {
+  // Membership plan pricing info
+  const membershipPlanInfo = {
+    'free_competitor': { name: 'Free Competitor', price: 0, period: 'Free' },
+    'pro_competitor': { name: 'Pro Competitor', price: 49.99, period: 'year' },
+    'retailer': { name: 'Retailer', price: 249.99, period: 'year' },
+    'manufacturer': { name: 'Manufacturer', price: 999.99, period: 'year' },
+    'organization': { name: 'Organization', price: 499.99, period: 'year' }
+  };
+
+  // REMOVED getMembershipPlans function - no longer needed
+  const getMembershipPlans_REMOVED = (type: string) => {
     switch(type) {
       case 'competitor':
         return [
@@ -169,33 +180,53 @@ export default function EditUserEnhanced() {
 
       const totalSpent = transactionsData?.reduce((sum, t) => sum + (t.amount / 100), 0) || 0;
 
-      const enhancedUser = {
-        ...userData,
-        subscription_status: subscriptionData?.status || 'none',
-        subscription_end_date: subscriptionData?.current_period_end,
-        total_spent: totalSpent
-      };
+      // Parse permissions from metadata or determine from membership_type
+      let permissions: EnhancedUser['permissions'] = [];
+      if (userData.membership_type === 'admin') {
+        permissions.push('admin');
+      }
+      if (userData.metadata?.permissions) {
+        permissions = [...new Set([...permissions, ...userData.metadata.permissions])];
+      }
 
-      setUser(enhancedUser);
+      // Determine membership plan - simplified logic
+      let membershipPlan: EnhancedUser['membership_plan'] = 'free_competitor';
       
-      // Determine membership plan from subscription or type
-      let membershipPlan = 'free_competitor';
-      if (userData.membership_type === 'competitor') {
-        membershipPlan = subscriptionData?.status === 'active' ? 'pro_competitor' : 'free_competitor';
+      // Check membership_type field first
+      if (userData.membership_type === 'pro_competitor') {
+        membershipPlan = 'pro_competitor';
       } else if (userData.membership_type === 'retailer') {
         membershipPlan = 'retailer';
       } else if (userData.membership_type === 'manufacturer') {
         membershipPlan = 'manufacturer';
       } else if (userData.membership_type === 'organization') {
         membershipPlan = 'organization';
+      } else if (userData.membership_type === 'competitor') {
+        // For basic competitor, check if they have active subscription
+        membershipPlan = (subscriptionData?.status === 'active' || subscriptionData?.status === 'paused') 
+          ? 'pro_competitor' 
+          : 'free_competitor';
       }
+
+      const enhancedUser = {
+        ...userData,
+        membership_plan: membershipPlan,
+        permissions: permissions,
+        subscription_status: subscriptionData?.status || 'none',
+        subscription_start_date: subscriptionData?.current_period_start,
+        subscription_end_date: subscriptionData?.current_period_end,
+        total_spent: totalSpent,
+        metadata: userData.metadata || {}
+      };
+
+      setUser(enhancedUser);
 
       setFormData({
         name: userData.name || '',
         first_name: userData.first_name || '',
         last_name: userData.last_name || '',
-        membership_type: userData.membership_type || 'competitor',
         membership_plan: membershipPlan,
+        permissions: permissions,
         status: userData.status || 'active',
         location: userData.location || '',
         address: userData.address || '',
@@ -259,11 +290,17 @@ export default function EditUserEnhanced() {
       setIsSubmitting(true);
       setError(null);
 
+      // Map membership plan to database membership_type field
+      let dbMembershipType = formData.membership_plan;
+      if (formData.membership_plan === 'free_competitor') {
+        dbMembershipType = 'competitor';
+      }
+      
       const updateData: any = {
         name: formData.name,
         first_name: formData.first_name,
         last_name: formData.last_name,
-        membership_type: formData.membership_type,
+        membership_type: dbMembershipType, // Store the mapped value
         status: formData.status,
         location: formData.location || null,
         address: formData.address || null,
@@ -275,7 +312,11 @@ export default function EditUserEnhanced() {
         competition_type: formData.competition_type,
         team_id: formData.team_id || null,
         verification_status: formData.verification_status,
-        credits_balance: formData.credits_balance
+        credits_balance: formData.credits_balance,
+        metadata: {
+          ...(user?.metadata || {}),
+          permissions: formData.permissions
+        }
       };
 
       const { error: updateError } = await supabase
@@ -312,15 +353,6 @@ export default function EditUserEnhanced() {
       ...prev,
       [field]: value
     }));
-
-    // Update membership plan when type changes
-    if (field === 'membership_type') {
-      const plans = getMembershipPlans(value);
-      setFormData(prev => ({
-        ...prev,
-        membership_plan: plans[0]?.value || 'free_competitor'
-      }));
-    }
   };
 
   const toggleSection = (section: keyof typeof expandedSections) => {
@@ -427,6 +459,42 @@ export default function EditUserEnhanced() {
       loadTransactions();
     } catch (err) {
       setError('Failed to process refund');
+    }
+  };
+
+  const handlePauseSubscription = async () => {
+    if (!user || !confirm('Pause this user\'s subscription? They will retain access until their current period ends.')) return;
+    
+    try {
+      await billingService.pauseSubscription(user.id);
+      setSuccessMessage('Subscription paused successfully');
+      await loadUser();
+    } catch (err) {
+      setError('Failed to pause subscription');
+    }
+  };
+
+  const handleResumeSubscription = async () => {
+    if (!user || !confirm('Resume this user\'s subscription?')) return;
+    
+    try {
+      await billingService.resumeSubscription(user.id);
+      setSuccessMessage('Subscription resumed successfully');
+      await loadUser();
+    } catch (err) {
+      setError('Failed to resume subscription');
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    if (!user || !confirm('Cancel this user\'s subscription? This will end their access at the end of the current period.')) return;
+    
+    try {
+      await billingService.cancelSubscription(user.id, 'Admin canceled', false);
+      setSuccessMessage('Subscription canceled successfully');
+      await loadUser();
+    } catch (err) {
+      setError('Failed to cancel subscription');
     }
   };
 
@@ -618,9 +686,9 @@ export default function EditUserEnhanced() {
                       </div>
                     </div>
 
-                    {(formData.membership_type === 'retailer' || 
-                      formData.membership_type === 'manufacturer' || 
-                      formData.membership_type === 'organization') && (
+                    {(formData.membership_plan === 'retailer' || 
+                      formData.membership_plan === 'manufacturer' || 
+                      formData.membership_plan === 'organization') && (
                       <div className="md:col-span-2">
                         <label className="block text-gray-400 text-sm mb-2">Company Name</label>
                         <div className="relative">
@@ -657,22 +725,6 @@ export default function EditUserEnhanced() {
                 <div className="p-6 pt-0">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-gray-400 text-sm mb-2">Membership Type *</label>
-                      <select
-                        required
-                        value={formData.membership_type}
-                        onChange={(e) => handleInputChange('membership_type', e.target.value)}
-                        className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                      >
-                        <option value="competitor">Competitor</option>
-                        <option value="retailer">Retailer</option>
-                        <option value="manufacturer">Manufacturer</option>
-                        <option value="organization">Organization</option>
-                        <option value="admin">Admin</option>
-                      </select>
-                    </div>
-
-                    <div>
                       <label className="block text-gray-400 text-sm mb-2">Membership Plan *</label>
                       <select
                         required
@@ -680,10 +732,60 @@ export default function EditUserEnhanced() {
                         onChange={(e) => handleInputChange('membership_plan', e.target.value)}
                         className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
                       >
-                        {getMembershipPlans(formData.membership_type).map(plan => (
-                          <option key={plan.value} value={plan.value}>{plan.label}</option>
-                        ))}
+                        <option value="free_competitor">Free Competitor</option>
+                        <option value="pro_competitor">Pro Competitor ($49.99/year)</option>
+                        <option value="retailer">Retailer ($249.99/year)</option>
+                        <option value="manufacturer">Manufacturer ($999.99/year)</option>
+                        <option value="organization">Organization ($499.99/year)</option>
                       </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-2">Permissions</label>
+                      <div className="space-y-2">
+                        <label className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={formData.permissions.includes('admin')}
+                            onChange={(e) => {
+                              const newPermissions = e.target.checked 
+                                ? [...formData.permissions, 'admin']
+                                : formData.permissions.filter(p => p !== 'admin');
+                              setFormData(prev => ({ ...prev, permissions: newPermissions }));
+                            }}
+                            className="rounded border-gray-600 bg-gray-700 text-electric-500"
+                          />
+                          <span className="text-white">Administrator</span>
+                        </label>
+                        <label className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={formData.permissions.includes('support')}
+                            onChange={(e) => {
+                              const newPermissions = e.target.checked 
+                                ? [...formData.permissions, 'support']
+                                : formData.permissions.filter(p => p !== 'support');
+                              setFormData(prev => ({ ...prev, permissions: newPermissions }));
+                            }}
+                            className="rounded border-gray-600 bg-gray-700 text-electric-500"
+                          />
+                          <span className="text-white">Support Team</span>
+                        </label>
+                        <label className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={formData.permissions.includes('moderator')}
+                            onChange={(e) => {
+                              const newPermissions = e.target.checked 
+                                ? [...formData.permissions, 'moderator']
+                                : formData.permissions.filter(p => p !== 'moderator');
+                              setFormData(prev => ({ ...prev, permissions: newPermissions }));
+                            }}
+                            className="rounded border-gray-600 bg-gray-700 text-electric-500"
+                          />
+                          <span className="text-white">Moderator</span>
+                        </label>
+                      </div>
                     </div>
 
                     <div>
@@ -802,7 +904,13 @@ export default function EditUserEnhanced() {
                         <Calendar className="h-4 w-4 text-gray-500" />
                       </div>
                       <p className="text-lg font-semibold text-white capitalize">{formData.subscription_status || 'None'}</p>
-                      {user.subscription_end_date && (
+                      {user.subscription_status === 'paused' && (
+                        <p className="text-xs text-yellow-400">Paused - Access until period end</p>
+                      )}
+                      {user.subscription_start_date && user.subscription_end_date && (
+                        <p className="text-xs text-gray-400">Period: {formatDate(user.subscription_start_date)} - {formatDate(user.subscription_end_date)}</p>
+                      )}
+                      {!user.subscription_start_date && user.subscription_end_date && (
                         <p className="text-xs text-gray-400">Ends: {formatDate(user.subscription_end_date)}</p>
                       )}
                     </div>
@@ -819,11 +927,33 @@ export default function EditUserEnhanced() {
                     </button>
                     
                     {user.subscription_status === 'active' && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={handlePauseSubscription}
+                          className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors flex items-center space-x-2"
+                        >
+                          <Pause className="h-4 w-4" />
+                          <span>Pause Subscription</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCancelSubscription}
+                          className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                        >
+                          Cancel Subscription
+                        </button>
+                      </>
+                    )}
+                    
+                    {user.subscription_status === 'paused' && (
                       <button
                         type="button"
-                        className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                        onClick={handleResumeSubscription}
+                        className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center space-x-2"
                       >
-                        Cancel Subscription
+                        <Play className="h-4 w-4" />
+                        <span>Resume Subscription</span>
                       </button>
                     )}
                   </div>
