@@ -395,23 +395,14 @@ export default function Register() {
     }
     
     setIsLoading(true);
-    setDebugInfo('🔄 Verifying captcha...');
+    setDebugInfo('🔄 Processing registration...');
     setCaptchaError('');
     setCaptchaUsed(true); // Mark captcha as used to prevent reuse
 
     try {
-      // Step 1: Verify hCaptcha token with our backend
-      const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-captcha', {
-        body: { token: captchaToken },
-      });
-
-      if (verifyError || !verifyData?.success) {
-        throw new Error(verifyData?.error || verifyError?.message || 'hCaptcha verification failed.');
-      }
-      
-      setDebugInfo('✅ Captcha verified. Creating user account...');
-
-      // Step 2: Proceed with user registration with enhanced data
+      // Proceed with user registration with enhanced data
+      // The register-user edge function will handle captcha verification internally
+      setDebugInfo('🔄 Creating user account...');
       const enhancedUserData = {
         ...formData,
         // Ensure shipping address is populated if same as billing
@@ -466,8 +457,8 @@ export default function Register() {
       // Only show specific messages for safe cases
       if (error?.message) {
         if (error.message.includes('hCaptcha') || error.message.includes('Captcha') || error.message.includes('already-seen-response')) {
-          errorMessage = 'Bot verification failed. Please complete the captcha again.';
-          debugMessage += '\n\n💡 hCaptcha verification failed - token already used';
+          errorMessage = 'Security verification failed. Please complete the captcha again.';
+          debugMessage += '\n\n💡 Captcha verification failed';
           // Clear the captcha error flag
           setCaptchaError('');
         } else if (error.message.includes('already registered') || error.message.includes('already exists')) {
