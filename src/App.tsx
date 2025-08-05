@@ -12,6 +12,7 @@ import { loadConsentedScripts } from './utils/cookieConsent';
 import ScrollToTop from './components/ScrollToTop';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useCSRFProtection } from './utils/csrfProtection';
+import ImpersonationBanner from './components/ImpersonationBanner';
 
 // Convert all page imports to lazy loading for code splitting
 const Home = React.lazy(() => import('./pages/Home'));
@@ -158,6 +159,7 @@ function App() {
             }}
           >
             <ScrollToTop />
+            <ImpersonationBanner />
             <Suspense fallback={<LoadingSpinner />}>
               <Routes>
               {/* Routes with Layout wrapper */}

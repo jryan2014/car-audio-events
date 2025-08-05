@@ -44,6 +44,8 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   isAuthenticated: boolean;
+  isImpersonating: boolean;
+  originalAdminId: string | null;
   login: (email: string, password: string) => Promise<void>;
   register: (userData: any) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
@@ -56,6 +58,8 @@ interface AuthContextType {
   validateSession: () => Promise<boolean>;
   getUserPermissions: () => Promise<string[]>;
   clearPermissionsCache: () => void;
+  impersonateUser: (userId: string) => Promise<void>;
+  stopImpersonation: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -67,6 +71,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [sessionConflictDetected, setSessionConflictDetected] = useState(false);
   const [sessionTimeout, setSessionTimeout] = useState<number>(30); // Default 30 minutes
   const [permissionsCache, setPermissionsCache] = useState<Map<string, { permissions: string[]; expiry: number }>>(new Map());
+  const [isImpersonating, setIsImpersonating] = useState(false);
+  const [originalAdminId, setOriginalAdminId] = useState<string | null>(null);
 
   // Load session timeout settings from admin configuration
   const loadSessionTimeout = async () => {
@@ -286,6 +292,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         // Initializing auth state
         
+        // Check for existing impersonation
+        const impersonationInfo = localStorage.getItem('impersonation_info');
+        if (impersonationInfo) {
+          try {
+            const info = JSON.parse(impersonationInfo);
+            console.log('🎭 Found existing impersonation session:', info);
+          } catch (e) {
+            console.error('Invalid impersonation info:', e);
+            localStorage.removeItem('impersonation_info');
+          }
+        }
+        
         // Clear any existing session conflicts first
         const existingSession = localStorage.getItem('sb-nqvisvranvjaghvrdaaz-auth-token');
         if (existingSession) {
@@ -304,6 +322,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               if (userProfile) {
                 setUser(userProfile);
                 // Profile loaded successfully during init
+                
+                // Check if we should restore impersonation
+                if (impersonationInfo && userProfile.membershipType === 'admin') {
+                  try {
+                    const info = JSON.parse(impersonationInfo);
+                    if (info.originalAdminId === userProfile.id) {
+                      console.log('🎭 Restoring impersonation session');
+                      setOriginalAdminId(info.originalAdminId);
+                      setIsImpersonating(true);
+                      
+                      // Fetch the impersonated user's profile
+                      const targetUserProfile = await fetchUserProfile(info.targetUserId);
+                      if (targetUserProfile) {
+                        setUser(targetUserProfile);
+                      } else {
+                        // Target user no longer exists, clear impersonation
+                        localStorage.removeItem('impersonation_info');
+                        setIsImpersonating(false);
+                        setOriginalAdminId(null);
+                      }
+                    }
+                  } catch (e) {
+                    console.error('Failed to restore impersonation:', e);
+                    localStorage.removeItem('impersonation_info');
+                  }
+                }
               } else {
                 console.warn('⚠️ AUTH DEBUG: No profile found during init');
                 // Keep session but set user to null for now
@@ -728,6 +772,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('🚪 Starting logout process...');
       setLoading(true);
       
+      // If impersonating, stop impersonation instead of logging out
+      if (isImpersonating) {
+        await stopImpersonation();
+        setLoading(false);
+        return;
+      }
+      
       // Log the logout activity before clearing user
       if (user) {
         activityLogger.log({
@@ -1037,11 +1088,106 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     console.log('Permissions cache cleared');
   };
 
+  // Impersonate user function (admin only)
+  const impersonateUser = async (targetUserId: string) => {
+    try {
+      if (!user || user.membershipType !== 'admin') {
+        throw new Error('Only admins can impersonate users');
+      }
+
+      console.log('🎭 Starting impersonation:', targetUserId);
+      
+      // Store the original admin ID
+      setOriginalAdminId(user.id);
+      
+      // Log the impersonation activity
+      await activityLogger.log({
+        userId: user.id,
+        activityType: 'impersonation_start',
+        description: `Admin ${user.email} started impersonating user ${targetUserId}`,
+        metadata: {
+          admin_id: user.id,
+          admin_email: user.email,
+          target_user_id: targetUserId,
+          started_at: new Date().toISOString()
+        }
+      });
+
+      // Fetch the target user's profile
+      const targetUserProfile = await fetchUserProfile(targetUserId);
+      
+      if (!targetUserProfile) {
+        throw new Error('Target user not found');
+      }
+
+      // Set the impersonation state
+      setIsImpersonating(true);
+      setUser(targetUserProfile);
+      
+      // Store impersonation info in localStorage for persistence
+      localStorage.setItem('impersonation_info', JSON.stringify({
+        originalAdminId: user.id,
+        targetUserId: targetUserId,
+        startedAt: new Date().toISOString()
+      }));
+
+      console.log('✅ Impersonation started successfully');
+    } catch (error) {
+      console.error('❌ Impersonation failed:', error);
+      throw error;
+    }
+  };
+
+  // Stop impersonation and return to admin account
+  const stopImpersonation = async () => {
+    try {
+      if (!isImpersonating || !originalAdminId) {
+        console.log('Not currently impersonating');
+        return;
+      }
+
+      console.log('🎭 Stopping impersonation');
+      
+      // Log the end of impersonation
+      if (user) {
+        await activityLogger.log({
+          userId: originalAdminId,
+          activityType: 'impersonation_end',
+          description: `Admin stopped impersonating user ${user.id}`,
+          metadata: {
+            admin_id: originalAdminId,
+            target_user_id: user.id,
+            ended_at: new Date().toISOString()
+          }
+        });
+      }
+
+      // Restore the admin profile
+      const adminProfile = await fetchUserProfile(originalAdminId);
+      
+      if (adminProfile) {
+        setUser(adminProfile);
+      }
+
+      // Clear impersonation state
+      setIsImpersonating(false);
+      setOriginalAdminId(null);
+      localStorage.removeItem('impersonation_info');
+
+      console.log('✅ Returned to admin account');
+    } catch (error) {
+      console.error('❌ Failed to stop impersonation:', error);
+      throw error;
+    }
+  };
+
   const value: AuthContextType = {
     user,
     session,
     loading,
     isAuthenticated: !!user,
+    isImpersonating,
+    originalAdminId,
     login,
     register,
     loginWithGoogle,
@@ -1053,7 +1199,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     forceCleanupOrphanedSession,
     validateSession,
     getUserPermissions,
-    clearPermissionsCache
+    clearPermissionsCache,
+    impersonateUser,
+    stopImpersonation
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

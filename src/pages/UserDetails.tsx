@@ -41,7 +41,7 @@ type TabType = 'personal' | 'company' | 'system' | 'competitions' | 'billing';
 export default function UserDetails() {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, impersonateUser } = useAuth();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -94,6 +94,26 @@ export default function UserDetails() {
     } catch (err) {
       console.error('Failed to load user:', err);
       setError(err instanceof Error ? err.message : 'Failed to load user');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleImpersonate = async () => {
+    if (!user) return;
+    
+    try {
+      setIsLoading(true);
+      await impersonateUser(user.id);
+      setSuccessMessage('Now impersonating ' + user.email);
+      
+      // Navigate to the user's dashboard
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 1000);
+    } catch (error) {
+      console.error('Failed to impersonate user:', error);
+      setError('Failed to impersonate user');
     } finally {
       setIsLoading(false);
     }
@@ -276,6 +296,16 @@ export default function UserDetails() {
           </div>
           
           <div className="flex items-center space-x-3">
+            <button
+              onClick={handleImpersonate}
+              className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition-colors flex items-center space-x-2"
+              disabled={user.membership_type === 'admin'}
+              title={user.membership_type === 'admin' ? 'Cannot impersonate other admins' : 'Impersonate this user'}
+            >
+              <Shield className="h-4 w-4" />
+              <span>Impersonate</span>
+            </button>
+            
             <button
               onClick={() => navigate(`/admin/users/${user.id}/edit`)}
               className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center space-x-2"

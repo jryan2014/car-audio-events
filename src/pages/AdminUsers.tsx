@@ -65,7 +65,7 @@ interface NewUserFormData {
   admin_discount_applied_at?: string;
 }
 export default function AdminUsers() {
-  const { user, session } = useAuth();
+  const { user, session, impersonateUser } = useAuth();
   const navigate = useNavigate();
   const { showSuccess, showError, showWarning } = useNotifications();
   const [users, setUsers] = useState<User[]>([]);
@@ -231,6 +231,24 @@ export default function AdminUsers() {
     });
 
     setFilteredUsers(filtered);
+  };
+
+  const handleImpersonate = async (userId: string) => {
+    try {
+      const targetUser = users.find(u => u.id === userId);
+      if (!targetUser) return;
+      
+      showSuccess(`Impersonating ${targetUser.email}...`);
+      await impersonateUser(userId);
+      
+      // Navigate to the user's dashboard
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 500);
+    } catch (error) {
+      console.error('Failed to impersonate user:', error);
+      showError('Failed to impersonate user');
+    }
   };
 
   const handleUserAction = async (userId: string, action: 'suspend' | 'activate' | 'approve' | 'ban' | 'verify_email' | 'delete') => {
@@ -833,6 +851,15 @@ export default function AdminUsers() {
                           >
                             <Edit className="h-4 w-4" />
                           </button>
+                          {user.membership_type !== 'admin' && (
+                            <button
+                              onClick={() => handleImpersonate(user.id)}
+                              className="text-purple-400 hover:text-purple-300 transition-colors"
+                              title="Impersonate User"
+                            >
+                              <Shield className="h-4 w-4" />
+                            </button>
+                          )}
                           {user.status === 'pending' && (
                             <button
                               onClick={() => handleApproveUser(user.id)}

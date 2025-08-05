@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import LoadingSpinner from '../../../../components/LoadingSpinner';
 import { messageService, cannedResponseService } from '../../services/supabase-client';
+import { useAuth } from '../../../../contexts/AuthContext';
+import { Shield } from 'lucide-react';
 import type { SupportTicketWithRelations, SupportTicketMessage, CreateMessageFormData, SupportCannedResponse } from '../../types';
 
 interface TicketDetailProps {
@@ -16,6 +19,8 @@ const TicketDetail: React.FC<TicketDetailProps> = ({
   onReload,
   canManage
 }) => {
+  const navigate = useNavigate();
+  const { impersonateUser } = useAuth();
   const [messages, setMessages] = useState<SupportTicketMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [replyText, setReplyText] = useState('');
@@ -71,6 +76,18 @@ const TicketDetail: React.FC<TicketDetailProps> = ({
       await loadCannedResponses();
     } catch (error) {
       console.error('Error saving canned response:', error);
+    }
+  };
+
+  const handleImpersonate = async () => {
+    if (!ticket.user_id) return;
+    
+    try {
+      await impersonateUser(ticket.user_id);
+      // Navigate to the user's dashboard
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Failed to impersonate user:', error);
     }
   };
 
@@ -164,7 +181,7 @@ const TicketDetail: React.FC<TicketDetailProps> = ({
                 </span>
               </div>
               {canManage && (
-                <div className="flex items-center pt-2">
+                <div className="flex items-center pt-2 space-x-4">
                   <a 
                     href={`/admin/users/${ticket.user.id}`}
                     className="text-sm text-electric-500 hover:text-electric-400"
@@ -173,6 +190,14 @@ const TicketDetail: React.FC<TicketDetailProps> = ({
                   >
                     View Full Profile →
                   </a>
+                  <button
+                    onClick={handleImpersonate}
+                    className="inline-flex items-center px-3 py-1 text-sm bg-purple-500 text-white rounded-md hover:bg-purple-600 transition-colors"
+                    title="Impersonate this user"
+                  >
+                    <Shield className="h-3 w-3 mr-1" />
+                    Impersonate
+                  </button>
                 </div>
               )}
             </div>

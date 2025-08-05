@@ -23,7 +23,9 @@ export type ActivityType =
   | 'directory_view'
   | 'profile_view'
   | 'resource_view'
-  | 'dashboard_view';
+  | 'dashboard_view'
+  | 'impersonation_start'
+  | 'impersonation_end';
 
 interface LogActivityParams {
   userId?: string | null;
