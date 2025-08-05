@@ -523,7 +523,7 @@ export default function EditUser() {
 
                 <div>
                   <label className="block text-gray-400 text-sm mb-2">
-                    Subscription Plan *
+                    Membership Plan *
                   </label>
                   <select
                     required
@@ -531,10 +531,20 @@ export default function EditUser() {
                     onChange={(e) => handleInputChange('subscription_plan', e.target.value)}
                     className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
                   >
-                    <option value="free">Free</option>
-                    <option value="pro">Pro</option>
-                    <option value="business">Business</option>
-                    <option value="enterprise">Enterprise</option>
+                    {formData.membership_type === 'competitor' ? (
+                      <>
+                        <option value="free">Free Competitor</option>
+                        <option value="pro">Pro Competitor</option>
+                      </>
+                    ) : formData.membership_type === 'retailer' ? (
+                      <option value="retailer">Retailer</option>
+                    ) : formData.membership_type === 'manufacturer' ? (
+                      <option value="manufacturer">Manufacturer</option>
+                    ) : formData.membership_type === 'organization' ? (
+                      <option value="organization">Organization</option>
+                    ) : (
+                      <option value="free">Free</option>
+                    )}
                   </select>
                 </div>
 

@@ -41,7 +41,7 @@ const CreateEvent = React.lazy(() => import('./pages/CreateEvent'));
 const EditEvent = React.lazy(() => import('./pages/EditEvent'));
 const EventResults = React.lazy(() => import('./pages/EventResults'));
 const UserDetails = React.lazy(() => import('./pages/UserDetails'));
-const EditUser = React.lazy(() => import('./pages/EditUser'));
+const EditUser = React.lazy(() => import('./pages/EditUserEnhanced'));
 const AdminAnalytics = React.lazy(() => import('./pages/AdminAnalytics'));
 const AdminBackup = React.lazy(() => import('./pages/AdminBackup'));
 const AdManagement = React.lazy(() => import('./pages/AdManagement'));
