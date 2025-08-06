@@ -28,7 +28,7 @@ interface EnhancedUser {
   zip?: string;
   phone?: string;
   company_name?: string;
-  team_id?: string;
+  // team_id removed - teams are handled through team_members table
   team_name?: string;
   verification_status: 'unverified' | 'pending' | 'verified' | 'rejected';
   subscription_status?: 'active' | 'paused' | 'past_due' | 'canceled' | 'trialing' | 'none';
@@ -41,7 +41,6 @@ interface EnhancedUser {
   failed_login_attempts: number;
   total_spent?: number;
   credits_balance?: number;
-  metadata?: any;
 }
 
 interface Transaction {
@@ -89,7 +88,7 @@ export default function EditUserEnhanced() {
     country: '',
     phone: '',
     company_name: '',
-    team_id: '',
+    // team_id removed - teams are handled through team_members table
     verification_status: 'unverified' as EnhancedUser['verification_status'],
     subscription_status: 'none',
     credits_balance: 0
@@ -179,14 +178,13 @@ export default function EditUserEnhanced() {
 
       const totalSpent = transactionsData?.reduce((sum, t) => sum + (t.amount / 100), 0) || 0;
 
-      // Parse permissions from metadata or determine from membership_type
+      // Parse permissions from membership_type
       let permissions: EnhancedUser['permissions'] = [];
       if (userData.membership_type === 'admin') {
         permissions.push('admin');
       }
-      if (userData.metadata?.permissions) {
-        permissions = [...new Set([...permissions, ...userData.metadata.permissions])];
-      }
+      // Note: Additional permissions would need to be stored in a separate permissions table
+      // For now, permissions are determined solely by membership_type
 
       // Determine membership plan - simplified logic
       let membershipPlan: EnhancedUser['membership_plan'] = 'free_competitor';
@@ -215,8 +213,7 @@ export default function EditUserEnhanced() {
         subscription_start_date: subscriptionData?.current_period_start,
         subscription_end_date: subscriptionData?.current_period_end,
         total_spent: totalSpent,
-        credits_balance: userData.credits_balance || 0,
-        metadata: userData.metadata || {}
+        credits_balance: userData.credits_balance || 0
       };
 
       setUser(enhancedUser);
@@ -235,7 +232,7 @@ export default function EditUserEnhanced() {
         country: userData.country || 'US',
         phone: userData.phone || '',
         company_name: userData.company_name || '',
-        team_id: userData.team_id || '',
+        // team_id removed - teams are handled through team_members table
         verification_status: userData.verification_status || 'unverified',
         subscription_status: subscriptionData?.status || 'none',
         credits_balance: userData.credits_balance || 0
@@ -310,12 +307,9 @@ export default function EditUserEnhanced() {
         country: formData.country || null,
         phone: formData.phone || null,
         company_name: formData.company_name || null,
-        team_id: formData.team_id || null,
-        verification_status: formData.verification_status,
-        metadata: {
-          ...(user?.metadata || {}),
-          permissions: formData.permissions
-        }
+        verification_status: formData.verification_status
+        // Removed metadata field as it doesn't exist in the users table
+        // Permissions are determined by membership_type (admin) field
       };
 
       const { error: updateError } = await supabase
@@ -862,24 +856,23 @@ export default function EditUserEnhanced() {
                       </select>
                     </div>
 
-                    {(formData.membership_plan === 'free_competitor' || formData.membership_plan === 'pro_competitor') && (
+                    {/* Team selection temporarily disabled - needs proper implementation through team_members table */}
+                    {/* (formData.membership_plan === 'free_competitor' || formData.membership_plan === 'pro_competitor') && (
                       <>
 
                         <div>
                           <label className="block text-gray-400 text-sm mb-2">Team</label>
                           <select
-                            value={formData.team_id}
-                            onChange={(e) => handleInputChange('team_id', e.target.value)}
-                            className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+                            value=""
+                            onChange={() => {}}
+                            disabled
+                            className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500 opacity-50 cursor-not-allowed"
                           >
                             <option value="">No Team</option>
-                            {teams.map(team => (
-                              <option key={team.id} value={team.id}>{team.name}</option>
-                            ))}
                           </select>
                         </div>
                       </>
-                    )}
+                    ) */}
                   </div>
                 </div>
               )}
