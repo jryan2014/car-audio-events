@@ -2,6 +2,98 @@
   publish = "dist"
   command = "npm run build"
 
+# ===================================
+# LEGACY URL REDIRECTS (301 Permanent)
+# ===================================
+# These redirects handle old WordPress URLs and forward them to the new React app routes
+# Must be placed BEFORE the catch-all SPA redirect
+
+# Disclaimer/Transparency page -> Resources section
+[[redirects]]
+  from = "/full-transparency-disclaimer/"
+  to = "/resources"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/full-transparency-disclaimer"
+  to = "/resources"
+  status = 301
+  force = true
+
+# Contact page -> Support page
+[[redirects]]
+  from = "/contact/"
+  to = "/support"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/contact"
+  to = "/support"
+  status = 301
+  force = true
+
+# Client Portal -> Login page
+[[redirects]]
+  from = "/clients/"
+  to = "/login"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/clients"
+  to = "/login"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/client-portal/"
+  to = "/login"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/client-portal"
+  to = "/login"
+  status = 301
+  force = true
+
+# About page -> Home page (since there's no dedicated about page in the new app)
+[[redirects]]
+  from = "/about/"
+  to = "/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/about"
+  to = "/"
+  status = 301
+  force = true
+
+# Blog/Competitor 101 -> Resources section
+[[redirects]]
+  from = "/blog/"
+  to = "/resources"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/blog"
+  to = "/resources"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/blog/*"
+  to = "/resources"
+  status = 301
+  force = true
+
+# ===================================
+# SPA CATCH-ALL REDIRECT (Must be last)
+# ===================================
 [[redirects]]
   from = "/*"
   to = "/index.html"
