@@ -48,7 +48,8 @@ export const EnhancedRecentActivity: React.FC<EnhancedRecentActivityProps> = ({
       setError(null);
 
       const { data, error } = await supabase.rpc('get_recent_activity', { 
-        limit_count: limit 
+        limit_count: limit,
+        exclude_admin: true // Exclude admin activities to show real user activity
       });
 
       if (error) {

@@ -36,11 +36,20 @@ interface EnhancedUser {
   subscription_end_date?: string;
   stripe_customer_id?: string;
   last_login_at?: string;
+  last_ip_address?: string;
   created_at: string;
   login_count: number;
   failed_login_attempts: number;
   total_spent?: number;
   credits_balance?: number;
+}
+
+interface ActivityItem {
+  id: string;
+  activity_type: string;
+  description: string;
+  ip_address?: string;
+  created_at: string;
 }
 
 interface Transaction {
@@ -58,6 +67,7 @@ export default function EditUserEnhanced() {
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
   const [user, setUser] = useState<EnhancedUser | null>(null);
+  const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,7 +80,7 @@ export default function EditUserEnhanced() {
     membership: true,
     billing: false,
     security: false,
-    activity: false,
+    activity: true,  // Now expanded by default to show IP and recent activity
     transactions: false
   });
   
@@ -158,6 +168,21 @@ export default function EditUserEnhanced() {
         .single();
 
       if (fetchError) throw fetchError;
+
+      // Load user's recent activity
+      try {
+        const { data: activityData, error: activityError } = await supabase
+          .rpc('get_user_recent_activity', {
+            p_user_id: userId,
+            limit_count: 10
+          });
+
+        if (!activityError && activityData) {
+          setRecentActivity(activityData);
+        }
+      } catch (activityErr) {
+        console.warn('Failed to load user activity:', activityErr);
+      }
 
       // Load subscription data
       let subscriptionData = null;
@@ -1176,6 +1201,10 @@ export default function EditUserEnhanced() {
                       <p className="text-white">{user.failed_login_attempts || 0}</p>
                     </div>
                     <div>
+                      <label className="block text-gray-400 text-sm mb-2">Last IP Address</label>
+                      <p className="text-white font-mono text-sm">{user.last_ip_address || 'Not recorded'}</p>
+                    </div>
+                    <div>
                       <label className="block text-gray-400 text-sm mb-2">Account Created</label>
                       <p className="text-white">{formatDate(user.created_at)}</p>
                     </div>
@@ -1189,6 +1218,44 @@ export default function EditUserEnhanced() {
                         <p className="text-white font-mono text-sm">{user.stripe_customer_id}</p>
                       </div>
                     )}
+                  </div>
+
+                  {/* Recent Activity */}
+                  <div className="mt-6">
+                    <h3 className="text-lg font-semibold text-white mb-4">Recent Activity</h3>
+                    <div className="bg-gray-700/50 rounded-lg p-4 max-h-64 overflow-y-auto">
+                      {recentActivity.length > 0 ? (
+                        <div className="space-y-2">
+                          {recentActivity.map((activity) => (
+                            <div key={activity.id} className="flex items-start space-x-3 p-2 bg-gray-800/50 rounded hover:bg-gray-800/70 transition-colors">
+                              <div className="flex-1">
+                                <p className="text-white text-sm">{activity.description}</p>
+                                <div className="flex items-center space-x-4 mt-1">
+                                  <span className="text-gray-400 text-xs">
+                                    {new Date(activity.created_at).toLocaleDateString('en-US', {
+                                      month: 'short',
+                                      day: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </span>
+                                  <span className="text-gray-500 text-xs">
+                                    {activity.activity_type.replace(/_/g, ' ')}
+                                  </span>
+                                  {activity.ip_address && (
+                                    <span className="text-gray-600 text-xs font-mono">
+                                      IP: {activity.ip_address}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-gray-400 text-center">No recent activity recorded</p>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}

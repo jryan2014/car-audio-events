@@ -24,6 +24,7 @@ interface User {
   bio?: string;
   profile_image?: string;
   last_login_at?: string;
+  last_ip_address?: string;
   created_at: string;
   updated_at?: string;
   login_count: number;
@@ -162,6 +163,7 @@ export default function AdminUsers() {
         verification_status,
         subscription_plan,
         last_login_at,
+        last_ip_address,
         created_at,
         login_count,
         failed_login_attempts
@@ -834,6 +836,11 @@ export default function AdminUsers() {
                         <div className="text-gray-500 text-xs">
                           {user.login_count} logins
                         </div>
+                        {user.last_ip_address && (
+                          <div className="text-gray-600 text-xs mt-1">
+                            IP: {user.last_ip_address}
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center space-x-2">

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Mail, Send, CheckCircle, AlertCircle, Loader } from 'lucide-react';
+import { Mail, Send, CheckCircle, AlertCircle, Loader, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 export default function ResendVerificationEmail() {
+  const [isExpanded, setIsExpanded] = useState(false);
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -60,13 +61,25 @@ export default function ResendVerificationEmail() {
   };
 
   return (
-    <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-      <div className="flex items-center space-x-3 mb-6">
-        <Mail className="h-6 w-6 text-electric-500" />
-        <h3 className="text-lg font-medium text-white">Resend Verification Email</h3>
-      </div>
+    <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full p-6 flex items-center justify-between hover:bg-gray-700/20 transition-colors"
+      >
+        <div className="flex items-center space-x-3">
+          <Mail className="h-6 w-6 text-electric-500" />
+          <h3 className="text-lg font-medium text-white">Resend Verification Email</h3>
+        </div>
+        {isExpanded ? (
+          <ChevronUp className="h-5 w-5 text-gray-400" />
+        ) : (
+          <ChevronDown className="h-5 w-5 text-gray-400" />
+        )}
+      </button>
 
-      <form onSubmit={handleResend} className="space-y-4">
+      {isExpanded && (
+        <div className="px-6 pb-6 border-t border-gray-700/50">
+          <form onSubmit={handleResend} className="space-y-4 mt-6">
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-gray-300">
             User Email Address
@@ -137,6 +150,8 @@ export default function ResendVerificationEmail() {
           <li>• Once verified, they can log in and complete their profile</li>
         </ul>
       </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -44,7 +44,10 @@ const csp = `
     https://cdn.tiny.cloud
     https://*.tinymce.com
     https://hcaptcha.com
-    https://*.hcaptcha.com;
+    https://*.hcaptcha.com
+    https://api.ipify.org
+    https://ipapi.co
+    https://api.my-ip.io;
   frame-src 'self' 
     https://www.google.com 
     https://maps.google.com

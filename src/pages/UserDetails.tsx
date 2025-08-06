@@ -31,18 +31,28 @@ interface User {
   registration_provider?: string;
   registration_completed?: boolean;
   last_login_at?: string;
+  last_ip_address?: string;
   created_at: string;
   login_count: number;
   failed_login_attempts: number;
 }
 
-type TabType = 'personal' | 'company' | 'system' | 'competitions' | 'billing';
+interface ActivityItem {
+  id: string;
+  activity_type: string;
+  description: string;
+  ip_address?: string;
+  created_at: string;
+}
+
+type TabType = 'personal' | 'company' | 'system' | 'competitions' | 'billing' | 'activity';
 
 export default function UserDetails() {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
   const { user: currentUser, impersonateUser } = useAuth();
   const [user, setUser] = useState<User | null>(null);
+  const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -91,6 +101,22 @@ export default function UserDetails() {
       }
 
       setUser(userData);
+
+      // Load user's recent activity
+      try {
+        const { data: activityData, error: activityError } = await supabase
+          .rpc('get_user_recent_activity', {
+            p_user_id: userId,
+            limit_count: 20
+          });
+
+        if (!activityError && activityData) {
+          setRecentActivity(activityData);
+        }
+      } catch (activityErr) {
+        console.warn('Failed to load user activity:', activityErr);
+        // Don't fail the whole operation if activity loading fails
+      }
     } catch (err) {
       console.error('Failed to load user:', err);
       setError(err instanceof Error ? err.message : 'Failed to load user');
@@ -433,6 +459,17 @@ export default function UserDetails() {
                 <CreditCard className="inline-block h-4 w-4 mr-2" />
                 Billing Details
               </button>
+              <button
+                onClick={() => setActiveTab('activity')}
+                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'activity'
+                    ? 'text-electric-400 border-electric-400'
+                    : 'text-gray-400 border-transparent hover:text-white hover:border-gray-600'
+                }`}
+              >
+                <Activity className="inline-block h-4 w-4 mr-2" />
+                Recent Activity
+              </button>
             </nav>
           </div>
 
@@ -653,6 +690,13 @@ export default function UserDetails() {
                         {user.failed_login_attempts}
                       </p>
                     </div>
+
+                    <div>
+                      <label className="block text-gray-400 text-sm mb-1">Last IP Address</label>
+                      <p className="text-white font-mono text-sm">
+                        {user.last_ip_address || 'Not recorded'}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -704,6 +748,50 @@ export default function UserDetails() {
                 
                 <div className="bg-gray-700/50 rounded-lg p-8">
                   <p className="text-gray-400 text-center">Billing and payment history will be displayed here</p>
+                </div>
+              </div>
+            )}
+
+            {/* Recent Activity Tab */}
+            {activeTab === 'activity' && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-semibold text-white flex items-center space-x-2">
+                  <Activity className="h-5 w-5 text-electric-400" />
+                  <span>Recent Activity</span>
+                </h3>
+                
+                <div className="bg-gray-700/50 rounded-lg p-4">
+                  {recentActivity.length > 0 ? (
+                    <div className="space-y-3">
+                      {recentActivity.map((activity) => (
+                        <div key={activity.id} className="flex items-start space-x-3 p-3 bg-gray-800/50 rounded-lg hover:bg-gray-800/70 transition-colors">
+                          <div className="flex-1">
+                            <p className="text-white text-sm">{activity.description}</p>
+                            <div className="flex items-center space-x-4 mt-1">
+                              <span className="text-gray-400 text-xs">
+                                {new Date(activity.created_at).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                              <span className="text-gray-500 text-xs">
+                                {activity.activity_type.replace(/_/g, ' ')}
+                              </span>
+                              {activity.ip_address && (
+                                <span className="text-gray-600 text-xs font-mono">
+                                  IP: {activity.ip_address}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-400 text-center py-8">No recent activity recorded for this user</p>
+                  )}
                 </div>
               </div>
             )}

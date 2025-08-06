@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { useInactivityTimer } from '../hooks/useInactivityTimer';
 import { activityLogger } from '../services/activityLogger';
+import { getClientIp, getCachedClientIp, setCachedClientIp } from '../utils/getClientIp';
 
 interface User {
   id: string;
@@ -271,11 +272,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Helper function for login tracking (shared between email/password and OAuth)
   const updateLoginTracking = async (userId: string) => {
     try {
-      // Login tracking disabled to prevent console errors
-      // The users table doesn't have the expected login tracking columns
-      // This is safe to skip as it's not essential functionality
-      if (import.meta.env.DEV) {
-        console.log('Login tracking skipped for user:', userId);
+      // Get client IP address
+      let clientIp = getCachedClientIp();
+      if (!clientIp) {
+        clientIp = await getClientIp();
+        if (clientIp) {
+          setCachedClientIp(clientIp);
+        }
+      }
+
+      // Update login count and last login timestamp with IP
+      const params: any = { p_user_id: userId };
+      if (clientIp) {
+        params.p_ip_address = clientIp;
+      }
+      
+      const { error } = await supabase.rpc('update_user_login_stats', params);
+      
+      if (error) {
+        console.warn('Failed to update login stats:', error);
+      } else {
+        console.log('Login stats updated for user:', userId, 'IP:', clientIp);
       }
     } catch (trackingError) {
       if (import.meta.env.DEV) {
