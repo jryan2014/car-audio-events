@@ -312,10 +312,36 @@ export default function EditUserEnhanced() {
         // Permissions are determined by membership_type (admin) field
       };
 
-      const { error: updateError } = await supabase
-        .from('users')
-        .update(updateData)
-        .eq('id', user.id);
+      console.log('Attempting to update user with data:', {
+        userId: user.id,
+        verification_status: formData.verification_status,
+        updateData
+      });
+
+      // Try using exec_sql RPC as a workaround for the update issue
+      const { data: updateResult, error: updateError } = await supabase.rpc('exec_sql', {
+        sql_command: `
+          UPDATE users 
+          SET 
+            name = '${formData.name.replace(/'/g, "''")}',
+            first_name = '${formData.first_name.replace(/'/g, "''")}',
+            last_name = '${formData.last_name.replace(/'/g, "''")}',
+            membership_type = '${dbMembershipType}',
+            status = '${formData.status}',
+            address = ${formData.address ? `'${formData.address.replace(/'/g, "''")}'` : 'NULL'},
+            city = ${formData.city ? `'${formData.city.replace(/'/g, "''")}'` : 'NULL'},
+            state = ${formData.state ? `'${formData.state.replace(/'/g, "''")}'` : 'NULL'},
+            zip = ${formData.zip ? `'${formData.zip.replace(/'/g, "''")}'` : 'NULL'},
+            country = ${formData.country ? `'${formData.country.replace(/'/g, "''")}'` : 'NULL'},
+            phone = ${formData.phone ? `'${formData.phone.replace(/'/g, "''")}'` : 'NULL'},
+            company_name = ${formData.company_name ? `'${formData.company_name.replace(/'/g, "''")}'` : 'NULL'},
+            verification_status = '${formData.verification_status}'
+          WHERE id = '${user.id}'
+          RETURNING *;
+        `
+      });
+
+      console.log('Update result:', { updateResult, updateError });
 
       if (updateError) {
         throw new Error(`Failed to update user: ${updateError.message}`);
