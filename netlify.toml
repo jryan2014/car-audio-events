@@ -59,16 +59,16 @@
   status = 301
   force = true
 
-# About page -> Home page (since there's no dedicated about page in the new app)
+# About page -> CMS About page
 [[redirects]]
   from = "/about/"
-  to = "/"
+  to = "/pages/about"
   status = 301
   force = true
 
 [[redirects]]
   from = "/about"
-  to = "/"
+  to = "/pages/about"
   status = 301
   force = true
 

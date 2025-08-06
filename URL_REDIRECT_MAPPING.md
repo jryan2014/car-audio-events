@@ -17,8 +17,8 @@ This document outlines the URL redirect mappings from the old WordPress site to 
 | `/clients` | `/login` | Client portal is now the login page |
 | `/client-portal/` | `/login` | Client portal is now the login page |
 | `/client-portal` | `/login` | Client portal is now the login page |
-| `/about/` | `/` | About content integrated into homepage |
-| `/about` | `/` | About content integrated into homepage |
+| `/about/` | `/pages/about` | About page in CMS |
+| `/about` | `/pages/about` | About page in CMS |
 | `/blog/` | `/resources` | Blog content moved to Resources |
 | `/blog` | `/resources` | Blog content moved to Resources |
 | `/blog/*` | `/resources` | All blog posts redirect to Resources |
