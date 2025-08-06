@@ -362,6 +362,48 @@ function formatFileSize(bytes: number): string {
 }
 
 /**
+ * Test table access (debug function)
+ */
+export async function testTableAccess(tableName?: string): Promise<{ [key: string]: any }> {
+  const tablesToTest = tableName ? [tableName] : BACKUP_TABLES;
+  const results: { [key: string]: any } = {};
+  
+  console.log(`🔍 Testing access to ${tablesToTest.length} tables...`);
+  
+  for (const table of tablesToTest) {
+    try {
+      const { data, error } = await supabase.from(table).select('*').limit(1);
+      
+      if (error) {
+        results[table] = {
+          accessible: false,
+          error: error.code,
+          message: error.message
+        };
+      } else {
+        results[table] = {
+          accessible: true,
+          sampleRowCount: data?.length || 0
+        };
+      }
+    } catch (err) {
+      results[table] = {
+        accessible: false,
+        error: 'EXCEPTION',
+        message: err instanceof Error ? err.message : 'Unknown error'
+      };
+    }
+  }
+  
+  // Log summary
+  const accessible = Object.entries(results).filter(([_, result]) => result.accessible).length;
+  const total = Object.keys(results).length;
+  console.log(`📊 Table access summary: ${accessible}/${total} accessible (${(accessible/total*100).toFixed(1)}%)`);
+  
+  return results;
+}
+
+/**
  * Initialize backup system
  */
 // Track initialization to prevent duplicates
@@ -415,4 +457,15 @@ export function initializeBackupSystem() {
   initializeCronService();
 
   console.log('✅ Backup system initialized');
+  
+  // In development, test table access
+  if (isDevelopment()) {
+    setTimeout(async () => {
+      try {
+        await testTableAccess();
+      } catch (error) {
+        console.warn('Table access test failed:', error);
+      }
+    }, 2000);
+  }
 } 
