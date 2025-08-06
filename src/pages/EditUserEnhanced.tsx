@@ -18,7 +18,7 @@ interface EnhancedUser {
   name: string;
   first_name?: string;
   last_name?: string;
-  membership_plan: 'free_competitor' | 'pro_competitor' | 'retailer' | 'manufacturer' | 'organization';
+  membership_plan: 'free_competitor' | 'pro_competitor' | 'retailer' | 'manufacturer' | 'organization' | 'admin';
   permissions: ('admin' | 'support' | 'moderator')[];
   status: 'active' | 'suspended' | 'pending' | 'banned';
   location?: string;
@@ -319,6 +319,44 @@ export default function EditUserEnhanced() {
 
       if (updateError) {
         throw new Error(`Failed to update user: ${updateError.message}`);
+      }
+
+      // Refetch the updated user data to confirm the changes
+      const { data: updatedUser, error: fetchError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (fetchError) {
+        throw new Error(`Failed to fetch updated user: ${fetchError.message}`);
+      }
+
+      if (updatedUser) {
+        // Update the local state with the fresh data from the database
+        setUser(updatedUser);
+        
+        // Update form data with the fresh values
+        setFormData({
+          name: updatedUser.name || '',
+          first_name: updatedUser.first_name || '',
+          last_name: updatedUser.last_name || '',
+          membership_plan: updatedUser.membership_type === 'admin' ? 'admin' : 
+                          updatedUser.membership_type === 'pro_competitor' ? 'pro_competitor' : 
+                          'free_competitor',
+          status: updatedUser.status || 'active',
+          address: updatedUser.address || '',
+          city: updatedUser.city || '',
+          state: updatedUser.state || '',
+          zip: updatedUser.zip || '',
+          country: updatedUser.country || 'USA',
+          phone: updatedUser.phone || '',
+          company_name: updatedUser.company_name || '',
+          permissions: updatedUser.membership_type === 'admin' ? ['admin'] : [],
+          credits_balance: updatedUser.credits_balance || 0,
+          verification_status: updatedUser.verification_status || 'pending',
+          subscription_status: 'none'
+        });
       }
 
       // Handle subscription changes if needed
