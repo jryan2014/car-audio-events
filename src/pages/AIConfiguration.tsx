@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Eye, EyeOff, Save, AlertCircle, CheckCircle, DollarSign, Image, Zap, BarChart3, Download, Trash2, Archive, Search, Filter, Grid, List, X, ArrowRight, HelpCircle, Camera } from 'lucide-react';
+import { Settings, Eye, EyeOff, Save, AlertCircle, CheckCircle, DollarSign, Image, Zap, BarChart3, Download, Trash2, Archive, Search, Filter, Grid, List, X, ArrowRight, HelpCircle, Camera, Database, Loader2, Shield } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { aiConfigServiceEnhanced as aiConfigService } from '../services/aiConfigServiceEnhanced';
 
 interface AIServiceConfig {
   provider: 'openai-dalle' | 'stability-ai' | 'midjourney' | 'adobe-firefly';
@@ -114,6 +115,26 @@ export default function AIConfiguration() {
       maxImagesPerDay: 200,
       quality: 'standard',
       style: 'natural'
+    },
+    'adobe-firefly': {
+      provider: 'adobe-firefly' as any,
+      apiKey: '',
+      model: 'firefly-v2',
+      enabled: false,
+      costPerImage: 0.02,
+      maxImagesPerDay: 100,
+      quality: 'standard',
+      style: 'vivid'
+    },
+    'midjourney': {
+      provider: 'midjourney' as any,
+      apiKey: '',
+      model: 'v6',
+      enabled: false,
+      costPerImage: 0.03,
+      maxImagesPerDay: 100,
+      quality: 'standard',
+      style: 'vivid'
     }
   });
 
@@ -268,17 +289,86 @@ export default function AIConfiguration() {
   };
 
   useEffect(() => {
-    // Load saved configurations
-    const savedConfigs = localStorage.getItem('ai-service-configs');
-    if (savedConfigs) {
-      setConfigs(JSON.parse(savedConfigs));
-    }
+    // Load configurations from DATABASE first
+    const loadFromDatabase = async () => {
+      try {
+        const dbConfigs = await aiConfigService.getAllConfigs();
+        if (Object.keys(dbConfigs).length > 0) {
+          // Convert database configs to component format
+          const formattedConfigs: Record<string, AIServiceConfig> = {};
+          Object.entries(dbConfigs).forEach(([provider, config]) => {
+            formattedConfigs[provider] = {
+              provider: provider as any,
+              apiKey: config.apiKey || '',
+              model: config.model || '',
+              enabled: config.enabled || false,
+              costPerImage: config.costPerImage || 0.04,
+              maxImagesPerDay: config.maxImagesPerDay || 100,
+              quality: (config.quality || 'standard') as 'standard' | 'hd',
+              style: (config.style || 'vivid') as 'vivid' | 'natural'
+            };
+          });
+          console.log('[AIConfiguration] Loaded configs from DB:', formattedConfigs);
+          setConfigs(formattedConfigs);
+        } else {
+          // Fallback to localStorage if database is empty
+          const savedConfigs = localStorage.getItem('ai-service-configs');
+          if (savedConfigs) {
+            setConfigs(JSON.parse(savedConfigs));
+          }
+        }
+      } catch (error) {
+        console.error('Error loading from database, falling back to localStorage:', error);
+        // Fallback to localStorage on error
+        const savedConfigs = localStorage.getItem('ai-service-configs');
+        if (savedConfigs) {
+          setConfigs(JSON.parse(savedConfigs));
+        }
+      }
+    };
 
-    // Load saved writing assistant configurations
-    const savedWritingConfigs = localStorage.getItem('writing-assistant-configs');
-    if (savedWritingConfigs) {
-      setWritingConfigs(JSON.parse(savedWritingConfigs));
-    }
+    loadFromDatabase();
+
+    // Load writing assistant configurations from DATABASE
+    const loadWritingConfigs = async () => {
+      try {
+        const dbWritingConfigs = await aiConfigService.getWritingConfigs();
+        if (Object.keys(dbWritingConfigs).length > 0) {
+          console.log('[AIConfiguration] Loaded writing configs from DB:', dbWritingConfigs);
+          // Convert the enhanced service config to local format
+          const localFormat: Record<string, WritingAssistantConfig> = {};
+          Object.entries(dbWritingConfigs).forEach(([provider, config]) => {
+            localFormat[provider] = {
+              provider: config.provider as 'openai-gpt' | 'anthropic-claude' | 'google-gemini',
+              apiKey: config.apiKey,
+              model: config.model,
+              enabled: config.enabled,
+              maxTokens: config.maxTokens,
+              temperature: config.temperature,
+              costPerRequest: config.costPerRequest,
+              maxRequestsPerDay: config.maxRequestsPerDay
+            };
+          });
+          setWritingConfigs(localFormat);
+        } else {
+          // Fallback to localStorage if database is empty
+          const savedWritingConfigs = localStorage.getItem('writing-assistant-configs');
+          if (savedWritingConfigs) {
+            console.log('[AIConfiguration] Loading writing configs from localStorage');
+            setWritingConfigs(JSON.parse(savedWritingConfigs));
+          }
+        }
+      } catch (error) {
+        console.error('Error loading writing configs from database:', error);
+        // Fallback to localStorage on error
+        const savedWritingConfigs = localStorage.getItem('writing-assistant-configs');
+        if (savedWritingConfigs) {
+          setWritingConfigs(JSON.parse(savedWritingConfigs));
+        }
+      }
+    };
+
+    loadWritingConfigs();
 
     // Load usage stats
     const savedStats = localStorage.getItem('ai-usage-stats');
@@ -481,9 +571,30 @@ export default function AIConfiguration() {
   const saveConfigurations = async () => {
     setSaving(true);
     try {
+      // Save to DATABASE first
+      let dbSaveSuccess = true;
+      for (const [provider, config] of Object.entries(configs)) {
+        const success = await aiConfigService.updateConfig(provider, {
+          apiKey: config.apiKey,
+          model: config.model,
+          enabled: config.enabled,
+          costPerImage: config.costPerImage,
+          maxImagesPerDay: config.maxImagesPerDay,
+          quality: config.quality,
+          style: config.style
+        });
+        if (!success) {
+          dbSaveSuccess = false;
+        }
+      }
+      
+      // Also save to localStorage as backup
       localStorage.setItem('ai-service-configs', JSON.stringify(configs));
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+      
+      if (dbSaveSuccess) {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3000);
+      }
     } catch (error) {
       console.error('Error saving configurations:', error);
     } finally {
@@ -2571,10 +2682,39 @@ export default function AIConfiguration() {
               {/* Save Button */}
               <div className="flex justify-end">
                 <button
-                  onClick={() => {
-                    localStorage.setItem('writing-assistant-configs', JSON.stringify(writingConfigs));
-                    setSaved(true);
-                    setTimeout(() => setSaved(false), 3000);
+                  onClick={async () => {
+                    setSaving(true);
+                    try {
+                      // Save to DATABASE
+                      let dbSaveSuccess = true;
+                      for (const [provider, config] of Object.entries(writingConfigs)) {
+                        const success = await aiConfigService.updateWritingConfig(provider, {
+                          apiKey: config.apiKey,
+                          model: config.model,
+                          enabled: config.enabled,
+                          maxTokens: config.maxTokens,
+                          temperature: config.temperature,
+                          costPerRequest: config.costPerRequest,
+                          maxRequestsPerDay: config.maxRequestsPerDay
+                        });
+                        if (!success) {
+                          dbSaveSuccess = false;
+                          console.error(`Failed to save ${provider} to database`);
+                        }
+                      }
+                      
+                      // Also save to localStorage as backup
+                      localStorage.setItem('writing-assistant-configs', JSON.stringify(writingConfigs));
+                      
+                      if (dbSaveSuccess) {
+                        setSaved(true);
+                        setTimeout(() => setSaved(false), 3000);
+                      }
+                    } catch (error) {
+                      console.error('Error saving writing configurations:', error);
+                    } finally {
+                      setSaving(false);
+                    }
                   }}
                   className="flex items-center space-x-2 px-6 py-3 bg-electric-500 hover:bg-electric-600 text-white rounded-lg transition-colors"
                 >
