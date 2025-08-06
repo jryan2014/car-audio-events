@@ -24,16 +24,21 @@ export interface BackupResult {
   backup?: BackupMetadata;
   error?: string;
   downloadUrl?: string;
+  successRate?: number;
 }
 
-// List of tables to backup (based on actual schema)
-const BACKUP_TABLES = [
+// Core tables that are guaranteed to exist (conservative list)
+const CORE_BACKUP_TABLES = [
   'users',
-  'cms_pages',
   'organizations',
   'events',
+  'admin_settings'
+];
+
+// Extended tables that may exist (will be gracefully skipped if not available)
+const EXTENDED_BACKUP_TABLES = [
+  'cms_pages',
   'categories',
-  'admin_settings',
   'event_registrations',
   'advertisements',
   'teams',
@@ -46,8 +51,15 @@ const BACKUP_TABLES = [
   'event_images',
   'event_attendance',
   'role_permissions',
-  'membership_plans'
+  'membership_plans',
+  'configuration_categories',
+  'configuration_options',
+  'rules_templates',
+  'form_field_configurations'
 ];
+
+// Combined list of all tables to attempt backup
+const BACKUP_TABLES = [...CORE_BACKUP_TABLES, ...EXTENDED_BACKUP_TABLES];
 
 /**
  * Create a comprehensive database backup
@@ -110,7 +122,9 @@ export async function createDatabaseBackup(type: 'manual' | 'automatic' = 'manua
       backup_version: '1.1',
       platform: 'Car Audio Competition Platform',
       supabase_url: import.meta.env.VITE_SUPABASE_URL,
-      tables_list: BACKUP_TABLES
+      core_tables: CORE_BACKUP_TABLES,
+      extended_tables: EXTENDED_BACKUP_TABLES,
+      tables_attempted: BACKUP_TABLES
     };
 
     zip.file('backup-manifest.json', JSON.stringify(manifest, null, 2));
@@ -136,12 +150,19 @@ export async function createDatabaseBackup(type: 'manual' | 'automatic' = 'manua
     // Create download URL (in a real app, you'd upload to cloud storage)
     const downloadUrl = URL.createObjectURL(zipContent);
 
-    console.log(`🎉 Backup completed successfully: ${filename} (${formatFileSize(zipContent.size)})`);
+    const successRate = successfulTables / BACKUP_TABLES.length;
+    console.log(`🎉 Backup completed: ${filename} (${formatFileSize(zipContent.size)})`);
+    console.log(`📊 Success rate: ${successfulTables}/${BACKUP_TABLES.length} tables (${(successRate * 100).toFixed(1)}%)`);
+    
+    if (successRate < 0.5) {
+      console.warn(`⚠️ Low success rate: Only ${(successRate * 100).toFixed(1)}% of tables were backed up`);
+    }
 
     return {
       success: true,
       backup: finalMetadata,
-      downloadUrl
+      downloadUrl,
+      successRate: successRate
     };
 
   } catch (error) {
@@ -174,23 +195,30 @@ export async function createDatabaseBackup(type: 'manual' | 'automatic' = 'manua
  */
 async function backupTable(tableName: string) {
   try {
-    let query = supabase.from(tableName);
-    
     // Skip any problematic tables
     if (tableName === 'auth.users') {
       console.log(`⚠️ Skipping auth.users table (restricted access)`);
       return null;
     }
 
+    let query = supabase.from(tableName);
     const { data, error, count } = await query.select('*', { count: 'exact' });
 
     if (error) {
-      console.error(`Error backing up ${tableName}:`, error);
       // Log specific error details for debugging
       if (error.code === '42P01') {
-        console.error(`Table ${tableName} does not exist`);
+        console.warn(`⚠️ Table ${tableName} does not exist - skipping`);
       } else if (error.code === '42501') {
-        console.error(`No permission to access table ${tableName}`);
+        console.warn(`⚠️ No permission to access table ${tableName} - skipping`);
+      } else if (error.code === 'PGRST116') {
+        console.warn(`⚠️ Table ${tableName} schema issue - skipping`);
+      } else {
+        console.error(`❌ Error backing up ${tableName}:`, {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
       }
       return null;
     }
@@ -199,11 +227,16 @@ async function backupTable(tableName: string) {
       table_name: tableName,
       backup_timestamp: new Date().toISOString(),
       row_count: count || 0,
-      data: data || []
+      data: data || [],
+      schema_version: '1.1'
     };
 
   } catch (error) {
-    console.error(`Exception backing up ${tableName}:`, error);
+    console.error(`💥 Exception backing up ${tableName}:`, {
+      name: error.name,
+      message: error.message,
+      stack: isDevelopment() ? error.stack : 'Stack trace hidden in production'
+    });
     return null;
   }
 }
