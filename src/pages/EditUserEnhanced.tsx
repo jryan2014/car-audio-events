@@ -335,18 +335,21 @@ export default function EditUserEnhanced() {
         throw new Error(`Failed to update user: ${updateError.message}`);
       }
       
-      // Now update verification_status separately if it's different
+      // Now update verification_status separately using the database function
       if (formData.verification_status !== user.verification_status) {
-        console.log('Updating verification_status separately:', formData.verification_status);
+        console.log('Updating verification_status using database function:', formData.verification_status);
         
-        const { error: verificationError } = await supabase
-          .from('users')
-          .update({ verification_status: formData.verification_status })
-          .eq('id', user.id);
+        const { data: verificationResult, error: verificationError } = await supabase
+          .rpc('update_user_verification_status', {
+            user_id: user.id,
+            new_status: formData.verification_status
+          });
           
         if (verificationError) {
           console.error('Failed to update verification status:', verificationError);
           // Don't throw here, as the main update succeeded
+        } else {
+          console.log('Verification status updated successfully:', verificationResult);
         }
       }
 
