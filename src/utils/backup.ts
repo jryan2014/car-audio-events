@@ -116,7 +116,7 @@ export async function createDatabaseBackup(type: 'manual' | 'automatic' = 'manua
       backup_id: backupId,
       created_at: new Date().toISOString(),
       type,
-      tables_attempted: BACKUP_TABLES.length,
+      tables_attempted_count: BACKUP_TABLES.length,
       tables_backed_up: successfulTables,
       total_rows: totalRows,
       backup_version: '1.1',
