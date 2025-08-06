@@ -28,7 +28,6 @@ interface EnhancedUser {
   zip?: string;
   phone?: string;
   company_name?: string;
-  competition_type?: 'SPL' | 'SQL' | 'both' | 'none';
   team_id?: string;
   team_name?: string;
   verification_status: 'unverified' | 'pending' | 'verified' | 'rejected';
@@ -90,7 +89,6 @@ export default function EditUserEnhanced() {
     country: '',
     phone: '',
     company_name: '',
-    competition_type: 'none' as EnhancedUser['competition_type'],
     team_id: '',
     verification_status: 'unverified' as EnhancedUser['verification_status'],
     subscription_status: 'none',
@@ -236,7 +234,6 @@ export default function EditUserEnhanced() {
         country: userData.country || 'US',
         phone: userData.phone || '',
         company_name: userData.company_name || '',
-        competition_type: userData.competition_type || 'none',
         team_id: userData.team_id || '',
         verification_status: userData.verification_status || 'unverified',
         subscription_status: subscriptionData?.status || 'none',
@@ -312,7 +309,6 @@ export default function EditUserEnhanced() {
         country: formData.country || null,
         phone: formData.phone || null,
         company_name: formData.company_name || null,
-        competition_type: formData.competition_type,
         team_id: formData.team_id || null,
         verification_status: formData.verification_status,
         credits_balance: formData.credits_balance,
@@ -868,19 +864,6 @@ export default function EditUserEnhanced() {
 
                     {(formData.membership_plan === 'free_competitor' || formData.membership_plan === 'pro_competitor') && (
                       <>
-                        <div>
-                          <label className="block text-gray-400 text-sm mb-2">Competition Type</label>
-                          <select
-                            value={formData.competition_type}
-                            onChange={(e) => handleInputChange('competition_type', e.target.value)}
-                            className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-                          >
-                            <option value="none">None Selected</option>
-                            <option value="SPL">SPL (Sound Pressure Level)</option>
-                            <option value="SQL">SQL (Sound Quality Level)</option>
-                            <option value="both">Both SPL & SQL</option>
-                          </select>
-                        </div>
 
                         <div>
                           <label className="block text-gray-400 text-sm mb-2">Team</label>
