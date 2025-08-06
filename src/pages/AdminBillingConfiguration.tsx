@@ -30,6 +30,7 @@ import {
   Percent
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import BillingConfigurationHelp from '../components/admin/BillingConfigurationHelp';
 
 interface ProRateRule {
   id: string;
@@ -734,6 +735,7 @@ export default function AdminBillingConfiguration() {
                 </div>
               )}
             </div>
+            <BillingConfigurationHelp section="prorate" />
           </div>
         )}
 
@@ -817,6 +819,7 @@ export default function AdminBillingConfiguration() {
                 </div>
               )}
             </div>
+            <BillingConfigurationHelp section="rules" />
           </div>
         )}
 
@@ -900,6 +903,7 @@ export default function AdminBillingConfiguration() {
                 </div>
               )}
             </div>
+            <BillingConfigurationHelp section="dunning" />
           </div>
         )}
 
@@ -987,6 +991,7 @@ export default function AdminBillingConfiguration() {
                 </div>
               )}
             </div>
+            <BillingConfigurationHelp section="campaigns" />
           </div>
         )}
 

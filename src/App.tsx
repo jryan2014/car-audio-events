@@ -43,6 +43,7 @@ const EventResults = React.lazy(() => import('./pages/EventResults'));
 const UserDetails = React.lazy(() => import('./pages/UserDetails'));
 const EditUser = React.lazy(() => import('./pages/EditUserEnhanced'));
 const AdminAnalytics = React.lazy(() => import('./pages/AdminAnalytics'));
+const AnalyticsSettings = React.lazy(() => import('./pages/AnalyticsSettings'));
 const AdminBackup = React.lazy(() => import('./pages/AdminBackup'));
 const AdManagement = React.lazy(() => import('./pages/AdManagement'));
 const AdvertisePage = React.lazy(() => import('./pages/AdvertisePage'));
@@ -226,6 +227,7 @@ function App() {
               <Route path="/admin/competition-results" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminLeaderboardManager /></Suspense></AdminLayout>} />
               <Route path="/admin/backup" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminBackup /></Suspense></AdminLayout>} />
               <Route path="/admin/analytics" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminAnalytics /></Suspense></AdminLayout>} />
+              <Route path="/analytics-settings" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AnalyticsSettings /></Suspense></AdminLayout>} />
               <Route path="/admin/ad-management" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdManagement /></Suspense></AdminLayout>} />
               <Route path="/admin/ai-configuration" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AIConfiguration /></Suspense></AdminLayout>} />
               {/* <Route path="/ad-debug" element={<AdDebug />} /> */}

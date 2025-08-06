@@ -26,14 +26,27 @@ export interface BackupResult {
   downloadUrl?: string;
 }
 
-// List of tables to backup
+// List of tables to backup (based on actual schema)
 const BACKUP_TABLES = [
   'users',
-  'profiles', 
   'cms_pages',
   'organizations',
-  'payments',
-  'auth.users'
+  'events',
+  'categories',
+  'admin_settings',
+  'event_registrations',
+  'advertisements',
+  'teams',
+  'team_members',
+  'user_audio_systems',
+  'audio_components',
+  'competition_results',
+  'event_favorites',
+  'event_analytics',
+  'event_images',
+  'event_attendance',
+  'role_permissions',
+  'membership_plans'
 ];
 
 /**
@@ -77,6 +90,8 @@ export async function createDatabaseBackup(type: 'manual' | 'automatic' = 'manua
           totalRows += Array.isArray(tableData.data) ? tableData.data.length : 0;
           successfulTables++;
           console.log(`✅ Successfully backed up ${tableName}: ${Array.isArray(tableData.data) ? tableData.data.length : 0} rows`);
+        } else {
+          console.log(`⚠️ Skipped table ${tableName} (not accessible or doesn't exist)`);
         }
       } catch (error) {
         console.error(`❌ Failed to backup table ${tableName}:`, error);
@@ -89,11 +104,13 @@ export async function createDatabaseBackup(type: 'manual' | 'automatic' = 'manua
       backup_id: backupId,
       created_at: new Date().toISOString(),
       type,
+      tables_attempted: BACKUP_TABLES.length,
       tables_backed_up: successfulTables,
       total_rows: totalRows,
-      backup_version: '1.0',
+      backup_version: '1.1',
       platform: 'Car Audio Competition Platform',
-      supabase_url: import.meta.env.VITE_SUPABASE_URL
+      supabase_url: import.meta.env.VITE_SUPABASE_URL,
+      tables_list: BACKUP_TABLES
     };
 
     zip.file('backup-manifest.json', JSON.stringify(manifest, null, 2));
@@ -159,10 +176,8 @@ async function backupTable(tableName: string) {
   try {
     let query = supabase.from(tableName);
     
-    // Handle auth.users table differently
+    // Skip any problematic tables
     if (tableName === 'auth.users') {
-      // For auth.users, we need to use a different approach
-      // This is typically restricted, so we'll skip it or handle differently
       console.log(`⚠️ Skipping auth.users table (restricted access)`);
       return null;
     }
@@ -171,6 +186,12 @@ async function backupTable(tableName: string) {
 
     if (error) {
       console.error(`Error backing up ${tableName}:`, error);
+      // Log specific error details for debugging
+      if (error.code === '42P01') {
+        console.error(`Table ${tableName} does not exist`);
+      } else if (error.code === '42501') {
+        console.error(`No permission to access table ${tableName}`);
+      }
       return null;
     }
 
