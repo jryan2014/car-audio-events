@@ -326,8 +326,7 @@ export default function EditUserEnhanced() {
         .from('users')
         .update(updateDataWithoutVerification)
         .eq('id', user.id)
-        .select()
-        .single();
+        .select();
 
       console.log('Main update result:', { updateResult, updateError });
 
@@ -354,16 +353,16 @@ export default function EditUserEnhanced() {
       }
 
       // Refetch the updated user data to confirm the changes
-      const { data: updatedUser, error: fetchError } = await supabase
+      const { data: updatedUsers, error: fetchError } = await supabase
         .from('users')
         .select('*')
-        .eq('id', user.id)
-        .single();
+        .eq('id', user.id);
 
       if (fetchError) {
         throw new Error(`Failed to fetch updated user: ${fetchError.message}`);
       }
 
+      const updatedUser = updatedUsers?.[0];
       if (updatedUser) {
         // Update the local state with the fresh data from the database
         setUser(updatedUser);
