@@ -47,6 +47,7 @@ export default function BackupManager() {
     try {
       const { cronService } = await import('../utils/cronService');
       const status = cronService.getStatus();
+      console.log('📊 Current cron status:', status);
       setCronStatus(status);
     } catch (error) {
       console.error('Failed to load cron status:', error);
@@ -127,10 +128,13 @@ export default function BackupManager() {
 
   const closeSettings = async () => {
     setShowSettings(false);
-    // Reload cron status in case settings changed
+    // Reload cron status in case settings changed with a delay
     console.log('🔄 Refreshing cron status after settings change...');
-    await loadCronStatus();
-    console.log('✅ Cron status refreshed');
+    // Add a small delay to allow settings to propagate
+    setTimeout(async () => {
+      await loadCronStatus();
+      console.log('✅ Cron status refreshed');
+    }, 200);
   };
 
   const downloadBackup = async (backup: BackupFile) => {

@@ -36,6 +36,15 @@ class CronService {
   constructor() {
     this.settings = this.loadSettings();
     this.setupDefaultJobs();
+    // Auto-start if auto backup is enabled
+    if (this.settings.enableAutoBackup) {
+      setTimeout(() => {
+        if (!this.isRunning) {
+          console.log('🚀 Auto-starting cron service (auto backup enabled)');
+          this.start();
+        }
+      }, 100);
+    }
   }
 
   /**
@@ -79,14 +88,19 @@ class CronService {
    * Update cron settings
    */
   updateSettings(newSettings: Partial<CronSettings>) {
+    const wasRunning = this.isRunning;
     this.settings = { ...this.settings, ...newSettings };
     this.saveSettings();
     
     // Restart jobs with new settings
     this.stop();
     this.setupDefaultJobs();
-    if (this.isRunning) {
-      this.start();
+    
+    // Auto-start if auto backup is now enabled or was previously running
+    if (this.settings.enableAutoBackup || wasRunning) {
+      setTimeout(() => {
+        this.start();
+      }, 100);
     }
     
     console.log('🔄 Updated cron settings:', this.settings);
@@ -298,6 +312,7 @@ class CronService {
     }
     
     this.isRunning = true;
+    this.isInitialized = true;
     console.log('🚀 Starting cron service...');
     
     // Ensure jobs are set up with current settings
@@ -311,9 +326,9 @@ class CronService {
       }
     }
     
+    console.log(`✅ Cron service started with ${this.jobs.size} jobs`);
+    
     if (import.meta.env.MODE === 'development') {
-      console.log(`✅ Cron service started with ${this.jobs.size} jobs`);
-      
       // Log job details for debugging
       for (const job of this.jobs.values()) {
         console.log(`🔍 Job: ${job.name}, Enabled: ${job.enabled}, Next Run: ${job.nextRun || 'Not scheduled'}`);
@@ -350,8 +365,15 @@ class CronService {
    * Get job status
    */
   getStatus() {
+    // Auto-start if enabled but not running
+    if (this.settings.enableAutoBackup && !this.isRunning && !this.isInitialized) {
+      console.log('🔄 Auto-starting cron service (status check detected enabled but stopped)');
+      this.start();
+    }
+    
     return {
       running: this.isRunning,
+      initialized: this.isInitialized,
       jobCount: this.jobs.size,
       enabledJobs: Array.from(this.jobs.values()).filter(job => job.enabled).length,
       nextRun: this.getNextRun(),
@@ -453,8 +475,14 @@ export function initializeCronService() {
   isInitialized = true;
   console.log('🔧 Initializing cron service...');
   
-  // Start the service
-  cronService.start();
+  // Force start the service if auto backup is enabled
+  const settings = cronService.getSettings();
+  if (settings.enableAutoBackup) {
+    console.log('🚀 Auto backup is enabled, starting cron service');
+    cronService.start();
+  } else {
+    console.log('🚦 Auto backup is disabled, cron service will remain stopped');
+  }
   
   // Stop the service when the page is unloaded
   const handleBeforeUnload = () => {
@@ -463,9 +491,18 @@ export function initializeCronService() {
   
   window.addEventListener('beforeunload', handleBeforeUnload);
   
-  if (import.meta.env.MODE === 'development') {
-    console.log('✅ Cron service initialized');
-  }
+  console.log('✅ Cron service initialized');
+  
+  // Log status after a brief delay
+  setTimeout(() => {
+    const status = cronService.getStatus();
+    console.log('📊 Initial cron service status:', {
+      running: status.running,
+      initialized: status.initialized,
+      enabledJobs: status.enabledJobs,
+      autoBackupEnabled: status.settings.enableAutoBackup
+    });
+  }, 500);
 }
 
 /**
