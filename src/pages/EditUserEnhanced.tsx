@@ -40,6 +40,7 @@ interface EnhancedUser {
   login_count: number;
   failed_login_attempts: number;
   total_spent?: number;
+  credits_balance?: number;
   metadata?: any;
 }
 
@@ -90,7 +91,8 @@ export default function EditUserEnhanced() {
     company_name: '',
     team_id: '',
     verification_status: 'unverified' as EnhancedUser['verification_status'],
-    subscription_status: 'none'
+    subscription_status: 'none',
+    credits_balance: 0
   });
 
   // Membership plan pricing info
@@ -213,6 +215,7 @@ export default function EditUserEnhanced() {
         subscription_start_date: subscriptionData?.current_period_start,
         subscription_end_date: subscriptionData?.current_period_end,
         total_spent: totalSpent,
+        credits_balance: userData.credits_balance || 0,
         metadata: userData.metadata || {}
       };
 
@@ -234,7 +237,8 @@ export default function EditUserEnhanced() {
         company_name: userData.company_name || '',
         team_id: userData.team_id || '',
         verification_status: userData.verification_status || 'unverified',
-        subscription_status: subscriptionData?.status || 'none'
+        subscription_status: subscriptionData?.status || 'none',
+        credits_balance: userData.credits_balance || 0
       });
     } catch (err) {
       console.error('Failed to load user:', err);
