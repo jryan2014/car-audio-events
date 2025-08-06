@@ -318,33 +318,36 @@ export default function EditUserEnhanced() {
         updateData
       });
 
-      // Try using exec_sql RPC as a workaround for the update issue
-      const { data: updateResult, error: updateError } = await supabase.rpc('exec_sql', {
-        sql_command: `
-          UPDATE users 
-          SET 
-            name = '${formData.name.replace(/'/g, "''")}',
-            first_name = '${formData.first_name.replace(/'/g, "''")}',
-            last_name = '${formData.last_name.replace(/'/g, "''")}',
-            membership_type = '${dbMembershipType}',
-            status = '${formData.status}',
-            address = ${formData.address ? `'${formData.address.replace(/'/g, "''")}'` : 'NULL'},
-            city = ${formData.city ? `'${formData.city.replace(/'/g, "''")}'` : 'NULL'},
-            state = ${formData.state ? `'${formData.state.replace(/'/g, "''")}'` : 'NULL'},
-            zip = ${formData.zip ? `'${formData.zip.replace(/'/g, "''")}'` : 'NULL'},
-            country = ${formData.country ? `'${formData.country.replace(/'/g, "''")}'` : 'NULL'},
-            phone = ${formData.phone ? `'${formData.phone.replace(/'/g, "''")}'` : 'NULL'},
-            company_name = ${formData.company_name ? `'${formData.company_name.replace(/'/g, "''")}'` : 'NULL'},
-            verification_status = '${formData.verification_status}'
-          WHERE id = '${user.id}'
-          RETURNING *;
-        `
-      });
+      // First, try to update all fields except verification_status
+      const updateDataWithoutVerification = { ...updateData };
+      delete updateDataWithoutVerification.verification_status;
+      
+      const { data: updateResult, error: updateError } = await supabase
+        .from('users')
+        .update(updateDataWithoutVerification)
+        .eq('id', user.id)
+        .select()
+        .single();
 
-      console.log('Update result:', { updateResult, updateError });
+      console.log('Main update result:', { updateResult, updateError });
 
       if (updateError) {
         throw new Error(`Failed to update user: ${updateError.message}`);
+      }
+      
+      // Now update verification_status separately if it's different
+      if (formData.verification_status !== user.verification_status) {
+        console.log('Updating verification_status separately:', formData.verification_status);
+        
+        const { error: verificationError } = await supabase
+          .from('users')
+          .update({ verification_status: formData.verification_status })
+          .eq('id', user.id);
+          
+        if (verificationError) {
+          console.error('Failed to update verification status:', verificationError);
+          // Don't throw here, as the main update succeeded
+        }
       }
 
       // Refetch the updated user data to confirm the changes
