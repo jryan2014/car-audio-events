@@ -50,7 +50,7 @@ const AdvertisePage = React.lazy(() => import('./pages/AdvertisePage'));
 // const AdDebug = React.lazy(() => import('./pages/AdDebug')); // TODO: Create this page
 const MemberAdDashboard = React.lazy(() => import('./pages/MemberAdDashboard'));
 const AIConfiguration = React.lazy(() => import('./pages/AIConfiguration'));
-// const AIMigration = React.lazy(() => import('./pages/AIMigration')); // TODO: Create this page
+const AIMigration = React.lazy(() => import('./pages/AIMigration'));
 const CMSPages = React.lazy(() => import('./pages/CMSPages'));
 const DynamicPage = React.lazy(() => import('./pages/DynamicPage'));
 const SystemConfiguration = React.lazy(() => import('./pages/SystemConfiguration'));
@@ -231,7 +231,7 @@ function App() {
               <Route path="/admin/ad-management" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdManagement /></Suspense></AdminLayout>} />
               <Route path="/admin/ai-configuration" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AIConfiguration /></Suspense></AdminLayout>} />
               {/* <Route path="/ad-debug" element={<AdDebug />} /> */}
-              {/* <Route path="/admin/ai-migration" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AIMigration /></Suspense></AdminLayout>} /> */}
+              <Route path="/admin/ai-migration" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AIMigration /></Suspense></AdminLayout>} />
               <Route path="/admin/cms-pages" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><CMSPages /></Suspense></AdminLayout>} />
               <Route path="/admin/system-configuration" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><SystemConfiguration /></Suspense></AdminLayout>} />
               <Route path="/admin/system-configuration-demo" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><SystemConfigurationDemo /></Suspense></AdminLayout>} />
