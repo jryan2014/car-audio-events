@@ -130,11 +130,16 @@ const AdminTicketList: React.FC = () => {
     }
     
     try {
-      await ticketService.deleteTicket(ticketId);
-      await loadTickets();
-      await loadStats();
+      const success = await ticketService.deleteTicket(ticketId);
+      if (success) {
+        await loadTickets();
+        await loadStats();
+      } else {
+        alert('Failed to delete ticket. Please check console for errors.');
+      }
     } catch (error) {
       console.error('Error deleting ticket:', error);
+      alert('Error deleting ticket. Please check console for details.');
     }
   };
   
@@ -165,15 +170,29 @@ const AdminTicketList: React.FC = () => {
     }
     
     try {
+      let successCount = 0;
+      let failCount = 0;
+      
       for (const ticketId of selectedTickets) {
-        await ticketService.deleteTicket(ticketId);
+        const success = await ticketService.deleteTicket(ticketId);
+        if (success) {
+          successCount++;
+        } else {
+          failCount++;
+        }
       }
+      
+      if (failCount > 0) {
+        alert(`Deleted ${successCount} tickets. Failed to delete ${failCount} tickets.`);
+      }
+      
       setSelectedTickets(new Set());
       setShowBulkActions(false);
       await loadTickets();
       await loadStats();
     } catch (error) {
       console.error('Error deleting tickets:', error);
+      alert('Error during bulk delete. Please check console for details.');
     }
   };
   

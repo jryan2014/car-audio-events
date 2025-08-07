@@ -4,7 +4,7 @@ import {
   Plus, Target, Award, MapPin, CreditCard, Package, Clock, 
   DollarSign, FileText, Shield, Activity, Heart, Settings,
   ChevronRight, Home, BarChart3, Zap, Bell, X, CheckCircle, Crown,
-  Edit, Save, LogOut, Car, Trash2
+  Edit, Save, LogOut, Car, Trash2, Volume2
 } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -23,6 +23,7 @@ import {
 } from 'recharts';
 import LogCAEEventModal from '../components/LogCAEEventModal';
 import { useNotifications } from '../components/NotificationSystem';
+import { featureFlagService } from '../services/featureFlagService';
 
 // Resend Verification Email Component
 const ResendVerificationEmailButton: React.FC<{ userEmail: string }> = ({ userEmail }) => {
@@ -178,6 +179,7 @@ export default function Dashboard() {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [audioSystems, setAudioSystems] = useState<any[]>([]);
   const [isLoadingDivisions, setIsLoadingDivisions] = useState(false);
+  const [hasSubwooferAccess, setHasSubwooferAccess] = useState<boolean>(false);
   const [isLoadingClasses, setIsLoadingClasses] = useState(false);
   const [showNewClassInput, setShowNewClassInput] = useState(false);
   const [eventFormData, setEventFormData] = useState({
@@ -221,6 +223,14 @@ export default function Dashboard() {
       link: '/spl-calculator',
       color: 'orange'
     },
+    // Conditionally include Subwoofer Designer for users with access
+    ...(hasSubwooferAccess ? [{
+      title: 'Subwoofer Designer',
+      description: 'Design and model subwoofer boxes',
+      icon: Volume2,
+      link: '/subwoofer-designer',
+      color: 'purple'
+    }] : []),
     {
       title: 'Support Desk',
       description: 'Get help or report issues',
@@ -307,7 +317,8 @@ export default function Dashboard() {
             loadRecentResults(),
             loadBillingData(),
             loadCompetitionHistory(),
-            loadCompetitionResults()
+            loadCompetitionResults(),
+            checkSubwooferAccess()
           ]);
           
           // Log dashboard access
@@ -609,6 +620,21 @@ export default function Dashboard() {
     } catch (error: any) {
       console.error('Error saving competition result:', error);
       showError('Save Failed', error.message || 'Failed to save competition result. Please try again.');
+    }
+  };
+
+  const checkSubwooferAccess = async () => {
+    if (!user) {
+      setHasSubwooferAccess(false);
+      return;
+    }
+    
+    try {
+      const access = await featureFlagService.checkSubwooferAccess();
+      setHasSubwooferAccess(access);
+    } catch (error) {
+      console.error('Error checking subwoofer access:', error);
+      setHasSubwooferAccess(false);
     }
   };
 

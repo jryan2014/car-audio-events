@@ -1,4 +1,4 @@
-import { supabase } from '../utils/supabase';
+import { supabase } from '../lib/supabase';
 
 export type AccessMode = 'disabled' | 'all_pro' | 'specific_users';
 

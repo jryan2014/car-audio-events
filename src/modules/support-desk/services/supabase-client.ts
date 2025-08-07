@@ -436,19 +436,38 @@ export const ticketService = {
   // Delete ticket
   async deleteTicket(ticketId: string): Promise<boolean> {
     try {
-      // First delete all related messages
-      await supabase
+      // Delete related data first (in order of dependencies)
+      
+      // 1. Delete all messages
+      const { error: messagesError } = await supabase
         .from('support_ticket_messages')
         .delete()
         .eq('ticket_id', ticketId);
       
-      // Then delete the ticket itself
+      if (messagesError) {
+        console.error('Error deleting messages:', messagesError);
+      }
+      
+      // 2. Delete assignments
+      const { error: assignmentsError } = await supabase
+        .from('support_ticket_assignments')
+        .delete()
+        .eq('ticket_id', ticketId);
+      
+      if (assignmentsError) {
+        console.error('Error deleting assignments:', assignmentsError);
+      }
+      
+      // 3. Finally delete the ticket itself
       const { error } = await supabase
         .from('support_tickets')
         .delete()
         .eq('id', ticketId);
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error deleting ticket:', error);
+        throw error;
+      }
       
       return true;
     } catch (error) {

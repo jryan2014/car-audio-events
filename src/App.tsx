@@ -77,6 +77,8 @@ const AdminNewsletterManager = React.lazy(() => import('./pages/AdminNewsletterM
 const Leaderboard = React.lazy(() => import('./pages/Leaderboard'));
 const AdminLeaderboardManager = React.lazy(() => import('./components/AdminLeaderboardManager'));
 const SPLCalculator = React.lazy(() => import('./pages/SPLCalculator'));
+const SubwooferDesigner = React.lazy(() => import('./pages/SubwooferDesigner'));
+const AdminSubwooferDesigner = React.lazy(() => import('./pages/AdminSubwooferDesigner'));
 const VerifyEmail = React.lazy(() => import('./pages/VerifyEmail'));
 
 // Support Desk components
@@ -210,6 +212,7 @@ function App() {
               <Route path="/newsletter/unsubscribe/:token" element={<Layout><NewsletterUnsubscribe /></Layout>} />
               <Route path="/leaderboard" element={<Layout><Leaderboard /></Layout>} />
               <Route path="/spl-calculator" element={<Layout><SPLCalculator /></Layout>} />
+              <Route path="/subwoofer-designer" element={<Layout><ProtectedRoute requireProfileComplete={true}><SubwooferDesigner /></ProtectedRoute></Layout>} />
               
               {/* Billing routes with their own layout */}
               <Route path="/billing" element={<Layout><ProtectedRoute requireProfileComplete={true}><UserBilling /></ProtectedRoute></Layout>} />
@@ -243,6 +246,7 @@ function App() {
               <Route path="/admin/billing" element={<AdminLayout><AdminBilling /></AdminLayout>} />
               <Route path="/admin/billing-configuration" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminBillingConfiguration /></Suspense></AdminLayout>} />
               <Route path="/admin/newsletter" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminNewsletterManager /></Suspense></AdminLayout>} />
+              <Route path="/admin/subwoofer-designer" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminSubwooferDesigner /></Suspense></AdminLayout>} />
               <Route path="/admin/support/*" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminSupportDashboard /></Suspense></AdminLayout>} />
             </Routes>
           </Suspense>

@@ -18,7 +18,8 @@ import {
   Megaphone,
   Cog,
   CreditCard,
-  Mail
+  Mail,
+  Volume2
 } from 'lucide-react';
 
 interface AdminNavItem {
@@ -170,6 +171,12 @@ const adminNavGroups: AdminNavGroup[] = [
         href: '/admin/system-configuration',
         icon: Cog,
         description: 'System configuration'
+      },
+      {
+        name: 'Subwoofer Designer',
+        href: '/admin/subwoofer-designer',
+        icon: Volume2,
+        description: 'Feature flag management'
       },
       {
         name: 'Test Payment Config',
