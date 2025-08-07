@@ -730,50 +730,74 @@ export const fieldService = {
     isBackend = false
   ): Promise<SupportFieldDefinition[]> {
     try {
-      // Get all active fields
-      const { data: fields, error: fieldsError } = await supabase
-        .from('support_field_definitions')
-        .select('*')
-        .eq('is_active', true)
-        .order('sort_order', { ascending: true });
-      
-      if (fieldsError) throw fieldsError;
-      
-      if (!fields?.length) return [];
-      
-      // Get visibility rules
-      const { data: rules, error: rulesError } = await supabase
-        .from('support_field_visibility_rules')
-        .select('*');
-      
-      if (rulesError) throw rulesError;
-      
-      // Filter fields based on visibility rules
-      return fields.filter(field => {
-        const fieldRules = rules?.filter(r => r.field_definition_id === field.id) || [];
+      // If a request type is specified, get only fields assigned to that request type
+      if (requestTypeId) {
+        const { data: assignments, error: assignmentError } = await supabase
+          .from('support_request_type_fields')
+          .select(`
+            *,
+            field:support_field_definitions(*)
+          `)
+          .eq('request_type_id', requestTypeId)
+          .order('sort_order', { ascending: true });
         
-        // If no rules, field is visible to all
-        if (!fieldRules.length) return true;
+        if (assignmentError) throw assignmentError;
         
-        // Check each rule
-        return fieldRules.some(rule => {
-          // Check context (frontend/backend)
-          if (isBackend && !rule.show_on_backend) return false;
-          if (!isBackend && !rule.show_on_frontend) return false;
+        if (!assignments?.length) return [];
+        
+        // Extract the field definitions and preserve the assignment info
+        const fields = assignments
+          .filter(a => a.field && a.field.is_active)
+          .map(a => ({
+            ...a.field,
+            is_required: a.is_required // Override with request-type-specific requirement
+          }));
+        
+        // Get visibility rules for additional filtering if needed
+        const { data: rules, error: rulesError } = await supabase
+          .from('support_field_visibility_rules')
+          .select('*');
+        
+        if (rulesError) throw rulesError;
+        
+        // Filter fields based on visibility rules
+        return fields.filter(field => {
+          const fieldRules = rules?.filter(r => r.field_definition_id === field.id) || [];
           
-          // Check request type
-          if (rule.request_type_ids.length && requestTypeId) {
-            if (!rule.request_type_ids.includes(requestTypeId)) return false;
-          }
+          // If no rules, field is visible to all
+          if (!fieldRules.length) return true;
           
-          // Check user role
-          if (rule.user_roles.length && userRole) {
-            if (!rule.user_roles.includes(userRole as any)) return false;
-          }
-          
-          return true;
+          // Check each rule
+          return fieldRules.some(rule => {
+            // Check context (frontend/backend)
+            if (isBackend && !rule.show_on_backend) return false;
+            if (!isBackend && !rule.show_on_frontend) return false;
+            
+            // Check request type
+            if (rule.request_type_ids.length && requestTypeId) {
+              if (!rule.request_type_ids.includes(requestTypeId)) return false;
+            }
+            
+            // Check user role
+            if (rule.user_roles.length && userRole) {
+              if (!rule.user_roles.includes(userRole as any)) return false;
+            }
+            
+            return true;
+          });
         });
-      });
+      } else {
+        // If no request type specified, return all active fields (legacy behavior)
+        const { data: fields, error: fieldsError } = await supabase
+          .from('support_field_definitions')
+          .select('*')
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true });
+        
+        if (fieldsError) throw fieldsError;
+        
+        return fields || [];
+      }
     } catch (error) {
       console.error('Error fetching fields:', error);
       return [];
@@ -831,6 +855,24 @@ export const fieldService = {
     } catch (error) {
       console.error('Error deleting field:', error);
       throw error;
+    }
+  },
+
+  // Get field dependencies for conditional logic
+  async getFieldDependencies(fieldIds: string[]) {
+    try {
+      const { data, error } = await supabase
+        .from('support_field_dependencies')
+        .select('*')
+        .in('dependent_field_id', fieldIds)
+        .eq('is_active', true);
+      
+      if (error) throw error;
+      
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching field dependencies:', error);
+      return [];
     }
   }
 };

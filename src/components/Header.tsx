@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, X, User, Calendar, MapPin, Users, LogOut, Settings, Shield, Package, BarChart3, Target, FileText, Building2, ChevronDown, Search, CreditCard, MessageSquare } from 'lucide-react';
+import { Menu, X, User, Calendar, MapPin, Users, LogOut, Settings, Shield, Package, BarChart3, Target, FileText, Building2, ChevronDown, Search, CreditCard, MessageSquare, Calculator, Volume2, Wrench } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import MegaMenu from './MegaMenu';
 import MobileMegaMenu from './MobileMegaMenu';
@@ -122,6 +122,34 @@ export default function Header() {
                           <BarChart3 className="h-4 w-4" />
                           <span>Dashboard</span>
                         </Link>
+                        
+                        {/* Tools Section - Available to all authenticated users */}
+                        <div className="border-t border-gray-700 my-2"></div>
+                        <div className="px-4 py-2">
+                          <div className="text-xs text-gray-500 font-medium mb-2">
+                            <Wrench className="h-3 w-3 inline mr-1" />
+                            Pro Tools
+                          </div>
+                          
+                          <Link
+                            to="/subwoofer-designer"
+                            onClick={handleDropdownLinkClick}
+                            className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-300 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
+                          >
+                            <Volume2 className="h-3 w-3 text-electric-400" />
+                            <span>Subwoofer Designer</span>
+                          </Link>
+                          
+                          <Link
+                            to="/spl-calculator"
+                            onClick={handleDropdownLinkClick}
+                            className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-300 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
+                          >
+                            <Calculator className="h-3 w-3 text-purple-400" />
+                            <span>SPL Calculator</span>
+                          </Link>
+                        </div>
+                        <div className="border-t border-gray-700 my-2"></div>
                         
                         <Link
                           to="/profile"

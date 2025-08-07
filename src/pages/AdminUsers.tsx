@@ -72,9 +72,6 @@ export default function AdminUsers() {
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedMembershipType, setSelectedMembershipType] = useState('all');
-  const [selectedStatus, setSelectedStatus] = useState('all');
-  const [selectedVerification, setSelectedVerification] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -139,18 +136,39 @@ export default function AdminUsers() {
     loadUsers();
     // Log access to User Management
     ActivityLogger.userManagementAccess();
-  }, []);
+  }, [currentPage, sortField, sortDirection, statusFilter, membershipFilter, verificationFilter]);
 
   useEffect(() => {
     filterUsers();
-  }, [users, searchTerm, selectedMembershipType, selectedStatus, selectedVerification]);
+  }, [users, searchTerm, membershipFilter, statusFilter, verificationFilter]);
 
   const loadUsers = async () => {
     try {
       setIsLoading(true);
       setError(null);
 
-      // Build the query - only select columns that exist
+      console.log('📊 LOADING USERS WITH FILTERS:', {
+        statusFilter,
+        membershipFilter,
+        verificationFilter,
+        searchTerm,
+        currentPage,
+        sortField,
+        sortDirection
+      });
+
+      // First, let's get ALL users without any filters to debug
+      const { data: allUsersData, error: allUsersError, count: allUsersCount } = await supabase
+        .from('users')
+        .select('*', { count: 'exact' });
+
+      console.log('🔴 ALL USERS (NO FILTERS):', {
+        allUsersData,
+        allUsersCount,
+        allUsersError
+      });
+
+      // Now build the filtered query
       let query = supabase.from('users').select(`
         id,
         email,
@@ -167,35 +185,49 @@ export default function AdminUsers() {
         created_at,
         login_count,
         failed_login_attempts
-      `);
+      `, { count: 'exact' });
 
       // Apply filters
       if (statusFilter !== 'all') {
+        console.log('Applying status filter:', statusFilter);
         query = query.eq('status', statusFilter);
       }
       if (membershipFilter !== 'all') {
+        console.log('Applying membership filter:', membershipFilter);
         query = query.eq('membership_type', membershipFilter);
       }
       if (verificationFilter !== 'all') {
+        console.log('Applying verification filter:', verificationFilter);
         query = query.eq('verification_status', verificationFilter);
       }
 
       // Apply search
       if (searchTerm) {
+        console.log('Applying search term:', searchTerm);
         query = query.or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%`);
       }
 
-      // Apply sorting and pagination
-      const startIndex = (currentPage - 1) * USERS_PER_PAGE;
-      query = query
-        .order(sortField, { ascending: sortDirection === 'asc' })
-        .range(startIndex, startIndex + USERS_PER_PAGE - 1);
+      // Apply sorting
+      query = query.order(sortField, { ascending: sortDirection === 'asc' });
+      
+      // Remove pagination completely to see all users
+      // This should return ALL users without any limit
 
-      const { data, error, count } = await supabase
-        .from('users')
-        .select('*', { count: 'exact' })
-        .order(sortField, { ascending: sortDirection === 'asc' })
-        .range(startIndex, startIndex + USERS_PER_PAGE - 1);
+      const { data, error, count } = await query;
+
+      console.log('🔍 USERS QUERY RESULT:', {
+        data: data,
+        dataLength: data?.length,
+        count: count,
+        error: error,
+        currentPage: currentPage,
+        filters: {
+          statusFilter,
+          membershipFilter,
+          verificationFilter,
+          searchTerm
+        }
+      });
 
       if (error) {
         throw error;
@@ -225,9 +257,9 @@ export default function AdminUsers() {
                            user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            (user.company_name && user.company_name.toLowerCase().includes(searchTerm.toLowerCase()));
       
-      const matchesMembershipType = selectedMembershipType === 'all' || user.membership_type === selectedMembershipType;
-      const matchesStatus = selectedStatus === 'all' || user.status === selectedStatus;
-      const matchesVerification = selectedVerification === 'all' || user.verification_status === selectedVerification;
+      const matchesMembershipType = membershipFilter === 'all' || user.membership_type === membershipFilter;
+      const matchesStatus = statusFilter === 'all' || user.status === statusFilter;
+      const matchesVerification = verificationFilter === 'all' || user.verification_status === verificationFilter;
       
       return matchesSearch && matchesMembershipType && matchesStatus && matchesVerification;
     });
@@ -681,8 +713,8 @@ export default function AdminUsers() {
             <div className="relative">
               <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
               <select
-                value={selectedMembershipType}
-                onChange={(e) => setSelectedMembershipType(e.target.value)}
+                value={membershipFilter}
+                onChange={(e) => setMembershipFilter(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500 transition-colors appearance-none"
               >
                 <option value="all">All Types</option>
@@ -698,8 +730,8 @@ export default function AdminUsers() {
             {/* Status Filter */}
             <div className="relative">
               <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
                 className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500 transition-colors appearance-none"
               >
                 <option value="all">All Status</option>
@@ -713,8 +745,8 @@ export default function AdminUsers() {
             {/* Verification Filter */}
             <div className="relative">
               <select
-                value={selectedVerification}
-                onChange={(e) => setSelectedVerification(e.target.value)}
+                value={verificationFilter}
+                onChange={(e) => setVerificationFilter(e.target.value)}
                 className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500 transition-colors appearance-none"
               >
                 <option value="all">All Verification</option>

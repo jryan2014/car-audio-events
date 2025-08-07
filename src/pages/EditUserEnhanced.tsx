@@ -18,7 +18,7 @@ interface EnhancedUser {
   name: string;
   first_name?: string;
   last_name?: string;
-  membership_plan: 'free_competitor' | 'pro_competitor' | 'retailer' | 'manufacturer' | 'organization' | 'admin';
+  membership_plan: 'free_competitor' | 'pro_competitor' | 'pro_competitor_free' | 'pro_competitor_paid' | 'retailer' | 'manufacturer' | 'organization' | 'admin';
   permissions: ('admin' | 'support' | 'moderator')[];
   status: 'active' | 'suspended' | 'pending' | 'banned';
   location?: string;
@@ -216,7 +216,12 @@ export default function EditUserEnhanced() {
       
       // Check membership_type field first
       if (userData.membership_type === 'pro_competitor') {
-        membershipPlan = 'pro_competitor';
+        // For pro competitors, check if they have free or paid subscription
+        if (userData.subscription_plan === 'free' || !subscriptionData || subscriptionData.status === 'none') {
+          membershipPlan = 'pro_competitor_free'; // Free pro competitor
+        } else {
+          membershipPlan = 'pro_competitor_paid'; // Paid pro competitor
+        }
       } else if (userData.membership_type === 'retailer') {
         membershipPlan = 'retailer';
       } else if (userData.membership_type === 'manufacturer') {
@@ -224,10 +229,8 @@ export default function EditUserEnhanced() {
       } else if (userData.membership_type === 'organization') {
         membershipPlan = 'organization';
       } else if (userData.membership_type === 'competitor') {
-        // For basic competitor, check if they have active subscription
-        membershipPlan = (subscriptionData?.status === 'active' || subscriptionData?.status === 'paused') 
-          ? 'pro_competitor' 
-          : 'free_competitor';
+        // For basic competitor, always free
+        membershipPlan = 'free_competitor';
       }
 
       const enhancedUser = {
@@ -313,10 +316,37 @@ export default function EditUserEnhanced() {
 
       // Map membership plan to database membership_type field
       let dbMembershipType: string = formData.membership_plan;
+      let dbSubscriptionPlan: string = 'free';
+      let createBilling = false;
+      let adminGranted = false;
+      
       if (formData.membership_plan === 'free_competitor') {
         dbMembershipType = 'competitor';
-      } else if (formData.membership_plan === 'pro_competitor') {
+        dbSubscriptionPlan = 'free';
+        createBilling = false;
+        adminGranted = false; // Regular free competitor
+      } else if (formData.membership_plan === 'pro_competitor_free') {
         dbMembershipType = 'pro_competitor';
+        dbSubscriptionPlan = 'free'; // FREE pro competitor - no billing
+        createBilling = false;
+        adminGranted = true; // Mark as admin-granted
+        console.log('🔐 ADMIN: Setting admin_granted = true for FREE pro competitor');
+      } else if (formData.membership_plan === 'pro_competitor_paid') {
+        dbMembershipType = 'pro_competitor';
+        dbSubscriptionPlan = 'yearly'; // PAID pro competitor - create billing
+        createBilling = true;
+        adminGranted = false; // Mark as NOT admin-granted (regular paid)
+      } else if (formData.membership_plan === 'pro_competitor') {
+        // Legacy option - treat as paid
+        dbMembershipType = 'pro_competitor';
+        dbSubscriptionPlan = 'yearly';
+        createBilling = true;
+        adminGranted = false; // Mark as NOT admin-granted (legacy paid)
+      } else {
+        // For retailer, manufacturer, organization - keep as is
+        dbSubscriptionPlan = 'yearly';
+        createBilling = true;
+        adminGranted = false; // Regular paid memberships
       }
       
       const updateData: any = {
@@ -324,6 +354,7 @@ export default function EditUserEnhanced() {
         first_name: formData.first_name,
         last_name: formData.last_name,
         membership_type: dbMembershipType, // Store the mapped value
+        admin_granted: adminGranted,
         status: formData.status,
         address: formData.address || null,
         city: formData.city || null,
@@ -337,9 +368,12 @@ export default function EditUserEnhanced() {
         // Permissions are determined by membership_type (admin) field
       };
 
-      console.log('Attempting to update user with data:', {
-        userId: user.id,
+      console.log('🔐 ADMIN: Attempting to update user with data:', {
+        adminUser: currentUser?.email,
+        targetUserId: user.id,
+        targetUserEmail: user.email,
         verification_status: formData.verification_status,
+        membershipChange: user.membership_plan + ' → ' + dbMembershipType,
         updateData
       });
 
@@ -353,15 +387,111 @@ export default function EditUserEnhanced() {
         .eq('id', user.id)
         .select();
 
-      console.log('Main update result:', { updateResult, updateError });
+      console.log('🔐 ADMIN: Main update result:', { 
+        success: !updateError,
+        adminUser: currentUser?.email,
+        targetUser: user.email,
+        updateResult, 
+        updateError 
+      });
 
       if (updateError) {
         throw new Error(`Failed to update user: ${updateError.message}`);
       }
+
+      // Log admin operation to audit trail
+      try {
+        await supabase
+          .from('audit_logs')
+          .insert({
+            user_id: null,
+            user_email: currentUser?.email || 'unknown_admin',
+            user_role: 'admin',
+            action: 'UPDATE_USER',
+            table_name: 'users',
+            record_id: user.id,
+            old_data: {
+              membership_plan: user.membership_plan,
+              status: user.status,
+              verification_status: user.verification_status
+            },
+            new_data: {
+              membership_plan: dbMembershipType,
+              status: formData.status,
+              verification_status: formData.verification_status,
+              target_user_email: user.email
+            },
+            created_at: new Date().toISOString()
+          });
+        console.log('🔐 ADMIN: Audit log created for user update');
+      } catch (auditError) {
+        console.error('⚠️ Failed to create audit log:', auditError);
+        // Don't fail the operation if audit logging fails
+      }
+
+      // Handle billing creation for PAID upgrades
+      if (createBilling && (formData.membership_plan === 'pro_competitor_paid' || 
+          formData.membership_plan === 'retailer' || 
+          formData.membership_plan === 'manufacturer' || 
+          formData.membership_plan === 'organization')) {
+        
+        console.log('🔐 ADMIN: Creating billing/subscription for paid upgrade...', {
+          adminUser: currentUser?.email,
+          targetUser: user.email,
+          membershipPlan: formData.membership_plan
+        });
+        
+        try {
+          // Create a pending invoice/subscription that user needs to pay
+          const { data: invoiceData, error: invoiceError } = await supabase
+            .from('transactions')
+            .insert({
+              user_id: user.id,
+              amount: formData.membership_plan === 'pro_competitor_paid' ? 4999 : // $49.99 in cents
+                     formData.membership_plan === 'retailer' ? 24999 : // $249.99 in cents
+                     formData.membership_plan === 'manufacturer' ? 99999 : // $999.99 in cents
+                     49999, // Organization $499.99 in cents
+              type: 'payment',
+              status: 'pending',
+              description: `Admin upgrade to ${formData.membership_plan.replace('_', ' ')} - Payment Required`,
+              payment_method: 'pending'
+            });
+            
+          if (invoiceError) {
+            console.error('Failed to create invoice:', invoiceError);
+            setSuccessMessage('User upgraded but failed to create billing. User will need manual billing setup.');
+          } else {
+            console.log('Invoice created successfully:', invoiceData);
+            setSuccessMessage('User upgraded! Billing invoice created - user must complete payment to activate subscription.');
+          }
+          
+          // Update subscription status to show payment is required
+          await supabase
+            .from('users')
+            .update({ subscription_status: 'payment_required' })
+            .eq('id', user.id);
+            
+        } catch (billingError) {
+          console.error('Billing creation error:', billingError);
+          setSuccessMessage('User upgraded but billing setup failed. Manual billing setup required.');
+        }
+      } else {
+        console.log('🔐 ADMIN: No billing required - free upgrade or free tier', {
+          adminUser: currentUser?.email,
+          targetUser: user.email,
+          membershipPlan: formData.membership_plan
+        });
+        setSuccessMessage('User updated successfully! ' + 
+          (formData.membership_plan === 'pro_competitor_free' ? 'FREE Pro Competitor access granted.' : ''));
+      }
       
       // Now update verification_status separately using the database function
       if (formData.verification_status !== user.verification_status) {
-        console.log('Updating verification_status using database function:', formData.verification_status);
+        console.log('🔐 ADMIN: Updating verification_status using database function:', {
+          adminUser: currentUser?.email,
+          targetUser: user.email,
+          newVerificationStatus: formData.verification_status
+        });
         
         const { data: verificationResult, error: verificationError } = await supabase
           .rpc('update_user_verification_status', {
@@ -417,15 +547,13 @@ export default function EditUserEnhanced() {
 
       // Handle subscription changes if needed
       if (formData.membership_plan !== user.membership_plan) {
-        // TODO: Implement subscription plan changes through Stripe
-        console.log('Subscription plan change requested:', formData.membership_plan);
+        console.log('Subscription plan change completed:', formData.membership_plan);
       }
 
-      setSuccessMessage('User updated successfully!');
-      
+      // Success message is set above based on billing/free upgrade
       setTimeout(() => {
         setSuccessMessage(null);
-      }, 3000);
+      }, 5000);
       
     } catch (err) {
       console.error('Failed to update user:', err);
@@ -865,13 +993,29 @@ export default function EditUserEnhanced() {
                         onChange={(e) => handleInputChange('membership_plan', e.target.value)}
                         className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
                       >
-                        <option value="free_competitor">Free Competitor</option>
-                        <option value="pro_competitor">Pro Competitor ($49.99/year)</option>
+                        <option value="free_competitor">Free Competitor (No billing)</option>
+                        <option value="pro_competitor_free">Pro Competitor - FREE (Admin Granted)</option>
+                        <option value="pro_competitor_paid">Pro Competitor - PAID ($49.99/year)</option>
                         <option value="retailer">Retailer ($249.99/year)</option>
                         <option value="manufacturer">Manufacturer ($999.99/year)</option>
                         <option value="organization">Organization ($499.99/year)</option>
                       </select>
                     </div>
+                    
+                    {(formData.membership_plan === 'pro_competitor_free' || formData.membership_plan === 'pro_competitor_paid') && (
+                      <div className="md:col-span-2 bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+                        <h4 className="text-blue-400 font-medium mb-2">Pro Competitor Upgrade</h4>
+                        {formData.membership_plan === 'pro_competitor_free' ? (
+                          <p className="text-blue-300 text-sm">
+                            ✅ <strong>FREE Pro Competitor</strong> - Admin granted for QA testing. No billing or subscription required.
+                          </p>
+                        ) : (
+                          <p className="text-blue-300 text-sm">
+                            💳 <strong>PAID Pro Competitor</strong> - User will need to complete payment. A subscription and invoice will be created.
+                          </p>
+                        )}
+                      </div>
+                    )}
 
                     <div>
                       <label className="block text-gray-400 text-sm mb-2">Permissions</label>

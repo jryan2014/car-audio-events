@@ -10,7 +10,7 @@ interface User {
   name: string;
   first_name?: string;
   last_name?: string;
-  membership_type: 'competitor' | 'retailer' | 'manufacturer' | 'organization' | 'admin';
+  membership_type: 'competitor' | 'pro_competitor' | 'retailer' | 'manufacturer' | 'organization' | 'admin';
   status: 'active' | 'suspended' | 'pending' | 'banned';
   location?: string;
   address?: string;
@@ -23,7 +23,7 @@ interface User {
   team_id?: string;
   team_name?: string;
   verification_status: 'unverified' | 'pending' | 'verified' | 'rejected';
-  subscription_plan: 'free' | 'pro' | 'business' | 'enterprise';
+  subscription_plan: 'free' | 'pro' | 'business' | 'enterprise' | 'monthly' | 'yearly';
   last_login_at?: string;
   created_at: string;
   login_count: number;
@@ -174,11 +174,27 @@ export default function EditUser() {
         subscription_plan: formData.subscription_plan
       };
 
+      console.log('🔍 ATTEMPTING TO UPDATE USER:', {
+        userId: user.id,
+        currentData: {
+          membership_type: user.membership_type,
+          subscription_plan: user.subscription_plan
+        },
+        newData: updateData,
+        formData: formData
+      });
+
       // Update user directly in the database with only safe fields
-      const { error: updateError } = await supabase
+      const { data: updateResult, error: updateError } = await supabase
         .from('users')
         .update(updateData)
-        .eq('id', user.id);
+        .eq('id', user.id)
+        .select();
+
+      console.log('🔍 UPDATE RESULT:', {
+        updateResult,
+        updateError
+      });
 
       if (updateError) {
         console.error('Database update error:', updateError);
@@ -353,7 +369,8 @@ export default function EditUser() {
                     onChange={(e) => handleInputChange('membership_type', e.target.value)}
                     className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
                   >
-                    <option value="competitor">Competitor</option>
+                    <option value="competitor">Competitor (Free)</option>
+                    <option value="pro_competitor">Pro Competitor</option>
                     <option value="retailer">Retailer</option>
                     <option value="manufacturer">Manufacturer</option>
                     <option value="organization">Organization</option>
@@ -523,7 +540,7 @@ export default function EditUser() {
 
                 <div>
                   <label className="block text-gray-400 text-sm mb-2">
-                    Membership Plan *
+                    Subscription Plan *
                   </label>
                   <select
                     required
@@ -531,17 +548,27 @@ export default function EditUser() {
                     onChange={(e) => handleInputChange('subscription_plan', e.target.value)}
                     className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
                   >
-                    {formData.membership_type === 'competitor' ? (
+                    {(formData.membership_type === 'competitor' || formData.membership_type === 'pro_competitor') ? (
                       <>
-                        <option value="free">Free Competitor</option>
-                        <option value="pro">Pro Competitor</option>
+                        <option value="free">Free</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="yearly">Yearly</option>
                       </>
                     ) : formData.membership_type === 'retailer' ? (
-                      <option value="retailer">Retailer</option>
+                      <>
+                        <option value="monthly">Monthly</option>
+                        <option value="yearly">Yearly</option>
+                      </>
                     ) : formData.membership_type === 'manufacturer' ? (
-                      <option value="manufacturer">Manufacturer</option>
+                      <>
+                        <option value="monthly">Monthly</option>
+                        <option value="yearly">Yearly</option>
+                      </>
                     ) : formData.membership_type === 'organization' ? (
-                      <option value="organization">Organization</option>
+                      <>
+                        <option value="monthly">Monthly</option>
+                        <option value="yearly">Yearly</option>
+                      </>
                     ) : (
                       <option value="free">Free</option>
                     )}

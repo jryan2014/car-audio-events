@@ -85,7 +85,22 @@ export default function AdminSettings() {
   }
 
   // Check if user is admin
+  console.log('🔍 AdminSettings - User check:', { 
+    user: user ? {
+      email: user.email,
+      membershipType: user.membershipType,
+      hasUser: !!user
+    } : 'No user object',
+    loading,
+    session: !!session
+  });
+  
   if (!user || user.membershipType !== 'admin') {
+    console.warn('❌ AdminSettings access denied:', {
+      hasUser: !!user,
+      membershipType: user?.membershipType,
+      expectedType: 'admin'
+    });
     return <Navigate to="/" replace />;
   }
 

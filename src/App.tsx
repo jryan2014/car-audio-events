@@ -212,7 +212,7 @@ function App() {
               <Route path="/newsletter/unsubscribe/:token" element={<Layout><NewsletterUnsubscribe /></Layout>} />
               <Route path="/leaderboard" element={<Layout><Leaderboard /></Layout>} />
               <Route path="/spl-calculator" element={<Layout><SPLCalculator /></Layout>} />
-              <Route path="/subwoofer-designer" element={<Layout><ProtectedRoute requireProfileComplete={true}><SubwooferDesigner /></ProtectedRoute></Layout>} />
+              <Route path="/subwoofer-designer" element={<Layout><ProtectedRoute><SubwooferDesigner /></ProtectedRoute></Layout>} />
               
               {/* Billing routes with their own layout */}
               <Route path="/billing" element={<Layout><ProtectedRoute requireProfileComplete={true}><UserBilling /></ProtectedRoute></Layout>} />
