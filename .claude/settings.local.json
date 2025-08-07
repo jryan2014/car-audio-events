@@ -105,7 +105,12 @@
       "WebFetch(domain:iasca.com)",
       "WebFetch(domain:www.termpro.com)",
       "WebFetch(domain:www.basswars.org)",
-      "mcp__supabase__search_docs"
+      "mcp__supabase__search_docs",
+      "Bash(npm ls:*)",
+      "Bash(if [ -f \".env\" ])",
+      "Bash(then echo \"Found .env file\")",
+      "Bash(else echo \"No .env file found\")",
+      "Bash(fi)"
     ],
     "deny": []
   },
