@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Settings } from 'lucide-react';
+import { Settings, Eye, Trash2, AlertCircle, CheckSquare, Square, ChevronDown } from 'lucide-react';
 import { useAuth } from '../../../../contexts/AuthContext';
 import LoadingSpinner from '../../../../components/LoadingSpinner';
 import { ticketService } from '../../services/supabase-client';
@@ -20,6 +20,10 @@ const AdminTicketList: React.FC = () => {
   const [assignedFilter, setAssignedFilter] = useState<'all' | 'unassigned' | 'assigned'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [showSpam, setShowSpam] = useState(false);
+  
+  // Bulk selection
+  const [selectedTickets, setSelectedTickets] = useState<Set<string>>(new Set());
+  const [showBulkActions, setShowBulkActions] = useState(false);
   
   // Stats
   const [stats, setStats] = useState({
@@ -117,6 +121,90 @@ const AdminTicketList: React.FC = () => {
       await loadTickets();
     } catch (error) {
       console.error('Error marking as spam:', error);
+    }
+  };
+  
+  const handleDeleteTicket = async (ticketId: string) => {
+    if (!confirm('Are you sure you want to delete this ticket? This action cannot be undone.')) {
+      return;
+    }
+    
+    try {
+      await ticketService.deleteTicket(ticketId);
+      await loadTickets();
+      await loadStats();
+    } catch (error) {
+      console.error('Error deleting ticket:', error);
+    }
+  };
+  
+  const handleToggleTicketSelection = (ticketId: string) => {
+    const newSelection = new Set(selectedTickets);
+    if (newSelection.has(ticketId)) {
+      newSelection.delete(ticketId);
+    } else {
+      newSelection.add(ticketId);
+    }
+    setSelectedTickets(newSelection);
+    setShowBulkActions(newSelection.size > 0);
+  };
+  
+  const handleSelectAll = () => {
+    if (selectedTickets.size === tickets.length) {
+      setSelectedTickets(new Set());
+      setShowBulkActions(false);
+    } else {
+      setSelectedTickets(new Set(tickets.map(t => t.id)));
+      setShowBulkActions(true);
+    }
+  };
+  
+  const handleBulkDelete = async () => {
+    if (!confirm(`Are you sure you want to delete ${selectedTickets.size} ticket(s)? This action cannot be undone.`)) {
+      return;
+    }
+    
+    try {
+      for (const ticketId of selectedTickets) {
+        await ticketService.deleteTicket(ticketId);
+      }
+      setSelectedTickets(new Set());
+      setShowBulkActions(false);
+      await loadTickets();
+      await loadStats();
+    } catch (error) {
+      console.error('Error deleting tickets:', error);
+    }
+  };
+  
+  const handleBulkStatusChange = async (newStatus: TicketStatus) => {
+    try {
+      for (const ticketId of selectedTickets) {
+        await ticketService.updateTicket(ticketId, { status: newStatus });
+      }
+      setSelectedTickets(new Set());
+      setShowBulkActions(false);
+      await loadTickets();
+      await loadStats();
+    } catch (error) {
+      console.error('Error updating tickets:', error);
+    }
+  };
+  
+  const handleBulkMarkAsSpam = async () => {
+    try {
+      for (const ticketId of selectedTickets) {
+        await ticketService.updateTicket(ticketId, {
+          is_spam: true,
+          status: 'closed'
+        });
+      }
+      setSelectedTickets(new Set());
+      setShowBulkActions(false);
+      await loadTickets();
+      await loadStats();
+    } catch (error) {
+      console.error('Error marking tickets as spam:', error);
     }
   };
   
@@ -280,6 +368,60 @@ const AdminTicketList: React.FC = () => {
         </div>
       </div>
       
+      {/* Bulk Actions Bar */}
+      {showBulkActions && (
+        <div className="bg-electric-600/10 border border-electric-500 rounded-lg p-4 mb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <span className="text-white font-medium">
+                {selectedTickets.size} ticket(s) selected
+              </span>
+              <button
+                onClick={() => {
+                  setSelectedTickets(new Set());
+                  setShowBulkActions(false);
+                }}
+                className="text-gray-400 hover:text-white text-sm"
+              >
+                Clear selection
+              </button>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="relative inline-block">
+                <select
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      handleBulkStatusChange(e.target.value as TicketStatus);
+                    }
+                  }}
+                  className="px-4 py-2 bg-gray-700 text-white rounded-md border border-gray-600 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-electric-500"
+                  defaultValue=""
+                >
+                  <option value="" disabled>Change Status</option>
+                  <option value="open">Open</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="waiting_on_user">Waiting on User</option>
+                  <option value="resolved">Resolved</option>
+                  <option value="closed">Closed</option>
+                </select>
+              </div>
+              <button
+                onClick={handleBulkMarkAsSpam}
+                className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors"
+              >
+                Mark as Spam
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+              >
+                Delete Selected
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Tickets Table */}
       {loading ? (
         <div className="flex justify-center items-center h-64">
@@ -299,6 +441,18 @@ const AdminTicketList: React.FC = () => {
             <table className="min-w-full divide-y divide-gray-700">
               <thead className="bg-gray-800">
                 <tr>
+                  <th className="px-3 py-3 text-left">
+                    <button
+                      onClick={handleSelectAll}
+                      className="text-gray-400 hover:text-white transition-colors"
+                      title={selectedTickets.size === tickets.length ? "Deselect all" : "Select all"}
+                    >
+                      {selectedTickets.size === tickets.length ? 
+                        <CheckSquare className="h-5 w-5" /> : 
+                        <Square className="h-5 w-5" />
+                      }
+                    </button>
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                     Ticket
                   </th>
@@ -327,7 +481,18 @@ const AdminTicketList: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-gray-700">
                 {tickets.map((ticket, index) => (
-                  <tr key={ticket.id} className={`${index % 2 === 0 ? 'bg-gray-800/30' : 'bg-gray-800/50'} ${ticket.is_spam ? 'opacity-50' : ''}`}>
+                  <tr key={ticket.id} className={`${index % 2 === 0 ? 'bg-gray-800/30' : 'bg-gray-800/50'} ${ticket.is_spam ? 'opacity-50' : ''} ${selectedTickets.has(ticket.id) ? 'bg-electric-900/20' : ''}`}>
+                    <td className="px-3 py-4">
+                      <button
+                        onClick={() => handleToggleTicketSelection(ticket.id)}
+                        className="text-gray-400 hover:text-white transition-colors"
+                      >
+                        {selectedTickets.has(ticket.id) ? 
+                          <CheckSquare className="h-5 w-5" /> : 
+                          <Square className="h-5 w-5" />
+                        }
+                      </button>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
                       #{ticket.ticket_number}
                     </td>
@@ -393,18 +558,27 @@ const AdminTicketList: React.FC = () => {
                       <div className="flex items-center justify-end space-x-2">
                         <Link
                           to={`/admin/support/ticket/${ticket.id}`}
-                          className="text-blue-500 hover:text-blue-400 px-2 py-1 bg-blue-900/20 rounded"
+                          className="text-blue-400 hover:text-blue-300 p-2 bg-blue-900/20 rounded-lg hover:bg-blue-900/30 transition-colors"
+                          title="View ticket"
                         >
-                          View
+                          <Eye className="h-4 w-4" />
                         </Link>
                         {!ticket.is_spam && (
                           <button
                             onClick={() => handleMarkAsSpam(ticket.id)}
-                            className="text-red-500 hover:text-red-400 px-2 py-1 bg-red-900/20 rounded"
+                            className="text-orange-400 hover:text-orange-300 p-2 bg-orange-900/20 rounded-lg hover:bg-orange-900/30 transition-colors"
+                            title="Mark as spam"
                           >
-                            Spam
+                            <AlertCircle className="h-4 w-4" />
                           </button>
                         )}
+                        <button
+                          onClick={() => handleDeleteTicket(ticket.id)}
+                          className="text-red-400 hover:text-red-300 p-2 bg-red-900/20 rounded-lg hover:bg-red-900/30 transition-colors"
+                          title="Delete ticket"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </div>
                     </td>
                   </tr>

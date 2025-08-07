@@ -431,6 +431,30 @@ export const ticketService = {
       console.error('Error updating ticket:', error);
       return false;
     }
+  },
+
+  // Delete ticket
+  async deleteTicket(ticketId: string): Promise<boolean> {
+    try {
+      // First delete all related messages
+      await supabase
+        .from('support_ticket_messages')
+        .delete()
+        .eq('ticket_id', ticketId);
+      
+      // Then delete the ticket itself
+      const { error } = await supabase
+        .from('support_tickets')
+        .delete()
+        .eq('id', ticketId);
+      
+      if (error) throw error;
+      
+      return true;
+    } catch (error) {
+      console.error('Error deleting ticket:', error);
+      return false;
+    }
   }
 };
 
