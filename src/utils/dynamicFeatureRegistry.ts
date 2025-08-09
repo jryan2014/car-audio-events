@@ -3,7 +3,8 @@
  * Automatically detects and registers new features for permission assignment
  */
 
-import { supabase } from './supabase';
+import React from 'react';
+import { supabase } from '../lib/supabase';
 
 export interface FeatureDefinition {
   name: string;

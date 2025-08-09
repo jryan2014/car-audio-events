@@ -3,7 +3,7 @@
  * Handles user permissions with organization hierarchy, employee restrictions, and usage limits
  */
 
-import { supabase } from './supabase';
+import { supabase } from '../lib/supabase';
 
 export interface PermissionResult {
   granted: boolean;

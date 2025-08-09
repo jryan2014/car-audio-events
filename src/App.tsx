@@ -77,7 +77,7 @@ const AdminNewsletterManager = React.lazy(() => import('./pages/AdminNewsletterM
 const Leaderboard = React.lazy(() => import('./pages/Leaderboard'));
 const AdminLeaderboardManager = React.lazy(() => import('./components/AdminLeaderboardManager'));
 const SPLCalculator = React.lazy(() => import('./pages/SPLCalculator'));
-const SPLCalculatorProtected = React.lazy(() => import('./components/SPLCalculatorProtected'));
+const SPLCalculatorProtected = React.lazy(() => import('./components/SPLCalculatorProtected').then(module => ({ default: module.SPLCalculatorProtected })));
 const SubwooferDesigner = React.lazy(() => import('./pages/SubwooferDesigner'));
 const AdminSubwooferDesigner = React.lazy(() => import('./pages/AdminSubwooferDesigner'));
 const VerifyEmail = React.lazy(() => import('./pages/VerifyEmail'));

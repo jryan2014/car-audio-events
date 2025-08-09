@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../utils/supabase';
+import { supabase } from '../../lib/supabase';
 import { permissionSystem } from '../../utils/permissionSystem';
 import { featureRegistry } from '../../utils/dynamicFeatureRegistry';
 

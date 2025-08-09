@@ -3,7 +3,7 @@
  * Routes tickets based on request type, organization context, and field-based rules
  */
 
-import { supabase } from './supabase';
+import { supabase } from '../lib/supabase';
 
 export interface TicketRoutingRequest {
   requestTypeId: string;

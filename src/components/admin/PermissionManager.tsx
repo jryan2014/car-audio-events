@@ -1311,7 +1311,7 @@ export const PermissionManager: React.FC = () => {
                                       type="checkbox"
                                       checked={hasAction}
                                       onChange={(e) => {
-                                        const newTierActions = { ...editingFeature.tier_actions } || {};
+                                        const newTierActions = editingFeature.tier_actions ? { ...editingFeature.tier_actions } : {};
                                         if (!newTierActions[tier]) {
                                           newTierActions[tier] = [...editingFeature.actions];
                                         }
@@ -1423,7 +1423,7 @@ export const PermissionManager: React.FC = () => {
                                       ...editingFeature,
                                       limit_timeframes: {
                                         ...editingFeature.limit_timeframes,
-                                        [tier]: e.target.value
+                                        [tier]: e.target.value as 'daily' | 'weekly' | 'monthly' | 'yearly' | 'lifetime'
                                       }
                                     });
                                   }}
