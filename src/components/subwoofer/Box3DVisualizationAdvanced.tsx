@@ -100,6 +100,7 @@ const Box3DVisualizationAdvanced: React.FC<Box3DVisualizationAdvancedProps> = ({
   const [isDraggingSubwoofer, setIsDraggingSubwoofer] = useState(false);
   const [placementMode, setPlacementMode] = useState<'manual' | 'auto'>('auto');
   const containerRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
 
   // Initialize subwoofer positions
   const [subwooferPositions, setSubwooferPositions] = useState<SubwooferPosition[]>(() => {
@@ -143,6 +144,23 @@ const Box3DVisualizationAdvanced: React.FC<Box3DVisualizationAdvancedProps> = ({
       setIsLoading(false);
     }, 500);
     return () => clearTimeout(timer);
+  }, []);
+
+  // Add wheel event listener with passive: false to allow preventDefault
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    const wheelHandler = (e: WheelEvent) => {
+      e.preventDefault();
+      setScale(prev => Math.max(0.5, Math.min(2, prev - e.deltaY * 0.001)));
+    };
+
+    viewport.addEventListener('wheel', wheelHandler, { passive: false });
+
+    return () => {
+      viewport.removeEventListener('wheel', wheelHandler);
+    };
   }, []);
 
   // Update rotation when view preset changes
@@ -204,10 +222,6 @@ const Box3DVisualizationAdvanced: React.FC<Box3DVisualizationAdvancedProps> = ({
     setIsDraggingSubwoofer(false);
   };
 
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    setScale(prev => Math.max(0.5, Math.min(2, prev - e.deltaY * 0.001)));
-  };
 
   // Handle subwoofer selection and dragging
   const handleSubwooferClick = (id: number, e: React.MouseEvent) => {
@@ -366,6 +380,7 @@ const Box3DVisualizationAdvanced: React.FC<Box3DVisualizationAdvancedProps> = ({
     
     return (
       <div 
+        ref={viewportRef}
         className="relative" 
         style={{ 
           width: '100%', 
@@ -380,7 +395,6 @@ const Box3DVisualizationAdvanced: React.FC<Box3DVisualizationAdvancedProps> = ({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        onWheel={handleWheel}
       >
         <div
           className="relative"

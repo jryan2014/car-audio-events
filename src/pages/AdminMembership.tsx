@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { AdminCouponManager } from '../components/AdminCouponManager';
+import { PermissionManager } from '../components/admin/PermissionManager';
 
 interface MembershipPlan {
   id: string;
@@ -1289,23 +1290,9 @@ export default function AdminMembership() {
           </>
         )}
 
-        {/* Permissions Tab */}
+        {/* Permissions Tab - Enhanced with new Permission Manager */}
         {activeTab === 'permissions' && (
-          <div className="space-y-6">
-            {Object.entries(groupedPermissions).map(([category, categoryPermissions]) => (
-              <div key={category} className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-                <h3 className="text-xl font-bold text-white mb-4">{category}</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {categoryPermissions.map((permission) => (
-                    <div key={permission.id} className="bg-gray-700/30 p-4 rounded-lg">
-                      <h4 className="text-white font-medium mb-2">{permission.name}</h4>
-                      <p className="text-gray-400 text-sm">{permission.description}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
+          <PermissionManager />
         )}
 
         {/* Billing Tab */}

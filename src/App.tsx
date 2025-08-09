@@ -77,6 +77,7 @@ const AdminNewsletterManager = React.lazy(() => import('./pages/AdminNewsletterM
 const Leaderboard = React.lazy(() => import('./pages/Leaderboard'));
 const AdminLeaderboardManager = React.lazy(() => import('./components/AdminLeaderboardManager'));
 const SPLCalculator = React.lazy(() => import('./pages/SPLCalculator'));
+const SPLCalculatorProtected = React.lazy(() => import('./components/SPLCalculatorProtected'));
 const SubwooferDesigner = React.lazy(() => import('./pages/SubwooferDesigner'));
 const AdminSubwooferDesigner = React.lazy(() => import('./pages/AdminSubwooferDesigner'));
 const VerifyEmail = React.lazy(() => import('./pages/VerifyEmail'));
@@ -211,7 +212,7 @@ function App() {
               <Route path="/newsletter/confirm/:token" element={<Layout><NewsletterConfirm /></Layout>} />
               <Route path="/newsletter/unsubscribe/:token" element={<Layout><NewsletterUnsubscribe /></Layout>} />
               <Route path="/leaderboard" element={<Layout><Leaderboard /></Layout>} />
-              <Route path="/spl-calculator" element={<Layout><SPLCalculator /></Layout>} />
+              <Route path="/spl-calculator" element={<Layout><SPLCalculatorProtected><SPLCalculator /></SPLCalculatorProtected></Layout>} />
               <Route path="/subwoofer-designer" element={<Layout><ProtectedRoute><SubwooferDesigner /></ProtectedRoute></Layout>} />
               
               {/* Billing routes with their own layout */}
