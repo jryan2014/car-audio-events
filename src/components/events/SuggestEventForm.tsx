@@ -30,8 +30,9 @@ interface EventSuggestion {
   event_website?: string;
   event_description?: string;
   registration_link?: string;
-  entry_fee?: number;
-  spectator_fee?: number;
+  member_fee?: number;
+  non_member_fee?: number;
+  spectator_gate_fee?: number;
   event_formats?: string[];
   schedule_info?: string;
   notes?: string;
@@ -43,10 +44,12 @@ const SANCTIONING_BODIES = [
   'DB Drag',
   'USACI',
   'Bass Wars',
-  'Outlaw SPL',
   'NSPL',
-  'SBN',
-  'Independent/None'
+  'Midwest SPL',
+  'ISPLL',
+  'MASQ',
+  'Independent/Club',
+  'Non-Sanctioned'
 ];
 
 const EVENT_FORMATS = [
@@ -103,8 +106,9 @@ export default function SuggestEventForm({ onSuccess, onCancel }: SuggestEventFo
     event_website: '',
     event_description: '',
     registration_link: '',
-    entry_fee: undefined,
-    spectator_fee: undefined,
+    member_fee: undefined,
+    non_member_fee: undefined,
+    spectator_gate_fee: undefined,
     event_formats: [],
     schedule_info: '',
     notes: ''
@@ -113,7 +117,7 @@ export default function SuggestEventForm({ onSuccess, onCancel }: SuggestEventFo
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     
-    if (name === 'entry_fee' || name === 'spectator_fee') {
+    if (name === 'member_fee' || name === 'non_member_fee' || name === 'spectator_gate_fee') {
       setFormData(prev => ({
         ...prev,
         [name]: value ? parseFloat(value) : undefined
@@ -200,8 +204,9 @@ export default function SuggestEventForm({ onSuccess, onCancel }: SuggestEventFo
         country: formData.country || null,
         status: 'pending_approval',
         approval_status: 'pending',
-        ticket_price: formData.entry_fee || 0,
-        gate_fee: formData.spectator_fee || null,
+        member_price: formData.member_fee || 0,
+        non_member_price: formData.non_member_fee || 0,
+        gate_fee: formData.spectator_gate_fee || null,
         external_registration_url: formData.registration_link || null,
         website_url: formData.event_website || null,
         contact_email: formData.suggested_by_email || null,
@@ -266,8 +271,9 @@ export default function SuggestEventForm({ onSuccess, onCancel }: SuggestEventFo
           event_website: '',
           event_description: '',
           registration_link: '',
-          entry_fee: undefined,
-          spectator_fee: undefined,
+          member_fee: undefined,
+          non_member_fee: undefined,
+          spectator_gate_fee: undefined,
           event_formats: [],
           schedule_info: '',
           notes: ''
@@ -282,7 +288,7 @@ export default function SuggestEventForm({ onSuccess, onCancel }: SuggestEventFo
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-5xl mx-auto">
       <Card className="bg-gray-900 border-gray-800">
         <CardHeader>
           <CardTitle className="text-2xl text-white">Suggest an Event</CardTitle>
@@ -630,15 +636,15 @@ export default function SuggestEventForm({ onSuccess, onCancel }: SuggestEventFo
                   />
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Entry Fee
+                    <label className="block text-sm font-medium text-gray-300 mb-2 whitespace-nowrap">
+                      Member Fee *
                     </label>
                     <Input
                       type="number"
-                      name="entry_fee"
-                      value={formData.entry_fee || ''}
+                      name="member_fee"
+                      value={formData.member_fee || ''}
                       onChange={handleInputChange}
                       min="0"
                       step="0.01"
@@ -649,13 +655,30 @@ export default function SuggestEventForm({ onSuccess, onCancel }: SuggestEventFo
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Spectator Fee
+                    <label className="block text-sm font-medium text-gray-300 mb-2 whitespace-nowrap">
+                      Non-Member Fee
                     </label>
                     <Input
                       type="number"
-                      name="spectator_fee"
-                      value={formData.spectator_fee || ''}
+                      name="non_member_fee"
+                      value={formData.non_member_fee || ''}
+                      onChange={handleInputChange}
+                      min="0"
+                      step="0.01"
+                      icon={<DollarSign className="h-4 w-4" />}
+                      className="bg-gray-800 border-gray-700 text-white"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2 whitespace-nowrap">
+                      Spectator/Gate Fee
+                    </label>
+                    <Input
+                      type="number"
+                      name="spectator_gate_fee"
+                      value={formData.spectator_gate_fee || ''}
                       onChange={handleInputChange}
                       min="0"
                       step="0.01"
@@ -734,6 +757,13 @@ export default function SuggestEventForm({ onSuccess, onCancel }: SuggestEventFo
                 className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-electric-500"
                 placeholder="Any other information that might be helpful..."
               />
+            </div>
+            
+            {/* Disclaimer */}
+            <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-4">
+              <p className="text-sm text-gray-400">
+                <span className="text-yellow-400">*</span> Member Fee refers to the entry fee for members of the sanctioning body organization hosting or sanctioning the event. Non-Member Fee applies to competitors who are not members of the sanctioning organization.
+              </p>
             </div>
           </form>
         </CardContent>
