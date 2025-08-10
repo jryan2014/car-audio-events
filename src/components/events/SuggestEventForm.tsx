@@ -426,13 +426,32 @@ export default function SuggestEventForm({ onSuccess, onCancel }: SuggestEventFo
                     value={formData.venue_name}
                     onChange={handleInputChange}
                     className="bg-gray-800 border-gray-700 text-white"
+                    placeholder="e.g., Convention Center, Fairgrounds, Arena"
                     required
                   />
                 </div>
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Street Address *
+                    Country *
+                  </label>
+                  <select
+                    name="country"
+                    value={formData.country}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-electric-500"
+                    required
+                  >
+                    <option value="">Select Country</option>
+                    {COUNTRIES.map(country => (
+                      <option key={country} value={country}>{country}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    {formData.country === 'USA' || formData.country === 'Canada' ? 'Street Address' : 'Address'} *
                   </label>
                   <Input
                     type="text"
@@ -440,6 +459,7 @@ export default function SuggestEventForm({ onSuccess, onCancel }: SuggestEventFo
                     value={formData.street_address}
                     onChange={handleInputChange}
                     icon={<MapPin className="h-4 w-4" />}
+                    placeholder={formData.country === 'USA' || formData.country === 'Canada' ? 'Street number and name' : 'Full address'}
                     className="bg-gray-800 border-gray-700 text-white"
                     required
                   />
@@ -455,6 +475,7 @@ export default function SuggestEventForm({ onSuccess, onCancel }: SuggestEventFo
                       name="city"
                       value={formData.city}
                       onChange={handleInputChange}
+                      placeholder={formData.country ? 'Enter city name' : 'Select country first'}
                       className="bg-gray-800 border-gray-700 text-white"
                       required
                     />
@@ -462,27 +483,11 @@ export default function SuggestEventForm({ onSuccess, onCancel }: SuggestEventFo
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Country *
-                    </label>
-                    <select
-                      name="country"
-                      value={formData.country}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-electric-500"
-                      required
-                    >
-                      <option value="">Select Country</option>
-                      {COUNTRIES.map(country => (
-                        <option key={country} value={country}>{country}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      {formData.country === 'USA' ? 'State *' : formData.country === 'Canada' ? 'Province' : 'State/Province'}
+                      {formData.country === 'USA' ? 'State *' : 
+                       formData.country === 'Canada' ? 'Province *' : 
+                       formData.country === 'United Kingdom' ? 'County' :
+                       formData.country === 'Australia' ? 'State/Territory *' :
+                       'State/Province/Region'}
                     </label>
                     {formData.country === 'USA' ? (
                       <select
@@ -503,26 +508,41 @@ export default function SuggestEventForm({ onSuccess, onCancel }: SuggestEventFo
                         name="state"
                         value={formData.state}
                         onChange={handleInputChange}
-                        placeholder={formData.country === 'Canada' ? 'Enter province' : 'Enter state/province'}
+                        placeholder={
+                          formData.country === 'Canada' ? 'e.g., Ontario, Quebec' :
+                          formData.country === 'United Kingdom' ? 'e.g., Greater London, Yorkshire' :
+                          formData.country === 'Australia' ? 'e.g., NSW, VIC, QLD' :
+                          formData.country ? 'Enter state/province/region' :
+                          'Select country first'
+                        }
                         className="bg-gray-800 border-gray-700 text-white"
-                        required={formData.country === 'USA' || formData.country === 'Canada'}
+                        required={formData.country === 'USA' || formData.country === 'Canada' || formData.country === 'Australia'}
                       />
                     )}
                   </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      {formData.country === 'USA' ? 'ZIP Code' : 'Postal Code'}
-                    </label>
-                    <Input
-                      type="text"
-                      name="zip_code"
-                      value={formData.zip_code}
-                      onChange={handleInputChange}
-                      placeholder={formData.country === 'USA' ? 'e.g., 12345' : 'Enter postal code'}
-                      className="bg-gray-800 border-gray-700 text-white"
-                    />
-                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    {formData.country === 'USA' ? 'ZIP Code' : 
+                     formData.country === 'Canada' ? 'Postal Code' :
+                     formData.country === 'United Kingdom' ? 'Postcode' :
+                     'Postal/ZIP Code'}
+                  </label>
+                  <Input
+                    type="text"
+                    name="zip_code"
+                    value={formData.zip_code}
+                    onChange={handleInputChange}
+                    placeholder={
+                      formData.country === 'USA' ? 'e.g., 12345 or 12345-6789' :
+                      formData.country === 'Canada' ? 'e.g., K1A 0B1' :
+                      formData.country === 'United Kingdom' ? 'e.g., SW1A 1AA' :
+                      formData.country ? 'Enter postal code' :
+                      'Select country first'
+                    }
+                    className="bg-gray-800 border-gray-700 text-white"
+                  />
                 </div>
               </div>
             </div>
