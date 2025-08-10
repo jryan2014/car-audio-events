@@ -631,13 +631,13 @@ export default function AdminEvents() {
             <table className="w-full">
               <thead className="bg-gray-700/50">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Event</th>
-                  <th className="px-4 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Organizer</th>
-                  <th className="px-4 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">Date</th>
-                  <th className="px-4 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Location</th>
-                  <th className="px-3 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
-                  <th className="px-3 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Approval</th>
-                  <th className="px-3 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider min-w-[200px] max-w-[300px]">Event</th>
+                  <th className="px-4 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider min-w-[150px] max-w-[200px]">Organizer</th>
+                  <th className="px-4 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap min-w-[100px]">Date</th>
+                  <th className="px-4 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider min-w-[120px] max-w-[180px]">Location</th>
+                  <th className="px-3 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider min-w-[80px]">Status</th>
+                  <th className="px-3 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider min-w-[80px]">Approval</th>
+                  <th className="px-3 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider min-w-[120px]">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-700/50">
@@ -659,28 +659,28 @@ export default function AdminEvents() {
                 ) : (
                   filteredEvents.map((event) => (
                     <tr key={event.id} className="hover:bg-gray-700/30 transition-colors">
-                      <td className="px-6 py-4">
-                        <div>
+                      <td className="px-6 py-4 min-w-[200px] max-w-[300px]">
+                        <div className="max-w-[280px]">
                           <div className="flex items-center gap-2">
-                            <span className="text-white font-medium">{event.title}</span>
+                            <span className="text-white font-medium truncate" title={event.title}>{event.title}</span>
                             {event.status === 'pending_approval' && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 whitespace-nowrap flex-shrink-0">
                                 USER SUGGESTED
                               </span>
                             )}
                           </div>
-                          <div className="text-gray-400 text-sm">{event.category_name}</div>
-                          <div className="flex items-center space-x-2 mt-1">
-                            <DollarSign className="h-3 w-3 text-gray-500" />
-                            <span className="text-gray-500 text-xs">${event.registration_fee}</span>
-                            <Users className="h-3 w-3 text-gray-500 ml-2" />
-                            <span className="text-gray-500 text-xs">
+                          <div className="text-gray-400 text-sm truncate">{event.category_name}</div>
+                          <div className="flex items-center space-x-2 mt-1 text-xs">
+                            <DollarSign className="h-3 w-3 text-gray-500 flex-shrink-0" />
+                            <span className="text-gray-500">${event.registration_fee}</span>
+                            <Users className="h-3 w-3 text-gray-500 ml-2 flex-shrink-0" />
+                            <span className="text-gray-500 truncate">
                               {event.current_participants}{event.max_participants ? `/${event.max_participants}` : ''} registered
                             </span>
                             {event.interest_count !== undefined && event.interest_count > 0 && (
                               <>
                                 <span className="text-gray-500">•</span>
-                                <span className="text-purple-500 text-xs">
+                                <span className="text-purple-500 truncate">
                                   {event.interest_count} interested
                                 </span>
                               </>
@@ -688,15 +688,15 @@ export default function AdminEvents() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-4">
-                        <div>
-                          <div className="text-white text-sm font-medium">{event.organizer_name}</div>
-                          <div className="text-gray-400 text-xs truncate max-w-[200px]" title={event.organizer_email}>
+                      <td className="px-4 py-4 min-w-[150px] max-w-[200px]">
+                        <div className="max-w-[180px]">
+                          <div className="text-white text-sm font-medium truncate" title={event.organizer_name}>{event.organizer_name}</div>
+                          <div className="text-gray-400 text-xs truncate" title={event.organizer_email}>
                             {event.organizer_email}
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
+                      <td className="px-4 py-4 whitespace-nowrap min-w-[100px]">
                         <div className="text-white text-sm">
                           {new Date(event.start_date).toLocaleDateString('en-US', {
                             month: 'short',
@@ -712,17 +712,19 @@ export default function AdminEvents() {
                           })}
                         </div>
                       </td>
-                      <td className="px-4 py-4">
-                        <div className="flex items-center space-x-1 text-gray-300 text-sm">
-                          <MapPin className="h-3 w-3 text-electric-500 flex-shrink-0" />
-                          <span className="truncate">{event.city}, {event.state}</span>
+                      <td className="px-4 py-4 min-w-[120px] max-w-[180px]">
+                        <div className="max-w-[160px]">
+                          <div className="flex items-center space-x-1 text-gray-300 text-sm">
+                            <MapPin className="h-3 w-3 text-electric-500 flex-shrink-0" />
+                            <span className="truncate" title={`${event.city}, ${event.state}`}>{event.city}, {event.state}</span>
+                          </div>
+                          <div className="text-gray-400 text-xs truncate" title={event.venue_name}>{event.venue_name}</div>
                         </div>
-                        <div className="text-gray-400 text-xs truncate">{event.venue_name}</div>
                       </td>
-                      <td className="px-3 py-4">
+                      <td className="px-3 py-4 min-w-[80px]">
                         {getStatusBadge(event.status)}
                       </td>
-                      <td className="px-3 py-4">
+                      <td className="px-3 py-4 min-w-[80px]">
                         {getApprovalBadge(event.approval_status)}
                         {event.rejection_reason && (
                           <div className="text-red-400 text-xs mt-1" title={event.rejection_reason}>
@@ -732,7 +734,7 @@ export default function AdminEvents() {
                           </div>
                         )}
                       </td>
-                      <td className="px-3 py-4">
+                      <td className="px-3 py-4 min-w-[120px]">
                         <div className="flex items-center space-x-1">
                           <button
                             onClick={() => {

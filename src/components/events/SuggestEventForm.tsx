@@ -49,6 +49,7 @@ const SANCTIONING_BODIES = [
   'Midwest SPL',
   'ISPLL',
   'MASQ',
+  'EMMA',
   'Independent/Club',
   'Non-Sanctioned'
 ];

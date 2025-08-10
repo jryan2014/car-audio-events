@@ -153,7 +153,7 @@ const SEOSection: React.FC<SEOSectionProps> = ({
             onChange={(e) => updateField('sanctioning_body', e.target.value)}
             onBlur={() => touchField('sanctioning_body')}
             className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-            placeholder="e.g., IASCA, MECA, DB Drag, USACI, Bass Wars, NSPL, Midwest SPL, ISPLL, MASQ, Independent/Club, Non-Sanctioned"
+            placeholder="e.g., IASCA, MECA, DB Drag, USACI, Bass Wars, NSPL, Midwest SPL, ISPLL, MASQ, EMMA, Independent/Club, Non-Sanctioned"
           />
         </div>
 
