@@ -415,7 +415,7 @@ export default function Home() {
               <span className="text-electric-400 inline-block">Event?</span>
             </h2>
             <p className="text-lg sm:text-xl text-gray-300 max-w-3xl mx-auto">
-              Share it with thousands of car audio enthusiasts nationwide
+              Share it with thousands of car audio enthusiasts worldwide
             </p>
           </div>
 
@@ -532,7 +532,7 @@ export default function Home() {
           {/* Bottom CTA */}
           <div className="mt-12 text-center animate-slide-up" style={{ animationDelay: '0.3s' }}>
             <p className="text-gray-400 text-sm">
-              Join hundreds of organizers already using CarAudioEvents.com to promote their events
+              Join hundreds of competitors and organizers already using CarAudioEvents.com to discover and promote car audio events worldwide
             </p>
           </div>
         </div>
