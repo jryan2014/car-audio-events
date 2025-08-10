@@ -44,7 +44,7 @@ const adminNavGroups: AdminNavGroup[] = [
         name: 'Events',
         href: '/admin/events',
         icon: Calendar,
-        description: 'Event management'
+        description: 'Event management & suggestions'
       },
       {
         name: 'Competitions',

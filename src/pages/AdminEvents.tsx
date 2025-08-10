@@ -585,6 +585,9 @@ export default function AdminEvents() {
               <div>
                 <p className="text-gray-400 text-sm">Pending Approval</p>
                 <p className="text-xl sm:text-2xl font-bold text-yellow-400">{events.filter(e => e.approval_status === 'pending').length}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {events.filter(e => e.status === 'pending_approval').length} user suggested
+                </p>
               </div>
               <Clock className="h-8 w-8 text-yellow-500" />
             </div>
@@ -658,7 +661,14 @@ export default function AdminEvents() {
                     <tr key={event.id} className="hover:bg-gray-700/30 transition-colors">
                       <td className="px-6 py-4">
                         <div>
-                          <div className="text-white font-medium">{event.title}</div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-white font-medium">{event.title}</span>
+                            {event.status === 'pending_approval' && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+                                USER SUGGESTED
+                              </span>
+                            )}
+                          </div>
                           <div className="text-gray-400 text-sm">{event.category_name}</div>
                           <div className="flex items-center space-x-2 mt-1">
                             <DollarSign className="h-3 w-3 text-gray-500" />

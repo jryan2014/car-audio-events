@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Calendar, MapPin, Users, Clock, Heart, Star, Filter, Search, Trophy } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Calendar, MapPin, Users, Clock, Heart, Star, Filter, Search, Trophy, Plus, Send } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import PageHeader from '../components/PageHeader';
@@ -54,6 +54,7 @@ interface Event {
 
 export default function Events() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [events, setEvents] = useState<Event[]>([]);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
@@ -301,6 +302,26 @@ export default function Events() {
           title="Car Audio Events"
           subtitle="Discover and participate in car audio competitions, meets, and exhibitions across the country"
         />
+
+        {/* Action Buttons */}
+        <div className="flex justify-end gap-4 mb-6">
+          <button
+            onClick={() => navigate('/events/suggest')}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+          >
+            <Send className="h-5 w-5" />
+            Suggest an Event
+          </button>
+          {user && (
+            <Link
+              to="/create-event"
+              className="flex items-center gap-2 px-4 py-2 bg-electric-500 hover:bg-electric-600 text-white rounded-lg transition-colors"
+            >
+              <Plus className="h-5 w-5" />
+              Create Event
+            </Link>
+          )}
+        </div>
 
         {/* Filters */}
         <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 mb-8">
