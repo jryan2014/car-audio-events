@@ -55,13 +55,8 @@ const SANCTIONING_BODIES = [
 const EVENT_FORMATS = [
   'SPL Competition',
   'SQ Competition',
-  'Show & Shine',
   'Demo/Exhibition',
-  'Install Bay',
-  'Retailer Event',
-  'Manufacturer Event',
-  'Car Show',
-  'Music Festival'
+  'Car Show'
 ];
 
 const US_STATES = [
