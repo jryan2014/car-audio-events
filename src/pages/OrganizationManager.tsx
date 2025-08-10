@@ -229,6 +229,19 @@ export default function OrganizationManager() {
     setSuccess('');
 
     try {
+      // Check if organization name already exists (only for new orgs or if name changed)
+      if (!editingOrg || (editingOrg && editingOrg.name !== formData.name)) {
+        const { data: existingOrg } = await supabase
+          .from('organizations')
+          .select('id, name')
+          .eq('name', formData.name)
+          .single();
+        
+        if (existingOrg) {
+          throw new Error(`An organization with the name "${formData.name}" already exists. Please choose a different name.`);
+        }
+      }
+
       const orgData = {
         name: formData.name,
         organization_type: formData.organization_type,
@@ -254,6 +267,10 @@ export default function OrganizationManager() {
 
         if (error) {
           console.error('❌ Update error:', error);
+          // Check for duplicate name error
+          if (error.code === '23505' && error.message.includes('organizations_name_key')) {
+            throw new Error(`An organization with the name "${orgData.name}" already exists. Please choose a different name.`);
+          }
           throw new Error(`Update failed: ${error.message} (Code: ${error.code})`);
         }
         
@@ -268,6 +285,10 @@ export default function OrganizationManager() {
 
         if (error) {
           console.error('❌ Insert error:', error);
+          // Check for duplicate name error
+          if (error.code === '23505' && error.message.includes('organizations_name_key')) {
+            throw new Error(`An organization with the name "${orgData.name}" already exists. Please choose a different name.`);
+          }
           throw new Error(`Insert failed: ${error.message} (Code: ${error.code})`);
         }
         
