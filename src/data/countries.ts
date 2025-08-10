@@ -9,6 +9,577 @@ export interface Country {
 
 export const COUNTRIES: Country[] = [
   {
+    code: 'AR',
+    name: 'Argentina',
+    postalCodeFormat: 'A####AAA',
+    postalCodeLabel: 'Código Postal',
+    stateLabel: 'Province'
+  },
+  {
+    code: 'AU',
+    name: 'Australia',
+    postalCodeFormat: '####',
+    postalCodeLabel: 'Postcode',
+    stateLabel: 'State/Territory',
+    states: [
+      { code: 'NSW', name: 'New South Wales' },
+      { code: 'VIC', name: 'Victoria' },
+      { code: 'QLD', name: 'Queensland' },
+      { code: 'WA', name: 'Western Australia' },
+      { code: 'SA', name: 'South Australia' },
+      { code: 'TAS', name: 'Tasmania' },
+      { code: 'ACT', name: 'Australian Capital Territory' },
+      { code: 'NT', name: 'Northern Territory' }
+    ]
+  },
+  {
+    code: 'AT',
+    name: 'Austria',
+    postalCodeFormat: '####',
+    postalCodeLabel: 'PLZ',
+    stateLabel: 'State'
+  },
+  {
+    code: 'BS',
+    name: 'Bahamas',
+    postalCodeLabel: 'P.O. Box'
+  },
+  {
+    code: 'BD',
+    name: 'Bangladesh',
+    postalCodeFormat: '####',
+    postalCodeLabel: 'Post Code',
+    stateLabel: 'Division'
+  },
+  {
+    code: 'BB',
+    name: 'Barbados',
+    postalCodeFormat: 'BB#####',
+    postalCodeLabel: 'Postal Code',
+    stateLabel: 'Parish'
+  },
+  {
+    code: 'BE',
+    name: 'Belgium',
+    postalCodeFormat: '####',
+    postalCodeLabel: 'Postcode',
+    stateLabel: 'Province'
+  },
+  {
+    code: 'BM',
+    name: 'Bermuda',
+    postalCodeFormat: 'AA ##',
+    postalCodeLabel: 'Postal Code',
+    stateLabel: 'Parish'
+  },
+  {
+    code: 'BR',
+    name: 'Brazil',
+    postalCodeFormat: '#####-###',
+    postalCodeLabel: 'CEP',
+    stateLabel: 'State',
+    states: [
+      { code: 'AC', name: 'Acre' },
+      { code: 'AL', name: 'Alagoas' },
+      { code: 'AP', name: 'Amapá' },
+      { code: 'AM', name: 'Amazonas' },
+      { code: 'BA', name: 'Bahia' },
+      { code: 'CE', name: 'Ceará' },
+      { code: 'DF', name: 'Distrito Federal' },
+      { code: 'ES', name: 'Espírito Santo' },
+      { code: 'GO', name: 'Goiás' },
+      { code: 'MA', name: 'Maranhão' },
+      { code: 'MT', name: 'Mato Grosso' },
+      { code: 'MS', name: 'Mato Grosso do Sul' },
+      { code: 'MG', name: 'Minas Gerais' },
+      { code: 'PA', name: 'Pará' },
+      { code: 'PB', name: 'Paraíba' },
+      { code: 'PR', name: 'Paraná' },
+      { code: 'PE', name: 'Pernambuco' },
+      { code: 'PI', name: 'Piauí' },
+      { code: 'RJ', name: 'Rio de Janeiro' },
+      { code: 'RN', name: 'Rio Grande do Norte' },
+      { code: 'RS', name: 'Rio Grande do Sul' },
+      { code: 'RO', name: 'Rondônia' },
+      { code: 'RR', name: 'Roraima' },
+      { code: 'SC', name: 'Santa Catarina' },
+      { code: 'SP', name: 'São Paulo' },
+      { code: 'SE', name: 'Sergipe' },
+      { code: 'TO', name: 'Tocantins' }
+    ]
+  },
+  {
+    code: 'VG',
+    name: 'British Virgin Islands',
+    postalCodeLabel: 'Postal Code'
+  },
+  {
+    code: 'BG',
+    name: 'Bulgaria',
+    postalCodeFormat: '####',
+    postalCodeLabel: 'Пощенски код',
+    stateLabel: 'Province'
+  },
+  {
+    code: 'CA',
+    name: 'Canada',
+    postalCodeFormat: 'A#A #A#',
+    postalCodeLabel: 'Postal Code',
+    stateLabel: 'Province',
+    states: [
+      { code: 'AB', name: 'Alberta' },
+      { code: 'BC', name: 'British Columbia' },
+      { code: 'MB', name: 'Manitoba' },
+      { code: 'NB', name: 'New Brunswick' },
+      { code: 'NL', name: 'Newfoundland and Labrador' },
+      { code: 'NT', name: 'Northwest Territories' },
+      { code: 'NS', name: 'Nova Scotia' },
+      { code: 'NU', name: 'Nunavut' },
+      { code: 'ON', name: 'Ontario' },
+      { code: 'PE', name: 'Prince Edward Island' },
+      { code: 'QC', name: 'Quebec' },
+      { code: 'SK', name: 'Saskatchewan' },
+      { code: 'YT', name: 'Yukon' }
+    ]
+  },
+  {
+    code: 'KY',
+    name: 'Cayman Islands',
+    postalCodeFormat: 'KY#-####',
+    postalCodeLabel: 'Postal Code'
+  },
+  {
+    code: 'CL',
+    name: 'Chile',
+    postalCodeFormat: '#######',
+    postalCodeLabel: 'Código Postal',
+    stateLabel: 'Region'
+  },
+  {
+    code: 'CN',
+    name: 'China',
+    postalCodeFormat: '######',
+    postalCodeLabel: '邮政编码',
+    stateLabel: 'Province'
+  },
+  {
+    code: 'CO',
+    name: 'Colombia',
+    postalCodeFormat: '######',
+    postalCodeLabel: 'Código Postal',
+    stateLabel: 'Department'
+  },
+  {
+    code: 'CR',
+    name: 'Costa Rica',
+    postalCodeFormat: '#####',
+    postalCodeLabel: 'Código Postal',
+    stateLabel: 'Province'
+  },
+  {
+    code: 'CU',
+    name: 'Cuba',
+    postalCodeFormat: '#####',
+    postalCodeLabel: 'Código Postal',
+    stateLabel: 'Province'
+  },
+  {
+    code: 'CZ',
+    name: 'Czech Republic',
+    postalCodeFormat: '### ##',
+    postalCodeLabel: 'PSČ',
+    stateLabel: 'Region'
+  },
+  {
+    code: 'DK',
+    name: 'Denmark',
+    postalCodeFormat: '####',
+    postalCodeLabel: 'Postnummer',
+    stateLabel: 'Region'
+  },
+  {
+    code: 'DO',
+    name: 'Dominican Republic',
+    postalCodeFormat: '#####',
+    postalCodeLabel: 'Código Postal',
+    stateLabel: 'Province'
+  },
+  {
+    code: 'EC',
+    name: 'Ecuador',
+    postalCodeFormat: '######',
+    postalCodeLabel: 'Código Postal',
+    stateLabel: 'Province'
+  },
+  {
+    code: 'EG',
+    name: 'Egypt',
+    postalCodeFormat: '#####',
+    postalCodeLabel: 'Postal Code',
+    stateLabel: 'Governorate'
+  },
+  {
+    code: 'FJ',
+    name: 'Fiji',
+    postalCodeLabel: 'Postal Code'
+  },
+  {
+    code: 'FI',
+    name: 'Finland',
+    postalCodeFormat: '#####',
+    postalCodeLabel: 'Postinumero',
+    stateLabel: 'Region'
+  },
+  {
+    code: 'FR',
+    name: 'France',
+    postalCodeFormat: '#####',
+    postalCodeLabel: 'Code Postal',
+    stateLabel: 'Region'
+  },
+  {
+    code: 'DE',
+    name: 'Germany',
+    postalCodeFormat: '#####',
+    postalCodeLabel: 'Postleitzahl',
+    stateLabel: 'State'
+  },
+  {
+    code: 'GR',
+    name: 'Greece',
+    postalCodeFormat: '### ##',
+    postalCodeLabel: 'Ταχυδρομικός Κώδικας',
+    stateLabel: 'Region'
+  },
+  {
+    code: 'GU',
+    name: 'Guam',
+    postalCodeFormat: '#####',
+    postalCodeLabel: 'ZIP Code'
+  },
+  {
+    code: 'HT',
+    name: 'Haiti',
+    postalCodeFormat: '####',
+    postalCodeLabel: 'Code Postal',
+    stateLabel: 'Department'
+  },
+  {
+    code: 'HU',
+    name: 'Hungary',
+    postalCodeFormat: '####',
+    postalCodeLabel: 'Irányítószám',
+    stateLabel: 'County'
+  },
+  {
+    code: 'IN',
+    name: 'India',
+    postalCodeFormat: '######',
+    postalCodeLabel: 'PIN Code',
+    stateLabel: 'State'
+  },
+  {
+    code: 'ID',
+    name: 'Indonesia',
+    postalCodeFormat: '#####',
+    postalCodeLabel: 'Kode Pos',
+    stateLabel: 'Province'
+  },
+  {
+    code: 'IL',
+    name: 'Israel',
+    postalCodeFormat: '#######',
+    postalCodeLabel: 'מיקוד',
+    stateLabel: 'District'
+  },
+  {
+    code: 'IT',
+    name: 'Italy',
+    postalCodeFormat: '#####',
+    postalCodeLabel: 'CAP',
+    stateLabel: 'Province'
+  },
+  {
+    code: 'JM',
+    name: 'Jamaica',
+    postalCodeLabel: 'Postal Code',
+    stateLabel: 'Parish'
+  },
+  {
+    code: 'JP',
+    name: 'Japan',
+    postalCodeFormat: '###-####',
+    postalCodeLabel: '郵便番号',
+    stateLabel: 'Prefecture'
+  },
+  {
+    code: 'KE',
+    name: 'Kenya',
+    postalCodeFormat: '#####',
+    postalCodeLabel: 'Postal Code',
+    stateLabel: 'County'
+  },
+  {
+    code: 'MY',
+    name: 'Malaysia',
+    postalCodeFormat: '#####',
+    postalCodeLabel: 'Poskod',
+    stateLabel: 'State'
+  },
+  {
+    code: 'MX',
+    name: 'Mexico',
+    postalCodeFormat: '#####',
+    postalCodeLabel: 'Postal Code',
+    stateLabel: 'State',
+    states: [
+      { code: 'AGU', name: 'Aguascalientes' },
+      { code: 'BCN', name: 'Baja California' },
+      { code: 'BCS', name: 'Baja California Sur' },
+      { code: 'CAM', name: 'Campeche' },
+      { code: 'CHP', name: 'Chiapas' },
+      { code: 'CHH', name: 'Chihuahua' },
+      { code: 'CMX', name: 'Ciudad de México' },
+      { code: 'COA', name: 'Coahuila' },
+      { code: 'COL', name: 'Colima' },
+      { code: 'DUR', name: 'Durango' },
+      { code: 'GUA', name: 'Guanajuato' },
+      { code: 'GRO', name: 'Guerrero' },
+      { code: 'HID', name: 'Hidalgo' },
+      { code: 'JAL', name: 'Jalisco' },
+      { code: 'MEX', name: 'México' },
+      { code: 'MIC', name: 'Michoacán' },
+      { code: 'MOR', name: 'Morelos' },
+      { code: 'NAY', name: 'Nayarit' },
+      { code: 'NLE', name: 'Nuevo León' },
+      { code: 'OAX', name: 'Oaxaca' },
+      { code: 'PUE', name: 'Puebla' },
+      { code: 'QUE', name: 'Querétaro' },
+      { code: 'ROO', name: 'Quintana Roo' },
+      { code: 'SLP', name: 'San Luis Potosí' },
+      { code: 'SIN', name: 'Sinaloa' },
+      { code: 'SON', name: 'Sonora' },
+      { code: 'TAB', name: 'Tabasco' },
+      { code: 'TAM', name: 'Tamaulipas' },
+      { code: 'TLA', name: 'Tlaxcala' },
+      { code: 'VER', name: 'Veracruz' },
+      { code: 'YUC', name: 'Yucatán' },
+      { code: 'ZAC', name: 'Zacatecas' }
+    ]
+  },
+  {
+    code: 'NL',
+    name: 'Netherlands',
+    postalCodeFormat: '#### AA',
+    postalCodeLabel: 'Postcode',
+    stateLabel: 'Province'
+  },
+  {
+    code: 'NZ',
+    name: 'New Zealand',
+    postalCodeFormat: '####',
+    postalCodeLabel: 'Postcode',
+    stateLabel: 'Region'
+  },
+  {
+    code: 'NG',
+    name: 'Nigeria',
+    postalCodeFormat: '######',
+    postalCodeLabel: 'Postal Code',
+    stateLabel: 'State'
+  },
+  {
+    code: 'NF',
+    name: 'Norfolk Island',
+    postalCodeFormat: '####',
+    postalCodeLabel: 'Postcode'
+  },
+  {
+    code: 'NO',
+    name: 'Norway',
+    postalCodeFormat: '####',
+    postalCodeLabel: 'Postnummer',
+    stateLabel: 'County'
+  },
+  {
+    code: 'PK',
+    name: 'Pakistan',
+    postalCodeFormat: '#####',
+    postalCodeLabel: 'Postal Code',
+    stateLabel: 'Province'
+  },
+  {
+    code: 'PA',
+    name: 'Panama',
+    postalCodeFormat: '####',
+    postalCodeLabel: 'Código Postal',
+    stateLabel: 'Province'
+  },
+  {
+    code: 'PG',
+    name: 'Papua New Guinea',
+    postalCodeFormat: '###',
+    postalCodeLabel: 'Postal Code',
+    stateLabel: 'Province'
+  },
+  {
+    code: 'PE',
+    name: 'Peru',
+    postalCodeFormat: '#####',
+    postalCodeLabel: 'Código Postal',
+    stateLabel: 'Region'
+  },
+  {
+    code: 'PH',
+    name: 'Philippines',
+    postalCodeFormat: '####',
+    postalCodeLabel: 'ZIP Code',
+    stateLabel: 'Province'
+  },
+  {
+    code: 'PL',
+    name: 'Poland',
+    postalCodeFormat: '##-###',
+    postalCodeLabel: 'Kod pocztowy',
+    stateLabel: 'Voivodeship'
+  },
+  {
+    code: 'PT',
+    name: 'Portugal',
+    postalCodeFormat: '####-###',
+    postalCodeLabel: 'Código Postal',
+    stateLabel: 'District'
+  },
+  {
+    code: 'PR',
+    name: 'Puerto Rico',
+    postalCodeFormat: '#####',
+    postalCodeLabel: 'ZIP Code'
+  },
+  {
+    code: 'RO',
+    name: 'Romania',
+    postalCodeFormat: '######',
+    postalCodeLabel: 'Cod poștal',
+    stateLabel: 'County'
+  },
+  {
+    code: 'RU',
+    name: 'Russia',
+    postalCodeFormat: '######',
+    postalCodeLabel: 'Почтовый индекс',
+    stateLabel: 'Region'
+  },
+  {
+    code: 'SA',
+    name: 'Saudi Arabia',
+    postalCodeFormat: '#####',
+    postalCodeLabel: 'Postal Code',
+    stateLabel: 'Province'
+  },
+  {
+    code: 'SG',
+    name: 'Singapore',
+    postalCodeFormat: '######',
+    postalCodeLabel: 'Postal Code'
+  },
+  {
+    code: 'SK',
+    name: 'Slovakia',
+    postalCodeFormat: '### ##',
+    postalCodeLabel: 'PSČ',
+    stateLabel: 'Region'
+  },
+  {
+    code: 'ZA',
+    name: 'South Africa',
+    postalCodeFormat: '####',
+    postalCodeLabel: 'Postal Code',
+    stateLabel: 'Province'
+  },
+  {
+    code: 'KR',
+    name: 'South Korea',
+    postalCodeFormat: '#####',
+    postalCodeLabel: '우편번호',
+    stateLabel: 'Province'
+  },
+  {
+    code: 'ES',
+    name: 'Spain',
+    postalCodeFormat: '#####',
+    postalCodeLabel: 'Código Postal',
+    stateLabel: 'Province'
+  },
+  {
+    code: 'SE',
+    name: 'Sweden',
+    postalCodeFormat: '### ##',
+    postalCodeLabel: 'Postnummer',
+    stateLabel: 'County'
+  },
+  {
+    code: 'CH',
+    name: 'Switzerland',
+    postalCodeFormat: '####',
+    postalCodeLabel: 'PLZ',
+    stateLabel: 'Canton'
+  },
+  {
+    code: 'TW',
+    name: 'Taiwan',
+    postalCodeFormat: '#####',
+    postalCodeLabel: '郵遞區號',
+    stateLabel: 'County'
+  },
+  {
+    code: 'TH',
+    name: 'Thailand',
+    postalCodeFormat: '#####',
+    postalCodeLabel: 'รหัสไปรษณีย์',
+    stateLabel: 'Province'
+  },
+  {
+    code: 'TT',
+    name: 'Trinidad and Tobago',
+    postalCodeFormat: '######',
+    postalCodeLabel: 'Postal Code',
+    stateLabel: 'Region'
+  },
+  {
+    code: 'TR',
+    name: 'Turkey',
+    postalCodeFormat: '#####',
+    postalCodeLabel: 'Posta Kodu',
+    stateLabel: 'Province'
+  },
+  {
+    code: 'VI',
+    name: 'U.S. Virgin Islands',
+    postalCodeFormat: '#####',
+    postalCodeLabel: 'ZIP Code'
+  },
+  {
+    code: 'UA',
+    name: 'Ukraine',
+    postalCodeFormat: '#####',
+    postalCodeLabel: 'Поштовий індекс',
+    stateLabel: 'Oblast'
+  },
+  {
+    code: 'AE',
+    name: 'United Arab Emirates',
+    postalCodeLabel: 'P.O. Box',
+    stateLabel: 'Emirate'
+  },
+  {
+    code: 'GB',
+    name: 'United Kingdom',
+    postalCodeFormat: 'A# #AA',
+    postalCodeLabel: 'Postcode',
+    stateLabel: 'County'
+  },
+  {
     code: 'US',
     name: 'United States',
     postalCodeFormat: '#####',
@@ -68,463 +639,6 @@ export const COUNTRIES: Country[] = [
     ]
   },
   {
-    code: 'CA',
-    name: 'Canada',
-    postalCodeFormat: 'A#A #A#',
-    postalCodeLabel: 'Postal Code',
-    stateLabel: 'Province',
-    states: [
-      { code: 'AB', name: 'Alberta' },
-      { code: 'BC', name: 'British Columbia' },
-      { code: 'MB', name: 'Manitoba' },
-      { code: 'NB', name: 'New Brunswick' },
-      { code: 'NL', name: 'Newfoundland and Labrador' },
-      { code: 'NT', name: 'Northwest Territories' },
-      { code: 'NS', name: 'Nova Scotia' },
-      { code: 'NU', name: 'Nunavut' },
-      { code: 'ON', name: 'Ontario' },
-      { code: 'PE', name: 'Prince Edward Island' },
-      { code: 'QC', name: 'Quebec' },
-      { code: 'SK', name: 'Saskatchewan' },
-      { code: 'YT', name: 'Yukon' }
-    ]
-  },
-  {
-    code: 'MX',
-    name: 'Mexico',
-    postalCodeFormat: '#####',
-    postalCodeLabel: 'Postal Code',
-    stateLabel: 'State',
-    states: [
-      { code: 'AGU', name: 'Aguascalientes' },
-      { code: 'BCN', name: 'Baja California' },
-      { code: 'BCS', name: 'Baja California Sur' },
-      { code: 'CAM', name: 'Campeche' },
-      { code: 'CHP', name: 'Chiapas' },
-      { code: 'CHH', name: 'Chihuahua' },
-      { code: 'CMX', name: 'Ciudad de México' },
-      { code: 'COA', name: 'Coahuila' },
-      { code: 'COL', name: 'Colima' },
-      { code: 'DUR', name: 'Durango' },
-      { code: 'GUA', name: 'Guanajuato' },
-      { code: 'GRO', name: 'Guerrero' },
-      { code: 'HID', name: 'Hidalgo' },
-      { code: 'JAL', name: 'Jalisco' },
-      { code: 'MEX', name: 'México' },
-      { code: 'MIC', name: 'Michoacán' },
-      { code: 'MOR', name: 'Morelos' },
-      { code: 'NAY', name: 'Nayarit' },
-      { code: 'NLE', name: 'Nuevo León' },
-      { code: 'OAX', name: 'Oaxaca' },
-      { code: 'PUE', name: 'Puebla' },
-      { code: 'QUE', name: 'Querétaro' },
-      { code: 'ROO', name: 'Quintana Roo' },
-      { code: 'SLP', name: 'San Luis Potosí' },
-      { code: 'SIN', name: 'Sinaloa' },
-      { code: 'SON', name: 'Sonora' },
-      { code: 'TAB', name: 'Tabasco' },
-      { code: 'TAM', name: 'Tamaulipas' },
-      { code: 'TLA', name: 'Tlaxcala' },
-      { code: 'VER', name: 'Veracruz' },
-      { code: 'YUC', name: 'Yucatán' },
-      { code: 'ZAC', name: 'Zacatecas' }
-    ]
-  },
-  {
-    code: 'GB',
-    name: 'United Kingdom',
-    postalCodeFormat: 'A# #AA',
-    postalCodeLabel: 'Postcode',
-    stateLabel: 'County'
-  },
-  {
-    code: 'AU',
-    name: 'Australia',
-    postalCodeFormat: '####',
-    postalCodeLabel: 'Postcode',
-    stateLabel: 'State/Territory',
-    states: [
-      { code: 'NSW', name: 'New South Wales' },
-      { code: 'VIC', name: 'Victoria' },
-      { code: 'QLD', name: 'Queensland' },
-      { code: 'WA', name: 'Western Australia' },
-      { code: 'SA', name: 'South Australia' },
-      { code: 'TAS', name: 'Tasmania' },
-      { code: 'ACT', name: 'Australian Capital Territory' },
-      { code: 'NT', name: 'Northern Territory' }
-    ]
-  },
-  {
-    code: 'NZ',
-    name: 'New Zealand',
-    postalCodeFormat: '####',
-    postalCodeLabel: 'Postcode',
-    stateLabel: 'Region'
-  },
-  {
-    code: 'DE',
-    name: 'Germany',
-    postalCodeFormat: '#####',
-    postalCodeLabel: 'Postleitzahl',
-    stateLabel: 'State'
-  },
-  {
-    code: 'FR',
-    name: 'France',
-    postalCodeFormat: '#####',
-    postalCodeLabel: 'Code Postal',
-    stateLabel: 'Region'
-  },
-  {
-    code: 'IT',
-    name: 'Italy',
-    postalCodeFormat: '#####',
-    postalCodeLabel: 'CAP',
-    stateLabel: 'Province'
-  },
-  {
-    code: 'ES',
-    name: 'Spain',
-    postalCodeFormat: '#####',
-    postalCodeLabel: 'Código Postal',
-    stateLabel: 'Province'
-  },
-  {
-    code: 'PT',
-    name: 'Portugal',
-    postalCodeFormat: '####-###',
-    postalCodeLabel: 'Código Postal',
-    stateLabel: 'District'
-  },
-  {
-    code: 'NL',
-    name: 'Netherlands',
-    postalCodeFormat: '#### AA',
-    postalCodeLabel: 'Postcode',
-    stateLabel: 'Province'
-  },
-  {
-    code: 'BE',
-    name: 'Belgium',
-    postalCodeFormat: '####',
-    postalCodeLabel: 'Postcode',
-    stateLabel: 'Province'
-  },
-  {
-    code: 'CH',
-    name: 'Switzerland',
-    postalCodeFormat: '####',
-    postalCodeLabel: 'PLZ',
-    stateLabel: 'Canton'
-  },
-  {
-    code: 'AT',
-    name: 'Austria',
-    postalCodeFormat: '####',
-    postalCodeLabel: 'PLZ',
-    stateLabel: 'State'
-  },
-  {
-    code: 'SE',
-    name: 'Sweden',
-    postalCodeFormat: '### ##',
-    postalCodeLabel: 'Postnummer',
-    stateLabel: 'County'
-  },
-  {
-    code: 'NO',
-    name: 'Norway',
-    postalCodeFormat: '####',
-    postalCodeLabel: 'Postnummer',
-    stateLabel: 'County'
-  },
-  {
-    code: 'DK',
-    name: 'Denmark',
-    postalCodeFormat: '####',
-    postalCodeLabel: 'Postnummer',
-    stateLabel: 'Region'
-  },
-  {
-    code: 'FI',
-    name: 'Finland',
-    postalCodeFormat: '#####',
-    postalCodeLabel: 'Postinumero',
-    stateLabel: 'Region'
-  },
-  {
-    code: 'PL',
-    name: 'Poland',
-    postalCodeFormat: '##-###',
-    postalCodeLabel: 'Kod pocztowy',
-    stateLabel: 'Voivodeship'
-  },
-  {
-    code: 'CZ',
-    name: 'Czech Republic',
-    postalCodeFormat: '### ##',
-    postalCodeLabel: 'PSČ',
-    stateLabel: 'Region'
-  },
-  {
-    code: 'SK',
-    name: 'Slovakia',
-    postalCodeFormat: '### ##',
-    postalCodeLabel: 'PSČ',
-    stateLabel: 'Region'
-  },
-  {
-    code: 'HU',
-    name: 'Hungary',
-    postalCodeFormat: '####',
-    postalCodeLabel: 'Irányítószám',
-    stateLabel: 'County'
-  },
-  {
-    code: 'RO',
-    name: 'Romania',
-    postalCodeFormat: '######',
-    postalCodeLabel: 'Cod poștal',
-    stateLabel: 'County'
-  },
-  {
-    code: 'BG',
-    name: 'Bulgaria',
-    postalCodeFormat: '####',
-    postalCodeLabel: 'Пощенски код',
-    stateLabel: 'Province'
-  },
-  {
-    code: 'GR',
-    name: 'Greece',
-    postalCodeFormat: '### ##',
-    postalCodeLabel: 'Ταχυδρομικός Κώδικας',
-    stateLabel: 'Region'
-  },
-  {
-    code: 'TR',
-    name: 'Turkey',
-    postalCodeFormat: '#####',
-    postalCodeLabel: 'Posta Kodu',
-    stateLabel: 'Province'
-  },
-  {
-    code: 'RU',
-    name: 'Russia',
-    postalCodeFormat: '######',
-    postalCodeLabel: 'Почтовый индекс',
-    stateLabel: 'Region'
-  },
-  {
-    code: 'UA',
-    name: 'Ukraine',
-    postalCodeFormat: '#####',
-    postalCodeLabel: 'Поштовий індекс',
-    stateLabel: 'Oblast'
-  },
-  {
-    code: 'JP',
-    name: 'Japan',
-    postalCodeFormat: '###-####',
-    postalCodeLabel: '郵便番号',
-    stateLabel: 'Prefecture'
-  },
-  {
-    code: 'CN',
-    name: 'China',
-    postalCodeFormat: '######',
-    postalCodeLabel: '邮政编码',
-    stateLabel: 'Province'
-  },
-  {
-    code: 'KR',
-    name: 'South Korea',
-    postalCodeFormat: '#####',
-    postalCodeLabel: '우편번호',
-    stateLabel: 'Province'
-  },
-  {
-    code: 'TW',
-    name: 'Taiwan',
-    postalCodeFormat: '#####',
-    postalCodeLabel: '郵遞區號',
-    stateLabel: 'County'
-  },
-  {
-    code: 'TH',
-    name: 'Thailand',
-    postalCodeFormat: '#####',
-    postalCodeLabel: 'รหัสไปรษณีย์',
-    stateLabel: 'Province'
-  },
-  {
-    code: 'VN',
-    name: 'Vietnam',
-    postalCodeFormat: '######',
-    postalCodeLabel: 'Mã bưu điện',
-    stateLabel: 'Province'
-  },
-  {
-    code: 'PH',
-    name: 'Philippines',
-    postalCodeFormat: '####',
-    postalCodeLabel: 'ZIP Code',
-    stateLabel: 'Province'
-  },
-  {
-    code: 'MY',
-    name: 'Malaysia',
-    postalCodeFormat: '#####',
-    postalCodeLabel: 'Poskod',
-    stateLabel: 'State'
-  },
-  {
-    code: 'SG',
-    name: 'Singapore',
-    postalCodeFormat: '######',
-    postalCodeLabel: 'Postal Code'
-  },
-  {
-    code: 'ID',
-    name: 'Indonesia',
-    postalCodeFormat: '#####',
-    postalCodeLabel: 'Kode Pos',
-    stateLabel: 'Province'
-  },
-  {
-    code: 'IN',
-    name: 'India',
-    postalCodeFormat: '######',
-    postalCodeLabel: 'PIN Code',
-    stateLabel: 'State'
-  },
-  {
-    code: 'PK',
-    name: 'Pakistan',
-    postalCodeFormat: '#####',
-    postalCodeLabel: 'Postal Code',
-    stateLabel: 'Province'
-  },
-  {
-    code: 'BD',
-    name: 'Bangladesh',
-    postalCodeFormat: '####',
-    postalCodeLabel: 'Post Code',
-    stateLabel: 'Division'
-  },
-  {
-    code: 'AE',
-    name: 'United Arab Emirates',
-    postalCodeLabel: 'P.O. Box',
-    stateLabel: 'Emirate'
-  },
-  {
-    code: 'SA',
-    name: 'Saudi Arabia',
-    postalCodeFormat: '#####',
-    postalCodeLabel: 'Postal Code',
-    stateLabel: 'Province'
-  },
-  {
-    code: 'IL',
-    name: 'Israel',
-    postalCodeFormat: '#######',
-    postalCodeLabel: 'מיקוד',
-    stateLabel: 'District'
-  },
-  {
-    code: 'ZA',
-    name: 'South Africa',
-    postalCodeFormat: '####',
-    postalCodeLabel: 'Postal Code',
-    stateLabel: 'Province'
-  },
-  {
-    code: 'NG',
-    name: 'Nigeria',
-    postalCodeFormat: '######',
-    postalCodeLabel: 'Postal Code',
-    stateLabel: 'State'
-  },
-  {
-    code: 'KE',
-    name: 'Kenya',
-    postalCodeFormat: '#####',
-    postalCodeLabel: 'Postal Code',
-    stateLabel: 'County'
-  },
-  {
-    code: 'EG',
-    name: 'Egypt',
-    postalCodeFormat: '#####',
-    postalCodeLabel: 'Postal Code',
-    stateLabel: 'Governorate'
-  },
-  {
-    code: 'BR',
-    name: 'Brazil',
-    postalCodeFormat: '#####-###',
-    postalCodeLabel: 'CEP',
-    stateLabel: 'State',
-    states: [
-      { code: 'AC', name: 'Acre' },
-      { code: 'AL', name: 'Alagoas' },
-      { code: 'AP', name: 'Amapá' },
-      { code: 'AM', name: 'Amazonas' },
-      { code: 'BA', name: 'Bahia' },
-      { code: 'CE', name: 'Ceará' },
-      { code: 'DF', name: 'Distrito Federal' },
-      { code: 'ES', name: 'Espírito Santo' },
-      { code: 'GO', name: 'Goiás' },
-      { code: 'MA', name: 'Maranhão' },
-      { code: 'MT', name: 'Mato Grosso' },
-      { code: 'MS', name: 'Mato Grosso do Sul' },
-      { code: 'MG', name: 'Minas Gerais' },
-      { code: 'PA', name: 'Pará' },
-      { code: 'PB', name: 'Paraíba' },
-      { code: 'PR', name: 'Paraná' },
-      { code: 'PE', name: 'Pernambuco' },
-      { code: 'PI', name: 'Piauí' },
-      { code: 'RJ', name: 'Rio de Janeiro' },
-      { code: 'RN', name: 'Rio Grande do Norte' },
-      { code: 'RS', name: 'Rio Grande do Sul' },
-      { code: 'RO', name: 'Rondônia' },
-      { code: 'RR', name: 'Roraima' },
-      { code: 'SC', name: 'Santa Catarina' },
-      { code: 'SP', name: 'São Paulo' },
-      { code: 'SE', name: 'Sergipe' },
-      { code: 'TO', name: 'Tocantins' }
-    ]
-  },
-  {
-    code: 'AR',
-    name: 'Argentina',
-    postalCodeFormat: 'A####AAA',
-    postalCodeLabel: 'Código Postal',
-    stateLabel: 'Province'
-  },
-  {
-    code: 'CL',
-    name: 'Chile',
-    postalCodeFormat: '#######',
-    postalCodeLabel: 'Código Postal',
-    stateLabel: 'Region'
-  },
-  {
-    code: 'CO',
-    name: 'Colombia',
-    postalCodeFormat: '######',
-    postalCodeLabel: 'Código Postal',
-    stateLabel: 'Department'
-  },
-  {
-    code: 'PE',
-    name: 'Peru',
-    postalCodeFormat: '#####',
-    postalCodeLabel: 'Código Postal',
-    stateLabel: 'Region'
-  },
-  {
     code: 'VE',
     name: 'Venezuela',
     postalCodeFormat: '####',
@@ -532,125 +646,11 @@ export const COUNTRIES: Country[] = [
     stateLabel: 'State'
   },
   {
-    code: 'EC',
-    name: 'Ecuador',
+    code: 'VN',
+    name: 'Vietnam',
     postalCodeFormat: '######',
-    postalCodeLabel: 'Código Postal',
+    postalCodeLabel: 'Mã bưu điện',
     stateLabel: 'Province'
-  },
-  {
-    code: 'CR',
-    name: 'Costa Rica',
-    postalCodeFormat: '#####',
-    postalCodeLabel: 'Código Postal',
-    stateLabel: 'Province'
-  },
-  {
-    code: 'PA',
-    name: 'Panama',
-    postalCodeFormat: '####',
-    postalCodeLabel: 'Código Postal',
-    stateLabel: 'Province'
-  },
-  {
-    code: 'DO',
-    name: 'Dominican Republic',
-    postalCodeFormat: '#####',
-    postalCodeLabel: 'Código Postal',
-    stateLabel: 'Province'
-  },
-  {
-    code: 'JM',
-    name: 'Jamaica',
-    postalCodeLabel: 'Postal Code',
-    stateLabel: 'Parish'
-  },
-  {
-    code: 'TT',
-    name: 'Trinidad and Tobago',
-    postalCodeFormat: '######',
-    postalCodeLabel: 'Postal Code',
-    stateLabel: 'Region'
-  },
-  {
-    code: 'VI',
-    name: 'U.S. Virgin Islands',
-    postalCodeFormat: '#####',
-    postalCodeLabel: 'ZIP Code'
-  },
-  {
-    code: 'VG',
-    name: 'British Virgin Islands',
-    postalCodeLabel: 'Postal Code'
-  },
-  {
-    code: 'PR',
-    name: 'Puerto Rico',
-    postalCodeFormat: '#####',
-    postalCodeLabel: 'ZIP Code'
-  },
-  {
-    code: 'BB',
-    name: 'Barbados',
-    postalCodeFormat: 'BB#####',
-    postalCodeLabel: 'Postal Code',
-    stateLabel: 'Parish'
-  },
-  {
-    code: 'BS',
-    name: 'Bahamas',
-    postalCodeLabel: 'P.O. Box'
-  },
-  {
-    code: 'KY',
-    name: 'Cayman Islands',
-    postalCodeFormat: 'KY#-####',
-    postalCodeLabel: 'Postal Code'
-  },
-  {
-    code: 'BM',
-    name: 'Bermuda',
-    postalCodeFormat: 'AA ##',
-    postalCodeLabel: 'Postal Code',
-    stateLabel: 'Parish'
-  },
-  {
-    code: 'CU',
-    name: 'Cuba',
-    postalCodeFormat: '#####',
-    postalCodeLabel: 'Código Postal',
-    stateLabel: 'Province'
-  },
-  {
-    code: 'HT',
-    name: 'Haiti',
-    postalCodeFormat: '####',
-    postalCodeLabel: 'Code Postal',
-    stateLabel: 'Department'
-  },
-  {
-    code: 'GU',
-    name: 'Guam',
-    postalCodeFormat: '#####',
-    postalCodeLabel: 'ZIP Code'
-  },
-  {
-    code: 'FJ',
-    name: 'Fiji',
-    postalCodeLabel: 'Postal Code'
-  },
-  {
-    code: 'PG',
-    name: 'Papua New Guinea',
-    postalCodeFormat: '###',
-    postalCodeLabel: 'Postal Code',
-    stateLabel: 'Province'
-  },
-  {
-    code: 'NF',
-    name: 'Norfolk Island',
-    postalCodeFormat: '####',
-    postalCodeLabel: 'Postcode'
   }
 ];
 

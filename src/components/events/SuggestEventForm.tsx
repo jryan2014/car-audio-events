@@ -69,16 +69,21 @@ const US_STATES = [
   'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'
 ];
 
+// Country list - alphabetically sorted and includes Vietnam
 const COUNTRIES = [
-  'USA', 'Canada', 'Mexico', 'United Kingdom', 'Germany', 'France', 
-  'Italy', 'Spain', 'Netherlands', 'Belgium', 'Switzerland', 'Austria',
-  'Sweden', 'Norway', 'Denmark', 'Finland', 'Poland', 'Czech Republic',
-  'Hungary', 'Romania', 'Greece', 'Portugal', 'Ireland', 'Scotland',
-  'Australia', 'New Zealand', 'Japan', 'South Korea', 'China', 'Taiwan',
-  'Thailand', 'Malaysia', 'Singapore', 'Indonesia', 'Philippines', 'India',
-  'Brazil', 'Argentina', 'Chile', 'Colombia', 'Venezuela', 'Peru',
-  'South Africa', 'Egypt', 'Morocco', 'Nigeria', 'Kenya', 'Israel',
-  'United Arab Emirates', 'Saudi Arabia', 'Turkey', 'Russia', 'Ukraine'
+  'Argentina', 'Australia', 'Austria', 'Bahamas', 'Bangladesh', 'Barbados',
+  'Belgium', 'Bermuda', 'Brazil', 'British Virgin Islands', 'Bulgaria',
+  'Canada', 'Cayman Islands', 'Chile', 'China', 'Colombia', 'Costa Rica',
+  'Cuba', 'Czech Republic', 'Denmark', 'Dominican Republic', 'Ecuador',
+  'Egypt', 'Fiji', 'Finland', 'France', 'Germany', 'Greece', 'Guam',
+  'Haiti', 'Hungary', 'India', 'Indonesia', 'Ireland', 'Israel', 'Italy',
+  'Jamaica', 'Japan', 'Kenya', 'Malaysia', 'Mexico', 'Morocco', 'Netherlands',
+  'New Zealand', 'Nigeria', 'Norfolk Island', 'Norway', 'Pakistan', 'Panama',
+  'Papua New Guinea', 'Peru', 'Philippines', 'Poland', 'Portugal', 'Puerto Rico',
+  'Romania', 'Russia', 'Saudi Arabia', 'Scotland', 'Singapore', 'Slovakia',
+  'South Africa', 'South Korea', 'Spain', 'Sweden', 'Switzerland', 'Taiwan',
+  'Thailand', 'Trinidad and Tobago', 'Turkey', 'U.S. Virgin Islands', 'Ukraine',
+  'United Arab Emirates', 'United Kingdom', 'USA', 'Venezuela', 'Vietnam'
 ];
 
 export default function SuggestEventForm({ onSuccess, onCancel }: SuggestEventFormProps) {
