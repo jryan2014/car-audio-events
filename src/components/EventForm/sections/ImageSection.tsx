@@ -291,13 +291,17 @@ const ImageSection: React.FC<ImageSectionProps> = ({
 
     setIsSavingTemplate(true);
     try {
+      // Ensure position values are within valid range (0-100)
+      const positionY = Math.max(0, Math.min(100, imagePositionY || 50));
+      const positionX = Math.max(0, Math.min(100, imagePositionX || 50));
+      
       const templateData = {
         name: templateName,
         organization_id: formData.sanction_body_id ? Number(formData.sanction_body_id) : null,
         user_id: user?.id,
         image_url: previewUrl,
-        image_position: imagePositionY,
-        image_position_x: imagePositionX,
+        image_position: positionY,
+        image_position_x: positionX,
         zoom_level: zoom,
         crop_x: completedCrop?.x || 0,
         crop_y: completedCrop?.y || 0,
