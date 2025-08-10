@@ -133,11 +133,10 @@ const SEOSection: React.FC<SEOSectionProps> = ({
             className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
           >
             <option value="">Select competition format</option>
-            <option value="spl">SPL (Sound Pressure Level)</option>
-            <option value="sq">SQ (Sound Quality)</option>
-            <option value="spl_sq">SPL & SQ Combined</option>
+            <option value="spl">SPL Competition</option>
+            <option value="sq">SQ Competition</option>
             <option value="demo">Demo/Exhibition</option>
-            <option value="show_shine">Show & Shine</option>
+            <option value="car_show">Car Show</option>
           </select>
         </div>
 
@@ -154,7 +153,7 @@ const SEOSection: React.FC<SEOSectionProps> = ({
             onChange={(e) => updateField('sanctioning_body', e.target.value)}
             onBlur={() => touchField('sanctioning_body')}
             className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-            placeholder="e.g., IASCA, MECA, Bass Wars, Independent"
+            placeholder="e.g., IASCA, MECA, DB Drag, USACI, Bass Wars, NSPL, Midwest SPL, ISPLL, MASQ, Independent/Club, Non-Sanctioned"
           />
         </div>
 
