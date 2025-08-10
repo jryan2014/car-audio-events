@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Calendar, MapPin, Users, Star, Clock, DollarSign, Trophy, ArrowLeft, Heart, Share2, Phone, Globe, Mail, X, ZoomIn, ExternalLink } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import PaymentForm from '../components/PaymentForm';
@@ -12,6 +12,7 @@ import SEO from '../components/SEO';
 
 const EventDetails = React.memo(function EventDetails() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
   const [isRegistered, setIsRegistered] = useState(false);
   const [isFavorited, setIsFavorited] = useState(false);
@@ -26,14 +27,6 @@ const EventDetails = React.memo(function EventDetails() {
   const [showShareDropdown, setShowShareDropdown] = useState(false);
   const [isInterested, setIsInterested] = useState(false);
   const [interestCount, setInterestCount] = useState(0);
-  
-  // Check if the id is "suggest" and redirect to the suggest page
-  // This handles mobile routing issues where /events/suggest might be caught by /events/:id
-  React.useEffect(() => {
-    if (id === 'suggest') {
-      window.location.href = '/events/suggest';
-    }
-  }, [id]);
   
   // Use memory manager for better resource cleanup
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -142,7 +135,15 @@ const EventDetails = React.memo(function EventDetails() {
   }, [showShareDropdown]);
 
   const loadEventDetails = async () => {
-    if (!id || id === 'suggest') return;
+    if (!id) return;
+    
+    // Safety check - don't try to load if the ID is "suggest"
+    // This shouldn't happen with proper routing but protects against edge cases
+    if (id === 'suggest') {
+      console.warn('EventDetails received "suggest" as ID - routing may be misconfigured');
+      setLoading(false);
+      return;
+    }
     
     setLoading(true);
     setError(null);
@@ -446,6 +447,21 @@ const EventDetails = React.memo(function EventDetails() {
     setShowPayment(false);
   };
   
+  // Special case: if ID is "suggest", render the suggest form component
+  // This handles mobile routing issues where /events/suggest might be caught by /events/:id
+  if (id === 'suggest') {
+    const SuggestEventComponent = React.lazy(() => import('./SuggestEvent'));
+    return (
+      <React.Suspense fallback={
+        <div className="min-h-screen py-8 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-electric-500"></div>
+        </div>
+      }>
+        <SuggestEventComponent />
+      </React.Suspense>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen py-8 flex items-center justify-center">
