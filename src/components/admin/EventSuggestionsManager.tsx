@@ -4,7 +4,13 @@ import { Calendar, MapPin, User, Phone, Mail, Globe, Check, X, Eye, Clock, Alert
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/Button';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
-import { Modal } from '../ui/Modal';
+import { 
+  Modal, 
+  ModalContent, 
+  ModalHeader, 
+  ModalTitle, 
+  ModalDescription 
+} from '../ui/Modal';
 
 interface EventSuggestion {
   id: string;
@@ -347,15 +353,11 @@ export default function EventSuggestionsManager() {
       )}
       
       {/* Detail Modal */}
-      <Modal
-        isOpen={showDetailModal}
-        onClose={() => {
-          setShowDetailModal(false);
-          setSelectedSuggestion(null);
-        }}
-        title="Event Suggestion Details"
-        size="xl"
-      >
+      <Modal open={showDetailModal} onOpenChange={setShowDetailModal}>
+        <ModalContent size="xl">
+          <ModalHeader>
+            <ModalTitle>Event Suggestion Details</ModalTitle>
+          </ModalHeader>
         {selectedSuggestion && (
           <div className="space-y-6">
             {/* Status and Meta Information */}
@@ -607,6 +609,7 @@ export default function EventSuggestionsManager() {
             )}
           </div>
         )}
+        </ModalContent>
       </Modal>
       </div>
     </div>
