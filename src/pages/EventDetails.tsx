@@ -27,6 +27,14 @@ const EventDetails = React.memo(function EventDetails() {
   const [isInterested, setIsInterested] = useState(false);
   const [interestCount, setInterestCount] = useState(0);
   
+  // Check if the id is "suggest" and redirect to the suggest page
+  // This handles mobile routing issues where /events/suggest might be caught by /events/:id
+  React.useEffect(() => {
+    if (id === 'suggest') {
+      window.location.href = '/events/suggest';
+    }
+  }, [id]);
+  
   // Use memory manager for better resource cleanup
   const abortControllerRef = useRef<AbortController | null>(null);
   const shareDropdownRef = useRef<HTMLDivElement | null>(null);
@@ -134,7 +142,7 @@ const EventDetails = React.memo(function EventDetails() {
   }, [showShareDropdown]);
 
   const loadEventDetails = async () => {
-    if (!id) return;
+    if (!id || id === 'suggest') return;
     
     setLoading(true);
     setError(null);
