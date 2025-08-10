@@ -323,6 +323,10 @@ const EditEvent = React.memo(function EditEvent() {
         ? formData.image_position 
         : 50;
       
+      // Ensure image position values are within valid range (0-100)
+      const imagePositionX = Math.max(0, Math.min(100, formData.image_position_x || 50));
+      const imagePositionY = Math.max(0, Math.min(100, imagePosition));
+      
       const eventUpdateData = {
         id,
         title: formData.title,
@@ -354,8 +358,8 @@ const EditEvent = React.memo(function EditEvent() {
         contact_phone: formData.contact_phone,
         website_url: formData.website,
         image_url: formData.image_url || null,
-        image_position: imagePosition,
-        image_position_x: formData.image_position_x || 50,
+        image_position: imagePositionY,
+        image_position_x: imagePositionX,
         image_zoom: formData.image_zoom || 1,
         image_crop_x: formData.image_crop_x || 0,
         image_crop_y: formData.image_crop_y || 0,

@@ -115,6 +115,10 @@ export default function CreateEvent() {
       // Get category name for legacy category field
       const selectedCategory = categories.find(cat => cat.id === formData.category_id);
       
+      // Ensure image position values are within valid range (0-100)
+      const imagePosition = Math.max(0, Math.min(100, formData.image_position || 50));
+      const imagePositionX = Math.max(0, Math.min(100, formData.image_position_x || 50));
+      
       const eventData = {
         title: formData.title,
         description: formData.description,
@@ -139,8 +143,8 @@ export default function CreateEvent() {
         contact_phone: formData.contact_phone,
         website_url: formData.website,
         image_url: formData.image_url || null,
-        image_position: formData.image_position || 50,
-        image_position_x: formData.image_position_x || 50,
+        image_position: imagePosition,
+        image_position_x: imagePositionX,
         image_zoom: formData.image_zoom || 1,
         image_crop_x: formData.image_crop_x || 0,
         image_crop_y: formData.image_crop_y || 0,
