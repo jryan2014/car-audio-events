@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Calendar, MapPin, User, Phone, Mail, Globe, DollarSign, Trophy, FileText, Send, AlertCircle } from 'lucide-react';
+import { Calendar, MapPin, User, Phone, Mail, Globe, DollarSign, Trophy, FileText, Send, AlertCircle, Clock, Shield } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../ui/Card';
 import { Alert } from '../ui/Alert';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface SuggestEventFormProps {
   onSuccess?: () => void;
@@ -80,8 +81,11 @@ const COUNTRIES = [
 ];
 
 export default function SuggestEventForm({ onSuccess, onCancel }: SuggestEventFormProps) {
+  const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rateLimitInfo, setRateLimitInfo] = useState<any>(null);
+  const [isCheckingRateLimit, setIsCheckingRateLimit] = useState(false);
   const [formData, setFormData] = useState<EventSuggestion>({
     suggested_by_email: '',
     suggested_by_name: '',
@@ -139,6 +143,56 @@ export default function SuggestEventForm({ onSuccess, onCancel }: SuggestEventFo
     });
   };
 
+  // Get user's IP address
+  const getUserIP = async (): Promise<string | null> => {
+    try {
+      const response = await fetch('https://api.ipify.org?format=json');
+      const data = await response.json();
+      return data.ip;
+    } catch (error) {
+      console.error('Failed to get IP address:', error);
+      return null;
+    }
+  };
+
+  // Check rate limits before allowing submission
+  const checkRateLimit = async (email: string): Promise<boolean> => {
+    // If user is logged in, skip rate limiting
+    if (user) {
+      return true;
+    }
+
+    setIsCheckingRateLimit(true);
+    try {
+      const ip = await getUserIP();
+      
+      const { data, error } = await supabase.rpc('check_event_suggestion_rate_limit', {
+        p_email: email,
+        p_ip_address: ip,
+        p_user_id: user?.id || null
+      });
+
+      if (error) {
+        console.error('Rate limit check error:', error);
+        return true; // Allow submission if check fails
+      }
+
+      if (!data.allowed) {
+        setError(data.message);
+        setRateLimitInfo(data);
+        return false;
+      }
+
+      setRateLimitInfo(data);
+      return true;
+    } catch (err) {
+      console.error('Rate limit check failed:', err);
+      return true; // Allow submission if check fails
+    } finally {
+      setIsCheckingRateLimit(false);
+    }
+  };
+
   const validateForm = (): string | null => {
     // Check required fields
     if (!formData.suggested_by_email) return 'Your email is required';
@@ -175,11 +229,32 @@ export default function SuggestEventForm({ onSuccess, onCancel }: SuggestEventFo
       setError(validationError);
       return;
     }
+
+    // Check rate limits for non-logged-in users
+    if (!user) {
+      const canSubmit = await checkRateLimit(formData.suggested_by_email);
+      if (!canSubmit) {
+        return;
+      }
+    }
     
     setIsSubmitting(true);
     setError(null);
     
     try {
+      // Track submission for rate limiting
+      if (!user) {
+        const ip = await getUserIP();
+        await supabase
+          .from('event_suggestion_submissions')
+          .insert([{
+            email: formData.suggested_by_email,
+            ip_address: ip,
+            user_id: user?.id || null,
+            user_agent: navigator.userAgent,
+            browser_fingerprint: null // Could add fingerprinting library if needed
+          }]);
+      }
       // Create event directly in the events table with pending_approval status
       // Only include fields that actually exist in the events table
       const eventData: any = {
@@ -298,6 +373,25 @@ export default function SuggestEventForm({ onSuccess, onCancel }: SuggestEventFo
             <Alert variant="destructive" className="mb-6">
               <AlertCircle className="h-4 w-4" />
               <span>{error}</span>
+            </Alert>
+          )}
+
+          {/* Rate limit info for logged-out users */}
+          {!user && rateLimitInfo && rateLimitInfo.allowed && (
+            <Alert className="mb-6 bg-blue-900/20 border-blue-500/50 text-blue-400">
+              <Clock className="h-4 w-4" />
+              <div>
+                <p>You have used {rateLimitInfo.email_count?.daily || 0} of {rateLimitInfo.email_limits?.daily || 5} daily submissions.</p>
+                <p className="text-sm mt-1">Create a free account for unlimited event suggestions!</p>
+              </div>
+            </Alert>
+          )}
+
+          {/* Logged in user benefit notice */}
+          {user && (
+            <Alert className="mb-6 bg-green-900/20 border-green-500/50 text-green-400">
+              <Shield className="h-4 w-4" />
+              <span>As a registered user, you can submit unlimited event suggestions!</span>
             </Alert>
           )}
           

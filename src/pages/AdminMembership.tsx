@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Package, Plus, Edit, Trash2, Save, X, Star, Check, AlertCircle, Users, Building, Wrench, Crown, HelpCircle, UserPlus, Shield, Mail, Calendar, Trophy, CreditCard, BarChart3, DollarSign, TrendingUp } from 'lucide-react';
+import { Package, Plus, Edit, Trash2, Save, X, Star, Check, AlertCircle, Users, Building, Wrench, Crown, HelpCircle, UserPlus, Shield, Mail, Calendar, Trophy, CreditCard, BarChart3, DollarSign, TrendingUp, Send } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { AdminCouponManager } from '../components/AdminCouponManager';
 import { PermissionManager } from '../components/admin/PermissionManager';
+import EventSuggestionSettings from '../components/admin/EventSuggestionSettings';
 
 interface MembershipPlan {
   id: string;
@@ -957,6 +958,17 @@ export default function AdminMembership() {
             <span>Permissions</span>
           </button>
           <button
+            onClick={() => setActiveTab('suggestions')}
+            className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
+              activeTab === 'suggestions'
+                ? 'bg-electric-500 text-white shadow-lg'
+                : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+            }`}
+          >
+            <Send className="h-4 w-4" />
+            <span>Event Suggestions</span>
+          </button>
+          <button
             onClick={() => setActiveTab('billing')}
             className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
               activeTab === 'billing'
@@ -1293,6 +1305,11 @@ export default function AdminMembership() {
         {/* Permissions Tab - Enhanced with new Permission Manager */}
         {activeTab === 'permissions' && (
           <PermissionManager />
+        )}
+
+        {/* Event Suggestions Tab */}
+        {activeTab === 'suggestions' && (
+          <EventSuggestionSettings />
         )}
 
         {/* Billing Tab */}
