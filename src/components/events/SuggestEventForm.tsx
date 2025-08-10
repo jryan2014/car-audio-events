@@ -69,6 +69,18 @@ const US_STATES = [
   'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'
 ];
 
+const COUNTRIES = [
+  'USA', 'Canada', 'Mexico', 'United Kingdom', 'Germany', 'France', 
+  'Italy', 'Spain', 'Netherlands', 'Belgium', 'Switzerland', 'Austria',
+  'Sweden', 'Norway', 'Denmark', 'Finland', 'Poland', 'Czech Republic',
+  'Hungary', 'Romania', 'Greece', 'Portugal', 'Ireland', 'Scotland',
+  'Australia', 'New Zealand', 'Japan', 'South Korea', 'China', 'Taiwan',
+  'Thailand', 'Malaysia', 'Singapore', 'Indonesia', 'Philippines', 'India',
+  'Brazil', 'Argentina', 'Chile', 'Colombia', 'Venezuela', 'Peru',
+  'South Africa', 'Egypt', 'Morocco', 'Nigeria', 'Kenya', 'Israel',
+  'United Arab Emirates', 'Saudi Arabia', 'Turkey', 'Russia', 'Ukraine'
+];
+
 export default function SuggestEventForm({ onSuccess, onCancel }: SuggestEventFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -135,7 +147,10 @@ export default function SuggestEventForm({ onSuccess, onCancel }: SuggestEventFo
     if (!formData.venue_name) return 'Venue name is required';
     if (!formData.street_address) return 'Street address is required';
     if (!formData.city) return 'City is required';
-    if (!formData.state) return 'State is required';
+    if (!formData.country) return 'Country is required';
+    if ((formData.country === 'USA' || formData.country === 'Canada') && !formData.state) {
+      return formData.country === 'USA' ? 'State is required' : 'Province is required';
+    }
     if (!formData.start_date) return 'Start date is required';
     if (!formData.end_date) return 'End date is required';
     
@@ -430,7 +445,7 @@ export default function SuggestEventForm({ onSuccess, onCancel }: SuggestEventFo
                   />
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                       City *
@@ -447,31 +462,64 @@ export default function SuggestEventForm({ onSuccess, onCancel }: SuggestEventFo
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
-                      State *
+                      Country *
                     </label>
                     <select
-                      name="state"
-                      value={formData.state}
+                      name="country"
+                      value={formData.country}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-electric-500"
                       required
                     >
-                      <option value="">Select State</option>
-                      {US_STATES.map(state => (
-                        <option key={state} value={state}>{state}</option>
+                      <option value="">Select Country</option>
+                      {COUNTRIES.map(country => (
+                        <option key={country} value={country}>{country}</option>
                       ))}
                     </select>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      {formData.country === 'USA' ? 'State *' : formData.country === 'Canada' ? 'Province' : 'State/Province'}
+                    </label>
+                    {formData.country === 'USA' ? (
+                      <select
+                        name="state"
+                        value={formData.state}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-electric-500"
+                        required
+                      >
+                        <option value="">Select State</option>
+                        {US_STATES.map(state => (
+                          <option key={state} value={state}>{state}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <Input
+                        type="text"
+                        name="state"
+                        value={formData.state}
+                        onChange={handleInputChange}
+                        placeholder={formData.country === 'Canada' ? 'Enter province' : 'Enter state/province'}
+                        className="bg-gray-800 border-gray-700 text-white"
+                        required={formData.country === 'USA' || formData.country === 'Canada'}
+                      />
+                    )}
                   </div>
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
-                      ZIP Code
+                      {formData.country === 'USA' ? 'ZIP Code' : 'Postal Code'}
                     </label>
                     <Input
                       type="text"
                       name="zip_code"
                       value={formData.zip_code}
                       onChange={handleInputChange}
+                      placeholder={formData.country === 'USA' ? 'e.g., 12345' : 'Enter postal code'}
                       className="bg-gray-800 border-gray-700 text-white"
                     />
                   </div>

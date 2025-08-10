@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, MapPin, Trophy, Users, Star, ArrowRight, Volume2, Zap, Megaphone, Check } from 'lucide-react';
+import { Calendar, MapPin, Trophy, Users, Star, ArrowRight, Volume2, Zap, Megaphone, Check, Globe } from 'lucide-react';
 import GoogleMap from '../components/GoogleMap';
 import AdDisplay from '../components/AdDisplay';
 import SEO from '../components/SEO';
@@ -394,89 +394,146 @@ export default function Home() {
       </section>
 
       {/* Event Submission Promotion Section */}
-      <section className="py-16 relative overflow-hidden">
-        {/* Background pattern */}
-        <div className="absolute inset-0 bg-gradient-to-br from-electric-500/5 via-transparent to-purple-500/5"></div>
+      <section className="py-12 sm:py-16 relative overflow-hidden">
+        {/* Dynamic background gradient */}
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-electric-500/10 via-transparent to-transparent"></div>
+        </div>
         
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            {/* Left Content */}
-            <div className="text-left animate-slide-up">
-              <div className="flex items-center space-x-2 mb-4">
-                <Megaphone className="h-6 w-6 text-electric-500" />
-                <span className="text-electric-400 font-semibold uppercase tracking-wider">SUBMIT FOR FREE</span>
-              </div>
-              
-              <h2 className="text-3xl lg:text-4xl font-black text-white mb-6 leading-tight">
-                <span className="whitespace-nowrap">Got an Epic Event</span>{' '}
-                <span className="whitespace-nowrap">Coming Up?</span>
-                <span className="block text-electric-400 mt-2 whitespace-nowrap">Share It With The Community!</span>
-              </h2>
-              
-              <p className="text-lg text-gray-300 mb-6 leading-relaxed">
-                Whether you're hosting a massive championship or organizing a local SPL showdown or just a meetup, 
-                we want to hear about it! Submit your event in under 2 minutes and get it featured on our platform.
-              </p>
-              
-              <div className="space-y-3 mb-6">
-                <div className="flex items-start space-x-3">
-                  <Check className="h-5 w-5 text-electric-500 mt-1 flex-shrink-0" />
-                  <span className="text-gray-300">
-                    <strong className="text-white">100% Free to Submit</strong> - No fees, no hidden costs
-                  </span>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <Check className="h-5 w-5 text-electric-500 mt-1 flex-shrink-0" />
-                  <span className="text-gray-300">
-                    <strong className="text-white">Quick & Easy</strong> - Submit your event in less than 2 minutes
-                  </span>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <Check className="h-5 w-5 text-electric-500 mt-1 flex-shrink-0" />
-                  <span className="text-gray-300">
-                    <strong className="text-white">All Events Welcome</strong> - From local meets to national championships
-                  </span>
-                </div>
-              </div>
-
-              <p className="text-sm text-gray-400 mb-8 italic">
-                Free to submit - Everyone is welcome to submit events to CarAudioEvents.com
-              </p>
-              
-              <Link 
-                to="/events/suggest"
-                className="group inline-flex items-center space-x-2 bg-electric-500 text-white px-6 py-3 rounded-lg font-bold hover:bg-electric-600 transition-all duration-200 shadow-lg"
-              >
-                <span>Submit Your Event For Free</span>
-                <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-              </Link>
+          {/* Header Section */}
+          <div className="text-center mb-12 animate-slide-up">
+            <div className="flex items-center justify-center space-x-2 mb-4">
+              <Zap className="h-5 w-5 text-electric-500 animate-pulse" />
+              <span className="text-electric-400 font-bold text-sm uppercase tracking-wider">100% FREE TO SUBMIT</span>
+              <Zap className="h-5 w-5 text-electric-500 animate-pulse" />
             </div>
             
-            {/* Right Content - Stats/Visual */}
-            <div className="relative">
-              <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-8 border border-gray-700/50 shadow-2xl">
-                <div className="text-center mb-8">
-                  <div className="text-5xl font-black text-electric-400 mb-2">1000+</div>
-                  <div className="text-gray-400 font-medium">Events Listed This Year</div>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black mb-4">
+              <span className="text-white">Got an Epic</span>{' '}
+              <span className="text-electric-400 inline-block">Event?</span>
+            </h2>
+            <p className="text-lg sm:text-xl text-gray-300 max-w-3xl mx-auto">
+              Share it with thousands of car audio enthusiasts nationwide
+            </p>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+            {/* Left Content */}
+            <div className="order-2 lg:order-1 animate-slide-up" style={{ animationDelay: '0.1s' }}>
+              <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-sm rounded-xl p-6 sm:p-8 border border-electric-500/20">
+                <div className="flex items-center space-x-2 mb-6">
+                  <Megaphone className="h-6 w-6 text-electric-500 animate-pulse-glow" />
+                  <h3 className="text-xl sm:text-2xl font-bold text-white">Why Submit Your Event?</h3>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-white mb-1">50</div>
-                    <div className="text-sm text-gray-400">States Covered</div>
+                <div className="space-y-4 mb-8">
+                  <div className="flex items-start space-x-3">
+                    <div className="mt-1 flex-shrink-0">
+                      <div className="w-6 h-6 rounded-full bg-electric-500/20 flex items-center justify-center">
+                        <Check className="h-4 w-4 text-electric-400" />
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-white font-semibold">100% Free Forever</p>
+                      <p className="text-gray-400 text-sm">No fees, no subscriptions, no hidden costs</p>
+                    </div>
                   </div>
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-white mb-1">24hr</div>
-                    <div className="text-sm text-gray-400">Quick Approval</div>
+                  
+                  <div className="flex items-start space-x-3">
+                    <div className="mt-1 flex-shrink-0">
+                      <div className="w-6 h-6 rounded-full bg-electric-500/20 flex items-center justify-center">
+                        <Check className="h-4 w-4 text-electric-400" />
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-white font-semibold">Quick 2-Minute Process</p>
+                      <p className="text-gray-400 text-sm">Simple form, instant submission</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start space-x-3">
+                    <div className="mt-1 flex-shrink-0">
+                      <div className="w-6 h-6 rounded-full bg-electric-500/20 flex items-center justify-center">
+                        <Check className="h-4 w-4 text-electric-400" />
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-white font-semibold">Reach Thousands</p>
+                      <p className="text-gray-400 text-sm">Get your event in front of active competitors</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start space-x-3">
+                    <div className="mt-1 flex-shrink-0">
+                      <div className="w-6 h-6 rounded-full bg-electric-500/20 flex items-center justify-center">
+                        <Check className="h-4 w-4 text-electric-400" />
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-white font-semibold">All Events Welcome</p>
+                      <p className="text-gray-400 text-sm">From local meets to major championships</p>
+                    </div>
                   </div>
                 </div>
                 
+                <Link 
+                  to="/events/suggest"
+                  className="group relative w-full sm:w-auto inline-flex items-center justify-center space-x-2 bg-gradient-to-r from-electric-500 to-electric-600 text-white px-8 py-4 rounded-lg font-bold text-lg hover:from-electric-600 hover:to-electric-700 transition-all duration-200 shadow-lg overflow-hidden"
+                >
+                  <span className="relative z-10">Submit Event Now</span>
+                  <ArrowRight className="relative z-10 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-electric-600 to-electric-500 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
+                </Link>
+              </div>
+            </div>
+            
+            {/* Right Content - Stats Cards */}
+            <div className="order-1 lg:order-2 space-y-4 animate-slide-up" style={{ animationDelay: '0.2s' }}>
+              {/* Main stat card */}
+              <div className="bg-gradient-to-br from-electric-500/10 to-purple-500/10 backdrop-blur-sm rounded-xl p-6 border border-electric-500/30 text-center">
+                <div className="text-4xl sm:text-5xl font-black text-electric-500 mb-2 drop-shadow-[0_0_15px_rgba(59,130,246,0.5)]">Over 1000+</div>
+                <div className="text-gray-300 font-semibold text-lg">Events Listed</div>
+                <div className="text-gray-500 text-sm mt-1">and growing daily!</div>
               </div>
               
-              {/* Decorative elements */}
-              <div className="absolute -top-4 -right-4 w-24 h-24 bg-electric-500/20 rounded-full blur-xl"></div>
-              <div className="absolute -bottom-4 -left-4 w-32 h-32 bg-purple-500/20 rounded-full blur-xl"></div>
+              {/* Secondary stats */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700/50 text-center">
+                  <Globe className="h-8 w-8 text-electric-500 mx-auto mb-2" />
+                  <div className="text-2xl font-bold text-white">Worldwide</div>
+                  <div className="text-xs text-gray-400">Coverage</div>
+                </div>
+                
+                <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700/50 text-center">
+                  <Zap className="h-8 w-8 text-electric-500 mx-auto mb-2" />
+                  <div className="text-2xl font-bold text-white">24hr</div>
+                  <div className="text-xs text-gray-400">Approval</div>
+                </div>
+              </div>
+              
+              {/* Trust indicator */}
+              <div className="bg-gradient-to-r from-purple-900/30 to-electric-900/30 rounded-lg p-4 border border-purple-500/20">
+                <div className="flex items-center justify-center space-x-2">
+                  <Star className="h-5 w-5 text-yellow-400 fill-yellow-400" />
+                  <Star className="h-5 w-5 text-yellow-400 fill-yellow-400" />
+                  <Star className="h-5 w-5 text-yellow-400 fill-yellow-400" />
+                  <Star className="h-5 w-5 text-yellow-400 fill-yellow-400" />
+                  <Star className="h-5 w-5 text-yellow-400 fill-yellow-400" />
+                </div>
+                <p className="text-center text-gray-300 mt-2 text-sm font-medium">
+                  Trusted by event organizers worldwide
+                </p>
+              </div>
             </div>
+          </div>
+          
+          {/* Bottom CTA */}
+          <div className="mt-12 text-center animate-slide-up" style={{ animationDelay: '0.3s' }}>
+            <p className="text-gray-400 text-sm">
+              Join hundreds of organizers already using CarAudioEvents.com to promote their events
+            </p>
           </div>
         </div>
       </section>

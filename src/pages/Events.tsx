@@ -300,7 +300,7 @@ export default function Events() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <PageHeader
           title="Car Audio Events"
-          subtitle="Discover and participate in car audio competitions, meets, and exhibitions across the country"
+          subtitle="Discover and participate in car audio competitions, meets, and exhibitions around the world"
         />
 
         {/* Action Buttons */}
