@@ -35,7 +35,7 @@ CREATE POLICY "Admin can manage settings" ON admin_settings
   FOR ALL USING (
     EXISTS (
       SELECT 1 FROM users 
-      WHERE users.id = auth.uid() 
+      WHERE users.id = (SELECT auth.uid()) 
       AND users.membership_type = 'admin'
     )
   );
@@ -45,7 +45,7 @@ CREATE POLICY "Admin can view activity log" ON admin_activity_log
   FOR SELECT USING (
     EXISTS (
       SELECT 1 FROM users 
-      WHERE users.id = auth.uid() 
+      WHERE users.id = (SELECT auth.uid()) 
       AND users.membership_type = 'admin'
     )
   );

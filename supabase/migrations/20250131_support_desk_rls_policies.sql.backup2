@@ -1,0 +1,315 @@
+-- Support Desk RLS Policies
+-- This migration creates Row Level Security policies for all support desk tables
+
+-- Enable RLS on all support tables
+ALTER TABLE support_tickets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE support_ticket_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE support_request_types ENABLE ROW LEVEL SECURITY;
+ALTER TABLE support_organization_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE support_field_definitions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE support_field_visibility_rules ENABLE ROW LEVEL SECURITY;
+ALTER TABLE support_ticket_assignments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE support_email_verification_tokens ENABLE ROW LEVEL SECURITY;
+ALTER TABLE support_rate_limits ENABLE ROW LEVEL SECURITY;
+
+-- Helper function to check if user is CAE admin or support
+CREATE OR REPLACE FUNCTION is_cae_support_staff(user_id UUID)
+RETURNS BOOLEAN AS $$
+DECLARE
+  user_role TEXT;
+BEGIN
+  SELECT membership_type INTO user_role
+  FROM users
+  WHERE id = user_id;
+  
+  RETURN user_role IN ('admin', 'support_agent');
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = 'public', 'pg_catalog', 'pg_temp';
+
+-- Helper function to check if user is organization support staff
+CREATE OR REPLACE FUNCTION is_org_support_staff(user_id UUID, org_id INTEGER)
+RETURNS BOOLEAN AS $$
+DECLARE
+  is_member BOOLEAN;
+BEGIN
+  -- Check if user is in the organization's support team
+  SELECT EXISTS (
+    SELECT 1
+    FROM support_organization_settings
+    WHERE organization_id = org_id
+      AND user_id = ANY(support_team_user_ids)
+  ) INTO is_member;
+  
+  RETURN is_member;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = 'public', 'pg_catalog', 'pg_temp';
+
+-- Helper function to check if user can access a ticket
+CREATE OR REPLACE FUNCTION can_access_ticket(user_id UUID, ticket_id UUID)
+RETURNS BOOLEAN AS $$
+DECLARE
+  ticket_record RECORD;
+BEGIN
+  SELECT 
+    t.user_id,
+    t.assigned_to_user_id,
+    t.assigned_to_org_id,
+    t.routing_type
+  INTO ticket_record
+  FROM support_tickets t
+  WHERE t.id = ticket_id;
+  
+  -- User owns the ticket
+  IF ticket_record.user_id = user_id THEN
+    RETURN TRUE;
+  END IF;
+  
+  -- User is CAE support staff
+  IF is_cae_support_staff(user_id) THEN
+    RETURN TRUE;
+  END IF;
+  
+  -- User is assigned to the ticket
+  IF ticket_record.assigned_to_user_id = user_id THEN
+    RETURN TRUE;
+  END IF;
+  
+  -- User is in the assigned organization's support team
+  IF ticket_record.assigned_to_org_id IS NOT NULL 
+     AND is_org_support_staff(user_id, ticket_record.assigned_to_org_id) THEN
+    RETURN TRUE;
+  END IF;
+  
+  RETURN FALSE;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = 'public', 'pg_catalog', 'pg_temp';
+
+-- ===========================================
+-- SUPPORT TICKETS POLICIES
+-- ===========================================
+
+-- SELECT: Users can view their own tickets, support staff can view assigned tickets
+CREATE POLICY "support_tickets_select" ON support_tickets
+  FOR SELECT
+  USING (
+    -- User owns the ticket
+    (SELECT auth.uid()) = user_id
+    OR
+    -- User is CAE support staff
+    is_cae_support_staff(auth.uid())
+    OR
+    -- User is assigned to the ticket
+    (SELECT auth.uid()) = assigned_to_user_id
+    OR
+    -- User is in the assigned organization's support team
+    (assigned_to_org_id IS NOT NULL AND is_org_support_staff((SELECT auth.uid()), assigned_to_org_id))
+  );
+
+-- INSERT: Authenticated users and verified public users can create tickets
+CREATE POLICY "support_tickets_insert" ON support_tickets
+  FOR INSERT
+  WITH CHECK (
+    -- Authenticated user creating their own ticket
+    ((SELECT auth.uid()) IS NOT NULL AND (SELECT auth.uid()) = user_id)
+    OR
+    -- Public user with verified captcha (user_id will be null)
+    ((SELECT auth.uid()) IS NULL AND captcha_verified = TRUE AND user_id IS NULL)
+  );
+
+-- UPDATE: Only support staff can update tickets
+CREATE POLICY "support_tickets_update" ON support_tickets
+  FOR UPDATE
+  USING (can_access_ticket((SELECT auth.uid()), id))
+  WITH CHECK (
+    -- Only support staff can update, not ticket owners
+    (SELECT auth.uid()) != user_id
+  );
+
+-- ===========================================
+-- SUPPORT TICKET MESSAGES POLICIES
+-- ===========================================
+
+-- SELECT: Can view messages if can access the ticket
+CREATE POLICY "support_ticket_messages_select" ON support_ticket_messages
+  FOR SELECT
+  USING (
+    -- Can access the parent ticket
+    can_access_ticket((SELECT auth.uid()), ticket_id)
+    AND
+    -- If internal note, must be support staff
+    (NOT is_internal_note OR (is_internal_note AND (
+      is_cae_support_staff(auth.uid()) OR
+      EXISTS (
+        SELECT 1 FROM support_tickets t
+        WHERE t.id = ticket_id
+          AND t.assigned_to_org_id IS NOT NULL
+          AND is_org_support_staff((SELECT auth.uid()), t.assigned_to_org_id)
+      )
+    )))
+  );
+
+-- INSERT: Can add messages if can access the ticket
+CREATE POLICY "support_ticket_messages_insert" ON support_ticket_messages
+  FOR INSERT
+  WITH CHECK (
+    -- Can access the parent ticket
+    can_access_ticket((SELECT auth.uid()), ticket_id)
+    AND
+    -- User is creating their own message
+    (SELECT auth.uid()) = user_id
+    AND
+    -- Only support staff can create internal notes
+    (NOT is_internal_note OR (is_internal_note AND (
+      is_cae_support_staff(auth.uid()) OR
+      EXISTS (
+        SELECT 1 FROM support_tickets t
+        WHERE t.id = ticket_id
+          AND t.assigned_to_org_id IS NOT NULL
+          AND is_org_support_staff((SELECT auth.uid()), t.assigned_to_org_id)
+      )
+    )))
+  );
+
+-- ===========================================
+-- SUPPORT REQUEST TYPES POLICIES
+-- ===========================================
+
+-- SELECT: Everyone can view active request types
+CREATE POLICY "support_request_types_select" ON support_request_types
+  FOR SELECT
+  USING (is_active = TRUE);
+
+-- INSERT/UPDATE/DELETE: Only CAE admins
+CREATE POLICY "support_request_types_admin" ON support_request_types
+  FOR ALL
+  USING (is_cae_support_staff(auth.uid()))
+  WITH CHECK (is_cae_support_staff(auth.uid()));
+
+-- ===========================================
+-- SUPPORT ORGANIZATION SETTINGS POLICIES
+-- ===========================================
+
+-- SELECT: Organization members and CAE staff can view
+CREATE POLICY "support_organization_settings_select" ON support_organization_settings
+  FOR SELECT
+  USING (
+    -- CAE support staff
+    is_cae_support_staff(auth.uid())
+    OR
+    -- Member of the organization's support team
+    (SELECT auth.uid()) = ANY(support_team_user_ids)
+    OR
+    -- Organization admin (assuming org admins have 'organization' membership type)
+    EXISTS (
+      SELECT 1 FROM users u
+      WHERE u.id = (SELECT auth.uid())
+        AND u.membership_type = 'organization'
+        AND EXISTS (
+          SELECT 1 FROM events e
+          WHERE e.organization_id = support_organization_settings.organization_id
+            AND e.created_by = u.id
+        )
+    )
+  );
+
+-- INSERT/UPDATE/DELETE: Only CAE admins
+CREATE POLICY "support_organization_settings_admin" ON support_organization_settings
+  FOR ALL
+  USING (is_cae_support_staff(auth.uid()))
+  WITH CHECK (is_cae_support_staff(auth.uid()));
+
+-- ===========================================
+-- SUPPORT FIELD DEFINITIONS POLICIES
+-- ===========================================
+
+-- SELECT: Everyone can view active field definitions
+CREATE POLICY "support_field_definitions_select" ON support_field_definitions
+  FOR SELECT
+  USING (is_active = TRUE);
+
+-- INSERT/UPDATE/DELETE: Only CAE admins
+CREATE POLICY "support_field_definitions_admin" ON support_field_definitions
+  FOR ALL
+  USING (is_cae_support_staff(auth.uid()))
+  WITH CHECK (is_cae_support_staff(auth.uid()));
+
+-- ===========================================
+-- SUPPORT FIELD VISIBILITY RULES POLICIES
+-- ===========================================
+
+-- SELECT: Everyone can view visibility rules for active fields
+CREATE POLICY "support_field_visibility_rules_select" ON support_field_visibility_rules
+  FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM support_field_definitions f
+      WHERE f.id = field_definition_id
+        AND f.is_active = TRUE
+    )
+  );
+
+-- INSERT/UPDATE/DELETE: Only CAE admins
+CREATE POLICY "support_field_visibility_rules_admin" ON support_field_visibility_rules
+  FOR ALL
+  USING (is_cae_support_staff(auth.uid()))
+  WITH CHECK (is_cae_support_staff(auth.uid()));
+
+-- ===========================================
+-- SUPPORT TICKET ASSIGNMENTS POLICIES
+-- ===========================================
+
+-- SELECT: Can view if can access the ticket
+CREATE POLICY "support_ticket_assignments_select" ON support_ticket_assignments
+  FOR SELECT
+  USING (can_access_ticket((SELECT auth.uid()), ticket_id));
+
+-- INSERT: Only support staff can create assignments
+CREATE POLICY "support_ticket_assignments_insert" ON support_ticket_assignments
+  FOR INSERT
+  WITH CHECK (
+    -- Must be support staff
+    (is_cae_support_staff(auth.uid()) OR
+     EXISTS (
+       SELECT 1 FROM support_tickets t
+       WHERE t.id = ticket_id
+         AND t.assigned_to_org_id IS NOT NULL
+         AND is_org_support_staff((SELECT auth.uid()), t.assigned_to_org_id)
+     ))
+    AND
+    -- User is creating the assignment
+    (SELECT auth.uid()) = assigned_from_user_id
+  );
+
+-- ===========================================
+-- SUPPORT EMAIL VERIFICATION TOKENS POLICIES
+-- ===========================================
+
+-- No direct access - only through functions
+CREATE POLICY "support_email_verification_tokens_none" ON support_email_verification_tokens
+  FOR ALL
+  USING (FALSE)
+  WITH CHECK (FALSE);
+
+-- ===========================================
+-- SUPPORT RATE LIMITS POLICIES
+-- ===========================================
+
+-- No direct access - only through functions
+CREATE POLICY "support_rate_limits_none" ON support_rate_limits
+  FOR ALL
+  USING (FALSE)
+  WITH CHECK (FALSE);
+
+-- Grant execute permissions on helper functions to authenticated users
+GRANT EXECUTE ON FUNCTION is_cae_support_staff(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION is_org_support_staff(UUID, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION can_access_ticket(UUID, UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION generate_ticket_number() TO authenticated;
+GRANT EXECUTE ON FUNCTION check_support_rate_limit(TEXT, TEXT, TEXT, INTEGER, INTEGER) TO authenticated, anon;
+GRANT EXECUTE ON FUNCTION cleanup_expired_verification_tokens() TO authenticated;
+
+-- Create a scheduled job to clean up expired tokens (if using pg_cron)
+-- SELECT cron.schedule('cleanup-support-tokens', '0 * * * *', 'SELECT cleanup_expired_verification_tokens();');

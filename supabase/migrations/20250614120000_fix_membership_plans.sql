@@ -38,26 +38,26 @@ DROP POLICY IF EXISTS "Admin full access to subscriptions" ON user_subscriptions
 
 CREATE POLICY "Users can view their own subscriptions" ON user_subscriptions
   FOR SELECT TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((SELECT auth.uid()) = user_id);
 
 CREATE POLICY "Users can manage their own subscriptions" ON user_subscriptions
   FOR ALL TO authenticated
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+  USING ((SELECT auth.uid()) = user_id)
+  WITH CHECK ((SELECT auth.uid()) = user_id);
 
 CREATE POLICY "Admin full access to subscriptions" ON user_subscriptions
   FOR ALL TO authenticated
   USING (
     EXISTS (
       SELECT 1 FROM users 
-      WHERE users.id = auth.uid() 
+      WHERE users.id = (SELECT auth.uid()) 
       AND users.membership_type = 'admin'
     )
   )
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM users 
-      WHERE users.id = auth.uid() 
+      WHERE users.id = (SELECT auth.uid()) 
       AND users.membership_type = 'admin'
     )
   );
@@ -195,14 +195,14 @@ CREATE POLICY "Admin full access to membership plans" ON membership_plans
   USING (
     EXISTS (
       SELECT 1 FROM users 
-      WHERE users.id = auth.uid() 
+      WHERE users.id = (SELECT auth.uid()) 
       AND users.membership_type = 'admin'
     )
   )
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM users 
-      WHERE users.id = auth.uid() 
+      WHERE users.id = (SELECT auth.uid()) 
       AND users.membership_type = 'admin'
     )
   );

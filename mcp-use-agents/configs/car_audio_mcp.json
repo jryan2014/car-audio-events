@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "car-audio-api": {
+      "url": "http://localhost:8000/mcp",
+      "headers": {
+        "Authorization": "Bearer car-audio-events-mcp-token"
+      }
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest"],
+      "env": {
+        "DISPLAY": ":1"
+      }
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem"],
+      "env": {
+        "ALLOWED_DIRECTORIES": "E:\\2025-car-audio-events\\car-audio-events"
+      }
+    }
+  }
+}

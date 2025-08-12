@@ -1,0 +1,201 @@
+-- =====================================================
+-- COMPREHENSIVE SECURITY VERIFICATION AUDIT
+-- =====================================================
+-- Migration: Verify all security fixes are properly applied
+-- Purpose: Check function search paths, RLS policies, and extension versions
+-- Date: 2025-08-06
+-- Priority: AUDIT & VERIFICATION
+-- =====================================================
+
+-- =====================================================
+-- 1. VERIFY FUNCTION SEARCH PATH SECURITY
+-- =====================================================
+
+-- Create a verification function to check all functions have secure search_path
+CREATE OR REPLACE FUNCTION verify_function_security()
+RETURNS TABLE (
+    function_name text,
+    function_schema text,
+    has_secure_search_path boolean,
+    current_config text[]
+)
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = 'public', 'pg_catalog', 'pg_temp'
+AS $$
+    SELECT 
+        p.proname::text as function_name,
+        n.nspname::text as function_schema,
+        CASE 
+            WHEN p.proconfig IS NULL THEN false
+            WHEN array_to_string(p.proconfig, ',') LIKE '%search_path=public,pg_catalog,pg_temp%' THEN true
+            ELSE false
+        END as has_secure_search_path,
+        p.proconfig as current_config
+    FROM pg_proc p
+    JOIN pg_namespace n ON p.pronamespace = n.oid
+    WHERE n.nspname = 'public'
+    AND p.prolang != (SELECT oid FROM pg_language WHERE lanname = 'c') -- Exclude C functions
+    ORDER BY p.proname;
+$$;
+
+-- =====================================================
+-- 2. VERIFY RLS POLICY PERFORMANCE OPTIMIZATION
+-- =====================================================
+
+-- Create a function to check RLS policies for performance issues
+CREATE OR REPLACE FUNCTION verify_rls_policy_performance()
+RETURNS TABLE (
+    table_name text,
+    policy_name text,
+    policy_definition text,
+    has_performance_issue boolean,
+    issue_description text
+)
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = 'public', 'pg_catalog', 'pg_temp'
+AS $$
+    SELECT 
+        c.relname::text as table_name,
+        pol.polname::text as policy_name,
+        pg_get_expr(pol.polqual, pol.polrelid)::text as policy_definition,
+        CASE 
+            WHEN pg_get_expr(pol.polqual, pol.polrelid) LIKE '%(SELECT auth.uid())%' 
+                AND pg_get_expr(pol.polqual, pol.polrelid) NOT LIKE '%(select auth.uid())%' 
+            THEN true
+            WHEN pg_get_expr(pol.polqual, pol.polrelid) LIKE '%auth.jwt()%'
+                AND pg_get_expr(pol.polqual, pol.polrelid) NOT LIKE '%(select auth.jwt())%'
+            THEN true
+            ELSE false
+        END as has_performance_issue,
+        CASE 
+            WHEN pg_get_expr(pol.polqual, pol.polrelid) LIKE '%(SELECT auth.uid())%' 
+                AND pg_get_expr(pol.polqual, pol.polrelid) NOT LIKE '%(select auth.uid())%' 
+            THEN 'Direct (SELECT auth.uid()) call - should use (select auth.uid())'
+            WHEN pg_get_expr(pol.polqual, pol.polrelid) LIKE '%auth.jwt()%'
+                AND pg_get_expr(pol.polqual, pol.polrelid) NOT LIKE '%(select auth.jwt())%'
+            THEN 'Direct auth.jwt() call - should use (select auth.jwt())'
+            ELSE 'No performance issues detected'
+        END as issue_description
+    FROM pg_policy pol
+    JOIN pg_class c ON pol.polrelid = c.oid
+    JOIN pg_namespace n ON c.relnamespace = n.oid
+    WHERE n.nspname = 'public'
+    ORDER BY c.relname, pol.polname;
+$$;
+
+-- =====================================================
+-- 3. VERIFY EXTENSION VERSIONS
+-- =====================================================
+
+-- Create a function to check extension versions
+CREATE OR REPLACE FUNCTION verify_extension_versions()
+RETURNS TABLE (
+    extension_name text,
+    installed_version text,
+    is_up_to_date boolean,
+    recommendation text
+)
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = 'public', 'pg_catalog', 'pg_temp'
+AS $$
+    SELECT 
+        e.extname::text as extension_name,
+        e.extversion::text as installed_version,
+        CASE 
+            WHEN e.extname = 'wrappers' AND e.extversion >= '0.5.3' THEN true
+            WHEN e.extname = 'wrappers' AND e.extversion < '0.5.3' THEN false
+            ELSE true  -- For other extensions, assume current version is acceptable
+        END as is_up_to_date,
+        CASE 
+            WHEN e.extname = 'wrappers' AND e.extversion < '0.5.3' 
+            THEN 'Update to version 0.5.3 or higher'
+            ELSE 'Version is acceptable'
+        END as recommendation
+    FROM pg_extension e
+    ORDER BY e.extname;
+$$;
+
+-- =====================================================
+-- 4. VERIFY CRITICAL SECURITY FUNCTIONS EXIST
+-- =====================================================
+
+-- Check that critical permission helper functions exist and are secure
+CREATE OR REPLACE FUNCTION verify_permission_functions()
+RETURNS TABLE (
+    function_name text,
+    exists boolean,
+    has_security_definer boolean,
+    has_stable boolean,
+    has_secure_search_path boolean,
+    status text
+)
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = 'public', 'pg_catalog', 'pg_temp'
+AS $$
+    WITH expected_functions AS (
+        SELECT unnest(ARRAY['is_admin', 'is_competitor', 'is_organizer', 'is_sponsor']) as func_name
+    ),
+    function_info AS (
+        SELECT 
+            ef.func_name,
+            p.proname IS NOT NULL as exists,
+            p.prosecdef as has_security_definer,
+            p.provolatile = 'i' as has_stable,
+            (p.proconfig IS NOT NULL AND 
+             array_to_string(p.proconfig, ',') LIKE '%search_path=public,pg_catalog,pg_temp%') as has_secure_search_path
+        FROM expected_functions ef
+        LEFT JOIN pg_proc p ON p.proname = ef.func_name
+        LEFT JOIN pg_namespace n ON p.pronamespace = n.oid AND n.nspname = 'public'
+    )
+    SELECT 
+        func_name::text as function_name,
+        exists,
+        has_security_definer,
+        has_stable,
+        has_secure_search_path,
+        CASE 
+            WHEN NOT exists THEN '❌ MISSING'
+            WHEN NOT has_security_definer THEN '⚠️ NOT SECURITY DEFINER'
+            WHEN NOT has_stable THEN '⚠️ NOT STABLE'
+            WHEN NOT has_secure_search_path THEN '🔒 INSECURE SEARCH PATH'
+            ELSE '✅ SECURE'
+        END as status
+    FROM function_info
+    ORDER BY func_name;
+$$;
+
+-- =====================================================
+-- 5. RUN COMPREHENSIVE SECURITY AUDIT
+-- =====================================================
+
+-- Output security audit results
+DO $$
+BEGIN
+    RAISE NOTICE '=== COMPREHENSIVE SECURITY AUDIT REPORT ===';
+    RAISE NOTICE 'Generated: %', now();
+    RAISE NOTICE '';
+    
+    RAISE NOTICE '=== 1. FUNCTION SEARCH PATH SECURITY ===';
+    -- The verification functions will be called by administrators manually
+    RAISE NOTICE 'Run: SELECT * FROM verify_function_security();';
+    RAISE NOTICE '';
+    
+    RAISE NOTICE '=== 2. RLS POLICY PERFORMANCE ===';
+    RAISE NOTICE 'Run: SELECT * FROM verify_rls_policy_performance();';
+    RAISE NOTICE '';
+    
+    RAISE NOTICE '=== 3. EXTENSION VERSIONS ===';
+    RAISE NOTICE 'Run: SELECT * FROM verify_extension_versions();';
+    RAISE NOTICE '';
+    
+    RAISE NOTICE '=== 4. PERMISSION FUNCTIONS ===';
+    RAISE NOTICE 'Run: SELECT * FROM verify_permission_functions();';
+    RAISE NOTICE '';
+    
+    RAISE NOTICE '=== AUDIT COMPLETED ===';
+    RAISE NOTICE 'Use the verification functions above to check security status.';
+END $$;

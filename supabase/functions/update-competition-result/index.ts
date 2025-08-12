@@ -1,10 +1,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+
 
 interface UpdateRequest {
   id: string;
@@ -43,7 +40,7 @@ serve(async (req) => {
             message: 'Missing required environment variables' 
           } 
         }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: corsHeaders }
       )
     }
     
@@ -64,7 +61,7 @@ serve(async (req) => {
     if (!authHeader) {
       return new Response(
         JSON.stringify({ success: false, error: { code: 'AUTH_FAILED', message: 'No authorization header' } }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 401, headers: corsHeaders }
       )
     }
 
@@ -79,7 +76,7 @@ serve(async (req) => {
             message: 'Missing anon key for user verification' 
           } 
         }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: corsHeaders }
       )
     }
     
@@ -95,7 +92,7 @@ serve(async (req) => {
     if (userError || !user) {
       return new Response(
         JSON.stringify({ success: false, error: { code: 'AUTH_FAILED', message: 'Invalid token' } }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 401, headers: corsHeaders }
       )
     }
 
@@ -109,7 +106,7 @@ serve(async (req) => {
     if (userDataError) {
       return new Response(
         JSON.stringify({ success: false, error: { code: 'USER_NOT_FOUND', message: 'User not found in users table' } }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 404, headers: corsHeaders }
       )
     }
 
@@ -122,7 +119,7 @@ serve(async (req) => {
       console.error('Invalid input:', { id, updates })
       return new Response(
         JSON.stringify({ success: false, error: { code: 'INVALID_INPUT', message: 'Missing id or updates' } }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: corsHeaders }
       )
     }
     
@@ -141,7 +138,7 @@ serve(async (req) => {
       console.error('Error fetching record:', fetchError)
       return new Response(
         JSON.stringify({ success: false, error: { code: 'FETCH_ERROR', message: `Failed to fetch record: ${fetchError.message}` } }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: corsHeaders }
       )
     }
     
@@ -149,7 +146,7 @@ serve(async (req) => {
       console.error('Competition result not found for id:', id)
       return new Response(
         JSON.stringify({ success: false, error: { code: 'NOT_FOUND', message: 'Competition result not found' } }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 404, headers: corsHeaders }
       )
     }
     
@@ -175,7 +172,7 @@ serve(async (req) => {
             message: 'Insufficient permissions to update this competition result' 
           } 
         }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 403, headers: corsHeaders }
       )
     }
 
@@ -183,28 +180,28 @@ serve(async (req) => {
     if ('score' in updates && updates.score !== null && updates.score < 0) {
       return new Response(
         JSON.stringify({ success: false, error: { code: 'INVALID_SCORE', message: 'Score must be non-negative' } }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: corsHeaders }
       )
     }
 
     if ('placement' in updates && updates.placement !== null && updates.placement < 1) {
       return new Response(
         JSON.stringify({ success: false, error: { code: 'INVALID_PLACEMENT', message: 'Placement must be positive' } }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: corsHeaders }
       )
     }
 
     if ('total_participants' in updates && updates.total_participants !== null && updates.total_participants < 1) {
       return new Response(
         JSON.stringify({ success: false, error: { code: 'INVALID_PARTICIPANTS', message: 'Total participants must be positive' } }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: corsHeaders }
       )
     }
 
     if ('points_earned' in updates && updates.points_earned !== null && updates.points_earned < 0) {
       return new Response(
         JSON.stringify({ success: false, error: { code: 'INVALID_POINTS', message: 'Points earned must be non-negative' } }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: corsHeaders }
       )
     }
 
@@ -229,7 +226,7 @@ serve(async (req) => {
             message: `Database error: ${updateError.message}` 
           } 
         }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: corsHeaders }
       )
     }
 
@@ -265,7 +262,7 @@ serve(async (req) => {
       }),
       { 
         status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: corsHeaders 
       }
     )
 
@@ -296,7 +293,7 @@ serve(async (req) => {
           message: errorMessage 
         } 
       }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: corsHeaders }
     )
   }
 })

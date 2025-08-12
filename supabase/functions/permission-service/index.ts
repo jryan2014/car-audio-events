@@ -1,10 +1,7 @@
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+
 
 interface PermissionCheckRequest {
   userId: string;
@@ -42,7 +39,7 @@ serve(async (req) => {
         }),
         { 
           status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: corsHeaders 
         }
       )
     }
@@ -62,7 +59,7 @@ serve(async (req) => {
         }),
         { 
           status: 404, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: corsHeaders 
         }
       )
     }
@@ -75,7 +72,7 @@ serve(async (req) => {
           tier: 'admin',
           reason: 'Administrator access'
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: corsHeaders }
       )
     }
 
@@ -95,7 +92,7 @@ serve(async (req) => {
         }),
         { 
           status: 404, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: corsHeaders 
         }
       )
     }
@@ -116,7 +113,7 @@ serve(async (req) => {
         }),
         { 
           status: 404, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: corsHeaders 
         }
       )
     }
@@ -198,7 +195,7 @@ serve(async (req) => {
           hasPermission: false,
           reason: 'No tier assignment found for this feature'
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: corsHeaders }
       )
     }
 
@@ -227,7 +224,7 @@ serve(async (req) => {
           }),
           { 
             status: 404, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            headers: corsHeaders 
           }
         )
       }
@@ -300,7 +297,7 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify(permissionResult),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: corsHeaders }
     )
 
   } catch (error) {
@@ -312,7 +309,7 @@ serve(async (req) => {
       }),
       { 
         status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: corsHeaders 
       }
     )
   }

@@ -9,20 +9,10 @@ import { supabase } from '../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import { RateLimiter, createRateLimitHeaders } from './rate-limiting';
 
-// Create a dedicated Supabase client with service role for security audit operations
-// This bypasses RLS policies that might block regular authenticated users
-const auditSupabase = (() => {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const serviceRoleKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
-  
-  if (supabaseUrl && serviceRoleKey) {
-    return createClient(supabaseUrl, serviceRoleKey);
-  } else {
-    // Fallback to regular client if service role key not available
-    console.warn('⚠️ Service role key not available for audit logging, using regular client');
-    return supabase;
-  }
-})();
+// SECURITY FIX: Service role keys must NEVER be exposed to client-side code
+// Audit logging now uses regular authenticated client with proper RLS policies
+// For admin operations requiring elevated privileges, use Edge Functions
+const auditSupabase = supabase; // Use regular client - removed service role key exposure
 
 export interface SecurityEvent {
   eventType: string;

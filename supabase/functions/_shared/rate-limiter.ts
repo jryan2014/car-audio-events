@@ -20,36 +20,21 @@ interface RateLimitResult {
 }
 
 /**
- * Get or create rate limit tracking table
+ * Get or create rate limit tracking table using secure function
  */
 async function ensureRateLimitTable(supabase: any): Promise<void> {
-  // Create table if it doesn't exist
-  await supabase.rpc('exec_sql', {
-    sql_command: `
-      CREATE TABLE IF NOT EXISTS rate_limits (
-        id TEXT PRIMARY KEY,
-        key TEXT NOT NULL,
-        count INTEGER NOT NULL DEFAULT 0,
-        window_start TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-        window_end TIMESTAMP WITH TIME ZONE NOT NULL,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-      );
-      
-      -- Create index for faster lookups
-      CREATE INDEX IF NOT EXISTS idx_rate_limits_key_window 
-        ON rate_limits(key, window_end);
-      
-      -- Enable RLS
-      ALTER TABLE rate_limits ENABLE ROW LEVEL SECURITY;
-      
-      -- Only service role can access
-      CREATE POLICY IF NOT EXISTS "Service role only" ON rate_limits
-        FOR ALL USING (true);
-    `
-  }).catch(() => {
-    // Table might already exist, ignore error
-  });
+  try {
+    // Use the secure function to create the table
+    const { error } = await supabase.rpc('ensure_rate_limit_table');
+    
+    if (error) {
+      console.warn('Rate limit table creation warning:', error.message);
+      // Continue anyway - table might already exist
+    }
+  } catch (error) {
+    console.warn('Rate limit table setup error:', error);
+    // Continue anyway - this shouldn't break the rate limiter
+  }
 }
 
 /**

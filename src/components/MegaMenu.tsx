@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronDown, Calendar, MapPin, Users, Target, FileText, Home, Building2, Shield, Settings, BarChart3, Package, Crown, Factory, Globe, Tag, Star, Info, HelpCircle, BookOpen, FileQuestion, Lightbulb, AlertCircle, CheckCircle, MessageSquare } from 'lucide-react';
+import { ChevronDown, Calendar, MapPin, Users, Target, FileText, Home, Building2, Shield, Settings, BarChart3, Package, Crown, Factory, Globe, Tag, Star, Info, HelpCircle, BookOpen, FileQuestion, Lightbulb, AlertCircle, CheckCircle, MessageSquare, Menu, LayoutDashboard, Trophy, UserCheck, Bot, Mail, CreditCard, Cog, Volume2, Calculator, Wrench } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface NavigationItem {
@@ -59,7 +59,18 @@ const iconMap: { [key: string]: React.ComponentType<any> } = {
   Lightbulb,
   AlertCircle,
   CheckCircle,
-  MessageSquare
+  MessageSquare,
+  Menu,
+  LayoutDashboard,
+  Trophy,
+  UserCheck,
+  Bot,
+  Mail,
+  CreditCard,
+  Cog,
+  Volume2,
+  Calculator,
+  Wrench
 };
 
 export default function MegaMenu({ isAuthenticated, user, onLinkClick }: MegaMenuProps) {

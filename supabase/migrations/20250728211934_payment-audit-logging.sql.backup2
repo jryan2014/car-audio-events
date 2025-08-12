@@ -1,0 +1,113 @@
+-- Create payment audit logging table
+CREATE TABLE IF NOT EXISTS payment_audit_logs (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  event_id uuid REFERENCES events(id) ON DELETE SET NULL,
+  transaction_id uuid REFERENCES transactions(id) ON DELETE SET NULL,
+  action text NOT NULL,
+  provider text CHECK (provider IN ('stripe', 'paypal', 'system')),
+  payment_intent_id text,
+  amount decimal(10,2),
+  currency text DEFAULT 'USD',
+  status text,
+  metadata jsonb DEFAULT '{}',
+  ip_address inet,
+  user_agent text,
+  error_message text,
+  created_at timestamp with time zone DEFAULT NOW()
+);
+
+-- Add indexes for common queries
+CREATE INDEX idx_payment_audit_user_id ON payment_audit_logs(user_id);
+CREATE INDEX idx_payment_audit_event_id ON payment_audit_logs(event_id);
+CREATE INDEX idx_payment_audit_transaction_id ON payment_audit_logs(transaction_id);
+CREATE INDEX idx_payment_audit_created_at ON payment_audit_logs(created_at DESC);
+CREATE INDEX idx_payment_audit_payment_intent_id ON payment_audit_logs(payment_intent_id);
+CREATE INDEX idx_payment_audit_action ON payment_audit_logs(action);
+
+-- Enable RLS
+ALTER TABLE payment_audit_logs ENABLE ROW LEVEL SECURITY;
+
+-- Admin users can read all audit logs
+CREATE POLICY "Admin users can read payment audit logs" ON payment_audit_logs
+  FOR SELECT
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM users 
+      WHERE users.id = (SELECT auth.uid()) 
+      AND users.membership_type = 'admin'
+    )
+  );
+
+-- Users can read their own payment audit logs
+CREATE POLICY "Users can read own payment audit logs" ON payment_audit_logs
+  FOR SELECT
+  TO authenticated
+  USING (user_id = auth.uid());
+
+-- Service role can insert audit logs
+CREATE POLICY "Service role can insert payment audit logs" ON payment_audit_logs
+  FOR INSERT
+  TO service_role
+  WITH CHECK (true);
+
+-- Create function to log payment events
+CREATE OR REPLACE FUNCTION log_payment_event(
+  p_user_id uuid,
+  p_event_id uuid,
+  p_transaction_id uuid,
+  p_action text,
+  p_provider text,
+  p_payment_intent_id text DEFAULT NULL,
+  p_amount decimal DEFAULT NULL,
+  p_currency text DEFAULT 'USD',
+  p_status text DEFAULT NULL,
+  p_metadata jsonb DEFAULT '{}',
+  p_ip_address inet DEFAULT NULL,
+  p_user_agent text DEFAULT NULL,
+  p_error_message text DEFAULT NULL
+) RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = 'public', 'pg_catalog', 'pg_temp'
+AS $$
+DECLARE
+  v_log_id uuid;
+BEGIN
+  INSERT INTO payment_audit_logs (
+    user_id,
+    event_id,
+    transaction_id,
+    action,
+    provider,
+    payment_intent_id,
+    amount,
+    currency,
+    status,
+    metadata,
+    ip_address,
+    user_agent,
+    error_message
+  ) VALUES (
+    p_user_id,
+    p_event_id,
+    p_transaction_id,
+    p_action,
+    p_provider,
+    p_payment_intent_id,
+    p_amount,
+    p_currency,
+    p_status,
+    p_metadata,
+    p_ip_address,
+    p_user_agent,
+    p_error_message
+  ) RETURNING id INTO v_log_id;
+  
+  RETURN v_log_id;
+END;
+$$;
+
+-- Grant execute permission to authenticated users
+GRANT EXECUTE ON FUNCTION log_payment_event TO authenticated;

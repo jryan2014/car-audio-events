@@ -1,0 +1,155 @@
+-- Migration: Notification System Improvements
+-- Date: 2025-01-25
+-- Description: Add rate limiting, auto-archival, and notification preferences
+
+-- 1. Create notification_preferences table
+CREATE TABLE IF NOT EXISTS public.notification_preferences (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  preference_type TEXT NOT NULL,
+  enabled BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(user_id, preference_type)
+);
+
+-- Enable RLS on notification_preferences
+ALTER TABLE public.notification_preferences ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for notification_preferences
+CREATE POLICY "Users can view own preferences" ON public.notification_preferences
+  FOR SELECT USING ((SELECT auth.uid()) = user_id);
+
+CREATE POLICY "Users can insert own preferences" ON public.notification_preferences
+  FOR INSERT WITH CHECK ((SELECT auth.uid()) = user_id);
+
+CREATE POLICY "Users can update own preferences" ON public.notification_preferences
+  FOR UPDATE USING ((SELECT auth.uid()) = user_id) WITH CHECK ((SELECT auth.uid()) = user_id);
+
+CREATE POLICY "Users can delete own preferences" ON public.notification_preferences
+  FOR DELETE USING ((SELECT auth.uid()) = user_id);
+
+-- Create indexes for notification_preferences
+CREATE INDEX idx_notification_preferences_user_id ON public.notification_preferences(user_id);
+CREATE INDEX idx_notification_preferences_type ON public.notification_preferences(preference_type);
+
+-- 2. Add rate limiting function
+CREATE OR REPLACE FUNCTION check_notification_rate_limit(sender_id UUID)
+RETURNS BOOLEAN AS $$
+DECLARE
+  notification_count INTEGER;
+  time_window INTERVAL := '1 hour';
+  max_notifications INTEGER := 100;
+BEGIN
+  -- Count notifications sent by user in the last hour
+  SELECT COUNT(*) INTO notification_count
+  FROM notifications
+  WHERE created_by = sender_id
+  AND created_at > NOW() - time_window;
+  
+  -- Return true if under limit, false if over
+  RETURN notification_count < max_notifications;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 3. Update INSERT policy to include rate limiting for admins
+DROP POLICY IF EXISTS "Admins can create notifications" ON public.notifications;
+
+CREATE POLICY "Admins can create notifications with rate limit" ON public.notifications
+  FOR INSERT 
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.users 
+      WHERE id = (SELECT auth.uid()) 
+      AND membership_type = 'admin'
+    )
+    AND check_notification_rate_limit(auth.uid())
+  );
+
+-- 4. Create auto-archival function
+CREATE OR REPLACE FUNCTION archive_old_notifications()
+RETURNS INTEGER AS $$
+DECLARE
+  deleted_count INTEGER;
+BEGIN
+  -- Delete read notifications older than 90 days
+  WITH deleted AS (
+    DELETE FROM notifications 
+    WHERE read = true 
+    AND read_at < NOW() - INTERVAL '90 days'
+    RETURNING *
+  )
+  SELECT COUNT(*) INTO deleted_count FROM deleted;
+  
+  -- Log the archival
+  RAISE NOTICE 'Archived % old notifications', deleted_count;
+  
+  RETURN deleted_count;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 5. Create a scheduled job for auto-archival (requires pg_cron extension)
+-- Note: This needs to be run by a superuser or via Supabase dashboard
+-- SELECT cron.schedule('archive-old-notifications', '0 2 * * *', 'SELECT archive_old_notifications();');
+
+-- 6. Add function to check if user wants specific notification type
+CREATE OR REPLACE FUNCTION user_wants_notification(user_id UUID, notification_type TEXT)
+RETURNS BOOLEAN AS $$
+DECLARE
+  preference_enabled BOOLEAN;
+BEGIN
+  -- Check if user has a preference set
+  SELECT enabled INTO preference_enabled
+  FROM notification_preferences
+  WHERE notification_preferences.user_id = user_wants_notification.user_id
+  AND preference_type = notification_type;
+  
+  -- If no preference found, default to true (opt-out model)
+  IF preference_enabled IS NULL THEN
+    RETURN true;
+  END IF;
+  
+  RETURN preference_enabled;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 7. Create default notification types
+INSERT INTO notification_preferences (user_id, preference_type, enabled)
+SELECT DISTINCT 
+  u.id as user_id,
+  t.preference_type,
+  true as enabled
+FROM auth.users u
+CROSS JOIN (
+  VALUES 
+    ('event_reminders'),
+    ('competition_results'),
+    ('team_invitations'),
+    ('system_updates'),
+    ('marketing'),
+    ('newsletter')
+) AS t(preference_type)
+ON CONFLICT (user_id, preference_type) DO NOTHING;
+
+-- 8. Add trigger to update updated_at
+CREATE OR REPLACE FUNCTION update_notification_preferences_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_notification_preferences_updated_at
+  BEFORE UPDATE ON notification_preferences
+  FOR EACH ROW
+  EXECUTE FUNCTION update_notification_preferences_updated_at();
+
+-- 9. Add index for performance on notification queries
+CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(user_id, read);
+
+COMMENT ON TABLE notification_preferences IS 'User preferences for notification types';
+COMMENT ON FUNCTION check_notification_rate_limit IS 'Checks if user is within rate limit for sending notifications';
+COMMENT ON FUNCTION archive_old_notifications IS 'Archives read notifications older than 90 days';
+COMMENT ON FUNCTION user_wants_notification IS 'Checks if user has opted in to receive specific notification type';

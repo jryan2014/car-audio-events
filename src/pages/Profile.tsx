@@ -3,9 +3,10 @@ import { User, Car, Trophy, Star, Calendar, Edit, Save, X, Upload, Users, Settin
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { useNotifications } from '../components/NotificationSystem';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import NewsletterPreferences from '../components/NewsletterPreferences';
 import NotificationPreferences from '../components/NotificationPreferences';
+import EventReminderSettings from '../components/EventReminderSettings';
 import SavedEvents from '../components/SavedEvents';
 import Accordion from '../components/ui/Accordion';
 import { getMembershipDisplayName } from '../utils/membershipUtils';
@@ -131,6 +132,8 @@ interface TeamRole {
 export default function Profile() {
   const { user, refreshUser } = useAuth();
   const { showSuccess, showError, showInfo } = useNotifications();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -362,7 +365,8 @@ export default function Profile() {
     }
   }, [user?.id]);
 
-  const tabs = [
+  // Define tabs outside of useEffect to avoid dependency issues
+  const tabs = React.useMemo(() => [
     { id: 'profile', label: 'Profile', icon: User },
     { id: 'verification', label: 'Verification', icon: Shield },
     { id: 'system', label: 'Audio System', icon: Car },
@@ -370,19 +374,22 @@ export default function Profile() {
     { id: 'saved-events', label: 'Saved Events', icon: Heart },
     { id: 'teams', label: 'Teams', icon: Users },
     { id: 'settings', label: 'Settings', icon: Settings }
-  ];
+  ], []);
 
-  // Check URL for tab parameter or hash
+  // Check URL for tab parameter and update active tab
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
+    const urlParams = new URLSearchParams(location.search);
     const tabParam = urlParams.get('tab');
-    const hash = window.location.hash.slice(1); // Remove the # symbol
+    const hash = location.hash.slice(1); // Remove the # symbol
     
-    // Priority: hash > query param
-    const targetTab = hash || tabParam;
+    // Priority: query param > hash
+    const targetTab = tabParam || hash;
     
     if (targetTab && tabs.some(tab => tab.id === targetTab)) {
       setActiveTab(targetTab);
+    } else if (!tabParam && !hash) {
+      // Default to profile tab if no tab specified
+      setActiveTab('profile');
     }
     
     // Log page visit
@@ -399,7 +406,7 @@ export default function Profile() {
         }
       });
     }
-  }, []);
+  }, [location, user]);
   useEffect(() => {
     if (user) {
       // Update profile data when user changes
@@ -1711,7 +1718,12 @@ export default function Profile() {
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => {
+                setActiveTab(tab.id);
+                // Update URL with the new tab
+                const newUrl = tab.id === 'profile' ? '/profile' : `/profile?tab=${tab.id}`;
+                navigate(newUrl, { replace: true });
+              }}
               className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
                 activeTab === tab.id
                   ? 'bg-electric-500 text-white shadow-lg'
@@ -2714,6 +2726,12 @@ export default function Profile() {
                     title: 'Email & Newsletter',
                     icon: <Mail className="h-5 w-5" />,
                     content: <NewsletterPreferences />
+                  },
+                  {
+                    id: 'event-reminders',
+                    title: 'Event Reminders',
+                    icon: <Calendar className="h-5 w-5" />,
+                    content: <EventReminderSettings />
                   },
                   {
                     id: 'privacy',

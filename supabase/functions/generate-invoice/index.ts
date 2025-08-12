@@ -2,10 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0';
 import Stripe from 'https://esm.sh/stripe@13.10.0?target=deno';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+;
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -32,7 +29,7 @@ serve(async (req) => {
     if (authError || !user) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 401, headers: corsHeaders }
       );
     }
 
@@ -58,7 +55,7 @@ serve(async (req) => {
     if (invoiceError || !invoice) {
       return new Response(
         JSON.stringify({ error: 'Invoice not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 404, headers: corsHeaders }
       );
     }
 
@@ -98,7 +95,7 @@ serve(async (req) => {
       JSON.stringify({ invoice: invoiceData }),
       { 
         status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: corsHeaders 
       }
     );
   } catch (error) {
@@ -107,7 +104,7 @@ serve(async (req) => {
       JSON.stringify({ error: 'Failed to generate invoice' }),
       { 
         status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: corsHeaders 
       }
     );
   }

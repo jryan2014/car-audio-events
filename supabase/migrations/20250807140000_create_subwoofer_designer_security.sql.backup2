@@ -1,0 +1,430 @@
+-- ============================================================================
+-- SUBWOOFER DESIGNER SECURITY IMPLEMENTATION
+-- ============================================================================
+-- This migration creates a secure implementation for the subwoofer designer 
+-- feature with comprehensive access control, audit logging, and RLS policies.
+-- ============================================================================
+
+-- Set secure search path
+SET search_path = 'public', 'pg_catalog', 'pg_temp';
+
+-- ============================================================================
+-- TABLE: feature_flags
+-- Manages feature availability and access modes
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS feature_flags (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    feature_name VARCHAR(100) NOT NULL UNIQUE,
+    is_enabled BOOLEAN NOT NULL DEFAULT false,
+    access_mode VARCHAR(50) NOT NULL DEFAULT 'disabled' 
+        CHECK (access_mode IN ('disabled', 'all_pro', 'specific_users')),
+    description TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    updated_by UUID REFERENCES auth.users(id) ON DELETE SET NULL
+);
+
+-- Enable RLS
+ALTER TABLE feature_flags ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================================
+-- TABLE: user_feature_access
+-- Tracks specific user access grants for features
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS user_feature_access (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    feature_name VARCHAR(100) NOT NULL,
+    granted_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    access_granted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    access_expires_at TIMESTAMPTZ,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    notes TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    
+    -- Ensure one active grant per user per feature
+    CONSTRAINT unique_active_user_feature UNIQUE (user_id, feature_name, is_active),
+    -- Foreign key to feature_flags
+    CONSTRAINT fk_user_feature_access_feature FOREIGN KEY (feature_name) 
+        REFERENCES feature_flags(feature_name) ON DELETE CASCADE
+);
+
+-- Enable RLS
+ALTER TABLE user_feature_access ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================================
+-- TABLE: subwoofer_designs
+-- Stores user subwoofer designs with security controls
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS subwoofer_designs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    design_name VARCHAR(255) NOT NULL,
+    design_data JSONB NOT NULL,
+    is_public BOOLEAN NOT NULL DEFAULT false,
+    is_template BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    last_modified_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    tags TEXT[],
+    description TEXT,
+    version INTEGER NOT NULL DEFAULT 1,
+    
+    -- Data validation constraints
+    CONSTRAINT valid_design_name CHECK (LENGTH(TRIM(design_name)) >= 1),
+    CONSTRAINT valid_design_data CHECK (jsonb_typeof(design_data) = 'object'),
+    CONSTRAINT reasonable_data_size CHECK (pg_column_size(design_data) < 1048576) -- 1MB limit
+);
+
+-- Enable RLS
+ALTER TABLE subwoofer_designs ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================================
+-- TABLE: design_cut_sheets
+-- Stores generated cut sheets with access control
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS design_cut_sheets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    design_id UUID NOT NULL REFERENCES subwoofer_designs(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    file_path TEXT NOT NULL,
+    file_name VARCHAR(255) NOT NULL,
+    file_size BIGINT NOT NULL,
+    mime_type VARCHAR(100) NOT NULL,
+    generated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    download_count INTEGER NOT NULL DEFAULT 0,
+    last_downloaded_at TIMESTAMPTZ,
+    
+    -- Security constraints
+    CONSTRAINT valid_file_path CHECK (file_path ~ '^[a-zA-Z0-9/_.-]+$'),
+    CONSTRAINT valid_file_name CHECK (LENGTH(TRIM(file_name)) >= 1),
+    CONSTRAINT reasonable_file_size CHECK (file_size > 0 AND file_size < 104857600), -- 100MB limit
+    CONSTRAINT valid_mime_type CHECK (mime_type IN ('application/pdf', 'image/png', 'image/jpeg'))
+);
+
+-- Enable RLS
+ALTER TABLE design_cut_sheets ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================================
+-- TABLE: design_shares
+-- Manages design sharing with expiration and access control
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS design_shares (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    design_id UUID NOT NULL REFERENCES subwoofer_designs(id) ON DELETE CASCADE,
+    shared_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    shared_with UUID REFERENCES auth.users(id) ON DELETE CASCADE, -- NULL for public shares
+    share_token VARCHAR(64) NOT NULL UNIQUE, -- For public sharing
+    permissions JSONB NOT NULL DEFAULT '{"view": true, "download": false, "copy": false}',
+    expires_at TIMESTAMPTZ,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    access_count INTEGER NOT NULL DEFAULT 0,
+    last_accessed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    
+    -- Security constraints
+    CONSTRAINT valid_share_token CHECK (share_token ~ '^[a-zA-Z0-9]{64}$'),
+    CONSTRAINT valid_permissions CHECK (jsonb_typeof(permissions) = 'object'),
+    CONSTRAINT future_expiration CHECK (expires_at IS NULL OR expires_at > created_at)
+);
+
+-- Enable RLS
+ALTER TABLE design_shares ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================================
+-- TABLE: subwoofer_database
+-- Curated database of subwoofer specifications (admin managed)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS subwoofer_database (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    brand VARCHAR(100) NOT NULL,
+    model VARCHAR(200) NOT NULL,
+    size_inches DECIMAL(4,2) NOT NULL,
+    specifications JSONB NOT NULL,
+    is_verified BOOLEAN NOT NULL DEFAULT false,
+    verified_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    verified_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    updated_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    
+    -- Ensure unique brand/model combinations
+    CONSTRAINT unique_brand_model UNIQUE (brand, model),
+    -- Data validation
+    CONSTRAINT valid_brand CHECK (LENGTH(TRIM(brand)) >= 1),
+    CONSTRAINT valid_model CHECK (LENGTH(TRIM(model)) >= 1),
+    CONSTRAINT valid_size CHECK (size_inches > 0 AND size_inches <= 50),
+    CONSTRAINT valid_specifications CHECK (jsonb_typeof(specifications) = 'object')
+);
+
+-- Enable RLS
+ALTER TABLE subwoofer_database ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================================
+-- INDEXES FOR PERFORMANCE
+-- ============================================================================
+
+-- Feature flags indexes
+CREATE INDEX IF NOT EXISTS idx_feature_flags_feature_name ON feature_flags(feature_name);
+CREATE INDEX IF NOT EXISTS idx_feature_flags_enabled ON feature_flags(is_enabled) WHERE is_enabled = true;
+
+-- User feature access indexes
+CREATE INDEX IF NOT EXISTS idx_user_feature_access_user_feature ON user_feature_access(user_id, feature_name);
+CREATE INDEX IF NOT EXISTS idx_user_feature_access_active ON user_feature_access(is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_user_feature_access_expires ON user_feature_access(access_expires_at) WHERE access_expires_at IS NOT NULL;
+
+-- Subwoofer designs indexes
+CREATE INDEX IF NOT EXISTS idx_subwoofer_designs_user_id ON subwoofer_designs(user_id);
+CREATE INDEX IF NOT EXISTS idx_subwoofer_designs_public ON subwoofer_designs(is_public) WHERE is_public = true;
+CREATE INDEX IF NOT EXISTS idx_subwoofer_designs_template ON subwoofer_designs(is_template) WHERE is_template = true;
+CREATE INDEX IF NOT EXISTS idx_subwoofer_designs_created_at ON subwoofer_designs(created_at DESC);
+
+-- Design cut sheets indexes
+CREATE INDEX IF NOT EXISTS idx_design_cut_sheets_design_id ON design_cut_sheets(design_id);
+CREATE INDEX IF NOT EXISTS idx_design_cut_sheets_user_id ON design_cut_sheets(user_id);
+
+-- Design shares indexes
+CREATE INDEX IF NOT EXISTS idx_design_shares_design_id ON design_shares(design_id);
+CREATE INDEX IF NOT EXISTS idx_design_shares_shared_by ON design_shares(shared_by);
+CREATE INDEX IF NOT EXISTS idx_design_shares_token ON design_shares(share_token);
+CREATE INDEX IF NOT EXISTS idx_design_shares_active ON design_shares(is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_design_shares_expires ON design_shares(expires_at) WHERE expires_at IS NOT NULL;
+
+-- Subwoofer database indexes
+CREATE INDEX IF NOT EXISTS idx_subwoofer_database_brand_model ON subwoofer_database(brand, model);
+CREATE INDEX IF NOT EXISTS idx_subwoofer_database_size ON subwoofer_database(size_inches);
+CREATE INDEX IF NOT EXISTS idx_subwoofer_database_verified ON subwoofer_database(is_verified) WHERE is_verified = true;
+
+-- ============================================================================
+-- RLS POLICIES
+-- ============================================================================
+
+-- Feature flags policies (admin read/write, users read enabled features)
+CREATE POLICY "Admins can manage feature flags" ON feature_flags
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM users 
+            WHERE users.id = (SELECT auth.uid()) 
+            AND users.role = 'admin'::user_role
+        )
+    );
+
+CREATE POLICY "Users can read enabled feature flags" ON feature_flags
+    FOR SELECT USING (is_enabled = true);
+
+-- User feature access policies (admin manage, users read own)
+CREATE POLICY "Admins can manage user feature access" ON user_feature_access
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM users 
+            WHERE users.id = (SELECT auth.uid()) 
+            AND users.role = 'admin'::user_role
+        )
+    );
+
+CREATE POLICY "Users can view their own feature access" ON user_feature_access
+    FOR SELECT USING (user_id = auth.uid());
+
+-- Subwoofer designs policies (users manage own, read public)
+CREATE POLICY "Users can manage their own designs" ON subwoofer_designs
+    FOR ALL USING (user_id = auth.uid());
+
+CREATE POLICY "Users can view public designs" ON subwoofer_designs
+    FOR SELECT USING (is_public = true);
+
+CREATE POLICY "Users can view public templates" ON subwoofer_designs
+    FOR SELECT USING (is_template = true);
+
+-- Design cut sheets policies (users manage own)
+CREATE POLICY "Users can manage their own cut sheets" ON design_cut_sheets
+    FOR ALL USING (user_id = auth.uid());
+
+CREATE POLICY "Users can view cut sheets for designs they can access" ON design_cut_sheets
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM subwoofer_designs sd
+            WHERE sd.id = design_cut_sheets.design_id
+            AND (sd.user_id = (SELECT auth.uid()) OR sd.is_public = true)
+        )
+    );
+
+-- Design shares policies (secure sharing logic)
+CREATE POLICY "Users can manage shares for their designs" ON design_shares
+    FOR ALL USING (shared_by = auth.uid());
+
+CREATE POLICY "Users can view shares made to them" ON design_shares
+    FOR SELECT USING (
+        shared_with = (SELECT auth.uid()) 
+        OR shared_with IS NULL -- Public shares
+    );
+
+-- Subwoofer database policies (admin write, users read)
+CREATE POLICY "Admins can manage subwoofer database" ON subwoofer_database
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM users 
+            WHERE users.id = (SELECT auth.uid()) 
+            AND users.role = 'admin'::user_role
+        )
+    );
+
+CREATE POLICY "Users can read subwoofer database" ON subwoofer_database
+    FOR SELECT USING (true);
+
+-- ============================================================================
+-- TRIGGERS FOR UPDATED_AT
+-- ============================================================================
+
+-- Create updated_at trigger function if it doesn't exist
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER
+SECURITY DEFINER
+SET search_path = 'public', 'pg_catalog', 'pg_temp'
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$;
+
+-- Apply updated_at triggers
+CREATE TRIGGER update_feature_flags_updated_at 
+    BEFORE UPDATE ON feature_flags
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_user_feature_access_updated_at 
+    BEFORE UPDATE ON user_feature_access
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_subwoofer_designs_updated_at 
+    BEFORE UPDATE ON subwoofer_designs
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_subwoofer_database_updated_at 
+    BEFORE UPDATE ON subwoofer_database
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================================
+-- INSERT INITIAL DATA
+-- ============================================================================
+
+-- Insert subwoofer designer feature flag
+INSERT INTO feature_flags (feature_name, is_enabled, access_mode, description, created_by)
+VALUES (
+    'subwoofer_designer',
+    false,
+    'disabled',
+    'Advanced subwoofer enclosure design tool with cutting templates',
+    (SELECT id FROM auth.users WHERE email = 'admin@caraudioevents.com' LIMIT 1)
+) ON CONFLICT (feature_name) DO NOTHING;
+
+-- ============================================================================
+-- AUDIT LOGGING
+-- ============================================================================
+
+-- Create audit trigger function for sensitive operations
+CREATE OR REPLACE FUNCTION audit_subwoofer_operations()
+RETURNS TRIGGER
+SECURITY DEFINER
+SET search_path = 'public', 'pg_catalog', 'pg_temp'
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    -- Log feature flag changes
+    IF TG_TABLE_NAME = 'feature_flags' THEN
+        INSERT INTO security_audit_log (
+            user_id,
+            action,
+            resource_type,
+            resource_id,
+            details,
+            ip_address,
+            user_agent
+        ) VALUES (
+            COALESCE((SELECT auth.uid()), '00000000-0000-0000-0000-000000000000'),
+            CASE 
+                WHEN TG_OP = 'INSERT' THEN 'CREATE_FEATURE_FLAG'
+                WHEN TG_OP = 'UPDATE' THEN 'UPDATE_FEATURE_FLAG'
+                WHEN TG_OP = 'DELETE' THEN 'DELETE_FEATURE_FLAG'
+            END,
+            'feature_flag',
+            COALESCE(NEW.id, OLD.id),
+            jsonb_build_object(
+                'feature_name', COALESCE(NEW.feature_name, OLD.feature_name),
+                'is_enabled', COALESCE(NEW.is_enabled, OLD.is_enabled),
+                'access_mode', COALESCE(NEW.access_mode, OLD.access_mode)
+            ),
+            current_setting('request.headers', true)::jsonb->>'x-forwarded-for',
+            current_setting('request.headers', true)::jsonb->>'user-agent'
+        );
+    END IF;
+
+    -- Log user access grants/revokes
+    IF TG_TABLE_NAME = 'user_feature_access' THEN
+        INSERT INTO security_audit_log (
+            user_id,
+            action,
+            resource_type,
+            resource_id,
+            details,
+            ip_address,
+            user_agent
+        ) VALUES (
+            COALESCE((SELECT auth.uid()), '00000000-0000-0000-0000-000000000000'),
+            CASE 
+                WHEN TG_OP = 'INSERT' THEN 'GRANT_FEATURE_ACCESS'
+                WHEN TG_OP = 'UPDATE' AND NEW.is_active = false THEN 'REVOKE_FEATURE_ACCESS'
+                WHEN TG_OP = 'UPDATE' THEN 'UPDATE_FEATURE_ACCESS'
+                WHEN TG_OP = 'DELETE' THEN 'DELETE_FEATURE_ACCESS'
+            END,
+            'user_feature_access',
+            COALESCE(NEW.id, OLD.id),
+            jsonb_build_object(
+                'target_user_id', COALESCE(NEW.user_id, OLD.user_id),
+                'feature_name', COALESCE(NEW.feature_name, OLD.feature_name),
+                'is_active', COALESCE(NEW.is_active, OLD.is_active),
+                'expires_at', COALESCE(NEW.access_expires_at, OLD.access_expires_at)
+            ),
+            current_setting('request.headers', true)::jsonb->>'x-forwarded-for',
+            current_setting('request.headers', true)::jsonb->>'user-agent'
+        );
+    END IF;
+
+    RETURN COALESCE(NEW, OLD);
+END;
+$$;
+
+-- Apply audit triggers
+CREATE TRIGGER audit_feature_flags_trigger
+    AFTER INSERT OR UPDATE OR DELETE ON feature_flags
+    FOR EACH ROW EXECUTE FUNCTION audit_subwoofer_operations();
+
+CREATE TRIGGER audit_user_feature_access_trigger
+    AFTER INSERT OR UPDATE OR DELETE ON user_feature_access
+    FOR EACH ROW EXECUTE FUNCTION audit_subwoofer_operations();
+
+-- ============================================================================
+-- COMMENTS FOR DOCUMENTATION
+-- ============================================================================
+
+COMMENT ON TABLE feature_flags IS 'Manages feature availability and access control modes';
+COMMENT ON TABLE user_feature_access IS 'Tracks specific user access grants for features';
+COMMENT ON TABLE subwoofer_designs IS 'Stores user subwoofer designs with security controls';
+COMMENT ON TABLE design_cut_sheets IS 'Generated cut sheet files with access control';
+COMMENT ON TABLE design_shares IS 'Manages design sharing with expiration and permissions';
+COMMENT ON TABLE subwoofer_database IS 'Curated database of subwoofer specifications';
+
+COMMENT ON COLUMN feature_flags.access_mode IS 'Access control: disabled, all_pro, or specific_users';
+COMMENT ON COLUMN user_feature_access.access_expires_at IS 'Optional expiration for temporary access';
+COMMENT ON COLUMN design_shares.share_token IS 'Secure token for public sharing URLs';
+COMMENT ON COLUMN design_shares.permissions IS 'JSON permissions: view, download, copy flags';

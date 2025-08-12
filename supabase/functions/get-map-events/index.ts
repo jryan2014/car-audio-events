@@ -1,10 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-};
+;
 
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight requests
@@ -71,7 +67,7 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({ error: 'Failed to fetch events', details: error.message }),
         { 
           status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: corsHeaders 
         }
       );
     }
@@ -99,7 +95,7 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({ events: transformedEvents }),
       { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: corsHeaders 
       }
     );
 
@@ -109,7 +105,7 @@ Deno.serve(async (req: Request) => {
       JSON.stringify({ error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' }),
       { 
         status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: corsHeaders 
       }
     );
   }

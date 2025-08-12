@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Stripe from 'https://esm.sh/stripe@14.21.0'
-import { corsHeaders } from '../_shared/cors.ts'
+import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 import { edgeEmailService } from '../_shared/edge-email-service.ts'
 import { AuditLogger } from '../_shared/audit-logger.ts'
 import { RateLimiter, RateLimitConfigs, createRateLimitHeaders } from '../_shared/rate-limiter.ts'
@@ -191,10 +191,14 @@ interface Database {
 }
 
 serve(async (req) => {
-  // CORS preflight
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+  // Handle CORS preflight requests
+  const corsResponse = handleCors(req);
+  if (corsResponse) {
+    return corsResponse;
   }
+  
+  // Get secure CORS headers for this request
+  const corsHeaders = getCorsHeaders(req);
 
   // Initialize rate limiter and audit logger
   const rateLimiter = new RateLimiter(RateLimitConfigs.webhook);
@@ -230,8 +234,7 @@ serve(async (req) => {
       {
         headers: { 
           ...corsHeaders, 
-          ...rateLimitHeaders,
-          'Content-Type': 'application/json' 
+          ...rateLimitHeaders
         },
         status: 429,
       }
@@ -268,7 +271,10 @@ serve(async (req) => {
       
       return new Response('Bad request', { 
         status: 400,
-        headers: rateLimitHeaders
+        headers: {
+          ...corsHeaders,
+          ...rateLimitHeaders
+        }
       })
     }
 
@@ -696,7 +702,7 @@ serve(async (req) => {
     
     return new Response(JSON.stringify({ received: true }), {
       headers: { 
-        'Content-Type': 'application/json',
+        ...corsHeaders,
         ...rateLimitHeaders
       },
       status: 200,
@@ -732,7 +738,7 @@ serve(async (req) => {
       JSON.stringify({ error: error.message }),
       { 
         headers: { 
-          'Content-Type': 'application/json',
+          ...corsHeaders,
           ...rateLimitHeaders
         },
         status: 400 

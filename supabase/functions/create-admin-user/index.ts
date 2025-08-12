@@ -1,10 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-};
+;
 
 interface Database {
   public: {
@@ -68,7 +64,7 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({ error: 'Failed to check existing users', details: listError.message }),
         { 
           status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: corsHeaders 
         }
       );
     }
@@ -97,7 +93,7 @@ Deno.serve(async (req: Request) => {
           JSON.stringify({ error: 'Failed to create admin auth user', details: authError.message }),
           { 
             status: 500, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            headers: corsHeaders 
           }
         );
       }
@@ -108,7 +104,7 @@ Deno.serve(async (req: Request) => {
           JSON.stringify({ error: 'No user returned from auth creation' }),
           { 
             status: 500, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            headers: corsHeaders 
           }
         );
       }
@@ -197,7 +193,7 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({ error: 'Failed to create/update admin profile', details: upsertError.message }),
         { 
           status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: corsHeaders 
         }
       );
       }
@@ -218,7 +214,7 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({ error: 'Failed to verify admin profile', details: verifyError.message }),
         { 
           status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: corsHeaders 
         }
       );
     }
@@ -235,7 +231,7 @@ Deno.serve(async (req: Request) => {
         }),
         { 
           status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: corsHeaders 
         }
       );
     }
@@ -253,7 +249,7 @@ Deno.serve(async (req: Request) => {
         }
       }),
       { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: corsHeaders 
       }
     );
 
@@ -266,7 +262,7 @@ Deno.serve(async (req: Request) => {
       }),
       { 
         status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: corsHeaders 
       }
     );
   }

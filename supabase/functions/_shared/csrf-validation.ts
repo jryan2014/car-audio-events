@@ -2,6 +2,8 @@
  * CSRF validation for Edge Functions
  */
 
+import { getCorsHeaders } from './cors.ts';
+
 /**
  * Validates CSRF token from request headers
  * Since Edge Functions are stateless, we rely on the client to provide
@@ -56,10 +58,7 @@ export function requireCSRFToken(handler: (req: Request) => Promise<Response>) {
         }),
         { 
           status: 403,
-          headers: { 
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-          }
+          headers: getCorsHeaders(req)
         }
       );
     }

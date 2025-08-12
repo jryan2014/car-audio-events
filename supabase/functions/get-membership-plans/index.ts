@@ -1,10 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -51,7 +48,7 @@ serve(async (req) => {
         JSON.stringify({ error: 'Failed to fetch membership plans', details: error.message }),
         { 
           status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: corsHeaders 
         }
       )
     }
@@ -80,7 +77,7 @@ serve(async (req) => {
         count: transformedPlans.length 
       }),
       { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: corsHeaders 
       }
     )
 
@@ -90,7 +87,7 @@ serve(async (req) => {
       JSON.stringify({ error: 'Internal server error', details: error.message }),
       { 
         status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: corsHeaders 
       }
     )
   }

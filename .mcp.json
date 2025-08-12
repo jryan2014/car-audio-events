@@ -12,7 +12,7 @@
       "args": ["/c", "npx", "@supabase/mcp-server-supabase", "--project-ref=nqvisvranvjaghvrdaaz", "--access-token=sbp_ca744b2370a771a97431d67d3be410de48c428fc"],
       "env": {
         "SUPABASE_URL": "https://nqvisvranvjaghvrdaaz.supabase.co",
-        "SUPABASE_SERVICE_ROLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xdmlzdnJhbnZqYWdodnJkYWF6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0OTYwNjY3NywiZXhwIjoyMDY1MTgyNjc3fQ.QflFYxMtYzmsveSkjIOKNqSeQhxQBglJcfRgvpNF7qg"
+        "SUPABASE_SERVICE_ROLE_KEY": "${SUPABASE_SERVICE_ROLE_KEY}"
       }
     },
     "github": {

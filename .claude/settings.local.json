@@ -110,7 +110,17 @@
       "Bash(if [ -f \".env\" ])",
       "Bash(then echo \"Found .env file\")",
       "Bash(else echo \"No .env file found\")",
-      "Bash(fi)"
+      "Bash(fi)",
+      "WebFetch(domain:github.com)",
+      "mcp__github__get_file_contents",
+      "Bash(pip install:*)",
+      "Bash(git rm:*)",
+      "Bash(deno run:*)",
+      "Bash(npm outdated)",
+      "Bash(npm view:*)",
+      "Bash(yamllint:*)",
+      "mcp__supabase__list_migrations",
+      "Bash(git checkout:*)"
     ],
     "deny": []
   },

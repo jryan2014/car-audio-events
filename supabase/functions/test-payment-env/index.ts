@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 
 /**
  * Test function to verify payment environment variables are properly set
@@ -14,15 +15,13 @@ function maskValue(value: string | undefined): string {
 
 serve(async (req) => {
   // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-      },
-    });
+  const corsResponse = handleCors(req);
+  if (corsResponse) {
+    return corsResponse;
   }
+  
+  // Get secure CORS headers for this request
+  const corsHeaders = getCorsHeaders(req);
 
   try {
     // Only allow admin access
@@ -30,10 +29,7 @@ serve(async (req) => {
     if (!authHeader) {
       return new Response('Unauthorized', { 
         status: 401,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Content-Type': 'application/json',
-        }
+        headers: corsHeaders
       });
     }
 
@@ -48,10 +44,7 @@ serve(async (req) => {
     if (userError || !user) {
       return new Response('Invalid token', { 
         status: 401,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Content-Type': 'application/json',
-        }
+        headers: corsHeaders
       });
     }
 
@@ -65,10 +58,7 @@ serve(async (req) => {
     if (dbError || userData?.membership_type !== 'admin') {
       return new Response('Admin access required', { 
         status: 403,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Content-Type': 'application/json',
-        }
+        headers: corsHeaders
       });
     }
 
@@ -150,19 +140,13 @@ serve(async (req) => {
     }
 
     return new Response(JSON.stringify(response, null, 2), {
-      headers: { 
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
+      headers: corsHeaders,
       status: 200
     });
 
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), {
-      headers: { 
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
+      headers: corsHeaders,
       status: 500
     });
   }

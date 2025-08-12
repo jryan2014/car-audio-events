@@ -37,7 +37,7 @@ const SubwooferDesigner: React.FC = () => {
     // Show success notification
     const notification = document.createElement('div');
     notification.className = 'fixed top-4 right-4 bg-green-500/20 border border-green-500/30 rounded-lg p-4 text-green-400 z-50 animate-fade-in';
-    notification.innerHTML = 'Design updated! 3D visualization ready.';
+    notification.textContent = 'Design updated! 3D visualization ready.';
     document.body.appendChild(notification);
     
     setTimeout(() => {

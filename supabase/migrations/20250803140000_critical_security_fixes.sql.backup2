@@ -1,0 +1,314 @@
+-- =====================================================
+-- CRITICAL SECURITY FIXES - IMMEDIATE APPLICATION
+-- =====================================================
+-- Migration: Apply only the most critical security fixes that can be safely applied
+-- Purpose: Fix function search path vulnerabilities and RLS policy performance issues
+-- Date: 2025-08-03
+-- Priority: CRITICAL
+-- =====================================================
+
+-- =====================================================
+-- CRITICAL: FIX SEARCH PATH VULNERABILITIES
+-- =====================================================
+
+-- Fix permission helper functions (these are the most critical)
+CREATE OR REPLACE FUNCTION is_admin()
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = 'public', 'pg_catalog', 'pg_temp'
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM users 
+    WHERE id = (SELECT auth.uid()) 
+    AND membership_type = 'admin'
+    AND status = 'active'
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION is_competitor()
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = 'public', 'pg_catalog', 'pg_temp'
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM users 
+    WHERE id = (SELECT auth.uid()) 
+    AND membership_type IN ('competitor', 'pro_competitor')
+    AND status = 'active'
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION is_organizer()
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = 'public', 'pg_catalog', 'pg_temp'
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM users 
+    WHERE id = (SELECT auth.uid()) 
+    AND membership_type = 'organization'
+    AND status = 'active'
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION owns_competition_result(result_user_id uuid)
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = 'public', 'pg_catalog', 'pg_temp'
+AS $$
+  SELECT (SELECT auth.uid()) = result_user_id;
+$$;
+
+CREATE OR REPLACE FUNCTION organizer_owns_event(event_id integer)
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = 'public', 'pg_catalog', 'pg_temp'
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM events 
+    WHERE id = event_id 
+    AND organizer_id = (SELECT auth.uid())
+  ) AND is_organizer();
+$$;
+
+-- =====================================================
+-- CRITICAL: FIX RLS POLICY PERFORMANCE ISSUES
+-- =====================================================
+
+-- Fix audit_logs policies (these are the highest priority)
+DROP POLICY IF EXISTS "admin_view_all_audit_logs" ON audit_logs;
+CREATE POLICY "admin_view_all_audit_logs" 
+ON audit_logs
+FOR SELECT
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM users 
+    WHERE users.id = (select auth.uid()) 
+    AND users.membership_type = 'admin'
+    AND users.status = 'active'
+  )
+);
+
+DROP POLICY IF EXISTS "user_view_own_audit_logs" ON audit_logs;
+CREATE POLICY "user_view_own_audit_logs"
+ON audit_logs  
+FOR SELECT
+TO authenticated
+USING (
+  user_id = (select auth.uid())
+);
+
+-- Fix security_audit_log policies if they exist
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'security_audit_log') THEN
+    DROP POLICY IF EXISTS "admin_view_all_security_audit_logs" ON security_audit_log;
+    CREATE POLICY "admin_view_all_security_audit_logs" 
+    ON security_audit_log
+    FOR SELECT
+    TO authenticated
+    USING (
+      EXISTS (
+        SELECT 1 FROM users 
+        WHERE users.id = (select auth.uid()) 
+        AND users.membership_type = 'admin'
+        AND users.status = 'active'
+      )
+    );
+    
+    DROP POLICY IF EXISTS "user_view_own_security_audit_logs" ON security_audit_log;
+    CREATE POLICY "user_view_own_security_audit_logs"
+    ON security_audit_log  
+    FOR SELECT
+    TO authenticated
+    USING (
+      user_id = (select auth.uid())
+    );
+  END IF;
+END $$;
+
+-- Fix users table policies if they exist
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'users' AND policyname = 'users_update_own') THEN
+    DROP POLICY "users_update_own" ON users;
+    CREATE POLICY "users_update_own"
+    ON users
+    FOR UPDATE
+    TO authenticated
+    USING (
+      id = (select auth.uid())
+    )
+    WITH CHECK (
+      id = (select auth.uid())
+    );
+  END IF;
+  
+  IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'users' AND policyname = 'users_select_secure') THEN
+    DROP POLICY "users_select_secure" ON users;
+    CREATE POLICY "users_select_secure"
+    ON users
+    FOR SELECT
+    TO authenticated
+    USING (
+      -- Users can see their own full profile
+      id = (select auth.uid())
+      OR 
+      -- Others can see limited public information
+      (
+        status = 'active' 
+        AND EXISTS (
+          SELECT 1 FROM users current_user
+          WHERE current_user.id = (select auth.uid())
+          AND current_user.status = 'active'
+        )
+      )
+    );
+  END IF;
+END $$;
+
+-- =====================================================
+-- MATERIALIZED VIEW SECURITY
+-- =====================================================
+
+-- Revoke anonymous access from materialized views
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_matviews WHERE matviewname = 'mv_leaderboard_stats') THEN
+    REVOKE ALL ON mv_leaderboard_stats FROM anon;
+    GRANT SELECT ON mv_leaderboard_stats TO authenticated;
+  END IF;
+  
+  IF EXISTS (SELECT 1 FROM pg_matviews WHERE matviewname = 'mv_organization_leaderboard') THEN
+    REVOKE ALL ON mv_organization_leaderboard FROM anon;
+    GRANT SELECT ON mv_organization_leaderboard TO authenticated;
+  END IF;
+END $$;
+
+-- =====================================================
+-- SECURITY VALIDATION FUNCTION
+-- =====================================================
+
+-- Simple function to check security fixes
+CREATE OR REPLACE FUNCTION validate_critical_security_fixes()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+STABLE
+SET search_path = 'public', 'pg_catalog', 'pg_temp'
+AS $$
+DECLARE
+  functions_fixed integer := 0;
+  policies_fixed integer := 0;
+  mv_secured boolean := false;
+BEGIN
+  -- Check if helper functions have search_path set
+  SELECT COUNT(*) INTO functions_fixed
+  FROM pg_proc p
+  JOIN pg_namespace n ON p.pronamespace = n.oid
+  WHERE n.nspname = 'public'
+    AND p.proname IN ('is_admin', 'is_competitor', 'is_organizer', 'owns_competition_result', 'organizer_owns_event')
+    AND p.prosecdef = true;
+  
+  -- Check if policies use (select auth.uid()) pattern
+  SELECT COUNT(*) INTO policies_fixed
+  FROM pg_policies
+  WHERE schemaname = 'public'
+    AND tablename IN ('audit_logs', 'security_audit_log', 'users')
+    AND (qual LIKE '%(select auth.uid())%' OR with_check LIKE '%(select auth.uid())%');
+  
+  -- Check if materialized views are secured
+  SELECT NOT EXISTS (
+    SELECT 1 FROM information_schema.table_privileges
+    WHERE table_schema = 'public'
+      AND table_name LIKE 'mv_%'
+      AND grantee = 'anon'
+  ) INTO mv_secured;
+  
+  RETURN jsonb_build_object(
+    'functions_fixed', functions_fixed,
+    'policies_optimized', policies_fixed,
+    'materialized_views_secured', mv_secured,
+    'overall_status', CASE 
+      WHEN functions_fixed >= 5 AND policies_fixed >= 2 AND mv_secured THEN 'SECURE'
+      WHEN functions_fixed >= 3 AND policies_fixed >= 1 THEN 'PARTIALLY_SECURE'
+      ELSE 'NEEDS_ATTENTION'
+    END,
+    'check_time', now()
+  );
+END;
+$$;
+
+-- Grant execute permission
+GRANT EXECUTE ON FUNCTION validate_critical_security_fixes() TO authenticated;
+
+-- =====================================================
+-- MIGRATION COMPLETION LOG
+-- =====================================================
+
+INSERT INTO audit_logs (
+  user_id,
+  user_email,
+  user_role,
+  action,
+  table_name,
+  record_id,
+  new_data,
+  created_at
+) VALUES (
+  null,
+  'system',
+  'system',
+  'MIGRATION',
+  'critical_security_fixes',
+  'immediate_security_fixes',
+  jsonb_build_object(
+    'migration', '20250803140000_critical_security_fixes.sql',
+    'fixes_applied', ARRAY[
+      'function_search_path_protection',
+      'rls_policy_performance_optimization', 
+      'materialized_view_access_control'
+    ],
+    'security_issues_resolved', ARRAY[
+      'Function search path mutable vulnerability',
+      'RLS policy performance degradation',
+      'Unauthorized materialized view access'
+    ],
+    'validation_function', 'validate_critical_security_fixes()',
+    'priority', 'CRITICAL',
+    'completed_at', now()
+  ),
+  now()
+);
+
+-- Run validation and log results
+DO $$
+DECLARE
+  validation_result jsonb;
+BEGIN
+  SELECT validate_critical_security_fixes() INTO validation_result;
+  
+  INSERT INTO audit_logs (
+    user_id, user_email, user_role, action, table_name, record_id, new_data, created_at
+  ) VALUES (
+    null, 'system', 'system', 'VALIDATION', 'security_fixes', 'post_migration_check',
+    jsonb_build_object(
+      'validation_result', validation_result,
+      'message', 'Critical security fixes validation completed'
+    ),
+    now()
+  );
+  
+  RAISE NOTICE 'Critical security fixes applied. Validation result: %', validation_result;
+END $$;

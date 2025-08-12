@@ -1,0 +1,88 @@
+-- Create support_agents table to designate users as support agents
+CREATE TABLE support_agents (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    is_active BOOLEAN DEFAULT true,
+    specialties TEXT[] DEFAULT '{}', -- Areas of expertise (billing, technical, events, etc.)
+    max_tickets_per_day INTEGER DEFAULT 50,
+    can_view_all_tickets BOOLEAN DEFAULT true,
+    can_assign_tickets BOOLEAN DEFAULT true,
+    can_close_tickets BOOLEAN DEFAULT true,
+    can_escalate_tickets BOOLEAN DEFAULT true,
+    can_create_internal_notes BOOLEAN DEFAULT true,
+    can_manage_organizations BOOLEAN DEFAULT false, -- Only senior agents
+    email_notifications_enabled BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    created_by UUID REFERENCES users(id),
+    
+    -- Ensure each user can only be a support agent once
+    UNIQUE(user_id)
+);
+
+-- Add RLS policies
+ALTER TABLE support_agents ENABLE ROW LEVEL SECURITY;
+
+-- Allow admins to manage support agents
+CREATE POLICY "admins_can_manage_support_agents" ON support_agents
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM users 
+            WHERE users.id = (SELECT auth.uid()) 
+            AND users.membership_type = 'admin'
+        )
+    );
+
+-- Allow support agents to view their own record
+CREATE POLICY "support_agents_can_view_own_record" ON support_agents
+    FOR SELECT USING (user_id = auth.uid());
+
+-- Create indexes for performance
+CREATE INDEX idx_support_agents_user_id ON support_agents(user_id);
+CREATE INDEX idx_support_agents_active ON support_agents(is_active);
+CREATE INDEX idx_support_agents_created_at ON support_agents(created_at);
+
+-- Create updated_at trigger
+CREATE OR REPLACE FUNCTION update_support_agents_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_support_agents_updated_at
+    BEFORE UPDATE ON support_agents
+    FOR EACH ROW
+    EXECUTE FUNCTION update_support_agents_updated_at();
+
+-- Add some sample specialties as comments for reference
+COMMENT ON COLUMN support_agents.specialties IS 'Array of specialties like: billing, technical, events, account, general';
+
+-- Create a view for support agents with user details
+CREATE OR REPLACE VIEW support_agents_with_users AS
+SELECT 
+    sa.*,
+    u.email,
+    u.name,
+    u.membership_type,
+    u.status as user_status,
+    u.created_at as user_created_at,
+    creator.email as created_by_email,
+    creator.name as created_by_name
+FROM support_agents sa
+JOIN users u ON sa.user_id = u.id
+LEFT JOIN users creator ON sa.created_by = creator.id;
+
+-- Grant access to the view
+GRANT SELECT ON support_agents_with_users TO authenticated;
+
+-- Add RLS policy for the view
+CREATE POLICY "admins_can_view_support_agents_with_users" ON support_agents_with_users
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM users 
+            WHERE users.id = (SELECT auth.uid()) 
+            AND users.membership_type = 'admin'
+        )
+    );

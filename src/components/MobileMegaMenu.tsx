@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight, Calendar, MapPin, Users, FileText, Home, Building2, Settings, BarChart3, User, Crown, BookOpen, HelpCircle, MessageSquare, Lightbulb, Search, LogOut, CreditCard, Mail, AlertTriangle } from 'lucide-react';
+import { ChevronRight, Calendar, MapPin, Users, FileText, Home, Building2, Settings, BarChart3, User, Crown, BookOpen, HelpCircle, MessageSquare, Lightbulb, Search, LogOut, CreditCard, Mail, AlertTriangle, Menu, LayoutDashboard, Trophy, UserCheck, Bot, Target, Cog, Volume2, Calculator, Wrench, Shield, Package, Factory, Globe, Tag, Star, Info, FileQuestion, AlertCircle, CheckCircle } from 'lucide-react';
 import Badge from './Badge';
 import { GlobalSearch } from './GlobalSearch';
 import { supabase } from '../lib/supabase';
@@ -56,7 +56,34 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, onL
       'BarChart3': BarChart3,
       'Settings': Settings,
       'Users': Users,
-      'FileText': FileText
+      'FileText': FileText,
+      'Menu': Menu,
+      'LayoutDashboard': LayoutDashboard,
+      'Trophy': Trophy,
+      'UserCheck': UserCheck,
+      'Bot': Bot,
+      'Target': Target,
+      'Mail': Mail,
+      'CreditCard': CreditCard,
+      'Cog': Cog,
+      'Volume2': Volume2,
+      'Calculator': Calculator,
+      'Wrench': Wrench,
+      'Shield': Shield,
+      'Package': Package,
+      'Crown': Crown,
+      'Factory': Factory,
+      'Globe': Globe,
+      'Tag': Tag,
+      'Star': Star,
+      'Info': Info,
+      'FileQuestion': FileQuestion,
+      'AlertCircle': AlertCircle,
+      'CheckCircle': CheckCircle,
+      'AlertTriangle': AlertTriangle,
+      'User': User,
+      'LogOut': LogOut,
+      'Search': Search
     };
     return iconMap[iconName || 'FileText'] || FileText;
   };

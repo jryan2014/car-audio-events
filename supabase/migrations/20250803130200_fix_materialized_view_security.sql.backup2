@@ -1,0 +1,632 @@
+-- =====================================================
+-- FIX MATERIALIZED VIEW SECURITY & ACCESS CONTROL
+-- =====================================================
+-- Migration: Secure Materialized View Access and Policy Consolidation
+-- Purpose: Restrict materialized view access and review permissive policies
+-- Security Issue: Materialized views accessible by anon/authenticated roles without proper restrictions
+-- Date: 2025-08-03
+-- Priority: MEDIUM SECURITY
+-- =====================================================
+
+-- =====================================================
+-- MATERIALIZED VIEW ACCESS CONTROL
+-- =====================================================
+
+-- Completely revoke all existing permissions on materialized views
+REVOKE ALL ON mv_leaderboard_stats FROM public;
+REVOKE ALL ON mv_leaderboard_stats FROM anon;
+REVOKE ALL ON mv_leaderboard_stats FROM authenticated;
+
+REVOKE ALL ON mv_organization_leaderboard FROM public;
+REVOKE ALL ON mv_organization_leaderboard FROM anon; 
+REVOKE ALL ON mv_organization_leaderboard FROM authenticated;
+
+-- Create secure access control for materialized views
+-- Only authenticated users can access leaderboard stats
+GRANT SELECT ON mv_leaderboard_stats TO authenticated;
+
+-- Only authenticated users can access organization leaderboard
+GRANT SELECT ON mv_organization_leaderboard TO authenticated;
+
+-- Create RLS policies for materialized views (if supported by PostgreSQL version)
+-- Note: Some PostgreSQL versions don't support RLS on materialized views
+-- In those cases, we'll create secure wrapper functions instead
+
+-- =====================================================
+-- SECURE WRAPPER FUNCTIONS FOR MATERIALIZED VIEWS
+-- =====================================================
+
+-- Secure function to access leaderboard stats with permission checks
+CREATE OR REPLACE FUNCTION get_secure_leaderboard_stats(
+  p_limit integer DEFAULT 50,
+  p_offset integer DEFAULT 0,
+  p_activity_filter text DEFAULT 'all'
+)
+RETURNS TABLE (
+  user_id uuid,
+  competitor_name text,
+  total_events integer,
+  total_points bigint,
+  avg_points numeric,
+  best_placement integer,
+  overall_rank bigint,
+  activity_status text,
+  category_stats jsonb,
+  recent_events jsonb
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+STABLE
+SET search_path = 'public', 'pg_catalog', 'pg_temp'
+AS $$
+BEGIN
+  -- Check if user is authenticated
+  IF (SELECT auth.uid()) IS NULL THEN
+    RAISE EXCEPTION 'Authentication required to access leaderboard data'
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+  
+  -- Return filtered results
+  RETURN QUERY
+  SELECT 
+    mv.user_id,
+    mv.competitor_name,
+    mv.total_events,
+    mv.total_points,
+    mv.avg_points,
+    mv.best_placement,
+    mv.overall_rank,
+    mv.activity_status,
+    mv.category_stats,
+    mv.recent_events
+  FROM mv_leaderboard_stats mv
+  WHERE (p_activity_filter = 'all' OR mv.activity_status = p_activity_filter)
+  ORDER BY mv.overall_rank
+  LIMIT p_limit
+  OFFSET p_offset;
+END;
+$$;
+
+-- Secure function to access organization leaderboard with permission checks
+CREATE OR REPLACE FUNCTION get_secure_organization_leaderboard(
+  p_limit integer DEFAULT 50,
+  p_offset integer DEFAULT 0
+)
+RETURNS TABLE (
+  organization_id text,
+  organization_name text,
+  unique_competitors integer,
+  total_events integer,
+  total_points bigint,
+  avg_points_per_event numeric,
+  avg_placement numeric,
+  top_performers jsonb,
+  recent_activity jsonb,
+  growth_trend text,
+  organization_rank bigint
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+STABLE
+SET search_path = 'public', 'pg_catalog', 'pg_temp'
+AS $$
+BEGIN
+  -- Check if user is authenticated
+  IF (SELECT auth.uid()) IS NULL THEN
+    RAISE EXCEPTION 'Authentication required to access organization leaderboard data'
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+  
+  -- Return results (assuming the materialized view has these columns)
+  RETURN QUERY
+  SELECT 
+    mv.organization_id,
+    mv.organization_name,
+    mv.unique_competitors,
+    mv.total_events,
+    mv.total_points,
+    mv.avg_points_per_event,
+    mv.avg_placement,
+    mv.top_performers,
+    mv.recent_activity,
+    mv.growth_trend,
+    mv.organization_rank
+  FROM mv_organization_leaderboard mv
+  ORDER BY mv.organization_rank
+  LIMIT p_limit
+  OFFSET p_offset;
+END;
+$$;
+
+-- Grant execute permissions on secure wrapper functions
+GRANT EXECUTE ON FUNCTION get_secure_leaderboard_stats(integer, integer, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_secure_organization_leaderboard(integer, integer) TO authenticated;
+
+-- =====================================================
+-- POLICY CONSOLIDATION AND REVIEW
+-- =====================================================
+
+-- Function to review and report on permissive policies
+CREATE OR REPLACE FUNCTION review_permissive_policies()
+RETURNS TABLE (
+  schema_name text,
+  table_name text,
+  policy_name text,
+  policy_type text,
+  permissive_type text,
+  roles text[],
+  command text,
+  policy_definition text,
+  security_risk_level text,
+  recommendation text
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+STABLE
+SET search_path = 'public', 'pg_catalog', 'pg_temp'
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    p.schemaname::text,
+    p.tablename::text,
+    p.policyname::text,
+    CASE 
+      WHEN p.permissive = 'PERMISSIVE' THEN 'PERMISSIVE'
+      ELSE 'RESTRICTIVE'
+    END::text as policy_type,
+    p.permissive::text,
+    p.roles,
+    p.cmd::text,
+    COALESCE(p.qual, '') || ' | ' || COALESCE(p.with_check, '')::text as policy_definition,
+    CASE 
+      WHEN p.permissive = 'PERMISSIVE' AND array_length(p.roles, 1) > 2 THEN 'HIGH'
+      WHEN p.permissive = 'PERMISSIVE' AND 'anon' = ANY(p.roles) THEN 'HIGH'
+      WHEN p.permissive = 'PERMISSIVE' THEN 'MEDIUM'
+      WHEN p.qual IS NULL OR p.qual = '' THEN 'MEDIUM'
+      ELSE 'LOW'
+    END::text as security_risk_level,
+    CASE 
+      WHEN p.permissive = 'PERMISSIVE' AND array_length(p.roles, 1) > 2 THEN 'Review policy - too many roles'
+      WHEN p.permissive = 'PERMISSIVE' AND 'anon' = ANY(p.roles) THEN 'Review anonymous access'
+      WHEN p.permissive = 'PERMISSIVE' THEN 'Review if permissive policy is necessary'
+      WHEN p.qual IS NULL OR p.qual = '' THEN 'Add proper access conditions'
+      ELSE 'Policy appears secure'
+    END::text as recommendation
+  FROM pg_policies p 
+  WHERE p.schemaname = 'public'
+  ORDER BY 
+    CASE 
+      WHEN p.permissive = 'PERMISSIVE' AND 'anon' = ANY(p.roles) THEN 1
+      WHEN p.permissive = 'PERMISSIVE' AND array_length(p.roles, 1) > 2 THEN 2
+      WHEN p.permissive = 'PERMISSIVE' THEN 3
+      ELSE 4
+    END,
+    p.tablename,
+    p.policyname;
+END;
+$$;
+
+-- Grant execute permission on policy review function
+GRANT EXECUTE ON FUNCTION review_permissive_policies() TO authenticated;
+
+-- =====================================================
+-- FIX SPECIFIC PERMISSIVE POLICY ISSUES
+-- =====================================================
+
+-- Check and fix overly permissive policies
+
+-- Fix public view policies to be more restrictive
+DO $$
+DECLARE
+  policy_rec record;
+BEGIN
+  -- Find overly permissive policies for competition_results
+  FOR policy_rec IN 
+    SELECT policyname 
+    FROM pg_policies 
+    WHERE schemaname = 'public' 
+    AND tablename = 'competition_results'
+    AND permissive = 'PERMISSIVE'
+    AND 'anon' = ANY(roles)
+  LOOP
+    -- Review and potentially restrict anonymous access
+    IF policy_rec.policyname = 'public_view_verified_results' THEN
+      -- This policy should allow anonymous access to verified results (for public leaderboards)
+      -- but let's add rate limiting context
+      CONTINUE;
+    END IF;
+    
+    -- Log other anonymous policies for review
+    INSERT INTO audit_logs (
+      user_id, user_email, user_role, action, table_name, record_id, new_data, created_at
+    ) VALUES (
+      null, 'system', 'system', 'SECURITY_REVIEW', 'competition_results', 
+      policy_rec.policyname,
+      jsonb_build_object(
+        'policy_name', policy_rec.policyname,
+        'issue', 'Anonymous access policy requires review',
+        'recommendation', 'Evaluate if anonymous access is necessary'
+      ),
+      now()
+    );
+  END LOOP;
+END $$;
+
+-- =====================================================
+-- SECURE MATERIALIZED VIEW REFRESH FUNCTION
+-- =====================================================
+
+-- Create a more secure version of the refresh function with proper permissions
+CREATE OR REPLACE FUNCTION secure_refresh_leaderboard_stats()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = 'public', 'pg_catalog', 'pg_temp'
+AS $$
+DECLARE
+  refresh_start_time timestamptz;
+  refresh_end_time timestamptz;
+  current_user_membership text;
+  rows_refreshed integer;
+BEGIN
+  refresh_start_time := now();
+  
+  -- Check permissions - only admins can manually refresh
+  SELECT membership_type INTO current_user_membership 
+  FROM users 
+  WHERE id = (SELECT auth.uid());
+  
+  IF current_user_membership != 'admin' THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Only administrators can manually refresh materialized views',
+      'error_code', 'PERMISSION_DENIED'
+    );
+  END IF;
+  
+  BEGIN
+    -- Refresh leaderboard stats materialized view
+    REFRESH MATERIALIZED VIEW mv_leaderboard_stats;
+    
+    -- Get row count
+    SELECT COUNT(*) INTO rows_refreshed FROM mv_leaderboard_stats;
+    
+    -- Refresh organization leaderboard if it exists
+    IF EXISTS (
+      SELECT 1 FROM pg_matviews 
+      WHERE schemaname = 'public' 
+      AND matviewname = 'mv_organization_leaderboard'
+    ) THEN
+      REFRESH MATERIALIZED VIEW mv_organization_leaderboard;
+    END IF;
+    
+    refresh_end_time := now();
+    
+    -- Log the refresh operation
+    INSERT INTO audit_logs (
+      user_id,
+      user_email,
+      user_role,
+      action,
+      table_name,
+      record_id,
+      new_data,
+      created_at
+    ) VALUES (
+      (SELECT auth.uid()),
+      (SELECT email FROM users WHERE id = auth.uid()),
+      current_user_membership,
+      'REFRESH',
+      'materialized_views',
+      'leaderboard_refresh',
+      jsonb_build_object(
+        'refresh_start', refresh_start_time,
+        'refresh_end', refresh_end_time,
+        'duration_ms', EXTRACT(EPOCH FROM (refresh_end_time - refresh_start_time)) * 1000,
+        'rows_refreshed', rows_refreshed,
+        'triggered_by', 'manual_admin_refresh'
+      ),
+      now()
+    );
+    
+    RETURN jsonb_build_object(
+      'success', true,
+      'refresh_start', refresh_start_time,
+      'refresh_end', refresh_end_time,
+      'duration_ms', EXTRACT(EPOCH FROM (refresh_end_time - refresh_start_time)) * 1000,
+      'rows_refreshed', rows_refreshed,
+      'message', 'Materialized views refreshed successfully'
+    );
+    
+  EXCEPTION
+    WHEN OTHERS THEN
+      RETURN jsonb_build_object(
+        'success', false,
+        'error', 'Failed to refresh materialized views: ' || SQLERRM,
+        'error_code', 'REFRESH_ERROR'
+      );
+  END;
+END;
+$$;
+
+-- Grant execute permission on secure refresh function
+GRANT EXECUTE ON FUNCTION secure_refresh_leaderboard_stats() TO authenticated;
+
+-- =====================================================
+-- DATA ACCESS AUDIT FUNCTIONS
+-- =====================================================
+
+-- Function to audit materialized view access patterns
+CREATE OR REPLACE FUNCTION audit_materialized_view_access(
+  p_hours integer DEFAULT 24
+)
+RETURNS TABLE (
+  view_name text,
+  access_count bigint,
+  unique_users bigint,
+  last_access timestamptz,
+  access_pattern jsonb
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+STABLE
+SET search_path = 'public', 'pg_catalog', 'pg_temp'
+AS $$
+BEGIN
+  -- Check admin permissions
+  IF NOT is_admin() THEN
+    RAISE EXCEPTION 'Only administrators can audit materialized view access'
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+  
+  RETURN QUERY
+  WITH view_access AS (
+    SELECT 
+      'mv_leaderboard_stats' as view_name,
+      COUNT(*) as access_count,
+      COUNT(DISTINCT user_id) as unique_users,
+      MAX(created_at) as last_access,
+      jsonb_build_object(
+        'hourly_breakdown', jsonb_object_agg(
+          EXTRACT(HOUR FROM created_at)::text,
+          COUNT(*)
+        )
+      ) as access_pattern
+    FROM audit_logs
+    WHERE table_name LIKE '%leaderboard%'
+      AND action = 'SELECT'
+      AND created_at >= now() - (p_hours || ' hours')::interval
+    
+    UNION ALL
+    
+    SELECT 
+      'mv_organization_leaderboard' as view_name,
+      COUNT(*) as access_count,
+      COUNT(DISTINCT user_id) as unique_users,
+      MAX(created_at) as last_access,
+      jsonb_build_object(
+        'hourly_breakdown', jsonb_object_agg(
+          EXTRACT(HOUR FROM created_at)::text,
+          COUNT(*)
+        )
+      ) as access_pattern
+    FROM audit_logs
+    WHERE table_name LIKE '%organization%'
+      AND action = 'SELECT'
+      AND created_at >= now() - (p_hours || ' hours')::interval
+  )
+  SELECT 
+    va.view_name,
+    va.access_count,
+    va.unique_users,
+    va.last_access,
+    va.access_pattern
+  FROM view_access va
+  WHERE va.access_count > 0
+  ORDER BY va.access_count DESC;
+END;
+$$;
+
+-- Grant execute permission on audit function
+GRANT EXECUTE ON FUNCTION audit_materialized_view_access(integer) TO authenticated;
+
+-- =====================================================
+-- SECURITY VALIDATION FUNCTION
+-- =====================================================
+
+-- Function to validate overall database security posture
+CREATE OR REPLACE FUNCTION validate_database_security()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+STABLE
+SET search_path = 'public', 'pg_catalog', 'pg_temp'
+AS $$
+DECLARE
+  security_report jsonb;
+  function_count integer;
+  policy_count integer;
+  unsecure_function_count integer;
+  risky_policy_count integer;
+  mv_security_status text;
+BEGIN
+  -- Check admin permissions
+  IF NOT is_admin() THEN
+    RAISE EXCEPTION 'Only administrators can validate database security'
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+  
+  -- Count total functions
+  SELECT COUNT(*) INTO function_count
+  FROM pg_proc p
+  JOIN pg_namespace n ON p.pronamespace = n.oid
+  WHERE n.nspname = 'public'
+    AND p.prosecdef = true; -- Security definer functions
+  
+  -- Count functions without search_path protection
+  SELECT COUNT(*) INTO unsecure_function_count
+  FROM pg_proc p
+  JOIN pg_namespace n ON p.pronamespace = n.oid
+  WHERE n.nspname = 'public'
+    AND p.prosecdef = true
+    AND NOT EXISTS (
+      SELECT 1 FROM pg_proc_config pc
+      WHERE pc.proname = p.proname
+      AND pc.proconfig @> ARRAY['search_path=public,pg_catalog,pg_temp']
+    );
+  
+  -- Count total RLS policies
+  SELECT COUNT(*) INTO policy_count
+  FROM pg_policies
+  WHERE schemaname = 'public';
+  
+  -- Count risky policies
+  SELECT COUNT(*) INTO risky_policy_count
+  FROM pg_policies
+  WHERE schemaname = 'public'
+    AND (
+      permissive = 'PERMISSIVE' 
+      AND 'anon' = ANY(roles)
+      OR qual LIKE '%(SELECT auth.uid())%'
+      OR with_check LIKE '%(SELECT auth.uid())%'
+    );
+  
+  -- Check materialized view security
+  IF EXISTS (
+    SELECT 1 FROM information_schema.table_privileges
+    WHERE table_schema = 'public'
+      AND table_name LIKE 'mv_%'
+      AND grantee = 'anon'
+  ) THEN
+    mv_security_status := 'INSECURE';
+  ELSE
+    mv_security_status := 'SECURE';
+  END IF;
+  
+  security_report := jsonb_build_object(
+    'assessment_time', now(),
+    'function_security', jsonb_build_object(
+      'total_functions', function_count,
+      'unsecure_functions', unsecure_function_count,
+      'security_percentage', ROUND((function_count - unsecure_function_count)::numeric / function_count * 100, 2)
+    ),
+    'policy_security', jsonb_build_object(
+      'total_policies', policy_count,
+      'risky_policies', risky_policy_count,
+      'security_percentage', ROUND((policy_count - risky_policy_count)::numeric / policy_count * 100, 2)
+    ),
+    'materialized_view_security', mv_security_status,
+    'overall_security_score', ROUND(
+      (
+        (function_count - unsecure_function_count)::numeric / function_count * 40 +
+        (policy_count - risky_policy_count)::numeric / policy_count * 40 +
+        CASE WHEN mv_security_status = 'SECURE' THEN 20 ELSE 0 END
+      ), 2
+    ),
+    'recommendations', CASE 
+      WHEN unsecure_function_count > 0 OR risky_policy_count > 0 OR mv_security_status = 'INSECURE' THEN
+        jsonb_build_array(
+          CASE WHEN unsecure_function_count > 0 THEN 'Fix function search_path vulnerabilities' END,
+          CASE WHEN risky_policy_count > 0 THEN 'Optimize RLS policy performance and security' END,
+          CASE WHEN mv_security_status = 'INSECURE' THEN 'Secure materialized view access' END
+        )
+      ELSE
+        jsonb_build_array('Security posture is good')
+    END
+  );
+  
+  RETURN security_report;
+END;
+$$;
+
+-- Grant execute permission on security validation function
+GRANT EXECUTE ON FUNCTION validate_database_security() TO authenticated;
+
+-- =====================================================
+-- MIGRATION COMPLETION AND VALIDATION
+-- =====================================================
+
+-- Run initial security validation
+DO $$
+DECLARE
+  validation_results jsonb;
+  policy_review_results jsonb;
+BEGIN
+  -- Get security validation results
+  SELECT validate_database_security() INTO validation_results;
+  
+  -- Get policy review results
+  SELECT jsonb_agg(
+    jsonb_build_object(
+      'table', table_name,
+      'policy', policy_name,
+      'risk_level', security_risk_level,
+      'recommendation', recommendation
+    )
+  ) INTO policy_review_results
+  FROM review_permissive_policies()
+  WHERE security_risk_level IN ('HIGH', 'MEDIUM');
+  
+  -- Log migration completion with validation results
+  INSERT INTO audit_logs (
+    user_id,
+    user_email,
+    user_role,
+    action,
+    table_name,
+    record_id,
+    new_data,
+    created_at
+  ) VALUES (
+    null,
+    'system',
+    'system',
+    'MIGRATION',
+    'materialized_view_security',
+    'security_consolidation',
+    jsonb_build_object(
+      'migration', '20250803_fix_materialized_view_security.sql',
+      'materialized_view_access', 'Restricted to authenticated users only',
+      'secure_wrapper_functions', 'Added get_secure_leaderboard_stats and get_secure_organization_leaderboard',
+      'policy_review', 'Added review_permissive_policies function',
+      'security_validation', validation_results,
+      'policy_review_results', policy_review_results,
+      'audit_functions', 'Added materialized view access auditing',
+      'secure_refresh', 'Created admin-only secure refresh function',
+      'priority', 'MEDIUM_SECURITY',
+      'completed_at', now()
+    ),
+    now()
+  );
+END $$;
+
+-- =====================================================
+-- COMMENTS AND DOCUMENTATION
+-- =====================================================
+
+COMMENT ON FUNCTION get_secure_leaderboard_stats(integer, integer, text) IS 
+'SECURITY: Secure wrapper for mv_leaderboard_stats with authentication and access control';
+
+COMMENT ON FUNCTION get_secure_organization_leaderboard(integer, integer) IS 
+'SECURITY: Secure wrapper for mv_organization_leaderboard with authentication and access control';
+
+COMMENT ON FUNCTION review_permissive_policies() IS 
+'SECURITY: Review and report on permissive RLS policies for security assessment';
+
+COMMENT ON FUNCTION secure_refresh_leaderboard_stats() IS 
+'SECURITY: Admin-only function to securely refresh materialized views with audit logging';
+
+COMMENT ON FUNCTION audit_materialized_view_access(integer) IS 
+'SECURITY: Admin function to audit materialized view access patterns for security monitoring';
+
+COMMENT ON FUNCTION validate_database_security() IS 
+'SECURITY: Comprehensive database security validation with scoring and recommendations';
+
+-- Final security reminder
+DO $$
+BEGIN
+  RAISE NOTICE 'Materialized view security migration completed. Use secure wrapper functions for access.';
+  RAISE NOTICE 'Run SELECT * FROM review_permissive_policies() to review policy security.';
+  RAISE NOTICE 'Run SELECT validate_database_security() for overall security assessment.';
+END $$;

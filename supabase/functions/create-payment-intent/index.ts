@@ -4,22 +4,29 @@ import Stripe from 'https://esm.sh/stripe@14.21.0'
 import { getStripeConfig } from '../_shared/payment-config.ts'
 import { RateLimiter, RateLimitConfigs, createRateLimitHeaders } from '../_shared/rate-limiter.ts'
 import { AuditLogger } from '../_shared/audit-logger.ts'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-}
+import { getCorsHeaders, handleSecureCors } from '../_shared/cors.ts'
+import { EdgeFunctionHeaders, createSecurityMiddleware, addRateLimitHeaders } from '../_shared/security-headers.ts'
 
 
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { 
-      status: 200,
-      headers: corsHeaders 
-    })
+  // Handle CORS preflight requests with enhanced security
+  const corsResponse = handleSecureCors(req);
+  if (corsResponse) {
+    return corsResponse;
   }
+  
+  // Initialize security middleware
+  const securityMiddleware = createSecurityMiddleware();
+  
+  // Validate request security
+  const requestValidation = securityMiddleware.validateRequest(req);
+  if (!requestValidation.valid) {
+    return requestValidation.response!;
+  }
+  
+  // Get secure headers for payment operations
+  const corsHeaders = getCorsHeaders(req);
+  const paymentHeaders = EdgeFunctionHeaders.payment(corsHeaders);
 
   // Initialize rate limiter for payment creation
   const rateLimiter = new RateLimiter(RateLimitConfigs.payment);
@@ -145,17 +152,15 @@ serve(async (req) => {
         ...requestInfo
       });
       
+      const secureHeaders = addRateLimitHeaders(paymentHeaders, rateLimitHeaders);
+      
       return new Response(
         JSON.stringify({ 
           error: 'Too many payment attempts. Please try again later.', 
           retryAfter: rateLimitResult.retryAfter 
         }),
         {
-          headers: { 
-            ...corsHeaders, 
-            ...rateLimitHeaders,
-            'Content-Type': 'application/json' 
-          },
+          headers: secureHeaders,
           status: 429,
         }
       )
@@ -248,20 +253,19 @@ serve(async (req) => {
       ...requestInfo
     });
 
-    return new Response(
-      JSON.stringify({
+    const successHeaders = addRateLimitHeaders(paymentHeaders, rateLimitHeaders);
+    
+    return securityMiddleware.createResponse(
+      {
         client_secret: paymentIntent.client_secret,
         payment_intent_id: paymentIntent.id,
         provider: 'stripe',
         mode: stripeConfig.isTestMode ? 'test' : 'live'
-      }),
+      },
+      corsHeaders,
       {
-        headers: { 
-          ...corsHeaders, 
-          ...rateLimitHeaders,
-          'Content-Type': 'application/json' 
-        },
-        status: 200,
+        sensitiveOperation: true,
+        customHeaders: rateLimitHeaders
       }
     )
 
@@ -282,16 +286,14 @@ serve(async (req) => {
       ...requestInfo
     });
     
+    const errorHeaders = addRateLimitHeaders(paymentHeaders, rateLimitHeaders);
+    
     return new Response(
       JSON.stringify({
         error: error.message || 'Failed to create payment intent'
       }),
       {
-        headers: { 
-          ...corsHeaders, 
-          ...rateLimitHeaders,
-          'Content-Type': 'application/json' 
-        },
+        headers: errorHeaders,
         status: 400,
       }
     )

@@ -270,9 +270,10 @@ class CarAudioEventsMCPServer {
         ORDER BY table_name, ordinal_position
       `;
 
-    const { data, error } = tableName 
-      ? await supabase.rpc('exec_sql', { sql: query, params: [tableName] })
-      : await supabase.rpc('exec_sql', { sql: query });
+    // Use secure function for schema information
+    const { data, error } = await supabase.rpc('get_table_schema_info', { 
+      p_table_name: tableName 
+    });
 
     if (error) {
       throw new Error(`Schema inspection failed: ${error.message}`);
@@ -369,9 +370,10 @@ class CarAudioEventsMCPServer {
         ORDER BY tablename, policyname
       `;
 
-    const { data, error } = tableName
-      ? await supabase.rpc('exec_sql', { sql: query, params: [tableName] })
-      : await supabase.rpc('exec_sql', { sql: query });
+    // Use secure function for RLS policy information
+    const { data, error } = await supabase.rpc('get_rls_policies_info', {
+      p_table_name: tableName
+    });
 
     if (error) {
       throw new Error(`RLS policy check failed: ${error.message}`);
@@ -409,7 +411,8 @@ class CarAudioEventsMCPServer {
       ORDER BY tc.table_name, kcu.column_name
     `;
 
-    const { data, error } = await supabase.rpc('exec_sql', { sql: query });
+    // Use secure function for relationship analysis
+    const { data, error } = await supabase.rpc('get_table_relationships');
 
     if (error) {
       throw new Error(`Relationship analysis failed: ${error.message}`);
@@ -442,7 +445,8 @@ class CarAudioEventsMCPServer {
     console.log('🔓 Read-only mode disabled - allowing all safe operations');
 
     try {
-      const { data, error } = await supabase.rpc('exec_sql', { sql: query });
+      // SECURITY: exec_sql has been removed - use Supabase client methods instead
+      throw new Error('Direct SQL execution not allowed for security. Use Supabase client methods or stored procedures.');
 
       if (error) {
         throw new Error(`Query execution failed: ${error.message}`);
@@ -482,7 +486,8 @@ class CarAudioEventsMCPServer {
 
     try {
       console.log('🔄 Executing SQL commands...');
-      const { data, error } = await supabase.rpc('exec_sql', { sql });
+      // SECURITY: exec_sql has been removed - use safe alternatives
+      throw new Error('Direct SQL execution not allowed for security. Use safe stored procedures instead.');
 
       if (error) {
         console.error('❌ SQL execution failed:', error);
@@ -522,7 +527,8 @@ class CarAudioEventsMCPServer {
       ORDER BY tablename, attname
     `;
 
-    const { data, error } = await supabase.rpc('exec_sql', { sql: query });
+    // SECURITY: Use safe table statistics gathering instead
+    throw new Error('Statistics gathering via exec_sql disabled for security. Use pg_stat_user_tables view instead.');
 
     if (error) {
       throw new Error(`Statistics gathering failed: ${error.message}`);

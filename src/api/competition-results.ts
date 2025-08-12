@@ -8,6 +8,12 @@
 import { supabase } from '../lib/supabase';
 import { AuthMiddleware, type AuthenticatedUser } from '../middleware/auth-middleware';
 import { PermissionGuards, type GuardResult } from '../middleware/permission-guards';
+import { 
+  ResourceAuthorizationMiddleware,
+  type ResourceIdentifier,
+  type ResourceAuthContext
+} from '../middleware/resource-authorization';
+import { IDORProtectionUtils, IdValidators, IDORValidationError } from '../utils/idorProtection';
 // Security validation is handled by backend Edge Functions
 import { RateLimiter, RateLimitConfigs } from '../middleware/rate-limiting';
 import { auditLogger } from '../middleware/audit-security';
@@ -100,6 +106,31 @@ export class CompetitionResultsAPI {
       const authResult = await this.validateAuth(authToken);
       if (!authResult.success || !authResult.user) {
         return this.errorResponse('AUTH_FAILED', authResult.error || 'Authentication failed', 401);
+      }
+
+      // 2. IDOR Protection - Validate user_id if provided
+      if (data.user_id) {
+        const userIdValidation = IdValidators.user(data.user_id);
+        if (!userIdValidation.valid) {
+          throw new IDORValidationError(
+            'Invalid user ID format',
+            userIdValidation,
+            'INVALID_USER_ID'
+          );
+        }
+        data.user_id = userIdValidation.sanitized;
+      }
+
+      // 3. IDOR Protection - Validate event_id
+      if (data.event_id) {
+        const eventIdValidation = IdValidators.event(data.event_id.toString());
+        if (!eventIdValidation.valid) {
+          throw new IDORValidationError(
+            'Invalid event ID format',
+            eventIdValidation,
+            'INVALID_EVENT_ID'
+          );
+        }
       }
       
       const user = authResult.user;
@@ -258,7 +289,18 @@ export class CompetitionResultsAPI {
     const auditId = crypto.randomUUID();
     
     try {
-      // 1. Validate authentication
+      // 1. IDOR Protection - Validate result ID format
+      const idValidation = IdValidators.competitionResult(id);
+      if (!idValidation.valid) {
+        throw new IDORValidationError(
+          'Invalid competition result ID format',
+          idValidation,
+          'INVALID_RESULT_ID'
+        );
+      }
+      const sanitizedId = idValidation.sanitized!;
+
+      // 2. Validate authentication
       const authResult = await this.validateAuth(authToken);
       if (!authResult.success || !authResult.user) {
         return this.errorResponse('AUTH_FAILED', authResult.error || 'Authentication failed', 401);
@@ -266,8 +308,31 @@ export class CompetitionResultsAPI {
       
       const user = authResult.user;
       const ipAddress = '127.0.0.1'; // Default to localhost for API calls
+
+      // 3. IDOR Protection - Resource-level authorization
+      const resource: ResourceIdentifier = {
+        type: 'competition_result',
+        id: sanitizedId
+      };
+
+      const authContext: ResourceAuthContext = {
+        user,
+        ipAddress,
+        userAgent: 'api-client',
+        operation: 'update',
+        timestamp: new Date()
+      };
+
+      const resourceAuth = await ResourceAuthorizationMiddleware.authorize(resource, authContext);
+      if (!resourceAuth.allowed) {
+        return this.errorResponse(
+          'ACCESS_DENIED',
+          resourceAuth.reason || 'Access denied to this competition result',
+          403
+        );
+      }
       
-      // 2. Check rate limits
+      // 4. Check rate limits
       const rateLimitKey = `${user.id}_${ipAddress}`;
       const rateLimitResult = await updateRateLimiter.checkLimit(rateLimitKey);
       
@@ -278,11 +343,9 @@ export class CompetitionResultsAPI {
           429
         );
       }
-      
-      // 3. Validate result ID
-      if (!id || typeof id !== 'string') {
-        return this.errorResponse('INVALID_ID', 'Invalid result ID', 400);
-      }
+
+      // 5. Validate and sanitize updates
+      const sanitizedUpdates = IDORProtectionUtils.createSafeQueryParams(updates);
       
       // 4. Input validation handled by backend stored procedures
       
@@ -419,7 +482,18 @@ export class CompetitionResultsAPI {
     const auditId = crypto.randomUUID();
     
     try {
-      // 1. Validate authentication
+      // 1. IDOR Protection - Validate result ID format
+      const idValidation = IdValidators.competitionResult(id);
+      if (!idValidation.valid) {
+        throw new IDORValidationError(
+          'Invalid competition result ID format',
+          idValidation,
+          'INVALID_RESULT_ID'
+        );
+      }
+      const sanitizedId = idValidation.sanitized!;
+
+      // 2. Validate authentication
       const authResult = await this.validateAuth(authToken);
       if (!authResult.success || !authResult.user) {
         return this.errorResponse('AUTH_FAILED', authResult.error || 'Authentication failed', 401);
@@ -427,8 +501,31 @@ export class CompetitionResultsAPI {
       
       const user = authResult.user;
       const ipAddress = '127.0.0.1'; // Default to localhost for API calls
+
+      // 3. IDOR Protection - Resource-level authorization
+      const resource: ResourceIdentifier = {
+        type: 'competition_result',
+        id: sanitizedId
+      };
+
+      const authContext: ResourceAuthContext = {
+        user,
+        ipAddress,
+        userAgent: 'api-client',
+        operation: 'delete',
+        timestamp: new Date()
+      };
+
+      const resourceAuth = await ResourceAuthorizationMiddleware.authorize(resource, authContext);
+      if (!resourceAuth.allowed) {
+        return this.errorResponse(
+          'ACCESS_DENIED',
+          resourceAuth.reason || 'Access denied to this competition result',
+          403
+        );
+      }
       
-      // 2. Check rate limits (stricter for deletes)
+      // 4. Check rate limits (stricter for deletes)
       const rateLimitKey = `${user.id}_${ipAddress}`;
       const rateLimitResult = await deleteRateLimiter.checkLimit(rateLimitKey);
       
@@ -438,11 +535,6 @@ export class CompetitionResultsAPI {
           `Rate limit exceeded. Try again in ${rateLimitResult.retryAfter} seconds.`,
           429
         );
-      }
-      
-      // 3. Validate result ID
-      if (!id || typeof id !== 'string') {
-        return this.errorResponse('INVALID_ID', 'Invalid result ID', 400);
       }
       
       // 4. Check delete permissions
@@ -463,21 +555,9 @@ export class CompetitionResultsAPI {
         return this.errorResponse('PERMISSION_DENIED', guardResult.reason || 'Permission denied', 403);
       }
       
-      // 5. Call stored procedure with proper type conversion
-      let resultId: any = id;
-      
-      // Convert string UUID to proper type if needed
-      if (typeof id === 'string' && id.length > 10) {
-        resultId = id;
-      } else if (typeof id === 'string') {
-        const parsedId = parseInt(id, 10);
-        if (!isNaN(parsedId)) {
-          resultId = parsedId;
-        }
-      }
-      
+      // 5. Call stored procedure with sanitized ID
       const { data: result, error } = await supabase.rpc('delete_competition_result', {
-        id: resultId // Use 'id' parameter name as defined in the function
+        id: sanitizedId // Use sanitized ID from IDOR validation
       });
       
       if (error) {

@@ -134,17 +134,18 @@ export default function NotificationBell() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-96 bg-gray-800 rounded-lg shadow-xl border border-gray-700 z-50">
+        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-gray-800 rounded-lg shadow-xl border border-gray-700 z-50 max-w-[calc(100vw-2rem)]">
           <div className="p-4 border-b border-gray-700">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-white">Notifications</h3>
-              <div className="flex items-center space-x-2">
+              <h3 className="text-base sm:text-lg font-semibold text-white">Notifications</h3>
+              <div className="flex items-center space-x-2 flex-shrink-0">
                 {unreadCount > 0 && (
                   <button
                     onClick={handleMarkAllAsRead}
-                    className="text-sm text-electric-400 hover:text-electric-300"
+                    className="text-xs sm:text-sm text-electric-400 hover:text-electric-300 whitespace-nowrap"
                   >
-                    Mark all as read
+                    <span className="hidden sm:inline">Mark all as read</span>
+                    <span className="sm:hidden">Mark all</span>
                   </button>
                 )}
                 <button
@@ -176,15 +177,17 @@ export default function NotificationBell() {
                     }`}
                   >
                     <div className="flex items-start space-x-3">
-                      {getNotificationIcon(notification.type)}
+                      <div className="flex-shrink-0">
+                        {getNotificationIcon(notification.type)}
+                      </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-white font-medium">{notification.title}</p>
-                        <p className="text-gray-300 text-sm mt-1">{notification.message}</p>
-                        <div className="flex items-center justify-between mt-2">
-                          <span className="text-xs text-gray-500">
+                        <p className="text-white font-medium text-sm sm:text-base truncate">{notification.title}</p>
+                        <p className="text-gray-300 text-xs sm:text-sm mt-1 line-clamp-2">{notification.message}</p>
+                        <div className="flex items-center justify-between mt-2 gap-2">
+                          <span className="text-xs text-gray-500 flex-shrink-0">
                             {formatTime(notification.created_at)}
                           </span>
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-center space-x-2 flex-shrink-0">
                             <Link
                               to={`/notifications/${notification.id}`}
                               className="text-xs text-electric-400 hover:text-electric-300"
@@ -196,6 +199,7 @@ export default function NotificationBell() {
                               <button
                                 onClick={() => handleMarkAsRead(notification.id)}
                                 className="text-xs text-gray-400 hover:text-white"
+                                title="Mark as read"
                               >
                                 <Check className="h-4 w-4" />
                               </button>

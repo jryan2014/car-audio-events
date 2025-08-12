@@ -1,0 +1,167 @@
+# BMAD Agile Development Workflow
+# Car Audio Events Platform
+
+workflow:
+  name: "Agile AI-Driven Development"
+  version: "1.0.0"
+  
+phases:
+  planning:
+    duration: "2-3 days"
+    agents:
+      - analyst
+      - project_manager
+      - architect
+    deliverables:
+      - product_requirements_document
+      - project_specification
+      - system_architecture
+      - technical_design_document
+    
+  development:
+    duration: "10-11 days"
+    agents:
+      - scrum_master
+      - developer
+      - qa
+    deliverables:
+      - user_stories
+      - implemented_features
+      - test_results
+      - deployment_package
+    
+  review:
+    duration: "1 day"
+    agents:
+      - qa
+      - architect
+      - project_manager
+    deliverables:
+      - quality_report
+      - performance_metrics
+      - retrospective_notes
+      
+sprint_cycle:
+  duration: 14
+  ceremonies:
+    planning:
+      day: 1
+      duration: "4 hours"
+      participants:
+        - product_owner
+        - scrum_master
+        - development_team
+        
+    daily_standup:
+      frequency: "daily"
+      duration: "15 minutes"
+      format: "async_updates"
+      
+    review:
+      day: 13
+      duration: "2 hours"
+      participants:
+        - stakeholders
+        - development_team
+        
+    retrospective:
+      day: 14
+      duration: "1.5 hours"
+      participants:
+        - scrum_master
+        - development_team
+        
+story_template:
+  format: "markdown"
+  sections:
+    - title
+    - user_story
+    - acceptance_criteria
+    - technical_details
+    - dependencies
+    - estimated_effort
+    - implementation_notes
+    - testing_requirements
+    
+context_engineering:
+  enabled: true
+  detail_level: "comprehensive"
+  includes:
+    - business_context
+    - technical_context
+    - architectural_decisions
+    - security_requirements
+    - performance_targets
+    - integration_points
+    
+quality_gates:
+  code_review:
+    required: true
+    reviewers: 1
+    
+  testing:
+    unit_tests: false
+    integration_tests: false
+    manual_testing: true
+    security_scan: true
+    
+  documentation:
+    inline_comments: true
+    api_documentation: true
+    user_guides: true
+    
+  deployment:
+    staging_validation: true
+    production_approval: true
+    rollback_plan: true
+    
+collaboration:
+  communication:
+    primary: "async_messages"
+    channels:
+      - planning_board
+      - development_chat
+      - review_feedback
+      
+  knowledge_sharing:
+    documentation: "continuous"
+    pair_programming: "encouraged"
+    code_reviews: "mandatory"
+    
+  conflict_resolution:
+    technical: "architect_decision"
+    business: "product_owner_decision"
+    process: "scrum_master_facilitation"
+    
+metrics:
+  velocity:
+    measurement: "story_points"
+    tracking: "per_sprint"
+    
+  quality:
+    defect_rate: "< 5%"
+    code_coverage: "N/A"
+    performance: "< 3s_load_time"
+    
+  satisfaction:
+    user_feedback: "collected"
+    team_health: "monitored"
+    stakeholder_nps: "tracked"
+    
+continuous_improvement:
+  retrospectives: "every_sprint"
+  process_refinement: "quarterly"
+  tool_evaluation: "ongoing"
+  training: "as_needed"
+  
+risk_management:
+  identification: "continuous"
+  assessment: "weekly"
+  mitigation: "proactive"
+  contingency: "documented"
+  
+  high_risk_areas:
+    - payment_processing
+    - data_security
+    - performance_scalability
+    - third_party_integrations

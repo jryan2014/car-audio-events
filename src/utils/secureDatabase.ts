@@ -128,49 +128,22 @@ export async function safeDelete(
 }
 
 /**
- * Safe wrapper for exec_sql when absolutely necessary
- * Only use this when Supabase client methods are not available
+ * DEPRECATED: exec_sql function has been removed for security
+ * This function now throws an error to prevent usage
  * 
- * SECURITY WARNING: This function should be avoided whenever possible
- * Use Supabase client methods or stored procedures instead
+ * Use these alternatives instead:
+ * - Supabase client methods (supabase.from().select/insert/update/delete)
+ * - Stored procedures (supabase.rpc())
+ * - safe_table_maintenance() for maintenance operations
  */
 export async function safeExecSQL(
   sqlCommand: string,
   params?: Record<string, any>
 ): Promise<any> {
-  // Log usage for security auditing
-  console.warn('⚠️ exec_sql usage detected - consider using safer alternatives');
-  
-  // Basic SQL injection prevention checks
-  const dangerousPatterns = [
-    /;\s*DROP\s+/i,
-    /;\s*DELETE\s+FROM\s+/i,
-    /;\s*TRUNCATE\s+/i,
-    /;\s*ALTER\s+/i,
-    /;\s*CREATE\s+/i,
-    /--/,
-    /\/\*/,
-    /\*\//,
-    /\bunion\s+select\b/i,
-    /\bor\s+1\s*=\s*1\b/i,
-    /\band\s+1\s*=\s*1\b/i
-  ];
-  
-  for (const pattern of dangerousPatterns) {
-    if (pattern.test(sqlCommand)) {
-      throw new Error('Potentially dangerous SQL pattern detected');
-    }
-  }
-  
-  // If parameters are provided, we should use a stored procedure instead
-  if (params && Object.keys(params).length > 0) {
-    console.error('Parameters provided to exec_sql - this is not safe!');
-    throw new Error('Use stored procedures for parameterized queries');
-  }
-  
-  return await supabase.rpc('exec_sql', {
-    sql_command: sqlCommand
-  });
+  throw new Error(
+    'SECURITY: exec_sql has been removed. Use Supabase client methods or stored procedures instead. ' +
+    'Available secure functions: safe_table_maintenance, get_table_schema_info, get_rls_policies_info, get_table_relationships'
+  );
 }
 
 /**

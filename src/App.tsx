@@ -81,6 +81,7 @@ const SPLCalculatorProtected = React.lazy(() => import('./components/SPLCalculat
 const SubwooferDesigner = React.lazy(() => import('./pages/SubwooferDesigner'));
 const AdminSubwooferDesigner = React.lazy(() => import('./pages/AdminSubwooferDesigner'));
 const VerifyEmail = React.lazy(() => import('./pages/VerifyEmail'));
+const SuggestEvent = React.lazy(() => import('./pages/SuggestEvent'));
 
 // Support Desk components
 const PublicSupportForm = React.lazy(() => import('./modules/support-desk/components/public/PublicSupportForm'));
@@ -171,6 +172,7 @@ function App() {
               <Route path="/dashboard" element={<Layout><ProtectedRoute requireProfileComplete={true}><Dashboard /></ProtectedRoute></Layout>} />
               <Route path="/complete-profile" element={<Layout><CompleteProfile /></Layout>} />
               <Route path="/events" element={<Layout><Events /></Layout>} />
+              <Route path="/events/suggest" element={<Layout><SuggestEvent /></Layout>} />
               <Route path="/events/:id" element={<Layout><EventDetails /></Layout>} />
               <Route path="/profile" element={<Layout><ProtectedRoute requireProfileComplete={true}><Profile /></ProtectedRoute></Layout>} />
               <Route path="/directory" element={<Layout><Directory /></Layout>} />

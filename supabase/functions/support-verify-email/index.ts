@@ -1,10 +1,7 @@
 import { serve } from 'https://deno.land/std@0.131.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+
 
 interface RequestBody {
   email: string
@@ -161,7 +158,7 @@ serve(async (req) => {
 
       return new Response(
         JSON.stringify({ success: true, message: 'Verification email queued successfully' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        { headers: corsHeaders },
       )
 
     } else if (action === 'verify') {
@@ -207,7 +204,7 @@ serve(async (req) => {
 
       return new Response(
         JSON.stringify({ success: true, verified: true, email }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        { headers: corsHeaders },
       )
 
     } else {
@@ -222,7 +219,7 @@ serve(async (req) => {
       }),
       { 
         status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: corsHeaders 
       },
     )
   }

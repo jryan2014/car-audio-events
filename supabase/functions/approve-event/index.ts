@@ -1,10 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-};
+;
 
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight requests
@@ -19,7 +15,7 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({ error: 'Method not allowed' }),
         { 
           status: 405, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: corsHeaders 
         }
       );
     }
@@ -43,7 +39,7 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({ error: 'Missing authorization header' }),
         { 
           status: 401, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: corsHeaders 
         }
       );
     }
@@ -57,7 +53,7 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({ error: 'Invalid or expired token' }),
         { 
           status: 401, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: corsHeaders 
         }
       );
     }
@@ -74,7 +70,7 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({ error: 'Only administrators can approve events' }),
         { 
           status: 403, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: corsHeaders 
         }
       );
     }
@@ -87,7 +83,7 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({ error: 'Event ID is required' }),
         { 
           status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: corsHeaders 
         }
       );
     }
@@ -104,7 +100,7 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({ error: 'Failed to approve event', details: approvalError.message }),
         { 
           status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: corsHeaders 
         }
       );
     }
@@ -128,7 +124,7 @@ Deno.serve(async (req: Request) => {
         event: updatedEvent || null
       }),
       { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: corsHeaders 
       }
     );
 
@@ -138,7 +134,7 @@ Deno.serve(async (req: Request) => {
       JSON.stringify({ error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' }),
       { 
         status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: corsHeaders 
       }
     );
   }

@@ -1,9 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -20,7 +17,7 @@ serve(async (req) => {
           success: false, 
           error: 'Missing required keys' 
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: corsHeaders }
       )
     }
 
@@ -31,7 +28,7 @@ serve(async (req) => {
           success: false, 
           error: 'Invalid publishable key format' 
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: corsHeaders }
       )
     }
 
@@ -41,7 +38,7 @@ serve(async (req) => {
           success: false, 
           error: 'Invalid secret key format' 
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: corsHeaders }
       )
     }
 
@@ -55,7 +52,7 @@ serve(async (req) => {
           success: false, 
           error: 'Test mode enabled but keys appear to be live keys' 
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: corsHeaders }
       )
     }
 
@@ -65,7 +62,7 @@ serve(async (req) => {
           success: false, 
           error: 'Live mode enabled but keys appear to be test keys' 
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: corsHeaders }
       )
     }
 
@@ -74,7 +71,7 @@ serve(async (req) => {
         success: true, 
         message: `Stripe keys validated successfully (${test_mode ? 'test' : 'live'} mode)`
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: corsHeaders }
     )
 
   } catch (error) {
@@ -84,7 +81,7 @@ serve(async (req) => {
         success: false, 
         error: 'Failed to test connection' 
       }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: corsHeaders }
     )
   }
 }) 

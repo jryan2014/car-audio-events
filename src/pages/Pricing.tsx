@@ -51,61 +51,151 @@ export default function Pricing() {
   const handlePlanSelected = async (planId: string, paymentIntentId: string, userInfo?: any) => {
     console.log('Plan selected:', planId, 'Payment:', paymentIntentId, 'User Info:', userInfo);
     
+    // Get the selected plan details
+    const selectedPlanType = getPlanType(planId);
+    
     // Check if user is logged in
     if (!user) {
-      // User not logged in - need to create account with membership
-      if (userInfo && paymentIntentId !== 'free') {
-        // User provided information during payment - create account directly
+      // User not logged in - redirect to registration
+      navigate(`/register?plan=${planId}`);
+      return;
+    }
+    
+    // User is logged in - check their current membership
+    const currentMembership = user.membershipType;
+    const isAdmin = currentMembership === 'admin';
+    
+    // Admins shouldn't see upgrade/downgrade messages
+    if (isAdmin) {
+      // Just navigate to dashboard for admins
+      navigate('/dashboard');
+      return;
+    }
+    
+    // Check if this is a free plan selection
+    if (planId === 'competitor' || paymentIntentId === 'free') {
+      // Check current membership
+      if (currentMembership === 'competitor') {
+        // Already a free member
+        alert('You already have a free Competitor membership.');
+        navigate('/dashboard');
+        return;
+      } else if (currentMembership === 'pro_competitor' || 
+                 currentMembership === 'retailer' || 
+                 currentMembership === 'manufacturer' || 
+                 currentMembership === 'organization') {
+        // Downgrading from paid to free
+        if (confirm('Are you sure you want to downgrade to the free Competitor plan? You will lose your premium features.')) {
+          try {
+            const { error } = await supabase
+              .from('users')
+              .update({
+                membership_type: 'competitor',
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', user.id);
+
+            if (error) throw error;
+            
+            alert('Your membership has been changed to the free Competitor plan.');
+            navigate('/dashboard');
+          } catch (error) {
+            console.error('Error updating membership:', error);
+            alert('Failed to update membership. Please contact support.');
+          }
+        }
+        return;
+      }
+    }
+    
+    // Check if it's a Pro plan selection
+    if (planId === 'pro') {
+      if (currentMembership === 'pro_competitor') {
+        // Already a pro member
+        alert('You already have a Pro Competitor membership.');
+        navigate('/dashboard');
+        return;
+      } else if (currentMembership === 'competitor') {
+        // Upgrading from free to pro
+        if (paymentIntentId === 'demo') {
+          // No Stripe configured - show appropriate message
+          alert('Payment processing will be available soon. Please check back later.');
+          return;
+        }
+        // Process upgrade with payment
         try {
-          // Create user account with the collected information
-          const { data: authData, error: authError } = await supabase.auth.signUp({
-            email: userInfo.email,
-            password: generateTempPassword(), // Generate temporary password
-            options: {
-              data: {
-                name: `${userInfo.firstName} ${userInfo.lastName}`,
-                phone: userInfo.phone,
-                membership_type: getPlanType(planId),
-                billing_address: userInfo.address,
-                payment_intent_id: paymentIntentId
-              }
-            }
-          });
+          const { error } = await supabase
+            .from('users')
+            .update({
+              membership_type: 'pro_competitor',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', user.id);
 
-          if (authError) throw authError;
-
-          // Show success message and redirect
-          alert('Account created successfully! Please check your email to verify your account.');
-          navigate('/login?message=account_created');
+          if (error) throw error;
+          
+          alert('Successfully upgraded to Pro Competitor!');
+          navigate('/dashboard');
         } catch (error) {
-          console.error('Error creating account:', error);
-          alert('Failed to create account. Please try again or contact support.');
+          console.error('Error updating membership:', error);
+          alert('Failed to upgrade membership. Please contact support.');
         }
       } else {
-        // Free plan or no user info - redirect to registration with selected plan
-        navigate(`/register?plan=${planId}`);
+        // Switching from other paid plan to pro
+        if (paymentIntentId === 'demo') {
+          alert('Payment processing will be available soon. Please check back later.');
+          return;
+        }
+        // Process plan change
+        try {
+          const { error } = await supabase
+            .from('users')
+            .update({
+              membership_type: 'pro_competitor',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', user.id);
+
+          if (error) throw error;
+          
+          alert('Successfully changed to Pro Competitor plan!');
+          navigate('/dashboard');
+        } catch (error) {
+          console.error('Error updating membership:', error);
+          alert('Failed to change membership. Please contact support.');
+        }
       }
       return;
     }
     
-    // User is logged in - update their membership
+    // Handle other plan types (business, retailer, manufacturer, organization)
+    if (paymentIntentId === 'demo') {
+      alert('Payment processing will be available soon. Please check back later.');
+      return;
+    }
+    
+    // Process the membership update
     try {
       const { error } = await supabase
         .from('users')
         .update({
-          membership_type: getPlanType(planId),
+          membership_type: selectedPlanType,
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id);
 
       if (error) throw error;
 
-      // Show success message and redirect to dashboard
-      alert('Membership updated successfully!');
+      // Show appropriate message based on current membership
+      if (!currentMembership || currentMembership === 'competitor') {
+        alert(`Successfully upgraded to ${planId.charAt(0).toUpperCase() + planId.slice(1)} plan!`);
+      } else {
+        alert(`Successfully changed to ${planId.charAt(0).toUpperCase() + planId.slice(1)} plan!`);
+      }
       navigate('/dashboard');
     } catch (error) {
       console.error('Error updating membership:', error);
-      alert('Failed to update membership. Please try again or contact support.');
+      alert('Failed to update membership. Please contact support.');
     }
   };
 

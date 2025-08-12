@@ -1,10 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-};
+;
 
 // Simple geocoding function to get coordinates from address
 async function geocodeAddress(address: string, city: string, state: string, country: string = 'US') {
@@ -54,7 +50,7 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({ error: 'Method not allowed' }),
         { 
           status: 405, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: corsHeaders 
         }
       );
     }
@@ -78,7 +74,7 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({ error: 'Missing authorization header' }),
         { 
           status: 401, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: corsHeaders 
         }
       );
     }
@@ -92,7 +88,7 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({ error: 'Invalid or expired token' }),
         { 
           status: 401, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: corsHeaders 
         }
       );
     }
@@ -105,7 +101,7 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({ error: 'Missing event ID' }),
         { 
           status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: corsHeaders 
         }
       );
     }
@@ -122,7 +118,7 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({ error: 'Event not found', details: eventError.message }),
         { 
           status: 404, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: corsHeaders 
         }
       );
     }
@@ -191,7 +187,7 @@ Deno.serve(async (req: Request) => {
             source: 'google_maps_api'
           }),
           { 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            headers: corsHeaders 
           }
         );
       }
@@ -209,7 +205,7 @@ Deno.serve(async (req: Request) => {
         JSON.stringify({ error: 'Failed to update coordinates', details: updateError.message }),
         { 
           status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: corsHeaders 
         }
       );
     }
@@ -249,7 +245,7 @@ Deno.serve(async (req: Request) => {
         result 
       }),
       { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: corsHeaders 
       }
     );
 
@@ -259,7 +255,7 @@ Deno.serve(async (req: Request) => {
       JSON.stringify({ error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' }),
       { 
         status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: corsHeaders 
       }
     );
   }

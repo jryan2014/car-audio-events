@@ -283,43 +283,43 @@ CREATE POLICY "Public read access" ON cms_pages FOR SELECT TO anon, authenticate
 CREATE POLICY "Public read access" ON advertisements FOR SELECT TO anon, authenticated USING (is_active = true);
 
 -- Create policies for authenticated user access
-CREATE POLICY "Users can manage their own data" ON users FOR ALL TO authenticated USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
+CREATE POLICY "Users can manage their own data" ON users FOR ALL TO authenticated USING ((SELECT auth.uid()) = id) WITH CHECK ((SELECT auth.uid()) = id);
 CREATE POLICY "Users can view other users" ON users FOR SELECT TO authenticated USING (true);
 
-CREATE POLICY "Users can manage their own favorites" ON event_favorites FOR ALL TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can manage their own favorites" ON event_favorites FOR ALL TO authenticated USING ((SELECT auth.uid()) = user_id) WITH CHECK ((SELECT auth.uid()) = user_id);
 
-CREATE POLICY "Users can manage their own registrations" ON event_registrations FOR ALL TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can manage their own registrations" ON event_registrations FOR ALL TO authenticated USING ((SELECT auth.uid()) = user_id) WITH CHECK ((SELECT auth.uid()) = user_id);
 
-CREATE POLICY "Users can manage their own audio systems" ON user_audio_systems FOR ALL TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can manage their own audio systems" ON user_audio_systems FOR ALL TO authenticated USING ((SELECT auth.uid()) = user_id) WITH CHECK ((SELECT auth.uid()) = user_id);
 CREATE POLICY "Public can view public audio systems" ON user_audio_systems FOR SELECT TO anon, authenticated USING (is_public = true);
 
 CREATE POLICY "Users can manage their own components" ON audio_components 
 FOR ALL TO authenticated 
 USING (EXISTS (
   SELECT 1 FROM user_audio_systems uas 
-  WHERE uas.id = audio_system_id AND uas.user_id = auth.uid()
+  WHERE uas.id = audio_system_id AND uas.user_id = (SELECT auth.uid())
 ))
 WITH CHECK (EXISTS (
   SELECT 1 FROM user_audio_systems uas 
-  WHERE uas.id = audio_system_id AND uas.user_id = auth.uid()
+  WHERE uas.id = audio_system_id AND uas.user_id = (SELECT auth.uid())
 ));
 
 CREATE POLICY "Users can view competition results" ON competition_results FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Users can manage their own results" ON competition_results FOR ALL TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can manage their own results" ON competition_results FOR ALL TO authenticated USING ((SELECT auth.uid()) = user_id) WITH CHECK ((SELECT auth.uid()) = user_id);
 
-CREATE POLICY "Users can manage their teams" ON teams FOR ALL TO authenticated USING (auth.uid() = owner_id) WITH CHECK (auth.uid() = owner_id);
+CREATE POLICY "Users can manage their teams" ON teams FOR ALL TO authenticated USING ((SELECT auth.uid()) = owner_id) WITH CHECK ((SELECT auth.uid()) = owner_id);
 CREATE POLICY "Public can view public teams" ON teams FOR SELECT TO anon, authenticated USING (is_public = true);
 
-CREATE POLICY "Team members can view their memberships" ON team_members FOR SELECT TO authenticated USING (auth.uid() = user_id);
+CREATE POLICY "Team members can view their memberships" ON team_members FOR SELECT TO authenticated USING ((SELECT auth.uid()) = user_id);
 CREATE POLICY "Team owners can manage memberships" ON team_members 
 FOR ALL TO authenticated 
 USING (EXISTS (
   SELECT 1 FROM teams t 
-  WHERE t.id = team_id AND t.owner_id = auth.uid()
+  WHERE t.id = team_id AND t.owner_id = (SELECT auth.uid())
 ))
 WITH CHECK (EXISTS (
   SELECT 1 FROM teams t 
-  WHERE t.id = team_id AND t.owner_id = auth.uid()
+  WHERE t.id = team_id AND t.owner_id = (SELECT auth.uid())
 ));
 
 -- Insert sample data for categories

@@ -22,18 +22,18 @@ CREATE POLICY "Anyone can view active advertisements" ON public.advertisements
 -- Allow authenticated users to view their own advertisements
 CREATE POLICY "Users can view their own advertisements" ON public.advertisements
     FOR SELECT
-    USING (auth.uid() = created_by);
+    USING ((SELECT auth.uid()) = created_by);
 
 -- Allow authenticated users to insert their own advertisements
 CREATE POLICY "Users can insert their own advertisements" ON public.advertisements
     FOR INSERT
-    WITH CHECK (auth.uid() = created_by);
+    WITH CHECK ((SELECT auth.uid()) = created_by);
 
 -- Allow authenticated users to update their own advertisements
 CREATE POLICY "Users can update their own advertisements" ON public.advertisements
     FOR UPDATE
-    USING (auth.uid() = created_by)
-    WITH CHECK (auth.uid() = created_by);
+    USING ((SELECT auth.uid()) = created_by)
+    WITH CHECK ((SELECT auth.uid()) = created_by);
 
 -- Admin policies for advertisements
 CREATE POLICY "Admins can view all advertisements" ON public.advertisements
@@ -41,7 +41,7 @@ CREATE POLICY "Admins can view all advertisements" ON public.advertisements
     USING (
         EXISTS (
             SELECT 1 FROM users 
-            WHERE users.id = auth.uid() 
+            WHERE users.id = (SELECT auth.uid()) 
             AND users.membership_type = 'admin'
         )
     );
@@ -51,7 +51,7 @@ CREATE POLICY "Admins can update all advertisements" ON public.advertisements
     USING (
         EXISTS (
             SELECT 1 FROM users 
-            WHERE users.id = auth.uid() 
+            WHERE users.id = (SELECT auth.uid()) 
             AND users.membership_type = 'admin'
         )
     );
@@ -61,7 +61,7 @@ CREATE POLICY "Admins can delete advertisements" ON public.advertisements
     USING (
         EXISTS (
             SELECT 1 FROM users 
-            WHERE users.id = auth.uid() 
+            WHERE users.id = (SELECT auth.uid()) 
             AND users.membership_type = 'admin'
         )
     );

@@ -1,0 +1,31 @@
+# MCP-Use Agent Requirements
+# Car Audio Events Platform Integration
+
+# Core MCP-Use SDK
+mcp-use>=0.1.0
+
+# LLM Providers
+langchain-openai>=0.1.0
+langchain-anthropic>=0.1.0
+
+# Core Dependencies
+langchain>=0.1.0
+langchain-core>=0.1.0
+langchain-community>=0.1.0
+
+# Async Support
+aiohttp>=3.9.0
+asyncio>=3.4.3
+
+# Configuration
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+
+# Utilities
+httpx>=0.25.0
+typing-extensions>=4.8.0
+
+# Logging
+colorama>=0.4.6
+rich>=13.0.0

@@ -921,7 +921,7 @@ export default function Dashboard() {
         {activeTab === 'overview' && (
           <>
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4 mb-8">
               <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -986,7 +986,7 @@ export default function Dashboard() {
             </div>
 
             {/* Quick Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
               {quickActions.map((action, index) => (
                 <Link
                   key={index}
@@ -1424,7 +1424,7 @@ export default function Dashboard() {
             {/* Additional Settings Options */}
             <div className="mt-6">
               <h3 className="text-lg font-semibold text-white mb-4">Account Settings</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                 <Link
                   to="/profile?tab=verification"
                   className="bg-gray-700/50 hover:bg-gray-700 transition-colors rounded-lg p-3 flex items-center gap-3"
@@ -1435,7 +1435,7 @@ export default function Dashboard() {
                 </Link>
                 
                 <Link
-                  to="/profile?tab=audio-systems"
+                  to="/profile?tab=system"
                   className="bg-gray-700/50 hover:bg-gray-700 transition-colors rounded-lg p-3 flex items-center gap-3"
                 >
                   <Zap className="h-5 w-5 text-gray-400" />
@@ -1517,7 +1517,7 @@ export default function Dashboard() {
               {/* Performance Summary Section */}
               <div className="mb-8">
                 <h3 className="text-xl font-bold text-white mb-4">Performance Summary</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
                   {/* SPL Performance Chart */}
                   <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-700/50">
                     <h4 className="text-white font-semibold mb-4 flex items-center justify-between">
@@ -1740,7 +1740,7 @@ export default function Dashboard() {
                 <h3 className="text-xl font-bold text-white mb-4">Competition History</h3>
                 {competitionResults.length > 0 ? (
                   <div className="overflow-x-auto">
-                    <table className="w-full">
+                    <table className="w-full min-w-[600px]">
                       <thead>
                         <tr className="text-left border-b border-gray-700">
                           <th className="py-3 text-gray-400 font-medium">Event</th>
@@ -1857,7 +1857,7 @@ export default function Dashboard() {
               
               {subscription ? (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div>
                       <p className="text-gray-400 text-sm mb-1">Plan</p>
                       <p className="text-white text-lg font-semibold capitalize">
@@ -1911,7 +1911,7 @@ export default function Dashboard() {
             </div>
 
             {/* Quick Billing Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <Link
                 to="/billing#payment-methods"
                 className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 hover:border-electric-500/50 transition-colors"
@@ -2227,7 +2227,7 @@ export default function Dashboard() {
                   </div>
 
                   {/* Results */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
                     <div>
                       <label className="block text-sm font-medium text-gray-300 mb-2">
                         Score

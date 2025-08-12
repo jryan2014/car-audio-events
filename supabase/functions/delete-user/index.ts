@@ -1,17 +1,18 @@
 // Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+  // Handle CORS preflight requests
+  const corsResponse = handleCors(req);
+  if (corsResponse) {
+    return corsResponse;
   }
+  
+  // Get secure CORS headers for this request
+  const corsHeaders = getCorsHeaders(req);
 
   try {
     // Get the authorization header
@@ -92,7 +93,7 @@ Deno.serve(async (req) => {
         message: 'User completely deleted from system' 
       }),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: corsHeaders,
         status: 200,
       }
     )
@@ -104,7 +105,7 @@ Deno.serve(async (req) => {
         error: error.message 
       }),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: corsHeaders,
         status: error.message === 'Unauthorized' || error.message === 'Only admins can delete users' ? 403 : 400,
       }
     )

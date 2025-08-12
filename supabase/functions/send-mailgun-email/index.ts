@@ -2,11 +2,7 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 // CORS headers defined inline to avoid import issues
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'OPTIONS, POST, GET',
-}
+
 
 interface EmailRequest {
   to: string
@@ -113,7 +109,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ success: false, error: `Email sending failed: ${errorText}` }),
         {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: corsHeaders,
           status: 500,
         }
       )
@@ -148,7 +144,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ success: true, message: 'Email sent successfully', messageId: result.id }),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: corsHeaders,
       }
     )
 
@@ -157,7 +153,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ success: false, error: error.message || String(error) }),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: corsHeaders,
         status: 500,
       }
     )

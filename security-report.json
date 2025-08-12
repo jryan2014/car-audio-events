@@ -1,0 +1,154 @@
+{
+  "timestamp": "2025-08-11T15:11:16.440Z",
+  "config": {
+    "auditLevel": "moderate",
+    "autoFix": true,
+    "scanSecrets": true,
+    "preCommitHooks": true,
+    "dependabotEnabled": true,
+    "githubActionsEnabled": true
+  },
+  "nodeVersion": "v22.16.0",
+  "npmVersion": "10.9.2",
+  "vulnerabilities": {
+    "auditReportVersion": 2,
+    "vulnerabilities": {},
+    "metadata": {
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "dependencies": {
+        "prod": 317,
+        "dev": 616,
+        "optional": 48,
+        "peer": 0,
+        "peerOptional": 0,
+        "total": 933
+      }
+    }
+  },
+  "outdatedPackages": {
+    "@modelcontextprotocol/sdk": {
+      "current": "0.5.0",
+      "wanted": "0.5.0",
+      "latest": "1.17.2",
+      "dependent": "car-audio-events",
+      "location": "E:\\2025-car-audio-events\\car-audio-events\\node_modules\\@modelcontextprotocol\\sdk"
+    },
+    "@stripe/stripe-js": {
+      "current": "2.4.0",
+      "wanted": "2.4.0",
+      "latest": "7.8.0",
+      "dependent": "car-audio-events",
+      "location": "E:\\2025-car-audio-events\\car-audio-events\\node_modules\\@stripe\\stripe-js"
+    },
+    "@types/node": {
+      "current": "20.19.10",
+      "wanted": "20.19.10",
+      "latest": "24.2.1",
+      "dependent": "car-audio-events",
+      "location": "E:\\2025-car-audio-events\\car-audio-events\\node_modules\\@types\\node"
+    },
+    "@types/react": {
+      "current": "18.3.23",
+      "wanted": "18.3.23",
+      "latest": "19.1.9",
+      "dependent": "car-audio-events",
+      "location": "E:\\2025-car-audio-events\\car-audio-events\\node_modules\\@types\\react"
+    },
+    "@types/react-dom": {
+      "current": "18.3.7",
+      "wanted": "18.3.7",
+      "latest": "19.1.7",
+      "dependent": "car-audio-events",
+      "location": "E:\\2025-car-audio-events\\car-audio-events\\node_modules\\@types\\react-dom"
+    },
+    "@vitejs/plugin-legacy": {
+      "current": "6.1.1",
+      "wanted": "6.1.1",
+      "latest": "7.2.1",
+      "dependent": "car-audio-events",
+      "location": "E:\\2025-car-audio-events\\car-audio-events\\node_modules\\@vitejs\\plugin-legacy"
+    },
+    "@vitejs/plugin-react": {
+      "current": "4.7.0",
+      "wanted": "4.7.0",
+      "latest": "5.0.0",
+      "dependent": "car-audio-events",
+      "location": "E:\\2025-car-audio-events\\car-audio-events\\node_modules\\@vitejs\\plugin-react"
+    },
+    "dotenv": {
+      "current": "16.6.1",
+      "wanted": "16.6.1",
+      "latest": "17.2.1",
+      "dependent": "car-audio-events",
+      "location": "E:\\2025-car-audio-events\\car-audio-events\\node_modules\\dotenv"
+    },
+    "globals": {
+      "current": "15.15.0",
+      "wanted": "15.15.0",
+      "latest": "16.3.0",
+      "dependent": "car-audio-events",
+      "location": "E:\\2025-car-audio-events\\car-audio-events\\node_modules\\globals"
+    },
+    "react": {
+      "current": "18.3.1",
+      "wanted": "18.3.1",
+      "latest": "19.1.1",
+      "dependent": "car-audio-events",
+      "location": "E:\\2025-car-audio-events\\car-audio-events\\node_modules\\react"
+    },
+    "react-dom": {
+      "current": "18.3.1",
+      "wanted": "18.3.1",
+      "latest": "19.1.1",
+      "dependent": "car-audio-events",
+      "location": "E:\\2025-car-audio-events\\car-audio-events\\node_modules\\react-dom"
+    },
+    "react-router-dom": {
+      "current": "6.30.1",
+      "wanted": "6.30.1",
+      "latest": "7.8.0",
+      "dependent": "car-audio-events",
+      "location": "E:\\2025-car-audio-events\\car-audio-events\\node_modules\\react-router-dom"
+    },
+    "tailwindcss": {
+      "current": "3.4.17",
+      "wanted": "3.4.17",
+      "latest": "4.1.11",
+      "dependent": "car-audio-events",
+      "location": "E:\\2025-car-audio-events\\car-audio-events\\node_modules\\tailwindcss"
+    },
+    "vite": {
+      "current": "6.3.5",
+      "wanted": "6.3.5",
+      "latest": "7.1.1",
+      "dependent": "car-audio-events",
+      "location": "E:\\2025-car-audio-events\\car-audio-events\\node_modules\\vite"
+    },
+    "zod": {
+      "current": "3.25.76",
+      "wanted": "3.25.76",
+      "latest": "4.0.17",
+      "dependent": "car-audio-events",
+      "location": "E:\\2025-car-audio-events\\car-audio-events\\node_modules\\zod"
+    }
+  },
+  "recommendations": [
+    "Run security scans regularly (weekly minimum)",
+    "Keep dependencies updated to latest secure versions",
+    "Monitor security advisories for used packages",
+    "Use npm audit before deployment",
+    "Enable GitHub security alerts",
+    "Review and rotate API keys periodically",
+    "Use environment variables for sensitive configuration",
+    "Enable pre-commit hooks for secret detection",
+    "Configure Dependabot for automated security updates",
+    "Monitor build logs for security warnings"
+  ]
+}

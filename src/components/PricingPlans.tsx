@@ -235,8 +235,11 @@ export default function PricingPlans({ onPlanSelected, type, preLoadedPlans }: P
                              import.meta.env.VITE_SUPABASE_URL;
       
       if (!hasStripeConfig) {
-        // Show demo message instead of payment form
-        alert(`Demo Mode: This would upgrade you to ${plan.name} for $${plan.price}/${plan.period}. Payment integration requires Stripe configuration.`);
+        // For paid plans without Stripe, just call the callback
+        // Let the parent component handle the logic
+        if (onPlanSelected) {
+          onPlanSelected(planId, 'demo', undefined);
+        }
         return;
       }
       
@@ -307,11 +310,11 @@ export default function PricingPlans({ onPlanSelected, type, preLoadedPlans }: P
 
   return (
     <>
-      {/* Demo Mode Banner */}
-      {isDemoMode && (
+      {/* Demo Mode Banner - Only show to admins */}
+      {isDemoMode && window.location.hostname === 'localhost' && (
         <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 mb-8 text-center">
           <p className="text-yellow-400 text-sm">
-            <strong>Demo Mode:</strong> Payment processing is not configured. Free plans work normally.
+            <strong>Dev Mode:</strong> Payment processing is not configured. Testing mode active.
           </p>
         </div>
       )}

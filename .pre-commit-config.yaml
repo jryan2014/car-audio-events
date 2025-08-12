@@ -1,0 +1,118 @@
+# Pre-commit hooks for Car Audio Events Platform
+# Install with: pip install pre-commit && pre-commit install
+
+repos:
+  # Secret Detection - CRITICAL SECURITY CHECK
+  - repo: local
+    hooks:
+      - id: secret-detection
+        name: 🔍 Secret Detection Scanner
+        entry: npm run scan-secrets -- --staged-only
+        language: system
+        always_run: false
+        stages: [commit]
+        verbose: true
+        
+  # TypeScript/JavaScript Linting
+  - repo: local
+    hooks:
+      - id: typescript-check
+        name: 🔧 TypeScript Type Check
+        entry: npm run type-check
+        language: system
+        files: \.(ts|tsx)$
+        
+  - repo: local
+    hooks:
+      - id: eslint
+        name: 🧹 ESLint
+        entry: npm run lint:fix
+        language: system
+        files: \.(ts|tsx|js|jsx)$
+        
+  # Security Focused Checks
+  - repo: local
+    hooks:
+      - id: env-file-check
+        name: 🔐 Environment File Security Check
+        entry: bash -c 'if git diff --cached --name-only | grep -E "\.env$|\.env\.local$|\.env\.production$"; then echo "❌ .env files should not be committed!" && exit 1; fi'
+        language: system
+        always_run: true
+        
+  - repo: local
+    hooks:
+      - id: package-lock-check
+        name: 📦 Package Lock Security Check
+        entry: bash -c 'if [ -f "package-lock.json" ] && ! npm audit --audit-level=moderate --dry-run > /dev/null 2>&1; then echo "⚠️ npm audit found vulnerabilities. Run: npm audit fix" && npm audit --audit-level=moderate; fi'
+        language: system
+        files: package-lock\.json$
+        
+  # File Size and Content Checks
+  - repo: pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+        exclude: '\.pdf$|\.zip$|\.tar\.gz$'
+        
+      - id: check-case-conflict
+      - id: check-json
+      - id: check-yaml
+      - id: check-toml
+      - id: check-xml
+      
+      - id: detect-private-key
+        name: 🔑 Private Key Detection
+        
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+        
+  # Additional Security Patterns
+  - repo: local
+    hooks:
+      - id: hardcoded-secrets
+        name: 🚨 Hardcoded Secrets Pattern Check
+        entry: bash -c 'git diff --cached --name-only | xargs grep -l -E "(password|secret|key|token).*(=|:).*([\"\']).*\4" || true | while read file; do echo "⚠️ Potential hardcoded secret in $file"; done'
+        language: system
+        always_run: false
+        
+  - repo: local
+    hooks:
+      - id: vite-service-key-check
+        name: 🛡️ VITE Service Key Exposure Check
+        entry: bash -c 'if git diff --cached | grep -q "VITE_.*SERVICE_ROLE_KEY\|VITE_.*SECRET"; then echo "❌ CRITICAL: Service keys/secrets exposed with VITE_ prefix!" && exit 1; fi'
+        language: system
+        always_run: true
+        
+  # Build and Test Checks (Optional)
+  - repo: local
+    hooks:
+      - id: build-check
+        name: 🏗️ Build Check
+        entry: npm run build
+        language: system
+        always_run: false
+        stages: [push]
+        
+# Global Configuration
+default_language_version:
+  node: system
+
+# Hook execution settings
+fail_fast: true
+minimum_pre_commit_version: 2.15.0
+
+# Exclude patterns for all hooks
+exclude: |
+  (?x)^(
+    .*\.min\.(js|css)$|
+    .*\.bundle\.(js|css)$|
+    node_modules/.*|
+    dist/.*|
+    build/.*|
+    \.git/.*|
+    \.backup/.*|
+    logs/.*|
+    coverage/.*
+  )$

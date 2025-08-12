@@ -4,6 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS'
 }
 
 serve(async (req) => {
@@ -26,7 +27,7 @@ serve(async (req) => {
         JSON.stringify({ error: 'Missing authorization header' }),
         { 
           status: 401, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: corsHeaders 
         }
       )
     }
@@ -41,7 +42,7 @@ serve(async (req) => {
         JSON.stringify({ error: 'Invalid or expired token' }),
         { 
           status: 401, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: corsHeaders 
         }
       )
     }
@@ -61,7 +62,7 @@ serve(async (req) => {
           JSON.stringify({ error: 'Admin access required' }),
           { 
             status: 403, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            headers: corsHeaders 
           }
         )
       }
@@ -74,7 +75,7 @@ serve(async (req) => {
         JSON.stringify({ error: 'Invalid keys data' }),
         { 
           status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: corsHeaders 
         }
       )
     }
@@ -82,21 +83,35 @@ serve(async (req) => {
     // Try to update admin_settings table, create if it doesn't exist
     const updates = []
     
-    // First, try to create the table if it doesn't exist
-    await supabaseClient.rpc('exec_sql', {
-      sql: `
-        CREATE TABLE IF NOT EXISTS admin_settings (
-          id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-          key_name VARCHAR(255) UNIQUE NOT NULL,
-          key_value TEXT,
-          is_sensitive BOOLEAN DEFAULT false,
-          description TEXT,
-          updated_by UUID REFERENCES users(id),
-          updated_at TIMESTAMPTZ DEFAULT NOW(),
-          created_at TIMESTAMPTZ DEFAULT NOW()
-        );
-      `
-    })
+    // SECURITY: exec_sql removed - table should be created via migration
+    // Check if table exists first, then guide user to create it properly
+    const { data: tableCheck, error: tableError } = await supabaseClient
+      .from('admin_settings')
+      .select('id')
+      .limit(1)
+    
+    if (tableError && tableError.message.includes('relation "admin_settings" does not exist')) {
+      return new Response(
+        JSON.stringify({
+          error: 'admin_settings table does not exist',
+          message: 'Please create the admin_settings table via database migration first',
+          sql: `CREATE TABLE IF NOT EXISTS admin_settings (
+            id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+            key_name VARCHAR(255) UNIQUE NOT NULL,
+            key_value TEXT,
+            is_sensitive BOOLEAN DEFAULT false,
+            description TEXT,
+            updated_by UUID REFERENCES users(id),
+            updated_at TIMESTAMPTZ DEFAULT NOW(),
+            created_at TIMESTAMPTZ DEFAULT NOW()
+          );`
+        }),
+        {
+          status: 500,
+          headers: corsHeaders
+        }
+      )
+    }
     
     for (const [key, value] of Object.entries(keys)) {
       if (value !== undefined && value !== null && value !== '') {
@@ -118,7 +133,7 @@ serve(async (req) => {
             JSON.stringify({ error: `Failed to update ${key}: ${error.message}` }),
             { 
               status: 500, 
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+              headers: corsHeaders 
             }
           )
         }
@@ -143,7 +158,7 @@ serve(async (req) => {
         updated_keys: updates 
       }),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: corsHeaders,
       }
     )
 
@@ -153,7 +168,7 @@ serve(async (req) => {
       JSON.stringify({ error: 'Internal server error' }),
       { 
         status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: corsHeaders 
       }
     )
   }

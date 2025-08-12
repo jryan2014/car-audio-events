@@ -1,0 +1,64 @@
+version: 2
+updates:
+  # Enable version updates for npm
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "jryan2014"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    groups:
+      # Group React ecosystem updates
+      react:
+        patterns:
+          - "react*"
+          - "@types/react*"
+      # Group Radix UI updates
+      radix:
+        patterns:
+          - "@radix-ui/*"
+      # Group development dependencies
+      dev-dependencies:
+        dependency-type: "development"
+        patterns:
+          - "@types/*"
+          - "eslint*"
+          - "@eslint/*"
+          - "typescript*"
+          - "vite*"
+          - "@vitejs/*"
+      # Group security updates for immediate attention
+      security:
+        patterns:
+          - "*"
+        update-types:
+          - "security"
+    # Auto-merge minor and patch updates for dev dependencies
+    labels:
+      - "dependencies"
+      - "automated"
+    target-branch: "main"
+    # Allow Dependabot to update lockfile only
+    versioning-strategy: "lockfile-only"
+
+  # Enable security updates for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    labels:
+      - "ci/cd"
+      - "automated"

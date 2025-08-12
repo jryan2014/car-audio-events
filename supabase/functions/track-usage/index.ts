@@ -1,10 +1,7 @@
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+
 
 interface UsageTrackingRequest {
   userId: string;
@@ -42,7 +39,7 @@ serve(async (req) => {
         }),
         { 
           status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: corsHeaders 
         }
       )
     }
@@ -62,7 +59,7 @@ serve(async (req) => {
         }),
         { 
           status: 404, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: corsHeaders 
         }
       )
     }
@@ -82,7 +79,7 @@ serve(async (req) => {
         }),
         { 
           status: 404, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: corsHeaders 
         }
       )
     }
@@ -104,7 +101,7 @@ serve(async (req) => {
           }),
           { 
             status: 404, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            headers: corsHeaders 
           }
         )
       }
@@ -161,7 +158,7 @@ serve(async (req) => {
           total_usage: newUsageCount,
           message: 'Usage updated successfully' 
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: corsHeaders }
       )
     } else {
       // Create new usage record
@@ -200,7 +197,7 @@ serve(async (req) => {
           total_usage: usageCount,
           message: 'Usage tracked successfully' 
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { headers: corsHeaders }
       )
     }
 
@@ -213,7 +210,7 @@ serve(async (req) => {
       }),
       { 
         status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: corsHeaders 
       }
     )
   }

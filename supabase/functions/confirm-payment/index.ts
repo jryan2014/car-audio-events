@@ -1,12 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Stripe from 'https://esm.sh/stripe@14.21.0'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-}
+import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
 
 interface PaymentConfig {
   mode: 'test' | 'live';
@@ -104,12 +99,13 @@ function getEnvironmentStripeConfig(): { secretKey: string; isTestMode: boolean;
 
 serve(async (req) => {
   // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { 
-      status: 200,
-      headers: corsHeaders 
-    })
+  const corsResponse = handleCors(req);
+  if (corsResponse) {
+    return corsResponse;
   }
+  
+  // Get secure CORS headers for this request
+  const corsHeaders = getCorsHeaders(req);
 
   try {
     // Get Supabase client
@@ -216,7 +212,7 @@ serve(async (req) => {
           }
         }),
         {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: corsHeaders,
           status: 200,
         }
       )
@@ -228,7 +224,7 @@ serve(async (req) => {
           message: 'Payment not completed'
         }),
         {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: corsHeaders,
           status: 400,
         }
       )

@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "car-audio-events": {
+      "command": "python",
+      "args": ["mcp-server/main.py"],
+      "env": {
+        "MCP_HOST": "localhost",
+        "MCP_PORT": "8000",
+        "MCP_API_TOKEN": "car-audio-events-mcp-token"
+      },
+      "metadata": {
+        "name": "Car Audio Events MCP Server",
+        "description": "FastAPI MCP server for Car Audio Events Platform",
+        "version": "1.0.0"
+      }
+    }
+  }
+}
