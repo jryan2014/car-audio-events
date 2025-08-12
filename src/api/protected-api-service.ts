@@ -150,8 +150,7 @@ export class ProtectedAPIService {
         data: userData,
         auditId: requestId,
         metadata: {
-          resourceAuth: authResult,
-          fieldsReturned: selectFields.split(', ')
+          resourceAuth: authResult
         }
       };
       
@@ -283,8 +282,7 @@ export class ProtectedAPIService {
         data: updatedUser,
         auditId: requestId,
         metadata: {
-          resourceAuth: authResult,
-          updatedFields: Object.keys(filteredUpdates)
+          resourceAuth: authResult
         }
       };
       
@@ -555,7 +553,7 @@ export class ProtectedAPIService {
         userId: context.user.id,
         action: 'bulk_authorization_check',
         resource: 'multiple',
-        result: 'completed',
+        result: 'allowed' as const,
         details: {
           totalRequested: resources.length,
           authorized: authorized.length,

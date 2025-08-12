@@ -448,15 +448,12 @@ class CarAudioEventsMCPServer {
       // SECURITY: exec_sql has been removed - use Supabase client methods instead
       throw new Error('Direct SQL execution not allowed for security. Use Supabase client methods or stored procedures.');
 
-      if (error) {
-        throw new Error(`Query execution failed: ${error.message}`);
-      }
-
+      // Code removed for security - direct SQL execution disabled
       return {
         content: [
           {
             type: 'text',
-            text: `📊 Query Results:\n\n${JSON.stringify(data, null, 2)}`
+            text: `📊 Query Results:\n\nDirect SQL execution disabled for security`
           }
         ]
       };
@@ -489,18 +486,14 @@ class CarAudioEventsMCPServer {
       // SECURITY: exec_sql has been removed - use safe alternatives
       throw new Error('Direct SQL execution not allowed for security. Use safe stored procedures instead.');
 
-      if (error) {
-        console.error('❌ SQL execution failed:', error);
-        throw new Error(`SQL execution failed: ${error.message}`);
-      }
-
-      console.log('✅ SQL executed successfully!');
+      // Code removed for security - direct SQL execution disabled
+      console.log('✅ SQL execution disabled for security!');
       
       return {
         content: [
           {
             type: 'text',
-            text: `✅ SQL Execution Successful!\n\nPurpose: ${purpose}\n\nSQL Executed:\n${sql}\n\nResult: ${JSON.stringify(data, null, 2)}\n\n🔒 All safety protocols maintained during execution.`
+            text: `✅ SQL Execution Disabled!\n\nPurpose: ${purpose}\n\nSQL Execution has been disabled for security reasons.\n\n🔒 All safety protocols maintained.`
           }
         ]
       };
@@ -530,15 +523,12 @@ class CarAudioEventsMCPServer {
     // SECURITY: Use safe table statistics gathering instead
     throw new Error('Statistics gathering via exec_sql disabled for security. Use pg_stat_user_tables view instead.');
 
-    if (error) {
-      throw new Error(`Statistics gathering failed: ${error.message}`);
-    }
-
+    // Code removed for security - statistics gathering disabled
     return {
       content: [
         {
           type: 'text',
-          text: `📊 Database Statistics:\n\n${JSON.stringify(data, null, 2)}`
+          text: `📊 Database Statistics:\n\nStatistics gathering disabled for security`
         }
       ]
     };
