@@ -53,3 +53,4 @@ backup-*
 
 # Local Netlify folder
 .netlify
+.bmad-temp/
