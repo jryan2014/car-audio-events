@@ -47,6 +47,7 @@ class SecretScanner {
   private patterns: SecretPattern[];
   private excludePatterns: RegExp[];
   private excludeDirectories: string[];
+  private secretsIgnorePatterns: string[];
   private maxFileSize: number = 10 * 1024 * 1024; // 10MB
 
   constructor() {
@@ -65,6 +66,28 @@ class SecretScanner {
       'tmp',
       'temp'
     ];
+    this.secretsIgnorePatterns = this.loadSecretsIgnore();
+  }
+
+  /**
+   * Load patterns from .secretsignore file
+   */
+  private loadSecretsIgnore(): string[] {
+    const ignorePath = path.join(process.cwd(), '.secretsignore');
+    if (!fs.existsSync(ignorePath)) {
+      return [];
+    }
+
+    try {
+      const content = fs.readFileSync(ignorePath, 'utf-8');
+      return content
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line && !line.startsWith('#'));
+    } catch (error) {
+      console.warn('⚠️  Could not read .secretsignore file:', error);
+      return [];
+    }
   }
 
   /**
@@ -356,6 +379,30 @@ class SecretScanner {
   }
 
   private shouldExcludeFile(filePath: string, includeTests: boolean): boolean {
+    // Normalize file path for matching
+    const normalizedPath = filePath.replace(/\\/g, '/');
+    
+    // Check .secretsignore patterns
+    for (const pattern of this.secretsIgnorePatterns) {
+      // Check for exact file match
+      if (normalizedPath.endsWith(pattern) || normalizedPath === pattern) {
+        return true;
+      }
+      
+      // Check for glob patterns
+      if (pattern.includes('*')) {
+        const regex = new RegExp(pattern.replace(/\*/g, '.*').replace(/\./g, '\\.'), 'i');
+        if (regex.test(normalizedPath)) {
+          return true;
+        }
+      }
+      
+      // Check if file is in an ignored directory
+      if (normalizedPath.includes(`/${pattern}/`) || normalizedPath.includes(pattern)) {
+        return true;
+      }
+    }
+    
     // Check directory exclusions
     if (this.excludeDirectories.some(dir => filePath.includes(`/${dir}/`) || filePath.includes(`\\${dir}\\`))) {
       return true;
