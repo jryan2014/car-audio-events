@@ -1,6 +1,7 @@
 import React, { useEffect, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
+import { Toaster } from 'react-hot-toast';
 import Layout from './components/Layout';
 import AdminLayout from './components/AdminLayout';
 import { AuthProvider } from './contexts/AuthContext';
@@ -20,6 +21,11 @@ const Dashboard = React.lazy(() => import('./pages/Dashboard'));
 const Events = React.lazy(() => import('./pages/Events'));
 const EventDetails = React.lazy(() => import('./pages/EventDetails'));
 const Profile = React.lazy(() => import('./pages/Profile'));
+const MemberProfileSettings = React.lazy(() => import('./pages/MemberProfileSettings'));
+const MemberDirectory = React.lazy(() => import('./pages/MemberDirectory'));
+const MemberProfile = React.lazy(() => import('./pages/MemberProfile'));
+const PublicMemberDirectory = React.lazy(() => import('./pages/PublicMemberDirectory'));
+const PublicMemberProfile = React.lazy(() => import('./pages/PublicMemberProfile'));
 const Directory = React.lazy(() => import('./pages/Directory'));
 const Resources = React.lazy(() => import('./pages/Resources'));
 const Login = React.lazy(() => import('./pages/Login'));
@@ -34,6 +40,7 @@ const ResetPassword = React.lazy(() => import('./pages/ResetPassword'));
 const AdminSettings = React.lazy(() => import('./pages/AdminSettings'));
 const AdminUsers = React.lazy(() => import('./pages/AdminUsers'));
 const AdminMembership = React.lazy(() => import('./pages/AdminMembership'));
+const AdminMemberProfiles = React.lazy(() => import('./pages/AdminMemberProfiles'));
 const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
 const AdminEvents = React.lazy(() => import('./pages/AdminEvents'));
 const AdminTeams = React.lazy(() => import('./pages/AdminTeams'));
@@ -78,8 +85,10 @@ const Leaderboard = React.lazy(() => import('./pages/Leaderboard'));
 const AdminLeaderboardManager = React.lazy(() => import('./components/AdminLeaderboardManager'));
 const SPLCalculator = React.lazy(() => import('./pages/SPLCalculator'));
 const SPLCalculatorProtected = React.lazy(() => import('./components/SPLCalculatorProtected').then(module => ({ default: module.SPLCalculatorProtected })));
+const AudioSystemDesigner = React.lazy(() => import('./pages/AudioSystemDesigner'));
 const SubwooferDesigner = React.lazy(() => import('./pages/SubwooferDesigner'));
 const AdminSubwooferDesigner = React.lazy(() => import('./pages/AdminSubwooferDesigner'));
+const AudioDiagramEditorPage = React.lazy(() => import('./pages/AudioDiagramEditorPage'));
 const VerifyEmail = React.lazy(() => import('./pages/VerifyEmail'));
 const SuggestEvent = React.lazy(() => import('./pages/SuggestEvent'));
 
@@ -91,11 +100,13 @@ const SupportDashboard = React.lazy(() => import('./modules/support-desk/compone
 const AdminSupportDashboard = React.lazy(() => import('./modules/support-desk/components/admin/AdminSupportDashboard'));
 const OrgSupportDashboard = React.lazy(() => import('./modules/support-desk/components/organization/OrgSupportDashboard'));
 
+// Import the audio-themed LoadingSpinner
+import LoadingSpinnerComponent from './components/LoadingSpinner';
+
 // Loading component for Suspense fallback
 const LoadingSpinner = () => (
   <div className="flex items-center justify-center min-h-[200px]">
-    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-    <span className="ml-3 text-gray-600">Loading...</span>
+    <LoadingSpinnerComponent variant="speaker" message="Loading..." />
   </div>
 );
 
@@ -165,6 +176,15 @@ function App() {
           >
             <ScrollToTop />
             <ImpersonationBanner />
+            <Toaster 
+              position="top-right"
+              toastOptions={{
+                style: {
+                  background: '#1f2937',
+                  color: '#fff',
+                },
+              }}
+            />
             <Suspense fallback={<LoadingSpinner />}>
               <Routes>
               {/* Routes with Layout wrapper */}
@@ -175,6 +195,11 @@ function App() {
               <Route path="/events/suggest" element={<Layout><SuggestEvent /></Layout>} />
               <Route path="/events/:id" element={<Layout><EventDetails /></Layout>} />
               <Route path="/profile" element={<Layout><ProtectedRoute requireProfileComplete={true}><Profile /></ProtectedRoute></Layout>} />
+              <Route path="/member-profile-settings" element={<Layout><ProtectedRoute requireProfileComplete={true}><MemberProfileSettings /></ProtectedRoute></Layout>} />
+              <Route path="/members" element={<Layout><ProtectedRoute requireProfileComplete={true}><MemberDirectory /></ProtectedRoute></Layout>} />
+              <Route path="/member/:userId" element={<Layout><ProtectedRoute requireProfileComplete={true}><MemberProfile /></ProtectedRoute></Layout>} />
+              <Route path="/public-directory" element={<Layout><PublicMemberDirectory /></Layout>} />
+              <Route path="/public-profile/:userId" element={<Layout><PublicMemberProfile /></Layout>} />
               <Route path="/directory" element={<Layout><Directory /></Layout>} />
               <Route path="/resources" element={<Layout><Resources /></Layout>} />
               <Route path="/search" element={<Layout><SearchResults /></Layout>} />
@@ -215,6 +240,8 @@ function App() {
               <Route path="/newsletter/unsubscribe/:token" element={<Layout><NewsletterUnsubscribe /></Layout>} />
               <Route path="/leaderboard" element={<Layout><Leaderboard /></Layout>} />
               <Route path="/spl-calculator" element={<Layout><SPLCalculatorProtected><SPLCalculator /></SPLCalculatorProtected></Layout>} />
+              <Route path="/audio-system-designer" element={<Layout><AudioSystemDesigner /></Layout>} />
+              <Route path="/audio-system/diagram-editor" element={<Layout><ProtectedRoute requireProfileComplete={true}><AudioDiagramEditorPage /></ProtectedRoute></Layout>} />
               <Route path="/subwoofer-designer" element={<Layout><ProtectedRoute><SubwooferDesigner /></ProtectedRoute></Layout>} />
               
               {/* Billing routes with their own layout */}
@@ -228,6 +255,7 @@ function App() {
               <Route path="/admin/users/:userId" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><UserDetails /></Suspense></AdminLayout>} />
               <Route path="/admin/users/:userId/edit" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><EditUser /></Suspense></AdminLayout>} />
               <Route path="/admin/membership" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminMembership /></Suspense></AdminLayout>} />
+              <Route path="/admin/member-profiles" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminMemberProfiles /></Suspense></AdminLayout>} />
               <Route path="/admin/events" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminEvents /></Suspense></AdminLayout>} />
               <Route path="/admin/teams" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminTeams /></Suspense></AdminLayout>} />
               <Route path="/admin/competition-results" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminLeaderboardManager /></Suspense></AdminLayout>} />

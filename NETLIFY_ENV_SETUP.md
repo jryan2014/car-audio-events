@@ -13,7 +13,7 @@ The following environment variables need to be configured in your Netlify dashbo
    - Description: Your Supabase anonymous key (public)
 
 3. **VITE_GOOGLE_MAPS_API_KEY**
-   - Value: `AIzaSyBYMbq6u4tmOJKRnLww28MGe-7QOGmhjyM`
+   - Value: `[REDACTED - Use environment variable VITE_GOOGLE_MAPS_API_KEY]`
    - Description: Google Maps API key (remember to restrict to your domain in production)
 
 4. **VITE_HCAPTCHA_SITE_KEY**
@@ -24,7 +24,7 @@ The following environment variables need to be configured in your Netlify dashbo
 
 1. Go to your Netlify dashboard
 2. Select your site
-3. Go to Site Settings ’ Environment variables
+3. Go to Site Settings ï¿½ Environment variables
 4. Click "Add a variable"
 5. For each variable:
    - Add the key (e.g., `VITE_SUPABASE_URL`)

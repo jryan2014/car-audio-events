@@ -14,6 +14,7 @@ import { ServiceWorkerManager } from '../components/ServiceWorkerManager';
 import { ActivityLogger } from '../utils/activityLogger';
 import { activityLogger } from '../services/activityLogger';
 import { getMembershipDisplayName } from '../utils/membershipUtils';
+import { hasDirectoryAccess } from '../utils/membershipChecks';
 import SavedEvents from '../components/SavedEvents';
 import { billingService, Subscription } from '../services/billingService';
 import { formatDate } from '../utils/date-utils';
@@ -201,6 +202,8 @@ export default function Dashboard() {
     notes: ''
   });
 
+  const hasProfileAccess = hasDirectoryAccess(user?.membershipType);
+
   const quickActions: QuickAction[] = [
     {
       title: 'Browse Events',
@@ -230,6 +233,14 @@ export default function Dashboard() {
       icon: Volume2,
       link: '/subwoofer-designer',
       color: 'purple'
+    }] : []),
+    // Conditionally include Member Profile for paid members
+    ...(hasProfileAccess ? [{
+      title: 'Member Profile',
+      description: 'Manage your public profile',
+      icon: Users,
+      link: '/member-profile-settings',
+      color: 'electric'
     }] : []),
     {
       title: 'Support Desk',
@@ -266,6 +277,17 @@ export default function Dashboard() {
       }
     }
   }, [user, authLoading, searchParams, setSearchParams]);
+
+  // Handle tab parameter for direct navigation to specific tabs
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && ['overview', 'profile', 'competitions', 'billing', 'audio-system'].includes(tab)) {
+      setActiveTab(tab as 'overview' | 'profile' | 'competitions' | 'billing' | 'audio-system');
+      // Clear the tab parameter to clean up URL
+      searchParams.delete('tab');
+      setSearchParams(searchParams);
+    }
+  }, [searchParams, setSearchParams]);
 
   const handleSaveProfile = async () => {
     if (!user) return;
@@ -791,7 +813,8 @@ export default function Dashboard() {
       purple: 'from-purple-500/20 to-purple-600/20 border-purple-500/30 hover:from-purple-500/30 hover:to-purple-600/30',
       green: 'from-green-500/20 to-green-600/20 border-green-500/30 hover:from-green-500/30 hover:to-green-600/30',
       orange: 'from-orange-500/20 to-orange-600/20 border-orange-500/30 hover:from-orange-500/30 hover:to-orange-600/30',
-      yellow: 'from-yellow-500/20 to-yellow-600/20 border-yellow-500/30 hover:from-yellow-500/30 hover:to-yellow-600/30'
+      yellow: 'from-yellow-500/20 to-yellow-600/20 border-yellow-500/30 hover:from-yellow-500/30 hover:to-yellow-600/30',
+      electric: 'from-electric-500/20 to-electric-600/20 border-electric-500/30 hover:from-electric-500/30 hover:to-electric-600/30'
     };
     return colors[color as keyof typeof colors] || colors.blue;
   };
@@ -1449,6 +1472,15 @@ export default function Dashboard() {
                 >
                   <Heart className="h-5 w-5 text-gray-400" />
                   <span className="text-gray-300">Saved Events</span>
+                  <ChevronRight className="h-4 w-4 text-gray-500 ml-auto" />
+                </Link>
+                
+                <Link
+                  to="/member-profile-settings"
+                  className="bg-gray-700/50 hover:bg-gray-700 transition-colors rounded-lg p-3 flex items-center gap-3"
+                >
+                  <User className="h-5 w-5 text-gray-400" />
+                  <span className="text-gray-300">Member Directory</span>
                   <ChevronRight className="h-4 w-4 text-gray-500 ml-auto" />
                 </Link>
                 

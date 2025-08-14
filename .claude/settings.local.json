@@ -100,7 +100,7 @@
       "mcp__playwright__browser_tab_list",
       "mcp__playwright__browser_tab_new",
       "Bash(psql:*)",
-      "Bash(set SUPABASE_ACCESS_TOKEN=sbp_1c13a87b3d24e7ceefec1bb66cc3ce7ef8ab4b81)",
+      "Bash(set SUPABASE_ACCESS_TOKEN=[REDACTED - Use environment variable SUPABASE_ACCESS_TOKEN])",
       "WebFetch(domain:mecacaraudio.com)",
       "WebFetch(domain:iasca.com)",
       "WebFetch(domain:www.termpro.com)",
@@ -120,9 +120,24 @@
       "Bash(npm view:*)",
       "Bash(yamllint:*)",
       "mcp__supabase__list_migrations",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(for file in 001_competition_results_security.sql 002_audit_logging_system.sql 003_competition_crud_functions.sql)",
+      "Bash(do if [ -f \"$file\" ])",
+      "Bash(then mv \"$file\" \"$file.skip\")",
+      "Bash(done)",
+      "Bash(for file in 004_validation_functions.sql 005_performance_indexes.sql 006_fix_competition_crud_uuid.sql)",
+      "Bash(for:*)",
+      "mcp__supabase__get_anon_key",
+      "Bash(sed:*)",
+      "WebSearch",
+      "mcp__playwright__browser_tab_select",
+      "WebFetch(domain:caraudioevent.com)",
+      "Bash(npm outdated:*)",
+      "Bash(gh repo view:*)",
+      "Bash(gh repo edit:*)"
     ],
-    "deny": []
+    "deny": [],
+    "defaultMode": "acceptEdits"
   },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [

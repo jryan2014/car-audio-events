@@ -2,95 +2,84 @@ import DOMPurify from 'dompurify';
 
 /**
  * Sanitizes HTML content to prevent XSS attacks
- * @param html - The HTML string to sanitize
- * @param options - Optional configuration for specific use cases
- * @returns Sanitized HTML string
- */
-export function sanitizeHTML(
-  html: string,
-  options?: {
-    allowedTags?: string[];
-    allowedAttributes?: string[];
-    allowIframes?: boolean;
-  }
-): string {
-  const defaultConfig = {
-    ALLOWED_TAGS: [
-      'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-      'p', 'br', 'hr',
-      'strong', 'em', 'u', 's', 'mark', 'b', 'i',
-      'ul', 'ol', 'li',
-      'a', 'img',
-      'blockquote', 'code', 'pre',
-      'table', 'thead', 'tbody', 'tr', 'th', 'td',
-      'div', 'span'
-    ],
-    ALLOWED_ATTR: [
-      'href', 'target', 'rel', 'title', 'alt', 'src',
-      'class', 'style', 'id',
-      'width', 'height',
-      'colspan', 'rowspan'
-    ],
-    ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
-    ADD_ATTR: ['target'], // Allow target attribute for links
-    FORBID_TAGS: ['script', 'style', 'object', 'embed', 'form', 'input', 'iframe'],
-    FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur']
-  };
-
-  // Apply custom options if provided
-  if (options?.allowedTags) {
-    defaultConfig.ALLOWED_TAGS = options.allowedTags;
-  }
-  if (options?.allowedAttributes) {
-    defaultConfig.ALLOWED_ATTR = options.allowedAttributes;
-  }
-  if (options?.allowIframes) {
-    // Remove iframe from forbidden tags if explicitly allowed
-    defaultConfig.FORBID_TAGS = defaultConfig.FORBID_TAGS?.filter(tag => tag !== 'iframe');
-    defaultConfig.ALLOWED_TAGS?.push('iframe');
-    defaultConfig.ALLOWED_ATTR?.push('frameborder', 'allowfullscreen');
-  }
-
-  return DOMPurify.sanitize(html, defaultConfig) as string;
-}
-
-/**
- * Sanitizes HTML for email templates (more permissive)
- * @param html - The HTML string to sanitize
- * @returns Sanitized HTML string suitable for emails
+ * This is a security-enhanced version that removes dangerous elements and attributes
  */
 export function sanitizeEmailHTML(html: string): string {
-  return sanitizeHTML(html, {
-    allowedTags: [
-      'html', 'head', 'body', 'meta', 'title',
-      'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-      'p', 'br', 'hr',
-      'strong', 'em', 'u', 's', 'mark', 'b', 'i',
-      'ul', 'ol', 'li',
-      'a', 'img',
-      'blockquote', 'code', 'pre',
-      'table', 'thead', 'tbody', 'tr', 'th', 'td',
-      'div', 'span',
-      'center', 'font' // Legacy email tags
+  if (!html) return '';
+  
+  // Configure DOMPurify with strict settings for email content
+  const config = {
+    ALLOWED_TAGS: [
+      'a', 'b', 'blockquote', 'br', 'code', 'div', 'em', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+      'hr', 'i', 'li', 'ol', 'p', 'pre', 'strong', 'table', 'tbody', 'td', 'th', 'thead', 'tr', 'ul',
+      'span', 'img', 'u', 's', 'strike', 'sub', 'sup'
     ],
-    allowedAttributes: [
-      'href', 'target', 'rel', 'title', 'alt', 'src',
-      'class', 'style', 'id',
-      'width', 'height',
-      'colspan', 'rowspan',
-      'align', 'valign', 'bgcolor', 'color', // Legacy email attributes
-      'cellpadding', 'cellspacing', 'border'
-    ]
-  });
+    ALLOWED_ATTR: [
+      'href', 'title', 'style', 'class', 'id', 'target', 'rel', 'alt', 'src', 'width', 'height',
+      'align', 'valign', 'bgcolor', 'color', 'face', 'size'
+    ],
+    ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/i,
+    KEEP_CONTENT: true,
+    ALLOW_DATA_ATTR: false,
+    ALLOW_UNKNOWN_PROTOCOLS: false,
+    SAFE_FOR_TEMPLATES: true,
+    SANITIZE_DOM: true,
+    FORCE_BODY: true,
+    RETURN_DOM: false,
+    RETURN_DOM_FRAGMENT: false,
+    RETURN_TRUSTED_TYPE: false
+  };
+
+  // Additional security: Remove script tags and event handlers
+  let sanitized = DOMPurify.sanitize(html, config);
+  
+  // Remove any remaining script-like content
+  sanitized = sanitized.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  sanitized = sanitized.replace(/on\w+\s*=\s*"[^"]*"/gi, '');
+  sanitized = sanitized.replace(/on\w+\s*=\s*'[^']*'/gi, '');
+  sanitized = sanitized.replace(/javascript:/gi, '');
+  sanitized = sanitized.replace(/vbscript:/gi, '');
+  
+  return sanitized;
 }
 
 /**
- * Strips all HTML tags and returns plain text
- * @param html - The HTML string to strip
- * @returns Plain text string
+ * Sanitizes user input for display in text contexts
  */
-export function stripHTML(html: string): string {
-  const tmp = document.createElement('DIV');
-  tmp.innerHTML = html;
-  return tmp.textContent || tmp.innerText || '';
+export function sanitizeText(text: string): string {
+  if (!text) return '';
+  
+  // HTML encode special characters
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+    .replace(/\//g, '&#x2F;');
+}
+
+/**
+ * Validates and sanitizes URLs
+ */
+export function sanitizeURL(url: string): string {
+  if (!url) return '';
+  
+  // Only allow http, https, and mailto protocols
+  const allowedProtocols = ['http:', 'https:', 'mailto:'];
+  
+  try {
+    const parsed = new URL(url);
+    if (!allowedProtocols.includes(parsed.protocol)) {
+      return '';
+    }
+    return url;
+  } catch {
+    // If URL parsing fails, treat as relative URL
+    // Ensure no javascript: or data: protocols
+    if (url.match(/^(javascript|data|vbscript):/i)) {
+      return '';
+    }
+    return url;
+  }
 }

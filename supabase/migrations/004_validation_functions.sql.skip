@@ -1,0 +1,554 @@
+-- =====================================================
+-- 004_VALIDATION_FUNCTIONS.SQL
+-- =====================================================
+-- Migration: Data Validation Functions and Constraints
+-- Purpose: Create comprehensive validation system for competition results
+-- Dependencies: 001-003 previous migrations
+-- Author: Backend Architect Agent
+-- Date: 2025-08-02
+-- =====================================================
+
+-- =====================================================
+-- VALIDATION FUNCTIONS
+-- =====================================================
+
+-- Function to validate score based on category
+CREATE OR REPLACE FUNCTION validate_score(
+  score numeric,
+  category text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+IMMUTABLE
+AS $$
+DECLARE
+  min_score numeric := 0;
+  max_score numeric := 200; -- Default maximum
+  validation_errors text[] := '{}';
+BEGIN
+  -- Category-specific score validation
+  CASE category
+    WHEN 'SPL (Sound Pressure Level)' THEN
+      min_score := 80;   -- Minimum realistic SPL
+      max_score := 180;  -- Maximum realistic SPL
+    WHEN 'SQ (Sound Quality)' THEN
+      min_score := 0;
+      max_score := 100;  -- SQ typically scored 0-100
+    WHEN 'Install Quality' THEN
+      min_score := 0;
+      max_score := 100;  -- Install quality typically 0-100
+    WHEN 'Bass Race' THEN
+      min_score := 0;
+      max_score := 200;  -- Bass race can have higher scores
+    WHEN 'Demo' THEN
+      min_score := 0;
+      max_score := 100;  -- Demo typically 0-100
+    ELSE
+      -- Unknown category, use defaults
+      min_score := 0;
+      max_score := 200;
+  END CASE;
+  
+  -- Validate score range
+  IF score IS NOT NULL THEN
+    IF score < min_score THEN
+      validation_errors := array_append(validation_errors, 
+        format('Score %.2f is below minimum %.2f for category %s', score, min_score, category));
+    END IF;
+    
+    IF score > max_score THEN
+      validation_errors := array_append(validation_errors, 
+        format('Score %.2f exceeds maximum %.2f for category %s', score, max_score, category));
+    END IF;
+  END IF;
+  
+  RETURN jsonb_build_object(
+    'is_valid', cardinality(validation_errors) = 0,
+    'errors', validation_errors,
+    'valid_range', jsonb_build_object('min', min_score, 'max', max_score)
+  );
+END;
+$$;
+
+-- Function to validate placement against total participants
+CREATE OR REPLACE FUNCTION validate_placement(
+  placement integer,
+  total_participants integer
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+IMMUTABLE
+AS $$
+DECLARE
+  validation_errors text[] := '{}';
+BEGIN
+  -- Validate placement
+  IF placement IS NOT NULL THEN
+    IF placement < 1 THEN
+      validation_errors := array_append(validation_errors, 'Placement must be positive');
+    END IF;
+    
+    IF total_participants IS NOT NULL AND placement > total_participants THEN
+      validation_errors := array_append(validation_errors, 
+        format('Placement %s cannot exceed total participants %s', placement, total_participants));
+    END IF;
+  END IF;
+  
+  -- Validate total participants
+  IF total_participants IS NOT NULL AND total_participants < 1 THEN
+    validation_errors := array_append(validation_errors, 'Total participants must be positive');
+  END IF;
+  
+  RETURN jsonb_build_object(
+    'is_valid', cardinality(validation_errors) = 0,
+    'errors', validation_errors
+  );
+END;
+$$;
+
+-- Function to validate points based on placement and category
+CREATE OR REPLACE FUNCTION validate_points(
+  points integer,
+  placement integer,
+  category text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+IMMUTABLE
+AS $$
+DECLARE
+  max_points integer := 100; -- Default maximum points
+  expected_points integer;
+  validation_errors text[] := '{}';
+  point_tolerance integer := 10; -- Allow some flexibility
+BEGIN
+  -- Category-specific point maximums
+  CASE category
+    WHEN 'SPL (Sound Pressure Level)' THEN max_points := 100;
+    WHEN 'SQ (Sound Quality)' THEN max_points := 100;
+    WHEN 'Install Quality' THEN max_points := 100;
+    WHEN 'Bass Race' THEN max_points := 150;
+    WHEN 'Demo' THEN max_points := 75;
+    ELSE max_points := 100;
+  END CASE;
+  
+  -- Basic points validation
+  IF points IS NOT NULL THEN
+    IF points < 0 THEN
+      validation_errors := array_append(validation_errors, 'Points must be non-negative');
+    END IF;
+    
+    IF points > max_points THEN
+      validation_errors := array_append(validation_errors, 
+        format('Points %s exceed maximum %s for category %s', points, max_points, category));
+    END IF;
+    
+    -- Placement-based points validation (general rule: higher placement = more points)
+    IF placement IS NOT NULL THEN
+      CASE placement
+        WHEN 1 THEN expected_points := max_points;
+        WHEN 2 THEN expected_points := max_points * 0.8;
+        WHEN 3 THEN expected_points := max_points * 0.6;
+        ELSE expected_points := max_points * 0.4;
+      END CASE;
+      
+      -- Allow some tolerance for different scoring systems
+      IF abs(points - expected_points) > point_tolerance AND placement <= 3 THEN
+        validation_errors := array_append(validation_errors, 
+          format('Points %s may be inconsistent with placement %s (expected around %s)', 
+                 points, placement, expected_points));
+      END IF;
+    END IF;
+  END IF;
+  
+  RETURN jsonb_build_object(
+    'is_valid', cardinality(validation_errors) = 0,
+    'errors', validation_errors,
+    'expected_points', expected_points,
+    'max_points', max_points
+  );
+END;
+$$;
+
+-- Function to check for duplicate entries
+CREATE OR REPLACE FUNCTION check_duplicate_entry(
+  p_user_id uuid,
+  p_event_id integer,
+  p_category text,
+  p_division_id text DEFAULT NULL,
+  p_class_id text DEFAULT NULL,
+  p_exclude_id bigint DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+AS $$
+DECLARE
+  duplicate_count integer := 0;
+  duplicate_record record;
+  validation_errors text[] := '{}';
+BEGIN
+  -- Check for exact duplicates (same user, event, category, division, class)
+  SELECT COUNT(*), 
+         (SELECT cr FROM competition_results cr 
+          WHERE cr.user_id = p_user_id 
+            AND cr.event_id = p_event_id 
+            AND cr.category = p_category
+            AND (p_division_id IS NULL OR cr.division_id = p_division_id)
+            AND (p_class_id IS NULL OR cr.class_id = p_class_id)
+            AND (p_exclude_id IS NULL OR cr.id != p_exclude_id)
+          LIMIT 1) as sample_record
+  INTO duplicate_count, duplicate_record
+  FROM competition_results cr
+  WHERE cr.user_id = p_user_id 
+    AND cr.event_id = p_event_id 
+    AND cr.category = p_category
+    AND (p_division_id IS NULL OR cr.division_id = p_division_id)
+    AND (p_class_id IS NULL OR cr.class_id = p_class_id)
+    AND (p_exclude_id IS NULL OR cr.id != p_exclude_id);
+  
+  IF duplicate_count > 0 THEN
+    validation_errors := array_append(validation_errors, 
+      format('Duplicate entry found: user already has a result for this event/category/division/class (ID: %s)', 
+             duplicate_record.id));
+  END IF;
+  
+  RETURN jsonb_build_object(
+    'is_valid', cardinality(validation_errors) = 0,
+    'errors', validation_errors,
+    'duplicate_count', duplicate_count,
+    'duplicate_record', CASE WHEN duplicate_count > 0 THEN to_jsonb(duplicate_record) ELSE null END
+  );
+END;
+$$;
+
+-- Function to validate event date against result date
+CREATE OR REPLACE FUNCTION validate_event_date(
+  p_event_id integer,
+  p_result_date date
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+AS $$
+DECLARE
+  event_start_date date;
+  event_end_date date;
+  validation_errors text[] := '{}';
+BEGIN
+  -- Get event dates
+  SELECT start_date, end_date 
+  INTO event_start_date, event_end_date
+  FROM events 
+  WHERE id = p_event_id;
+  
+  IF NOT FOUND THEN
+    validation_errors := array_append(validation_errors, 'Event not found');
+    RETURN jsonb_build_object(
+      'is_valid', false,
+      'errors', validation_errors
+    );
+  END IF;
+  
+  -- Validate result date is within event date range
+  IF p_result_date IS NOT NULL THEN
+    IF p_result_date < event_start_date THEN
+      validation_errors := array_append(validation_errors, 
+        format('Result date %s is before event start date %s', p_result_date, event_start_date));
+    END IF;
+    
+    IF event_end_date IS NOT NULL AND p_result_date > event_end_date THEN
+      validation_errors := array_append(validation_errors, 
+        format('Result date %s is after event end date %s', p_result_date, event_end_date));
+    END IF;
+    
+    -- Allow results to be entered up to 30 days after event
+    IF p_result_date > COALESCE(event_end_date, event_start_date) + interval '30 days' THEN
+      validation_errors := array_append(validation_errors, 
+        'Result date is more than 30 days after event - please contact admin');
+    END IF;
+  END IF;
+  
+  RETURN jsonb_build_object(
+    'is_valid', cardinality(validation_errors) = 0,
+    'errors', validation_errors,
+    'event_start_date', event_start_date,
+    'event_end_date', event_end_date
+  );
+END;
+$$;
+
+-- Comprehensive validation function for competition results
+CREATE OR REPLACE FUNCTION validate_competition_result_data(
+  data jsonb,
+  exclude_id bigint DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+AS $$
+DECLARE
+  score_validation jsonb;
+  placement_validation jsonb;
+  points_validation jsonb;
+  duplicate_validation jsonb;
+  date_validation jsonb;
+  all_errors text[] := '{}';
+  all_warnings text[] := '{}';
+  
+  -- Extract fields
+  p_user_id uuid := (data->>'user_id')::uuid;
+  p_event_id integer := (data->>'event_id')::integer;
+  p_category text := data->>'category';
+  p_division_id text := data->>'division_id';
+  p_class_id text := data->>'class_id';
+  p_score numeric := (data->>'score')::numeric;
+  p_placement integer := (data->>'placement')::integer;
+  p_total_participants integer := (data->>'total_participants')::integer;
+  p_points_earned integer := (data->>'points_earned')::integer;
+  p_event_date date := (data->>'event_date')::date;
+BEGIN
+  -- Validate score
+  IF p_score IS NOT NULL AND p_category IS NOT NULL THEN
+    score_validation := validate_score(p_score, p_category);
+    IF NOT (score_validation->>'is_valid')::boolean THEN
+      all_errors := all_errors || (score_validation->'errors')::text[];
+    END IF;
+  END IF;
+  
+  -- Validate placement
+  placement_validation := validate_placement(p_placement, p_total_participants);
+  IF NOT (placement_validation->>'is_valid')::boolean THEN
+    all_errors := all_errors || (placement_validation->'errors')::text[];
+  END IF;
+  
+  -- Validate points
+  IF p_points_earned IS NOT NULL AND p_placement IS NOT NULL AND p_category IS NOT NULL THEN
+    points_validation := validate_points(p_points_earned, p_placement, p_category);
+    IF NOT (points_validation->>'is_valid')::boolean THEN
+      all_warnings := all_warnings || (points_validation->'errors')::text[];
+    END IF;
+  END IF;
+  
+  -- Check for duplicates
+  IF p_user_id IS NOT NULL AND p_event_id IS NOT NULL AND p_category IS NOT NULL THEN
+    duplicate_validation := check_duplicate_entry(
+      p_user_id, p_event_id, p_category, p_division_id, p_class_id, exclude_id
+    );
+    IF NOT (duplicate_validation->>'is_valid')::boolean THEN
+      all_errors := all_errors || (duplicate_validation->'errors')::text[];
+    END IF;
+  END IF;
+  
+  -- Validate event date
+  IF p_event_id IS NOT NULL AND p_event_date IS NOT NULL THEN
+    date_validation := validate_event_date(p_event_id, p_event_date);
+    IF NOT (date_validation->>'is_valid')::boolean THEN
+      all_errors := all_errors || (date_validation->'errors')::text[];
+    END IF;
+  END IF;
+  
+  RETURN jsonb_build_object(
+    'is_valid', cardinality(all_errors) = 0,
+    'errors', all_errors,
+    'warnings', all_warnings,
+    'validations', jsonb_build_object(
+      'score', score_validation,
+      'placement', placement_validation,
+      'points', points_validation,
+      'duplicate', duplicate_validation,
+      'date', date_validation
+    )
+  );
+END;
+$$;
+
+-- =====================================================
+-- CHECK CONSTRAINTS ON COMPETITION_RESULTS TABLE
+-- =====================================================
+
+-- Add check constraints to enforce data integrity at the database level
+
+-- Ensure valid placement values
+ALTER TABLE competition_results 
+DROP CONSTRAINT IF EXISTS check_placement_positive;
+
+ALTER TABLE competition_results 
+ADD CONSTRAINT check_placement_positive 
+CHECK (placement IS NULL OR placement > 0);
+
+-- Ensure valid points
+ALTER TABLE competition_results 
+DROP CONSTRAINT IF EXISTS check_points_non_negative;
+
+ALTER TABLE competition_results 
+ADD CONSTRAINT check_points_non_negative 
+CHECK (points_earned >= 0);
+
+-- Ensure valid scores
+ALTER TABLE competition_results 
+DROP CONSTRAINT IF EXISTS check_score_non_negative;
+
+ALTER TABLE competition_results 
+ADD CONSTRAINT check_score_non_negative 
+CHECK (score IS NULL OR score >= 0);
+
+-- Ensure valid participant counts
+ALTER TABLE competition_results 
+DROP CONSTRAINT IF EXISTS check_participants_positive;
+
+ALTER TABLE competition_results 
+ADD CONSTRAINT check_participants_positive 
+CHECK (total_participants IS NULL OR total_participants > 0);
+
+-- Logical constraint: placement cannot exceed total participants
+ALTER TABLE competition_results 
+DROP CONSTRAINT IF EXISTS check_placement_within_participants;
+
+ALTER TABLE competition_results 
+ADD CONSTRAINT check_placement_within_participants 
+CHECK (
+  placement IS NULL 
+  OR total_participants IS NULL 
+  OR placement <= total_participants
+);
+
+-- Ensure valid category values
+ALTER TABLE competition_results 
+DROP CONSTRAINT IF EXISTS check_valid_category;
+
+ALTER TABLE competition_results 
+ADD CONSTRAINT check_valid_category 
+CHECK (
+  category IN (
+    'SPL (Sound Pressure Level)',
+    'SQ (Sound Quality)',
+    'Install Quality',
+    'Bass Race',
+    'Demo'
+  )
+);
+
+-- Ensure vehicle year is reasonable
+ALTER TABLE competition_results 
+DROP CONSTRAINT IF EXISTS check_reasonable_vehicle_year;
+
+ALTER TABLE competition_results 
+ADD CONSTRAINT check_reasonable_vehicle_year 
+CHECK (
+  vehicle_year IS NULL 
+  OR (vehicle_year >= 1900 AND vehicle_year <= EXTRACT(YEAR FROM now()) + 2)
+);
+
+-- =====================================================
+-- GRANT PERMISSIONS
+-- =====================================================
+
+-- Grant execute permissions on validation functions
+GRANT EXECUTE ON FUNCTION validate_score(numeric, text) TO authenticated, anon;
+GRANT EXECUTE ON FUNCTION validate_placement(integer, integer) TO authenticated, anon;
+GRANT EXECUTE ON FUNCTION validate_points(integer, integer, text) TO authenticated, anon;
+GRANT EXECUTE ON FUNCTION check_duplicate_entry(uuid, integer, text, text, text, bigint) TO authenticated;
+GRANT EXECUTE ON FUNCTION validate_event_date(integer, date) TO authenticated;
+GRANT EXECUTE ON FUNCTION validate_competition_result_data(jsonb, bigint) TO authenticated;
+
+-- =====================================================
+-- DOCUMENTATION
+-- =====================================================
+
+COMMENT ON FUNCTION validate_score(numeric, text) IS 
+'Validates competition scores based on category-specific ranges and rules';
+
+COMMENT ON FUNCTION validate_placement(integer, integer) IS 
+'Validates placement values against total participant counts with logical constraints';
+
+COMMENT ON FUNCTION validate_points(integer, integer, text) IS 
+'Validates points earned based on placement and category with business rule enforcement';
+
+COMMENT ON FUNCTION check_duplicate_entry(uuid, integer, text, text, text, bigint) IS 
+'Prevents duplicate competition entries for same user/event/category/division/class combination';
+
+COMMENT ON FUNCTION validate_event_date(integer, date) IS 
+'Validates result dates against event date ranges with reasonable tolerances';
+
+COMMENT ON FUNCTION validate_competition_result_data(jsonb, bigint) IS 
+'Comprehensive validation function combining all validation rules with detailed error reporting';
+
+-- =====================================================
+-- MIGRATION COMPLETION LOG
+-- =====================================================
+
+-- Record successful migration completion
+INSERT INTO audit_logs (
+  user_id,
+  user_email,
+  action,
+  table_name,
+  record_id,
+  new_data,
+  created_at
+) VALUES (
+  null,
+  'system',
+  'MIGRATION',
+  'competition_results',
+  '004_validation_functions_migration',
+  jsonb_build_object(
+    'migration', '004_validation_functions.sql',
+    'validation_functions_created', 6,
+    'check_constraints_added', 6,
+    'categories_validated', ['SPL', 'SQ', 'Install Quality', 'Bass Race', 'Demo'],
+    'validation_features', [
+      'category_specific_scoring',
+      'placement_validation',
+      'points_consistency_checking',
+      'duplicate_prevention',
+      'date_range_validation'
+    ],
+    'completed_at', now()
+  ),
+  now()
+);
+
+-- =====================================================
+-- EXAMPLE USAGE
+-- =====================================================
+
+/*
+-- Validate a score for SPL category
+SELECT validate_score(155.3, 'SPL (Sound Pressure Level)');
+
+-- Validate placement against participants
+SELECT validate_placement(1, 25);
+
+-- Validate points for first place in SPL
+SELECT validate_points(100, 1, 'SPL (Sound Pressure Level)');
+
+-- Check for duplicate entries
+SELECT check_duplicate_entry(
+  'user-uuid'::uuid, 
+  123, 
+  'SPL (Sound Pressure Level)', 
+  'division-id', 
+  'class-id'
+);
+
+-- Validate event date
+SELECT validate_event_date(123, '2025-03-15'::date);
+
+-- Comprehensive validation
+SELECT validate_competition_result_data(
+  jsonb_build_object(
+    'user_id', 'user-uuid',
+    'event_id', 123,
+    'category', 'SPL (Sound Pressure Level)',
+    'division_id', 'division-id',
+    'class_id', 'class-id',
+    'score', 155.3,
+    'placement', 1,
+    'total_participants', 25,
+    'points_earned', 100,
+    'event_date', '2025-03-15'
+  )
+);
+*/

@@ -1,0 +1,285 @@
+-- =====================================================
+-- 001_COMPETITION_RESULTS_SECURITY_FIXED.SQL
+-- =====================================================
+-- Migration: Competition Results Row Level Security Policies
+-- Purpose: Implement comprehensive RLS policies for competition_results table
+-- Dependencies: None (first migration in sequence)
+-- Author: Backend Architect Agent
+-- Date: 2025-08-02
+-- NOTE: Fixed version using membership_type instead of role
+-- =====================================================
+
+-- =====================================================
+-- ENABLE ROW LEVEL SECURITY
+-- =====================================================
+
+-- Enable RLS on competition_results table
+ALTER TABLE competition_results ENABLE ROW LEVEL SECURITY;
+
+-- =====================================================
+-- DROP EXISTING POLICIES (IF ANY)
+-- =====================================================
+
+-- Clean slate approach to avoid conflicts
+DROP POLICY IF EXISTS "admin_full_access_competition_results" ON competition_results;
+DROP POLICY IF EXISTS "competitor_view_all_verified_results" ON competition_results;
+DROP POLICY IF EXISTS "competitor_manage_own_results" ON competition_results;
+DROP POLICY IF EXISTS "organizer_view_event_results" ON competition_results;
+DROP POLICY IF EXISTS "organizer_verify_event_results" ON competition_results;
+DROP POLICY IF EXISTS "public_view_verified_results" ON competition_results;
+DROP POLICY IF EXISTS "competitor_create_own_results" ON competition_results;
+DROP POLICY IF EXISTS "sponsor_view_results" ON competition_results;
+
+-- =====================================================
+-- HELPER FUNCTIONS FOR PERMISSION CHECKS
+-- =====================================================
+
+-- Function to check if user is admin
+CREATE OR REPLACE FUNCTION is_admin()
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM users 
+    WHERE id = (SELECT auth.uid()) 
+    AND membership_type = 'admin'
+    AND status = 'active'
+  );
+$$;
+
+-- Function to check if user is competitor (includes pro_competitor)
+CREATE OR REPLACE FUNCTION is_competitor()
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM users 
+    WHERE id = (SELECT auth.uid()) 
+    AND membership_type IN ('competitor', 'pro_competitor')
+    AND status = 'active'
+  );
+$$;
+
+-- Function to check if user is organizer
+CREATE OR REPLACE FUNCTION is_organizer()
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM users 
+    WHERE id = (SELECT auth.uid()) 
+    AND membership_type = 'organization'
+    AND status = 'active'
+  );
+$$;
+
+-- Function to check if user owns a specific competition result
+CREATE OR REPLACE FUNCTION owns_competition_result(result_user_id uuid)
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+AS $$
+  SELECT (SELECT auth.uid()) = result_user_id;
+$$;
+
+-- Function to check if organizer owns the event
+CREATE OR REPLACE FUNCTION organizer_owns_event(event_id integer)
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM events 
+    WHERE id = event_id 
+    AND organizer_id = (SELECT auth.uid())
+  ) AND is_organizer();
+$$;
+
+-- =====================================================
+-- ROW LEVEL SECURITY POLICIES
+-- =====================================================
+
+-- Policy 1: Admin users have full access (SELECT, INSERT, UPDATE, DELETE)
+CREATE POLICY "admin_full_access_competition_results" 
+ON competition_results
+FOR ALL
+TO authenticated
+USING (is_admin())
+WITH CHECK (is_admin());
+
+-- Policy 2: All authenticated users can view verified results
+CREATE POLICY "competitor_view_all_verified_results"
+ON competition_results
+FOR SELECT
+TO authenticated
+USING (verified = true);
+
+-- Policy 3: Competitors can view their own results (verified or not)
+CREATE POLICY "competitor_manage_own_results"
+ON competition_results
+FOR SELECT
+TO authenticated
+USING (owns_competition_result(user_id));
+
+-- Policy 4: Competitors can create their own results (unverified)
+CREATE POLICY "competitor_create_own_results"
+ON competition_results
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  owns_competition_result(user_id) 
+  AND is_competitor()
+  AND verified = false -- Cannot create pre-verified results
+);
+
+-- Policy 5: Competitors can update their own unverified results
+CREATE POLICY "competitor_update_own_unverified_results"
+ON competition_results
+FOR UPDATE
+TO authenticated
+USING (
+  owns_competition_result(user_id) 
+  AND is_competitor()
+  AND verified = false -- Cannot edit once verified
+)
+WITH CHECK (
+  owns_competition_result(user_id)
+  AND verified = false -- Cannot set verified = true
+);
+
+-- Policy 6: Competitors can delete their own unverified results
+CREATE POLICY "competitor_delete_own_unverified_results"
+ON competition_results
+FOR DELETE
+TO authenticated
+USING (
+  owns_competition_result(user_id) 
+  AND is_competitor()
+  AND verified = false -- Cannot delete verified results
+);
+
+-- Policy 7: Organizers can view all results for their events
+CREATE POLICY "organizer_view_event_results"
+ON competition_results
+FOR SELECT
+TO authenticated
+USING (organizer_owns_event(event_id));
+
+-- Policy 8: Public/anonymous users can view verified results only
+CREATE POLICY "public_view_verified_results"
+ON competition_results
+FOR SELECT
+TO anon
+USING (verified = true);
+
+-- =====================================================
+-- PERFORMANCE INDEXES FOR RLS
+-- =====================================================
+
+-- Index for user_id lookups (competitor queries)
+CREATE INDEX IF NOT EXISTS idx_competition_results_user_id 
+ON competition_results(user_id);
+
+-- Index for event_id lookups (organizer queries)
+CREATE INDEX IF NOT EXISTS idx_competition_results_event_id 
+ON competition_results(event_id);
+
+-- Index for verified status (public queries)
+CREATE INDEX IF NOT EXISTS idx_competition_results_verified 
+ON competition_results(verified) 
+WHERE verified = true;
+
+-- Composite index for common query patterns
+CREATE INDEX IF NOT EXISTS idx_competition_results_user_verified 
+ON competition_results(user_id, verified);
+
+CREATE INDEX IF NOT EXISTS idx_competition_results_event_verified 
+ON competition_results(event_id, verified);
+
+-- =====================================================
+-- GRANT PERMISSIONS
+-- =====================================================
+
+-- Grant execute permissions on helper functions
+GRANT EXECUTE ON FUNCTION is_admin() TO authenticated, anon;
+GRANT EXECUTE ON FUNCTION is_competitor() TO authenticated;
+GRANT EXECUTE ON FUNCTION is_organizer() TO authenticated;
+GRANT EXECUTE ON FUNCTION owns_competition_result(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION organizer_owns_event(integer) TO authenticated;
+
+-- =====================================================
+-- DOCUMENTATION
+-- =====================================================
+
+COMMENT ON POLICY "admin_full_access_competition_results" ON competition_results IS 
+'Administrators have complete access to all competition results for management and oversight';
+
+COMMENT ON POLICY "competitor_view_all_verified_results" ON competition_results IS 
+'All authenticated users can view verified competition results for leaderboard functionality';
+
+COMMENT ON POLICY "competitor_manage_own_results" ON competition_results IS 
+'Competitors can view all their own results, both verified and unverified';
+
+COMMENT ON POLICY "competitor_create_own_results" ON competition_results IS 
+'Competitors can create new unverified results for themselves';
+
+COMMENT ON POLICY "competitor_update_own_unverified_results" ON competition_results IS 
+'Competitors can edit their own results only before verification';
+
+COMMENT ON POLICY "competitor_delete_own_unverified_results" ON competition_results IS 
+'Competitors can delete their own results only before verification';
+
+COMMENT ON POLICY "organizer_view_event_results" ON competition_results IS 
+'Event organizers can view all results for events they created';
+
+COMMENT ON POLICY "public_view_verified_results" ON competition_results IS 
+'Public users can view verified results without authentication';
+
+-- =====================================================
+-- MIGRATION COMPLETION LOG
+-- =====================================================
+
+-- Note: This will be logged by the audit system once migration 002 is applied
+-- For now, we'll create a temporary log entry
+DO $$
+BEGIN
+  -- Check if audit_logs table exists
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'public' 
+    AND table_name = 'audit_logs'
+  ) THEN
+    INSERT INTO audit_logs (
+      user_id,
+      user_email,
+      action,
+      table_name,
+      record_id,
+      new_data,
+      created_at
+    ) VALUES (
+      null,
+      'system',
+      'MIGRATION',
+      'competition_results',
+      '001_security_policies_migration',
+      jsonb_build_object(
+        'migration', '001_competition_results_security_fixed.sql',
+        'policies_created', 8,
+        'helper_functions_created', 5,
+        'indexes_created', 5,
+        'fixed_issue', 'Changed from role to membership_type column',
+        'completed_at', now()
+      ),
+      now()
+    );
+  END IF;
+END $$;

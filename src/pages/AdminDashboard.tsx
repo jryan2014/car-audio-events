@@ -471,6 +471,19 @@ export default function AdminDashboard() {
           </Link>
 
           <Link
+            to="/admin/member-profiles"
+            className="bg-gradient-to-br from-purple-500/20 to-purple-600/20 border border-purple-500/30 rounded-xl p-6 hover:from-purple-500/30 hover:to-purple-600/30 transition-all duration-200 group"
+          >
+            <div className="flex items-center space-x-3">
+              <Users className="h-8 w-8 text-purple-400 group-hover:scale-110 transition-transform" />
+              <div>
+                <h3 className="text-white font-semibold">Member Profiles</h3>
+                <p className="text-gray-400 text-sm">Manage member directory profiles</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
             to="/admin/events"
             className="bg-gradient-to-br from-green-500/20 to-green-600/20 border border-green-500/30 rounded-xl p-6 hover:from-green-500/30 hover:to-green-600/30 transition-all duration-200 group"
           >

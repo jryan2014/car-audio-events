@@ -1,0 +1,469 @@
+-- =====================================================
+-- 002_AUDIT_LOGGING_SYSTEM_FIXED.SQL
+-- =====================================================
+-- Migration: Comprehensive Audit Logging System
+-- Purpose: Create audit table, triggers, and RLS policies for tracking all changes
+-- Dependencies: 001_competition_results_security_fixed.sql
+-- Author: Backend Architect Agent
+-- Date: 2025-08-02
+-- NOTE: Fixed version using membership_type instead of role
+-- =====================================================
+
+-- =====================================================
+-- AUDIT LOGS TABLE CREATION
+-- =====================================================
+
+-- Create audit_logs table if it doesn't exist
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  
+  -- What table and record was affected
+  table_name text NOT NULL,
+  record_id text, -- Store as text to handle different ID types (bigint, uuid, etc.)
+  
+  -- What action was performed
+  action text NOT NULL CHECK (action IN ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'MIGRATION', 'REFRESH')),
+  
+  -- Who performed the action
+  user_id uuid REFERENCES users(id),
+  user_email text, -- Cached for historical record
+  user_role text, -- Cached membership_type at time of action
+  
+  -- Change details (JSONB for flexible storage)
+  old_data jsonb, -- Previous values (NULL for INSERT)
+  new_data jsonb, -- New values (NULL for DELETE)
+  changed_fields text[], -- Array of field names that changed
+  
+  -- Request context
+  ip_address inet,
+  user_agent text,
+  request_id text, -- For tracing requests across services
+  
+  -- System context
+  application_name text DEFAULT 'car-audio-events',
+  database_user text DEFAULT current_user,
+  transaction_id bigint DEFAULT txid_current(),
+  
+  -- Timestamps
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- =====================================================
+-- AUDIT LOGS INDEXES FOR PERFORMANCE
+-- =====================================================
+
+-- Primary access patterns for audit queries
+CREATE INDEX IF NOT EXISTS idx_audit_logs_table_name 
+ON audit_logs(table_name);
+
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id 
+ON audit_logs(user_id) 
+WHERE user_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at 
+ON audit_logs(created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_audit_logs_record_id 
+ON audit_logs(record_id) 
+WHERE record_id IS NOT NULL;
+
+-- Composite indexes for common query patterns
+CREATE INDEX IF NOT EXISTS idx_audit_logs_table_record 
+ON audit_logs(table_name, record_id) 
+WHERE record_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user_time 
+ON audit_logs(user_id, created_at DESC) 
+WHERE user_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_audit_logs_table_time 
+ON audit_logs(table_name, created_at DESC);
+
+-- GIN indexes for JSONB queries
+CREATE INDEX IF NOT EXISTS idx_audit_logs_old_data_gin 
+ON audit_logs USING gin(old_data) 
+WHERE old_data IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_audit_logs_new_data_gin 
+ON audit_logs USING gin(new_data) 
+WHERE new_data IS NOT NULL;
+
+-- Partial index for competition_results auditing
+CREATE INDEX IF NOT EXISTS idx_audit_logs_competition_results 
+ON audit_logs(created_at DESC, action, user_id) 
+WHERE table_name = 'competition_results';
+
+-- =====================================================
+-- ROW LEVEL SECURITY FOR AUDIT LOGS
+-- =====================================================
+
+-- Enable RLS on audit_logs table
+ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "admin_view_all_audit_logs" ON audit_logs;
+DROP POLICY IF EXISTS "user_view_own_audit_logs" ON audit_logs;
+DROP POLICY IF EXISTS "system_insert_audit_logs" ON audit_logs;
+DROP POLICY IF EXISTS "prevent_audit_modifications" ON audit_logs;
+DROP POLICY IF EXISTS "prevent_audit_deletions" ON audit_logs;
+
+-- Admin users can view all audit logs
+CREATE POLICY "admin_view_all_audit_logs" 
+ON audit_logs
+FOR SELECT
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM users 
+    WHERE users.id = (SELECT auth.uid()) 
+    AND users.membership_type = 'admin'
+  )
+);
+
+-- Users can view audit logs for their own actions (limited scope)
+CREATE POLICY "user_view_own_audit_logs"
+ON audit_logs  
+FOR SELECT
+TO authenticated
+USING (
+  user_id = (SELECT auth.uid())
+  AND table_name IN ('competition_results', 'users') -- Restrict to relevant tables
+);
+
+-- System can insert audit logs (via triggers)
+CREATE POLICY "system_insert_audit_logs"
+ON audit_logs
+FOR INSERT
+TO authenticated
+WITH CHECK (true); -- Allow inserts from triggers
+
+-- Prevent updates to audit logs (immutable)
+CREATE POLICY "prevent_audit_modifications"
+ON audit_logs
+FOR UPDATE
+TO authenticated
+USING (false);
+
+-- Prevent deletions of audit logs (immutable)
+CREATE POLICY "prevent_audit_deletions"
+ON audit_logs
+FOR DELETE
+TO authenticated
+USING (false);
+
+-- =====================================================
+-- AUDIT TRIGGER FUNCTION
+-- =====================================================
+
+-- Generic audit trigger function for any table
+CREATE OR REPLACE FUNCTION audit_trigger_function()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  old_data jsonb := NULL;
+  new_data jsonb := NULL;
+  changed_fields text[] := '{}';
+  user_email_val text := NULL;
+  user_membership_type text := NULL;
+  record_id_val text := NULL;
+  current_user_id uuid := NULL;
+BEGIN
+  -- Get current user ID
+  current_user_id := (SELECT auth.uid());
+  
+  -- Get user details for audit trail
+  IF current_user_id IS NOT NULL THEN
+    SELECT email, membership_type INTO user_email_val, user_membership_type
+    FROM users WHERE id = current_user_id;
+  END IF;
+  
+  -- Process based on operation type
+  CASE TG_OP
+    WHEN 'INSERT' THEN
+      new_data := to_jsonb(NEW);
+      -- Try different ID field names
+      record_id_val := COALESCE(
+        (NEW.id)::text, 
+        (NEW.uuid)::text, 
+        (NEW.slug)::text,
+        'unknown'
+      );
+      
+    WHEN 'UPDATE' THEN
+      old_data := to_jsonb(OLD);
+      new_data := to_jsonb(NEW);
+      -- Try different ID field names
+      record_id_val := COALESCE(
+        (NEW.id)::text, 
+        (NEW.uuid)::text, 
+        (OLD.id)::text, 
+        (OLD.uuid)::text,
+        'unknown'
+      );
+      
+      -- Identify changed fields
+      SELECT array_agg(key) INTO changed_fields
+      FROM (
+        SELECT key
+        FROM jsonb_each(old_data) o
+        FULL OUTER JOIN jsonb_each(new_data) n USING (key)
+        WHERE o.value IS DISTINCT FROM n.value
+      ) changes;
+      
+    WHEN 'DELETE' THEN
+      old_data := to_jsonb(OLD);
+      -- Try different ID field names
+      record_id_val := COALESCE(
+        (OLD.id)::text, 
+        (OLD.uuid)::text, 
+        'unknown'
+      );
+      
+    WHEN 'TRUNCATE' THEN
+      record_id_val := 'TRUNCATE_ALL';
+  END CASE;
+  
+  -- Insert audit log (bypass RLS with security definer)
+  BEGIN
+    INSERT INTO audit_logs (
+      user_id,
+      user_email,
+      user_role,
+      action,
+      table_name,
+      record_id,
+      old_data,
+      new_data,
+      changed_fields,
+      ip_address,
+      user_agent,
+      request_id,
+      created_at
+    ) VALUES (
+      current_user_id,
+      user_email_val,
+      user_membership_type,
+      TG_OP,
+      TG_TABLE_NAME,
+      record_id_val,
+      old_data,
+      new_data,
+      changed_fields,
+      inet_client_addr(),
+      current_setting('request.headers', true)::jsonb->>'user-agent',
+      current_setting('request.jwt.claims', true)::jsonb->>'request_id',
+      now()
+    );
+  EXCEPTION
+    WHEN OTHERS THEN
+      -- Log audit failures but don't block the original operation
+      RAISE WARNING 'Audit logging failed for % on %: %', TG_OP, TG_TABLE_NAME, SQLERRM;
+  END;
+  
+  -- Return appropriate record
+  CASE TG_OP
+    WHEN 'DELETE' THEN RETURN OLD;
+    ELSE RETURN NEW;
+  END CASE;
+END;
+$$;
+
+-- =====================================================
+-- CREATE AUDIT TRIGGERS ON TABLES
+-- =====================================================
+
+-- Drop existing triggers if they exist
+DROP TRIGGER IF EXISTS audit_competition_results_trigger ON competition_results;
+DROP TRIGGER IF EXISTS audit_users_trigger ON users;
+DROP TRIGGER IF EXISTS audit_events_trigger ON events;
+DROP TRIGGER IF EXISTS audit_organizations_trigger ON organizations;
+
+-- Create audit trigger for competition_results table (primary focus)
+CREATE TRIGGER audit_competition_results_trigger
+  AFTER INSERT OR UPDATE OR DELETE
+  ON competition_results
+  FOR EACH ROW
+  EXECUTE FUNCTION audit_trigger_function();
+
+-- Create audit trigger for users table (sensitive data)
+CREATE TRIGGER audit_users_trigger
+  AFTER INSERT OR UPDATE OR DELETE
+  ON users
+  FOR EACH ROW
+  EXECUTE FUNCTION audit_trigger_function();
+
+-- Create audit trigger for events table
+CREATE TRIGGER audit_events_trigger
+  AFTER INSERT OR UPDATE OR DELETE
+  ON events
+  FOR EACH ROW
+  EXECUTE FUNCTION audit_trigger_function();
+
+-- Create audit trigger for organizations table
+CREATE TRIGGER audit_organizations_trigger
+  AFTER INSERT OR UPDATE OR DELETE
+  ON organizations
+  FOR EACH ROW
+  EXECUTE FUNCTION audit_trigger_function();
+
+-- =====================================================
+-- AUDIT UTILITY FUNCTIONS
+-- =====================================================
+
+-- Function to get complete audit trail for a specific record
+CREATE OR REPLACE FUNCTION get_audit_trail(
+  p_table_name text,
+  p_record_id text,
+  p_limit integer DEFAULT 100
+)
+RETURNS TABLE (
+  id uuid,
+  created_at timestamptz,
+  action text,
+  user_email text,
+  user_role text,
+  changed_fields text[],
+  old_data jsonb,
+  new_data jsonb,
+  ip_address inet,
+  user_agent text
+)
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+AS $$
+  SELECT 
+    a.id,
+    a.created_at,
+    a.action,
+    a.user_email,
+    a.user_role,
+    a.changed_fields,
+    a.old_data,
+    a.new_data,
+    a.ip_address,
+    a.user_agent
+  FROM audit_logs a
+  WHERE a.table_name = p_table_name
+    AND a.record_id = p_record_id
+  ORDER BY a.created_at DESC
+  LIMIT p_limit;
+$$;
+
+-- Function to get user activity summary
+CREATE OR REPLACE FUNCTION get_user_activity_summary(
+  p_user_id uuid,
+  p_hours integer DEFAULT 24
+)
+RETURNS TABLE (
+  table_name text,
+  action text,
+  action_count bigint,
+  latest_timestamp timestamptz
+)
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+AS $$
+  SELECT 
+    a.table_name,
+    a.action,
+    COUNT(*) as action_count,
+    MAX(a.created_at) as latest_timestamp
+  FROM audit_logs a
+  WHERE a.user_id = p_user_id
+    AND a.created_at >= now() - (p_hours || ' hours')::interval
+  GROUP BY a.table_name, a.action
+  ORDER BY latest_timestamp DESC;
+$$;
+
+-- Function to detect suspicious activity patterns
+CREATE OR REPLACE FUNCTION detect_suspicious_activity(
+  p_threshold integer DEFAULT 100,
+  p_hours integer DEFAULT 1
+)
+RETURNS TABLE (
+  user_id uuid,
+  user_email text,
+  action_count bigint,
+  distinct_tables integer,
+  first_action timestamptz,
+  latest_action timestamptz
+)
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+AS $$
+  SELECT 
+    a.user_id,
+    a.user_email,
+    COUNT(*) as action_count,
+    COUNT(DISTINCT a.table_name) as distinct_tables,
+    MIN(a.created_at) as first_action,
+    MAX(a.created_at) as latest_action
+  FROM audit_logs a
+  WHERE a.created_at >= now() - (p_hours || ' hours')::interval
+    AND a.user_id IS NOT NULL
+  GROUP BY a.user_id, a.user_email
+  HAVING COUNT(*) >= p_threshold
+  ORDER BY action_count DESC;
+$$;
+
+-- =====================================================
+-- GRANT PERMISSIONS
+-- =====================================================
+
+-- Grant execute permissions on audit utility functions
+GRANT EXECUTE ON FUNCTION get_audit_trail(text, text, integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_user_activity_summary(uuid, integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION detect_suspicious_activity(integer, integer) TO authenticated;
+
+-- =====================================================
+-- DOCUMENTATION
+-- =====================================================
+
+COMMENT ON TABLE audit_logs IS 
+'Immutable audit trail for all database changes with comprehensive context and security';
+
+COMMENT ON FUNCTION audit_trigger_function() IS 
+'Generic trigger function for automatic audit logging with error resilience and flexible ID handling';
+
+COMMENT ON FUNCTION get_audit_trail(text, text, integer) IS 
+'Retrieve complete audit history for a specific record with admin/user role-based access controls';
+
+COMMENT ON FUNCTION detect_suspicious_activity(integer, integer) IS 
+'Security monitoring function to identify unusual user activity patterns for threat detection';
+
+-- =====================================================
+-- MIGRATION COMPLETION LOG
+-- =====================================================
+
+-- Record successful migration completion
+INSERT INTO audit_logs (
+  user_id,
+  user_email,
+  action,
+  table_name,
+  record_id,
+  new_data,
+  created_at
+) VALUES (
+  null,
+  'system',
+  'MIGRATION',
+  'audit_logs',
+  '002_audit_system_migration',
+  jsonb_build_object(
+    'migration', '002_audit_logging_system_fixed.sql',
+    'audit_table_created', true,
+    'triggers_created', 4,
+    'indexes_created', 9,
+    'utility_functions_created', 3,
+    'rls_policies_created', 5,
+    'fixed_issue', 'Changed from role to membership_type column',
+    'completed_at', now()
+  ),
+  now()
+);

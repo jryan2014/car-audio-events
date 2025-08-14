@@ -25,9 +25,16 @@ dist-ssr
 
 # Environment files (contains sensitive API keys)
 .env
+.env.local
+.env.production
 env-local
 env-remote
 *.backup
+
+# Sensitive configuration files
+.claude/settings.local.json
+.mcp.json
+notifications
 
 # Database files
 *.db
@@ -38,12 +45,19 @@ env-remote
 Thumbs.db
 .DS_Store
 
-# Backup directories
-# backups/ - This directory is deleted, rule is kept for safety
-_archive/
-sql-archive/
+# Backup directories - CRITICAL: Never commit these!
+backups/
 backups-archive/
 backup-*
+_archive/
+sql-archive/
+database-scripts/
+*.backup
+*.backup.*
+backup*.sql
+backup*.json
+backup*.ts
+backup*.js
 
 # Root directory files
 *.sql

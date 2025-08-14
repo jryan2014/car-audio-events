@@ -74,7 +74,7 @@ Added service role key for frontend access:
 # TEMPORARY: Service role key for frontend audit logging
 # NOTE: This is a security risk and should be moved to server-side
 # TODO: Move audit logging to edge function or server-side endpoint
-VITE_SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+VITE_SUPABASE_SERVICE_ROLE_KEY=[REDACTED - Use environment variable]
 ```
 
 ## 🧪 Testing Results

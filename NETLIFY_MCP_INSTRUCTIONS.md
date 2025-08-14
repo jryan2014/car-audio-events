@@ -117,9 +117,9 @@ After adding environment variables:
 netlify link
 
 # Add environment variables
-netlify env:set VITE_STRIPE_PUBLISHABLE_KEY pk_live_51RXVWeBoKeabwApYIMCtVH3aX98Vprw5sGtZQbr4PXRa2hPkySIY2iuhKipheihx8mMFji0WsGEXsTKiJQAEJGaY00nSbGuNVU --force
+netlify env:set VITE_STRIPE_PUBLISHABLE_KEY [REDACTED - Use environment variable VITE_STRIPE_PUBLISHABLE_KEY] --force
 
-netlify env:set STRIPE_SECRET_KEY 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 --force
+netlify env:set STRIPE_SECRET_KEY [REDACTED - Use environment variable STRIPE_SECRET_KEY] --force
 
 # Verify variables
 netlify env:list

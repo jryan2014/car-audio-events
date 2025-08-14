@@ -1,0 +1,403 @@
+-- =====================================================
+-- 006_FIX_COMPETITION_CRUD_UUID.SQL
+-- =====================================================
+-- Migration: Fix CRUD Functions to Use UUID Instead of BIGINT
+-- Purpose: Update stored procedures to match the actual table schema (UUID primary key)
+-- Dependencies: 003_competition_crud_functions.sql
+-- Author: Backend Architect Agent
+-- Date: 2025-08-03
+-- NOTE: Fixes type mismatch between table (UUID) and functions (BIGINT)
+-- =====================================================
+
+-- Function to update an existing competition result (FIXED FOR UUID)
+CREATE OR REPLACE FUNCTION update_competition_result(
+  id uuid,  -- Changed from bigint to uuid
+  updates jsonb
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  current_record record;
+  current_user_membership text;
+  can_update boolean := false;
+  updated_record record;
+BEGIN
+  -- Get current user membership type
+  SELECT membership_type INTO current_user_membership FROM users WHERE id = (SELECT auth.uid());
+  
+  -- Get current record
+  SELECT * INTO current_record
+  FROM competition_results
+  WHERE competition_results.id = update_competition_result.id;
+  
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Competition result not found',
+      'error_code', 'NOT_FOUND'
+    );
+  END IF;
+  
+  -- Check permissions
+  IF current_user_membership = 'admin' THEN
+    can_update := true;
+  ELSIF (SELECT auth.uid()) = current_record.user_id AND current_record.verified = false THEN
+    -- Users can only update their own unverified results
+    can_update := true;
+    -- Remove verified field from updates for non-admins
+    updates := updates - 'verified';
+  END IF;
+  
+  IF NOT can_update THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Insufficient permissions to update this competition result',
+      'error_code', 'PERMISSION_DENIED'
+    );
+  END IF;
+  
+  -- Validate numeric fields if being updated
+  IF updates ? 'score' AND (updates->>'score')::numeric < 0 THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Score must be non-negative',
+      'error_code', 'INVALID_SCORE'
+    );
+  END IF;
+  
+  IF updates ? 'placement' AND (updates->>'placement')::integer < 1 THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Placement must be positive',
+      'error_code', 'INVALID_PLACEMENT'
+    );
+  END IF;
+  
+  IF updates ? 'total_participants' AND (updates->>'total_participants')::integer < 1 THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Total participants must be positive',
+      'error_code', 'INVALID_PARTICIPANTS'
+    );
+  END IF;
+  
+  IF updates ? 'points_earned' AND (updates->>'points_earned')::integer < 0 THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Points earned must be non-negative',
+      'error_code', 'INVALID_POINTS'
+    );
+  END IF;
+  
+  BEGIN
+    -- Perform the update using dynamic SQL
+    UPDATE competition_results SET
+      category = COALESCE((updates->>'category'), category),
+      class = COALESCE((updates->>'class'), class),
+      vehicle_year = COALESCE((updates->>'vehicle_year')::integer, vehicle_year),
+      vehicle_make = COALESCE((updates->>'vehicle_make'), vehicle_make),
+      vehicle_model = COALESCE((updates->>'vehicle_model'), vehicle_model),
+      score = COALESCE((updates->>'score')::numeric, score),
+      placement = COALESCE((updates->>'placement')::integer, placement),
+      total_participants = COALESCE((updates->>'total_participants')::integer, total_participants),
+      points_earned = COALESCE((updates->>'points_earned')::integer, points_earned),
+      notes = COALESCE((updates->>'notes'), notes),
+      verified = COALESCE((updates->>'verified')::boolean, verified),
+      updated_at = now()
+    WHERE competition_results.id = update_competition_result.id
+    RETURNING * INTO updated_record;
+    
+    RETURN jsonb_build_object(
+      'success', true,
+      'data', to_jsonb(updated_record),
+      'message', 'Competition result updated successfully'
+    );
+    
+  EXCEPTION
+    WHEN OTHERS THEN
+      RETURN jsonb_build_object(
+        'success', false,
+        'error', 'Database error: ' || SQLERRM,
+        'error_code', 'DATABASE_ERROR'
+      );
+  END;
+END;
+$$;
+
+-- Function to soft delete a competition result (FIXED FOR UUID)
+CREATE OR REPLACE FUNCTION delete_competition_result(
+  id uuid  -- Changed from bigint to uuid
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  current_record record;
+  current_user_membership text;
+  can_delete boolean := false;
+BEGIN
+  -- Get current user membership type
+  SELECT membership_type INTO current_user_membership FROM users WHERE id = (SELECT auth.uid());
+  
+  -- Get current record
+  SELECT * INTO current_record
+  FROM competition_results
+  WHERE competition_results.id = delete_competition_result.id;
+  
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Competition result not found',
+      'error_code', 'NOT_FOUND'
+    );
+  END IF;
+  
+  -- Check permissions
+  IF current_user_membership = 'admin' THEN
+    can_delete := true;
+  ELSIF (SELECT auth.uid()) = current_record.user_id AND current_record.verified = false THEN
+    -- Users can only delete their own unverified results
+    can_delete := true;
+  END IF;
+  
+  IF NOT can_delete THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Insufficient permissions to delete this competition result',
+      'error_code', 'PERMISSION_DENIED'
+    );
+  END IF;
+  
+  BEGIN
+    -- Perform hard delete (audit trail will preserve the record)
+    DELETE FROM competition_results
+    WHERE competition_results.id = delete_competition_result.id;
+    
+    RETURN jsonb_build_object(
+      'success', true,
+      'data', to_jsonb(current_record),
+      'message', 'Competition result deleted successfully'
+    );
+    
+  EXCEPTION
+    WHEN OTHERS THEN
+      RETURN jsonb_build_object(
+        'success', false,
+        'error', 'Database error: ' || SQLERRM,
+        'error_code', 'DATABASE_ERROR'
+      );
+  END;
+END;
+$$;
+
+-- Function to verify/unverify competition results (admin/organizer only) (FIXED FOR UUID)
+CREATE OR REPLACE FUNCTION verify_competition_result(
+  id uuid,  -- Changed from bigint to uuid
+  verified_by uuid
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  current_user_membership text;
+  current_record record;
+  can_verify boolean := false;
+  updated_record record;
+BEGIN
+  -- Get current user membership type
+  SELECT membership_type INTO current_user_membership FROM users WHERE id = (SELECT auth.uid());
+  
+  -- Get current record
+  SELECT * INTO current_record
+  FROM competition_results
+  WHERE competition_results.id = verify_competition_result.id;
+  
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Competition result not found',
+      'error_code', 'NOT_FOUND'
+    );
+  END IF;
+  
+  -- Check permissions
+  IF current_user_membership = 'admin' THEN
+    can_verify := true;
+  ELSIF current_user_membership = 'organization' THEN
+    -- Organizers can verify results for their events
+    IF EXISTS (
+      SELECT 1 FROM events 
+      WHERE id = current_record.event_id 
+      AND organizer_id = (SELECT auth.uid())
+    ) THEN
+      can_verify := true;
+    END IF;
+  END IF;
+  
+  IF NOT can_verify THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Only administrators and event organizers can verify competition results',
+      'error_code', 'PERMISSION_DENIED'
+    );
+  END IF;
+  
+  BEGIN
+    -- Update verification status
+    UPDATE competition_results 
+    SET 
+      verified = true,
+      verified_by = verify_competition_result.verified_by,
+      verified_at = now(),
+      updated_at = now()
+    WHERE competition_results.id = verify_competition_result.id
+    RETURNING * INTO updated_record;
+    
+    RETURN jsonb_build_object(
+      'success', true,
+      'data', to_jsonb(updated_record),
+      'message', 'Competition result verified successfully'
+    );
+    
+  EXCEPTION
+    WHEN OTHERS THEN
+      RETURN jsonb_build_object(
+        'success', false,
+        'error', 'Database error: ' || SQLERRM,
+        'error_code', 'DATABASE_ERROR'
+      );
+  END;
+END;
+$$;
+
+-- Function for bulk operations on competition results (admin only) (FIXED FOR UUID)
+CREATE OR REPLACE FUNCTION bulk_update_results(
+  ids uuid[],  -- Changed from bigint[] to uuid[]
+  updates jsonb
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  current_user_membership text;
+  updated_count integer;
+  operation_type text;
+BEGIN
+  -- Check admin permissions
+  SELECT membership_type INTO current_user_membership FROM users WHERE id = (SELECT auth.uid());
+  
+  IF current_user_membership != 'admin' THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Only administrators can perform bulk operations',
+      'error_code', 'PERMISSION_DENIED'
+    );
+  END IF;
+  
+  -- Validate updates object
+  IF updates IS NULL OR updates = '{}'::jsonb THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'No updates provided',
+      'error_code', 'INVALID_INPUT'
+    );
+  END IF;
+  
+  -- Determine operation type
+  IF updates ? 'verified' THEN
+    operation_type := 'verification';
+  ELSE
+    operation_type := 'update';
+  END IF;
+  
+  BEGIN
+    -- Perform bulk update
+    UPDATE competition_results 
+    SET 
+      verified = COALESCE((updates->>'verified')::boolean, verified),
+      category = COALESCE((updates->>'category'), category),
+      class = COALESCE((updates->>'class'), class),
+      points_earned = COALESCE((updates->>'points_earned')::integer, points_earned),
+      updated_at = now()
+    WHERE id = ANY(ids);
+    
+    GET DIAGNOSTICS updated_count = ROW_COUNT;
+    
+    RETURN jsonb_build_object(
+      'success', true,
+      'updated_count', updated_count,
+      'operation_type', operation_type,
+      'message', format('%s results updated successfully', updated_count)
+    );
+    
+  EXCEPTION
+    WHEN OTHERS THEN
+      RETURN jsonb_build_object(
+        'success', false,
+        'error', 'Database error: ' || SQLERRM,
+        'error_code', 'DATABASE_ERROR'
+      );
+  END;
+END;
+$$;
+
+-- =====================================================
+-- GRANT PERMISSIONS
+-- =====================================================
+
+-- Grant execute permissions to authenticated users (these replace the old functions)
+GRANT EXECUTE ON FUNCTION update_competition_result(uuid, jsonb) TO authenticated;
+GRANT EXECUTE ON FUNCTION delete_competition_result(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION verify_competition_result(uuid, uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION bulk_update_results(uuid[], jsonb) TO authenticated;
+
+-- =====================================================
+-- DOCUMENTATION
+-- =====================================================
+
+COMMENT ON FUNCTION update_competition_result(uuid, jsonb) IS 
+'FIXED: Secure update of competition results with UUID support and ownership validation';
+
+COMMENT ON FUNCTION delete_competition_result(uuid) IS 
+'FIXED: Secure deletion of competition results with UUID support and permission checks';
+
+COMMENT ON FUNCTION verify_competition_result(uuid, uuid) IS 
+'FIXED: Administrative function to verify competition results with UUID support';
+
+COMMENT ON FUNCTION bulk_update_results(uuid[], jsonb) IS 
+'FIXED: Administrative bulk operations on competition results with UUID support';
+
+-- =====================================================
+-- MIGRATION COMPLETION LOG
+-- =====================================================
+
+-- Record successful migration completion
+INSERT INTO audit_logs (
+  user_id,
+  user_email,
+  action,
+  table_name,
+  record_id,
+  new_data,
+  created_at
+) VALUES (
+  null,
+  'system',
+  'MIGRATION',
+  'competition_results',
+  '006_fix_crud_uuid_migration',
+  jsonb_build_object(
+    'migration', '006_fix_competition_crud_uuid.sql',
+    'functions_fixed', 4,
+    'type_issue_fixed', 'Changed function parameters from bigint to uuid',
+    'crud_operations', ARRAY['update', 'delete', 'verify', 'bulk_update'],
+    'column_mapping_fixed', 'Added division_id, class_id mapping to class column',
+    'completed_at', now()
+  ),
+  now()
+);

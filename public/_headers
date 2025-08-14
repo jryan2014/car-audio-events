@@ -1,134 +1,23 @@
-# Netlify Security Headers Configuration
-# This file provides comprehensive security headers for the Car Audio Events platform
-
-# Default headers for all pages
 /*
-  # Security headers
-  X-Frame-Options: DENY
-  X-Content-Type-Options: nosniff
-  X-XSS-Protection: 1; mode=block
-  Referrer-Policy: strict-origin-when-cross-origin
-  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
-  X-DNS-Prefetch-Control: off
-  X-Download-Options: noopen
-  X-Permitted-Cross-Domain-Policies: none
+  # Security Headers for Netlify
   
-  # Permissions Policy - control browser features
-  Permissions-Policy: camera=(), microphone=(), geolocation=(self), payment=*, fullscreen=*, accelerometer=(), autoplay=(), encrypted-media=(), gyroscope=(), picture-in-picture=(), usb=(), web-share=()
+  # Content Security Policy
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://cdn.tiny.cloud https://js.stripe.com https://www.paypal.com https://www.sandbox.paypal.com https://www.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.tiny.cloud; img-src 'self' data: blob: https: *.supabase.co; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' *.supabase.co https://api.stripe.com https://api.paypal.com https://maps.googleapis.com https://api.openai.com https://api.stability.ai wss://*.supabase.co; frame-src 'self' https://js.stripe.com https://www.paypal.com https://www.sandbox.paypal.com https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests;
   
-  # Content Security Policy - comprehensive protection
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://maps.googleapis.com https://www.google.com https://maps.gstatic.com https://cdn.tiny.cloud https://*.tinymce.com https://js.hcaptcha.com https://*.hcaptcha.com https://www.paypal.com https://*.paypal.com https://www.paypalobjects.com https://*.paypalobjects.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.tiny.cloud https://*.tinymce.com https://www.paypal.com https://*.paypal.com; font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com; img-src 'self' data: blob: https: http:; connect-src 'self' https://nqvisvranvjaghvrdaaz.supabase.co wss://nqvisvranvjaghvrdaaz.supabase.co https://api.stripe.com https://maps.googleapis.com https://maps.gstatic.com https://fonts.googleapis.com https://fonts.gstatic.com https://api.openai.com https://api.stability.ai https://cdn.tiny.cloud https://*.tinymce.com https://hcaptcha.com https://*.hcaptcha.com https://api.ipify.org https://ipapi.co https://api.my-ip.io https://api.paypal.com https://api-m.paypal.com https://api.sandbox.paypal.com https://api-m.sandbox.paypal.com https://*.paypal.com; frame-src 'self' https://www.google.com https://maps.google.com https://js.stripe.com https://hcaptcha.com https://*.hcaptcha.com https://www.paypal.com https://*.paypal.com; object-src 'none'; base-uri 'self'; form-action 'self' https://api.stripe.com https://www.paypal.com https://*.paypal.com; frame-ancestors 'none'; upgrade-insecure-requests;
-
-# Static assets with long-term caching
-/assets/*
-  # Security headers
-  X-Content-Type-Options: nosniff
-  X-Frame-Options: DENY
-  Referrer-Policy: strict-origin-when-cross-origin
-  
-  # Caching headers for static assets
-  Cache-Control: public, max-age=31536000, immutable
-  
-# API endpoints with strict security
-/api/*
-  # Strict security headers
-  X-Frame-Options: DENY
-  X-Content-Type-Options: nosniff
-  X-XSS-Protection: 1; mode=block
-  Referrer-Policy: strict-origin-when-cross-origin
+  # Strict Transport Security
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
   
-  # No caching for API responses
-  Cache-Control: no-cache, no-store, must-revalidate
-  Pragma: no-cache
-  Expires: 0
-  
-  # Content type
-  Content-Type: application/json
-
-# Payment-related pages with enhanced security
-/payment/*
-/checkout/*
-/billing/*
-  # Enhanced security headers
+  # X-Frame-Options
   X-Frame-Options: DENY
+  
+  # X-Content-Type-Options
   X-Content-Type-Options: nosniff
+  
+  # X-XSS-Protection
   X-XSS-Protection: 1; mode=block
-  Referrer-Policy: strict-origin-when-cross-origin
-  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
-  X-Robots-Tag: noindex, nofollow
   
-  # No caching for sensitive pages
-  Cache-Control: no-cache, no-store, must-revalidate, private
-  Pragma: no-cache
-  Expires: 0
-
-# Admin pages with maximum security
-/admin/*
-  # Maximum security headers
-  X-Frame-Options: DENY
-  X-Content-Type-Options: nosniff
-  X-XSS-Protection: 1; mode=block
-  Referrer-Policy: strict-origin
-  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
-  X-Robots-Tag: noindex, nofollow, noarchive, nosnippet
-  
-  # Strict CSP for admin pages
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://nqvisvranvjaghvrdaaz.supabase.co wss://nqvisvranvjaghvrdaaz.supabase.co; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests;
-  
-  # No caching for admin pages
-  Cache-Control: no-cache, no-store, must-revalidate, private
-  Pragma: no-cache
-  Expires: 0
-
-# Download files with secure headers
-/downloads/*
-  # Security headers for downloads
-  X-Content-Type-Options: nosniff
-  X-Frame-Options: DENY
-  X-Download-Options: noopen
-  Content-Security-Policy: default-src 'none'; sandbox;
-  
-  # No caching for downloads
-  Cache-Control: no-cache, no-store, must-revalidate
-
-# Sitemap and robots.txt
-/sitemap.xml
-/robots.txt
-  # Basic security
-  X-Content-Type-Options: nosniff
-  
-  # Allow caching
-  Cache-Control: public, max-age=86400
-
-# Manifest and PWA files
-/manifest.json
-/sw.js
-/workbox-*.js
-  # Security headers
-  X-Content-Type-Options: nosniff
-  X-Frame-Options: DENY
-  
-  # PWA caching
-  Cache-Control: public, max-age=86400
-
-# Domain verification files
-/zoho-domain-verification.html
-/.well-known/*
-  # Basic security
-  X-Content-Type-Options: nosniff
-  
-  # Allow caching
-  Cache-Control: public, max-age=86400
-
-# Error pages
-/404.html
-/500.html
-  # Security headers
-  X-Frame-Options: DENY
-  X-Content-Type-Options: nosniff
-  X-XSS-Protection: 1; mode=block
+  # Referrer Policy
   Referrer-Policy: strict-origin-when-cross-origin
   
-  # Basic caching
-  Cache-Control: public, max-age=3600
+  # Permissions Policy
+  Permissions-Policy: camera=(), microphone=(), geolocation=(self), interest-cohort=()

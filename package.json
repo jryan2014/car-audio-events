@@ -23,7 +23,7 @@
     "scan-secrets": "tsx scripts/scan-for-secrets.ts",
     "rotate-keys": "tsx scripts/rotate-keys.ts",
     "security:scan": "npm run scan-secrets",
-    "security:fix": "npm run scan-secrets -- --fix",
+    "security:fix": "npm audit fix",
     "security:hooks": "pre-commit install",
     "security:audit": "npm audit --audit-level=moderate",
     "security:audit:fix": "npm audit fix",
@@ -38,7 +38,9 @@
     "security:setup": "tsx scripts/setup-security.ts",
     "security:report": "tsx scripts/setup-security.ts && cat security-report.json",
     "type-check": "tsc --noEmit",
-    "lint:fix": "eslint . --ext ts,tsx --fix"
+    "lint:fix": "eslint . --ext ts,tsx --fix",
+    "security:check": "npm audit && npm outdated",
+    "security:update": "npm update"
   },
   "dependencies": {
     "@googlemaps/markerclusterer": "^2.6.2",
@@ -79,8 +81,11 @@
     "quill": "^2.0.3",
     "react": "^18.3.1",
     "react-chartjs-2": "^5.3.0",
+    "react-colorful": "^5.6.1",
     "react-dom": "^18.3.1",
     "react-helmet-async": "^2.0.5",
+    "react-hot-toast": "^2.5.2",
+    "react-icons": "^5.5.0",
     "react-image-crop": "^11.0.10",
     "react-quill": "^2.0.0",
     "react-router-dom": "^6.30.1",

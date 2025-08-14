@@ -8,6 +8,7 @@ import AdDisplay from '../components/AdDisplay';
 import SEO from '../components/SEO';
 import { parseLocalDate } from '../utils/dateHelpers';
 import { activityLogger } from '../services/activityLogger';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 interface Event {
   id: string;
@@ -280,10 +281,11 @@ export default function Events() {
     return (
       <div className="min-h-screen py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-electric-500 mx-auto mb-4"></div>
-            <p className="text-gray-400">Loading events...</p>
-          </div>
+          <LoadingSpinner 
+            variant="speaker" 
+            size="large" 
+            message="Loading events..." 
+          />
         </div>
       </div>
     );

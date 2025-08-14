@@ -50,8 +50,18 @@ Deno.serve(async (req: Request) => {
       }
     );
 
-    const adminEmail = 'admin@caraudioevents.com';
-    const adminPassword = 'TempAdmin123!';
+    const adminEmail = Deno.env.get('ADMIN_EMAIL') || 'admin@caraudioevents.com';
+    const adminPassword = Deno.env.get('ADMIN_INITIAL_PASSWORD') || '';
+    
+    if (!adminPassword) {
+      return new Response(
+        JSON.stringify({ error: 'ADMIN_INITIAL_PASSWORD environment variable not set' }),
+        { 
+          status: 400, 
+          headers: corsHeaders 
+        }
+      );
+    }
 
     console.log('🚀 Starting admin user creation process...');
 
