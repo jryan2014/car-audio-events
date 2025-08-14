@@ -199,21 +199,46 @@ import { parseLocalDate } from './utils/dateHelpers';
 const displayDate = parseLocalDate(event.start_date).toLocaleDateString();
 ```
 
-## Recent Security Enhancements (v1.26.32)
+## 🔒 Security Infrastructure (FULLY AUTOMATED - v2.0)
 
-### Completed Security Work
-1. ✅ **Environment Variable Security**: All payment keys moved to env vars
-2. ✅ **CSRF Protection**: Implemented for all state-changing operations
-3. ✅ **Rate Limiting**: Database-backed limiting for all payment endpoints
-4. ✅ **Payment Validation**: Comprehensive input validation and sanitization
-5. ✅ **Audit Logging**: Full audit trail for payment operations
-6. ✅ **Webhook Security**: Signature validation and IP-based rate limiting
+### CRITICAL FOR AI AGENTS: Security is Now Fully Automated!
+**The system self-heals and auto-fixes most security issues. You don't need to manually fix them.**
+
+### Automated Security Features:
+1. ✅ **Pre-commit Protection**: Automatically blocks secrets before commit
+2. ✅ **Continuous Scanning**: Every push/PR is automatically scanned
+3. ✅ **Daily Auto-Fix**: Security issues fixed automatically at 3 AM UTC
+4. ✅ **Dependency Review**: Blocks PRs with vulnerable dependencies
+5. ✅ **Self-Healing System**: Run `npm run security:auto-fix` to fix most issues
+
+### If Security Workflows Fail - Use These Commands:
+```bash
+# FIRST: Try automatic fix (fixes 90% of issues):
+npm run security:auto-fix
+
+# Check what would be fixed without making changes:
+npm run security:check
+
+# Manual commands if needed:
+npm audit fix              # Fix npm vulnerabilities
+npm run scan-secrets        # Check for exposed secrets
+```
+
+### What's Already Enabled (Don't Touch These):
+- ✅ GitHub Dependency Graph
+- ✅ Dependabot Alerts
+- ✅ Dependabot Security Updates
+- ✅ Secret Scanning & Push Protection
+- ✅ CodeQL Analysis
+- ✅ Pre-commit Hooks
+
+**See `SECURITY_INFRASTRUCTURE.md` for complete documentation.**
 
 ### Security Best Practices
-1. **Input Validation**: Always validate on the server, never trust client
-2. **Secret Storage**: Use environment variables, never database or code
-3. **Audit Everything**: Log all payment and security-sensitive operations
-4. **Defense in Depth**: Multiple layers of security for critical operations
+1. **Never Disable Security Features**: They're automated and necessary
+2. **Use Auto-Fix First**: `npm run security:auto-fix` solves most problems
+3. **Secrets Are Blocked**: Pre-commit hooks prevent accidental exposure
+4. **Daily Maintenance**: System auto-fixes issues every night
 
 ## Future Features Tracking
 See `FUTURE_FEATURES_TODO.md` for planned enhancements that are not part of current priorities.

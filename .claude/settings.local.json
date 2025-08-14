@@ -137,7 +137,8 @@
       "Bash(gh repo edit:*)",
       "Bash(gh run list:*)",
       "Bash(gh run view:*)",
-      "Bash(echo \"Exit code: $?\")"
+      "Bash(echo \"Exit code: $?\")",
+      "Bash(git merge:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"
