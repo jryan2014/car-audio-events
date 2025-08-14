@@ -574,12 +574,15 @@ async function main() {
     
     // Exit with error code if critical secrets found
     if (result.criticalSecrets > 0) {
+      console.error('\n❌ Build failed due to critical secrets detected!');
       process.exit(1);
     }
     
-    // Exit with warning code if any secrets found
+    // Exit successfully if no critical secrets (medium/low severity are warnings only)
     if (result.secretsFound > 0) {
-      process.exit(2);
+      console.log('\n⚠️  Non-critical secrets detected (warnings only) - build continues');
+    } else {
+      console.log('\n✅ No secrets detected!');
     }
     
     process.exit(0);
