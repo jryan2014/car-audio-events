@@ -17,3 +17,9 @@ This is a test file that will be removed after validation.
 
 ## Update: Testing Dependency Graph
 The dependency graph has been enabled. This update will trigger a new check.
+
+## Update 2: All Security Features Enabled
+- ✅ Dependency graph: ENABLED
+- ✅ Dependabot alerts: ENABLED  
+- ✅ Dependabot security updates: ENABLED
+This should allow the Dependency Review to pass.
