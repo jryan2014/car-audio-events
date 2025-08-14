@@ -7,14 +7,13 @@ let supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 // Edge browser compatibility fix - sometimes Edge doesn't load env vars properly
 if ((!supabaseUrl || !supabaseAnonKey) && isDevelopment()) {
-  console.warn('⚠️ Edge browser detected missing env vars, attempting fallback...');
+  console.error('❌ Environment variables not loaded properly. Please check your .env file.');
+  console.error('Required variables: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY');
   
-  // Development fallback values (only in development)
-  // These should match your .env file values
-  supabaseUrl = supabaseUrl || 'https://nqvisvranvjaghvrdaaz.supabase.co';
-  supabaseAnonKey = supabaseAnonKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xdmlzdnJhbnZqYWdodnJkYWF6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk2MDY2NzcsImV4cCI6MjA2NTE4MjY3N30.OWwP8kH9qTKxgEHCC6ru0QSAJ5KhOupCxMUyxHuYWVY';
-  
-  console.warn('🔄 Using development fallback values for Edge browser compatibility');
+  // In development, provide helpful error message
+  if (isDevelopment()) {
+    throw new Error('Missing required environment variables. Please check your .env file and ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set.');
+  }
 }
 
 // Debug configuration in development only

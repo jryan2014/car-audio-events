@@ -1,10 +1,14 @@
 // TinyMCE Configuration
 // This API key is domain-restricted and safe to be public
-export const TINYMCE_API_KEY = '2l8fxsmp22j75yhpuwrv2rbm6ygm83mk72jr7per4x4j77hl';
+// But we use environment variables for better security practices
+export const TINYMCE_API_KEY = import.meta.env.VITE_TINYMCE_API_KEY || '';
 
 // TinyMCE script URL
 export const getTinyMCEScriptUrl = () => {
-  // Use environment variable if available (for easy override in development)
-  const apiKey = import.meta.env.VITE_TINYMCE_API_KEY || TINYMCE_API_KEY;
+  const apiKey = TINYMCE_API_KEY;
+  if (!apiKey) {
+    console.error('TinyMCE API key not configured. Please set VITE_TINYMCE_API_KEY in your environment variables.');
+    return '';
+  }
   return `https://cdn.tiny.cloud/1/${apiKey}/tinymce/6/tinymce.min.js`;
 };

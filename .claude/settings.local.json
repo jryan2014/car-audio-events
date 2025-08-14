@@ -134,7 +134,9 @@
       "WebFetch(domain:caraudioevent.com)",
       "Bash(npm outdated:*)",
       "Bash(gh repo view:*)",
-      "Bash(gh repo edit:*)"
+      "Bash(gh repo edit:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"
