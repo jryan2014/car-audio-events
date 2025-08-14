@@ -14,3 +14,6 @@ This file is created to test the pull request dependency review workflow.
 - Trivy should scan for vulnerabilities
 
 This is a test file that will be removed after validation.
+
+## Update: Testing Dependency Graph
+The dependency graph has been enabled. This update will trigger a new check.
