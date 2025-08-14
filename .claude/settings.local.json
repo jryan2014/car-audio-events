@@ -138,7 +138,12 @@
       "Bash(gh run list:*)",
       "Bash(gh run view:*)",
       "Bash(echo \"Exit code: $?\")",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh api:*)",
+      "Bash(gh workflow run:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"
