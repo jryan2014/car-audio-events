@@ -48,13 +48,14 @@ jobs:
     - name: Check for hardcoded secrets
       run: |
         # Check for common secret patterns, excluding known false positives
-        # Exclude lines with: Mock, mock, example, placeholder, your_, { key:, label:, etc.
+        # Exclude lines with: Mock, mock, example, placeholder, your_, { key:, label:, React keys, etc.
         if grep -r --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
           -E "(password|secret|key|token)\s*[:=]\s*[\"'][^\"']+[\"']" src/ | \
           grep -v -E "(// Mock|// mock|// Example|example|placeholder|your_|YOUR_|{ key:|label:|value:|category:)" | \
           grep -v -E "(test|Test|TEST|dummy|Dummy|DUMMY|fake|Fake|FAKE|sample|Sample|SAMPLE)" | \
           grep -v -E "(console\.log|debug|Debug|DEBUG)" | \
           grep -v -E "(is_sensitive:|_key:|_secret:|_token:|_password:)" | \
+          grep -v -E "(<[A-Za-z]+ key=|key=\"[^\"]+\"|key='[^']+'|key: '[^']+')" | \
           grep -E "."; then
           echo "❌ Potential hardcoded secrets found!"
           exit 1
