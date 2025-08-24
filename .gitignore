@@ -34,7 +34,15 @@ env-remote
 # Sensitive configuration files
 .claude/settings.local.json
 .mcp.json
+.cursor/mcp.json
+run-supabase-mcp.bat
 notifications
+
+# Local testing files
+EmailTemplatePreview.html
+clean-templates.mjs
+PREFERENCES.md
+TASKS.md
 
 # Database files
 *.db
@@ -68,3 +76,7 @@ backup*.js
 # Local Netlify folder
 .netlify
 .bmad-temp/
+
+# AI System Documentation (LOCAL ONLY - DO NOT COMMIT)
+public/ai-system-docs.html
+ai-system-docs.html

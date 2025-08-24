@@ -91,6 +91,7 @@ const AdminSubwooferDesigner = React.lazy(() => import('./pages/AdminSubwooferDe
 const AudioDiagramEditorPage = React.lazy(() => import('./pages/AudioDiagramEditorPage'));
 const VerifyEmail = React.lazy(() => import('./pages/VerifyEmail'));
 const SuggestEvent = React.lazy(() => import('./pages/SuggestEvent'));
+const ApplyEmailRLSFix = React.lazy(() => import('./pages/ApplyEmailRLSFix'));
 
 // Support Desk components
 const PublicSupportForm = React.lazy(() => import('./modules/support-desk/components/public/PublicSupportForm'));
@@ -102,6 +103,13 @@ const OrgSupportDashboard = React.lazy(() => import('./modules/support-desk/comp
 
 // Import the audio-themed LoadingSpinner
 import LoadingSpinnerComponent from './components/LoadingSpinner';
+
+// Import email template cleaner utility (available in browser console)
+import { cleanEmailTemplates } from './utils/cleanEmailTemplates';
+// Make it available globally in the browser console
+if (typeof window !== 'undefined') {
+  (window as any).cleanEmailTemplates = cleanEmailTemplates;
+}
 
 // Loading component for Suspense fallback
 const LoadingSpinner = () => (
@@ -224,6 +232,7 @@ function App() {
               <Route path="/verify-email" element={<Layout><VerifyEmail /></Layout>} />
               <Route path="/forgot-password" element={<Layout><ForgotPassword /></Layout>} />
               <Route path="/reset-password" element={<Layout><ResetPassword /></Layout>} />
+              <Route path="/apply-email-rls-fix" element={<Layout><ApplyEmailRLSFix /></Layout>} />
               {/* <Route path="/test-ads" element={<Layout><TestAds /></Layout>} /> */}
               <Route path="/pricing" element={<Layout><Pricing /></Layout>} />
               <Route path="/business" element={<Layout><BusinessPricing /></Layout>} />

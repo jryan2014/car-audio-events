@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { createSupabaseAdminClient } from '../_shared/supabase-admin.ts';
-import { sendEmail } from '../_shared/mailgun-email-service.ts';
+import { EmailProviderManager } from '../_shared/email-provider-manager.ts';
 
 interface RequestBody {
   email: string;
@@ -82,17 +82,22 @@ serve(async (req) => {
 
     const text = `${subject}\n\nYour verification code is: ${verificationCode}\n\nThis code will expire in 1 hour.`;
 
+    // Initialize email provider manager
+    const emailManager = new EmailProviderManager('auto');
+    
     // Send email immediately
-    const emailResult = await sendEmail({
-      recipient: email,
+    const emailResult = await emailManager.sendEmail(
+      email,
       subject,
-      body: html,
-      textBody: text,
-    });
+      html,
+      text
+    );
 
     if (!emailResult || !emailResult.success) {
-      throw new Error('Failed to send verification email');
+      throw new Error(`Failed to send verification email: ${emailResult?.error || 'Unknown error'}`);
     }
+    
+    console.log(`Verification email sent via ${emailResult.provider} to ${email}`);
 
     return new Response(
       JSON.stringify({ success: true, message: 'Verification email sent' }),

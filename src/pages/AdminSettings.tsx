@@ -7,10 +7,9 @@ import { supabase } from '../lib/supabase';
 import { ServiceWorkerManager } from '../components/ServiceWorkerManager';
 
 import { SessionSettings } from '../components/admin-settings/SessionSettings';
-import { EmailSettings } from '../components/admin-settings/EmailSettings';
+import { EmailSettingsV3 } from '../components/admin-settings/EmailSettingsV3';
 import { CacheSettings } from '../components/admin-settings/CacheSettings';
 import { DebugSettings } from '../components/admin-settings/DebugSettings';
-import { CronSettings } from '../components/admin-settings/CronSettings';
 import PaymentSettings from '../components/admin-settings/PaymentSettings';
 import NotificationManager from '../components/admin-settings/NotificationManager';
 
@@ -38,7 +37,6 @@ const sections = [
   { id: 'payments', label: 'Payment Providers', icon: <CreditCard className="h-5 w-5" /> },
   { id: 'session', label: 'Session', icon: <Settings className="h-5 w-5" /> },
   { id: 'email', label: 'Email', icon: <Mail className="h-5 w-5" /> },
-  { id: 'cron', label: 'Email Scheduler', icon: <Clock className="h-5 w-5" /> },
   { id: 'notifications', label: 'Notifications', icon: <Bell className="h-5 w-5" /> },
   { id: 'cache', label: 'Cache', icon: <HardDrive className="h-5 w-5" /> },
   { id: 'debug', label: 'Debug', icon: <Bug className="h-5 w-5" /> },
@@ -358,8 +356,7 @@ export default function AdminSettings() {
     switch (activeSection) {
       case 'payments': return <PaymentSettings />;
       case 'session': return <SessionSettings />;
-      case 'email': return <EmailSettings />;
-      case 'cron': return <CronSettings />;
+      case 'email': return <EmailSettingsV3 />;
       case 'notifications': return <NotificationManager />;
       case 'cache': return <CacheSettings />;
       case 'debug': return <DebugSettings />;

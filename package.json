@@ -24,7 +24,7 @@
     "rotate-keys": "tsx scripts/rotate-keys.ts",
     "security:scan": "npm run scan-secrets",
     "security:maintain": "tsx scripts/security-maintenance.ts",
-    "security:check": "tsx scripts/security-maintenance.ts --dry-run",
+    "security:check": "npm audit && npm outdated",
     "security:auto-fix": "tsx scripts/security-maintenance.ts --auto-commit",
     "security:fix": "npm audit fix",
     "security:hooks": "pre-commit install",
@@ -42,7 +42,6 @@
     "security:report": "tsx scripts/setup-security.ts && cat security-report.json",
     "type-check": "tsc --noEmit",
     "lint:fix": "eslint . --ext ts,tsx --fix",
-    "security:check": "npm audit && npm outdated",
     "security:update": "npm update"
   },
   "dependencies": {
@@ -77,7 +76,7 @@
     "framer-motion": "^12.23.12",
     "glob": "^11.0.3",
     "jszip": "^3.10.1",
-    "lucide-react": "^0.539.0",
+    "lucide-react": "^0.541.0",
     "node-fetch": "^3.3.2",
     "openai": "^5.12.2",
     "pg": "^8.16.3",
@@ -105,7 +104,7 @@
   "devDependencies": {
     "@eslint/js": "^9.33.0",
     "@fullhuman/postcss-purgecss": "^7.0.2",
-    "@supabase/supabase-js": "^2.54.0",
+    "@supabase/supabase-js": "^2.55.0",
     "@types/google.maps": "^3.58.1",
     "@types/node": "^20.19.10",
     "@types/react": "^18.3.23",

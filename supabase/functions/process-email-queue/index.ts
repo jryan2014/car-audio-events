@@ -1,7 +1,9 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createSupabaseAdminClient } from '../_shared/supabase-admin.ts';
-import { sendEmail } from '../_shared/mailgun-email-service.ts';
+import { EmailProviderManager } from '../_shared/email-provider-manager.ts';
 import { corsHeaders } from '../_shared/cors.ts';
+import { wrapEmailTemplate } from '../_shared/email-wrapper.ts';
+import { wrapEmailTemplateOutlook } from '../_shared/email-wrapper-outlook.ts';
 
 // Get the cron secret from environment variables
 const CRON_SECRET = Deno.env.get('EMAIL_QUEUE_CRON_SECRET');
@@ -59,6 +61,11 @@ serve(async (req) => {
   try {
     console.log('Creating Supabase admin client...');
     const supabaseAdmin = createSupabaseAdminClient();
+    
+    console.log('Initializing email provider manager...');
+    const emailManager = new EmailProviderManager('auto');
+    const configuredProviders = emailManager.getConfiguredProviders();
+    console.log('Configured email providers:', configuredProviders);
 
     console.log('Fetching pending emails...');
     // 1. Fetch pending emails from the queue, with a reasonable limit
@@ -106,6 +113,8 @@ serve(async (req) => {
       let finalHtmlBody = '';
       let finalTextBody = '';
       let finalSubject = email.subject;
+      let finalFromEmail = email.from_email;
+      let finalFromName = email.from_name;
       
       // Determine initial content based on what's in the email record
       if (email.html_content) {
@@ -157,16 +166,70 @@ serve(async (req) => {
         }
       }
       
-      try {
-        const result = await sendEmail({
-          recipient: email.recipient || email.to_email,
-          subject: finalSubject,
-          body: finalHtmlBody,
-          textBody: finalTextBody,
+      // CRITICAL: Check if this email ALREADY has a complete template
+      // If it does, DO NOT wrap it again!
+      const isCompleteEmail = finalHtmlBody && (
+        // Has DOCTYPE - it's a complete HTML document
+        finalHtmlBody.includes('<!DOCTYPE') ||
+        // Has html tag
+        finalHtmlBody.includes('<html') ||
+        // Has body tag
+        finalHtmlBody.includes('<body') ||
+        // Has our specific wrapper markers
+        finalHtmlBody.includes('email-wrapper') ||
+        finalHtmlBody.includes('email-container') ||
+        finalHtmlBody.includes('email-header') ||
+        finalHtmlBody.includes('email-footer') ||
+        // Has VML for Outlook
+        finalHtmlBody.includes('xmlns:v="urn:schemas-microsoft-com:vml"') ||
+        // Has our gradient backgrounds
+        finalHtmlBody.includes('linear-gradient') ||
+        // Has our company branding in structure
+        (finalHtmlBody.includes('Car Audio Events') && 
+         finalHtmlBody.includes('width="700"')) ||
+        // Has table-based email structure
+        (finalHtmlBody.includes('<table') && 
+         finalHtmlBody.includes('width="100%"') &&
+         finalHtmlBody.includes('caraudioevents'))
+      );
+      
+      // Log what we detected
+      console.log('Email structure check:', {
+        hasDoctype: finalHtmlBody?.includes('<!DOCTYPE'),
+        hasHtml: finalHtmlBody?.includes('<html'),
+        hasWrapper: finalHtmlBody?.includes('email-wrapper'),
+        hasVml: finalHtmlBody?.includes('xmlns:v='),
+        hasGradient: finalHtmlBody?.includes('linear-gradient'),
+        isComplete: isCompleteEmail
+      });
+      
+      // ONLY wrap if it's NOT already a complete email
+      if (finalHtmlBody && !isCompleteEmail) {
+        console.log('Email is just content, needs wrapping...');
+        
+        // This should be raw content without any wrapper
+        // Apply the Outlook-compatible wrapper
+        finalHtmlBody = wrapEmailTemplateOutlook(finalHtmlBody.trim(), {
+          title: finalSubject,
+          includeHeader: true,
+          includeFooter: true
         });
+      } else if (isCompleteEmail) {
+        console.log('Email already has complete template, NOT wrapping again');
+      }
+      
+      try {
+        const result = await emailManager.sendEmail(
+          email.recipient || email.to_email,
+          finalSubject,
+          finalHtmlBody,
+          finalTextBody,
+          finalFromEmail,
+          finalFromName
+        );
 
         console.log(`Email send result for ${email.id}:`, result);
-        console.log(`Result type: ${typeof result}, Success property: ${result?.success}, Has messageId: ${!!result?.messageId}`);
+        console.log(`Result type: ${typeof result}, Success property: ${result?.success}, Has messageId: ${!!result?.messageId}, Provider: ${result?.provider}`);
 
         // Check if email was sent successfully
         if (result && result.success === true) {
@@ -175,7 +238,7 @@ serve(async (req) => {
             .from('email_queue')
             .update({
               status: 'sent',
-              last_attempt_at: new Date().toISOString(),
+              last_attempt_at: new Date().toISOString(),  // This is the sent timestamp
               error_message: null,
             })
             .eq('id', email.id);
