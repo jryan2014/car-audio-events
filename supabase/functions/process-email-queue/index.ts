@@ -147,20 +147,81 @@ serve(async (req) => {
           finalTextBody = template.text_body || template.body || finalTextBody;
           finalSubject = template.subject || finalSubject;
           
-          // Replace template variables
+          // Replace template variables with both provided and system defaults
+          const currentDate = new Date();
+          const weekStart = new Date(currentDate);
+          weekStart.setDate(currentDate.getDate() - currentDate.getDay());
+          const weekEnd = new Date(weekStart);
+          weekEnd.setDate(weekStart.getDate() + 6);
+          
+          // Create default system variables with multiple formats for compatibility
+          const systemVariables = {
+            // Date/Time variables - multiple formats
+            'current_year': currentDate.getFullYear().toString(),
+            'currentYear': currentDate.getFullYear().toString(),
+            'current_date': currentDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+            'currentDate': currentDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+            'current_time': currentDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+            'currentTime': currentDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+            'week_date': `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`,
+            'weekDate': `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`,
+            
+            // System URLs - multiple formats for compatibility
+            'site_url': 'https://caraudioevents.com',
+            'siteUrl': 'https://caraudioevents.com',
+            'website_url': 'https://caraudioevents.com',
+            'websiteUrl': 'https://caraudioevents.com',
+            'site_name': 'Car Audio Events',
+            'siteName': 'Car Audio Events',
+            'dashboard_link': 'https://caraudioevents.com/dashboard',
+            'dashboardLink': 'https://caraudioevents.com/dashboard',
+            'dashboardUrl': 'https://caraudioevents.com/dashboard',
+            'unsubscribe_link': 'https://caraudioevents.com/unsubscribe',
+            'unsubscribeLink': 'https://caraudioevents.com/unsubscribe',
+            'preferences_link': 'https://caraudioevents.com/preferences',
+            'preferencesLink': 'https://caraudioevents.com/preferences',
+            'support_email': 'support@caraudioevents.com',
+            'supportEmail': 'support@caraudioevents.com',
+            'admin_email': 'admin@caraudioevents.com',
+            'adminEmail': 'admin@caraudioevents.com',
+            
+            // Default newsletter content if not provided - multiple formats
+            'weekly_competitions': `<p>Check out this week's upcoming competitions at <a href="https://caraudioevents.com/events">caraudioevents.com/events</a></p>`,
+            'weeklyCompetitions': `<p>Check out this week's upcoming competitions at <a href="https://caraudioevents.com/events">caraudioevents.com/events</a></p>`,
+            'competition_spotlight': `<p>Visit our events page for featured competitions.</p>`,
+            'competitionSpotlight': `<p>Visit our events page for featured competitions.</p>`,
+            'tech_tips': `<p>Stay tuned for technical tips and tricks!</p>`,
+            'techTips': `<p>Stay tuned for technical tips and tricks!</p>`
+          };
+          
+          // Parse provided template variables
+          let providedVars = {};
           if (email.template_variables) {
-            const vars = typeof email.template_variables === 'string' 
+            providedVars = typeof email.template_variables === 'string' 
               ? JSON.parse(email.template_variables) 
               : email.template_variables;
-              
-            Object.entries(vars).forEach(([key, value]) => {
-              const regex = new RegExp(`{{${key}}}`, 'g');
-              finalHtmlBody = finalHtmlBody.replace(regex, String(value));
-              finalTextBody = finalTextBody.replace(regex, String(value));
-              finalSubject = finalSubject.replace(regex, String(value));
-            });
-            console.log('Template variables replaced');
           }
+          
+          // Merge system variables with provided ones (provided ones override system)
+          const allVariables = { ...systemVariables, ...providedVars };
+          
+          // Add email-specific variables
+          if (email.recipient || email.to_email) {
+            allVariables['user_email'] = email.recipient || email.to_email;
+          }
+          
+          // Replace all variables in content - handle both {{var}} and {{{var}}} formats
+          Object.entries(allVariables).forEach(([key, value]) => {
+            const regex1 = new RegExp(`{{${key}}}`, 'g');
+            const regex2 = new RegExp(`{{{${key}}}}`, 'g');
+            const stringValue = String(value);
+            
+            finalHtmlBody = finalHtmlBody.replace(regex1, stringValue).replace(regex2, stringValue);
+            finalTextBody = finalTextBody.replace(regex1, stringValue).replace(regex2, stringValue);
+            finalSubject = finalSubject.replace(regex1, stringValue).replace(regex2, stringValue);
+          });
+          
+          console.log('Template variables replaced:', Object.keys(allVariables).length, 'variables');
         } else {
           console.error('Failed to fetch template:', templateError);
         }

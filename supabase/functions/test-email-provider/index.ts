@@ -113,22 +113,144 @@ serve(async (req) => {
         testText = template.body || '';
         templateUsed = true;
         
-        // Replace any placeholders with test data (use custom values or defaults)
-        const replacements = {
-          '{{user_name}}': placeholders?.user_name || 'Test User',
-          '{{user_email}}': testEmailAddress,
-          '{{first_name}}': placeholders?.first_name || 'Test',
-          '{{last_name}}': placeholders?.last_name || 'User',
-          '{{event_name}}': placeholders?.event_name || 'Test Event',
-          '{{event_date}}': placeholders?.event_date || new Date().toLocaleDateString(),
-          '{{amount}}': placeholders?.amount || '$100.00',
-          '{{current_year}}': placeholders?.current_year || new Date().getFullYear().toString()
+        // Create base replacements with system defaults
+        const currentDate = new Date();
+        const weekStart = new Date(currentDate);
+        weekStart.setDate(currentDate.getDate() - currentDate.getDay());
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+        
+        const defaultReplacements = {
+          // User data
+          'user_name': placeholders?.user_name || 'Test User',
+          'user_email': testEmailAddress,
+          'first_name': placeholders?.first_name || 'Test',
+          'firstName': placeholders?.first_name || 'Test', // Alternate format
+          'last_name': placeholders?.last_name || 'User',
+          
+          // Event data
+          'event_name': placeholders?.event_name || 'Test Event',
+          'event_date': placeholders?.event_date || currentDate.toLocaleDateString(),
+          
+          // Payment data
+          'amount': placeholders?.amount || '$100.00',
+          
+          // Date/Time data - multiple formats for compatibility
+          'current_year': currentDate.getFullYear().toString(),
+          'currentYear': currentDate.getFullYear().toString(),
+          'current_date': currentDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+          'currentDate': currentDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+          'current_time': currentDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+          'currentTime': currentDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+          'week_date': `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`,
+          'weekDate': `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`,
+          
+          // Newsletter specific - Weekly Digest
+          'weekly_competitions': placeholders?.weekly_competitions || `
+            <ul style="list-style: none; padding: 0;">
+              <li style="margin-bottom: 10px;">🏆 <strong>Summer Bass Battle 2025</strong> - July 15, Miami FL</li>
+              <li style="margin-bottom: 10px;">🎵 <strong>West Coast Sound Off</strong> - July 22, Los Angeles CA</li>
+              <li style="margin-bottom: 10px;">🔊 <strong>Midwest Thunder Championship</strong> - July 29, Chicago IL</li>
+            </ul>`,
+          'competition_spotlight': placeholders?.competition_spotlight || `
+            <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
+              <h3 style="color: #dc2626; margin-top: 0;">Featured Event: Summer Bass Battle 2025</h3>
+              <p>Join us for the biggest bass competition of the summer! Over $50,000 in prizes, live music, and vendor exhibits. Early bird registration now open with 20% discount.</p>
+              <!--[if mso]>
+              <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="https://caraudioevents.com/events" style="height:40px;v-text-anchor:middle;width:150px;" arcsize="10%" stroke="f" fillcolor="#dc2626">
+                <w:anchorlock/>
+                <center style="color:#ffffff;font-family:sans-serif;font-size:14px;font-weight:bold;">Register Now</center>
+              </v:roundrect>
+              <![endif]-->
+              <!--[if !mso]><!-->
+              <table cellspacing="0" cellpadding="0" style="margin-top: 10px;">
+                <tr>
+                  <td align="center" bgcolor="#dc2626" style="border-radius: 5px;">
+                    <a href="https://caraudioevents.com/events" target="_blank" style="display: inline-block; background: #dc2626; color: #ffffff; font-family: sans-serif; font-size: 14px; font-weight: bold; line-height: 40px; text-align: center; text-decoration: none; width: 150px; -webkit-text-size-adjust: none; border-radius: 5px;">Register Now</a>
+                  </td>
+                </tr>
+              </table>
+              <!--<![endif]-->
+            </div>`,
+          'competitionSpotlight': placeholders?.competition_spotlight || `
+            <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
+              <h3 style="color: #dc2626; margin-top: 0;">Featured Event: Summer Bass Battle 2025</h3>
+              <p>Join us for the biggest bass competition of the summer! Over $50,000 in prizes, live music, and vendor exhibits. Early bird registration now open with 20% discount.</p>
+              <!--[if mso]>
+              <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="https://caraudioevents.com/events" style="height:40px;v-text-anchor:middle;width:150px;" arcsize="10%" stroke="f" fillcolor="#dc2626">
+                <w:anchorlock/>
+                <center style="color:#ffffff;font-family:sans-serif;font-size:14px;font-weight:bold;">Register Now</center>
+              </v:roundrect>
+              <![endif]-->
+              <!--[if !mso]><!-->
+              <table cellspacing="0" cellpadding="0" style="margin-top: 10px;">
+                <tr>
+                  <td align="center" bgcolor="#dc2626" style="border-radius: 5px;">
+                    <a href="https://caraudioevents.com/events" target="_blank" style="display: inline-block; background: #dc2626; color: #ffffff; font-family: sans-serif; font-size: 14px; font-weight: bold; line-height: 40px; text-align: center; text-decoration: none; width: 150px; -webkit-text-size-adjust: none; border-radius: 5px;">Register Now</a>
+                  </td>
+                </tr>
+              </table>
+              <!--<![endif]-->
+            </div>`,
+          'tech_tips': placeholders?.tech_tips || `
+            <div style="margin: 20px 0;">
+              <h4 style="color: #1e40af;">This Week's Tech Tip</h4>
+              <p><strong>Proper Box Tuning for Maximum SPL</strong></p>
+              <p>Did you know that tuning your enclosure 5-10Hz above your vehicle's resonant frequency can increase your SPL by 2-3dB? Use our Box Calculator tool to find your optimal tuning frequency.</p>
+            </div>`,
+          'techTips': placeholders?.tech_tips || `
+            <div style="margin: 20px 0;">
+              <h4 style="color: #1e40af;">This Week's Tech Tip</h4>
+              <p><strong>Proper Box Tuning for Maximum SPL</strong></p>
+              <p>Did you know that tuning your enclosure 5-10Hz above your vehicle's resonant frequency can increase your SPL by 2-3dB? Use our Box Calculator tool to find your optimal tuning frequency.</p>
+            </div>`,
+          'weeklyCompetitions': placeholders?.weekly_competitions || `
+            <ul style="list-style: none; padding: 0;">
+              <li style="margin-bottom: 10px;">🏆 <strong>Summer Bass Battle 2025</strong> - July 15, Miami FL</li>
+              <li style="margin-bottom: 10px;">🎵 <strong>West Coast Sound Off</strong> - July 22, Los Angeles CA</li>
+              <li style="margin-bottom: 10px;">🔊 <strong>Midwest Thunder Championship</strong> - July 29, Chicago IL</li>
+            </ul>`,
+          
+          // System URLs - multiple formats for compatibility
+          'site_url': 'https://caraudioevents.com',
+          'siteUrl': 'https://caraudioevents.com',
+          'website_url': 'https://caraudioevents.com',
+          'websiteUrl': 'https://caraudioevents.com',
+          'site_name': 'Car Audio Events',
+          'siteName': 'Car Audio Events',
+          'dashboard_link': 'https://caraudioevents.com/dashboard',
+          'dashboardLink': 'https://caraudioevents.com/dashboard',
+          'dashboardUrl': 'https://caraudioevents.com/dashboard',
+          'unsubscribe_link': 'https://caraudioevents.com/unsubscribe',
+          'unsubscribeLink': 'https://caraudioevents.com/unsubscribe',
+          'preferences_link': 'https://caraudioevents.com/preferences',
+          'preferencesLink': 'https://caraudioevents.com/preferences',
+          'support_email': 'support@caraudioevents.com',
+          'supportEmail': 'support@caraudioevents.com',
+          'admin_email': 'admin@caraudioevents.com',
+          'adminEmail': 'admin@caraudioevents.com'
         };
         
-        for (const [placeholder, value] of Object.entries(replacements)) {
-          testHtml = testHtml.replace(new RegExp(placeholder, 'g'), value);
-          testText = testText.replace(new RegExp(placeholder, 'g'), value);
-          testSubject = testSubject.replace(new RegExp(placeholder, 'g'), value);
+        // Merge any additional placeholders passed in
+        const allReplacements = { ...defaultReplacements };
+        if (placeholders) {
+          // Add any custom placeholders that weren't in our defaults
+          for (const [key, value] of Object.entries(placeholders)) {
+            if (!allReplacements[key]) {
+              allReplacements[key] = value;
+            }
+          }
+        }
+        
+        // Replace all placeholders in content - handle both {{var}} and {{{var}}} formats
+        for (const [key, value] of Object.entries(allReplacements)) {
+          const regex1 = new RegExp(`{{${key}}}`, 'g');
+          const regex2 = new RegExp(`{{{${key}}}}`, 'g');
+          const stringValue = String(value);
+          
+          testHtml = testHtml.replace(regex1, stringValue).replace(regex2, stringValue);
+          testText = testText.replace(regex1, stringValue).replace(regex2, stringValue);
+          testSubject = testSubject.replace(regex1, stringValue).replace(regex2, stringValue);
         }
         
         // Clean any old wrapper from the template first
