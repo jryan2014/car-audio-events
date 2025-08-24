@@ -32,7 +32,9 @@
       "Bash(npm run version:generate:*)",
       "Bash(npm run lint)",
       "Bash(npm run version:bump:patch:*)",
-      "Bash(git fetch:*)"
+      "Bash(git fetch:*)",
+      "mcp__git__git_status",
+      "mcp__git__git_add"
     ]
   },
   "enableAllProjectMcpServers": true,
