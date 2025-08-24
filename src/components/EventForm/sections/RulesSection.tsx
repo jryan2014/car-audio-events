@@ -1,7 +1,6 @@
 import React from 'react';
 import { FileText } from 'lucide-react';
 import { EventFormData, Organization } from '../../../types/event';
-import { useSystemConfiguration } from '../../../hooks/useSystemConfiguration';
 
 interface RulesSectionProps {
   formData: EventFormData;
@@ -18,7 +17,6 @@ const RulesSection: React.FC<RulesSectionProps> = ({
   getFieldError,
   touchField
 }) => {
-  const { getRulesTemplates } = useSystemConfiguration();
   
   return (
     <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">

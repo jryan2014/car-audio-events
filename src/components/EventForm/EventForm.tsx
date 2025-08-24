@@ -3,7 +3,6 @@ import { EventFormData, EventScheduleItem, Organization, EventCategory, Database
 import { validateEventForm, validateEventDraft, formatValidationErrors } from '../../schemas/eventValidation';
 import { useDebounce } from '../../hooks/useDebounce';
 import { geocodingService } from '../../services/geocoding';
-import { useSystemConfiguration } from '../../hooks/useSystemConfiguration';
 import { AlertCircle } from 'lucide-react';
 
 // Lazy load form sections for better performance
@@ -117,8 +116,7 @@ export const EventForm: React.FC<EventFormProps> = ({
   const [touched, setTouched] = useState<Set<string>>(new Set());
   const [showValidationSummary, setShowValidationSummary] = useState(false);
 
-  // Hooks
-  const { saveFormData } = useSystemConfiguration();
+  // Hooks removed - useSystemConfiguration no longer needed
   
   // Debounced address for geocoding
   const debouncedAddress = useDebounce(
@@ -160,12 +158,7 @@ export const EventForm: React.FC<EventFormProps> = ({
   ) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     setTouched(prev => new Set(prev).add(field));
-    
-    // Auto-save certain fields
-    if (['title', 'description', 'venue_name'].includes(field) && typeof value === 'string') {
-      saveFormData(isEditMode ? 'edit_event' : 'create_event', field, value);
-    }
-  }, [isEditMode, saveFormData]);
+  }, []);
 
   // Mark field as touched
   const touchField = useCallback((field: string) => {

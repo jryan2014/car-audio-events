@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Calendar, DollarSign, TrendingUp, Activity, Shield, AlertTriangle, CheckCircle, UserCheck, FileText, Target, Settings, Archive, Mail, Building2, Menu, Brain, Zap, MessageSquare } from '../components/icons';
+import { Users, Calendar, DollarSign, TrendingUp, Activity, Shield, AlertTriangle, CheckCircle, FileText, Target, Settings, Archive, Mail, Building2, Menu, Brain, Zap, MessageSquare } from '../components/icons';
 import { Bell, Trophy } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
@@ -350,7 +350,7 @@ export default function AdminDashboard() {
                 <p className="text-gray-400 text-sm">Pending Approvals</p>
                 <p className="text-2xl font-bold text-yellow-400">{stats.pendingApprovals}</p>
               </div>
-              <UserCheck className="h-8 w-8 text-yellow-500" />
+              <AlertTriangle className="h-8 w-8 text-yellow-500" />
             </div>
           </div>
 
@@ -426,20 +426,7 @@ export default function AdminDashboard() {
               <Users className="h-8 w-8 text-blue-400 group-hover:scale-110 transition-transform" />
               <div>
                 <h3 className="text-white font-semibold">Manage Users</h3>
-                <p className="text-gray-400 text-sm">View and manage user accounts</p>
-              </div>
-            </div>
-          </Link>
-
-          <Link
-            to="/admin/users?status=pending"
-            className="bg-gradient-to-br from-yellow-500/20 to-yellow-600/20 border border-yellow-500/30 rounded-xl p-6 hover:from-yellow-500/30 hover:to-yellow-600/30 transition-all duration-200 group"
-          >
-            <div className="flex items-center space-x-3">
-              <UserCheck className="h-8 w-8 text-yellow-400 group-hover:scale-110 transition-transform" />
-              <div>
-                <h3 className="text-white font-semibold">Approve Users</h3>
-                <p className="text-gray-400 text-sm">Review and approve new registrations</p>
+                <p className="text-gray-400 text-sm">View, manage, and approve user accounts</p>
               </div>
             </div>
           </Link>
@@ -531,19 +518,6 @@ export default function AdminDashboard() {
               <div>
                 <h3 className="text-white font-semibold">Advertisement Management</h3>
                 <p className="text-gray-400 text-sm">Create and manage ad campaigns</p>
-              </div>
-            </div>
-          </Link>
-
-          <Link
-            to="/admin/system-configuration"
-            className="bg-gradient-to-br from-indigo-500/20 to-indigo-600/20 border border-indigo-500/30 rounded-xl p-6 hover:from-indigo-500/30 hover:to-indigo-600/30 transition-all duration-200 group"
-          >
-            <div className="flex items-center space-x-3">
-              <Settings className="h-8 w-8 text-indigo-400 group-hover:scale-110 transition-transform" />
-              <div>
-                <h3 className="text-white font-semibold">System Configuration</h3>
-                <p className="text-gray-400 text-sm">Manage configurable options and form fields</p>
               </div>
             </div>
           </Link>

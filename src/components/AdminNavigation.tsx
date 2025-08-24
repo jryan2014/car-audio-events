@@ -167,12 +167,6 @@ const adminNavGroups: AdminNavGroup[] = [
         description: 'Backup management'
       },
       {
-        name: 'System Config',
-        href: '/admin/system-configuration',
-        icon: Cog,
-        description: 'System configuration'
-      },
-      {
         name: 'Subwoofer Designer',
         href: '/admin/subwoofer-designer',
         icon: Volume2,

@@ -60,8 +60,6 @@ const AIConfiguration = React.lazy(() => import('./pages/AIConfiguration'));
 const AIMigration = React.lazy(() => import('./pages/AIMigration'));
 const CMSPages = React.lazy(() => import('./pages/CMSPages'));
 const DynamicPage = React.lazy(() => import('./pages/DynamicPage'));
-const SystemConfiguration = React.lazy(() => import('./pages/SystemConfiguration'));
-const SystemConfigurationDemo = React.lazy(() => import('./pages/SystemConfigurationDemo'));
 const OrganizationManager = React.lazy(() => import('./pages/OrganizationManager'));
 const AdminContactSettingsPage = React.lazy(() => import('./pages/AdminContactSettings'));
 const CompleteProfile = React.lazy(() => import('./pages/CompleteProfile'));
@@ -276,8 +274,6 @@ function App() {
               {/* <Route path="/ad-debug" element={<AdDebug />} /> */}
               <Route path="/admin/ai-migration" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AIMigration /></Suspense></AdminLayout>} />
               <Route path="/admin/cms-pages" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><CMSPages /></Suspense></AdminLayout>} />
-              <Route path="/admin/system-configuration" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><SystemConfiguration /></Suspense></AdminLayout>} />
-              <Route path="/admin/system-configuration-demo" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><SystemConfigurationDemo /></Suspense></AdminLayout>} />
               <Route path="/admin/organizations" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><OrganizationManager /></Suspense></AdminLayout>} />
               <Route path="/admin/contact-settings" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminContactSettingsPage /></Suspense></AdminLayout>} />
               <Route path="/admin/navigation-manager" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><NavigationManager /></Suspense></AdminLayout>} />

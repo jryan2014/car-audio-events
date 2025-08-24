@@ -289,15 +289,6 @@ export default function Header() {
                               </Link>
                               
                               <Link
-                                to="/admin/system-configuration"
-                                onClick={handleDropdownLinkClick}
-                                className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
-                              >
-                                <Settings className="h-3 w-3" />
-                                <span>System</span>
-                              </Link>
-                              
-                              <Link
                                 to="/admin/analytics"
                                 onClick={handleDropdownLinkClick}
                                 className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
