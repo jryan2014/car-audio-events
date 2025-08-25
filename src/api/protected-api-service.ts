@@ -6,7 +6,7 @@
  */
 
 import { supabase } from '../lib/supabase';
-import { AuthMiddleware, type AuthenticatedUser } from '../middleware/auth-middleware';
+import { type AuthenticatedUser } from '../middleware/auth-middleware';
 import { 
   ResourceAuthorizationMiddleware, 
   type ResourceIdentifier, 
