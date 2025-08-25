@@ -57,7 +57,8 @@
       "Bash(gh run view:*)",
       "Bash(gh run list:*)",
       "Bash(gh run watch:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(npm run type-check:*)"
     ],
     "additionalDirectories": [
       "E:\\e\\2025-car-audio-events"
