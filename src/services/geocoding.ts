@@ -16,8 +16,8 @@ interface GeocodeError {
 class GeocodingService {
   private readonly providers = [
     'google',    // Google Maps (requires API key) - First priority, already in CSP
-    'mapbox',    // Mapbox (requires API key)
-    'nominatim'  // Free OpenStreetMap service - Last priority due to CSP issues
+    'nominatim'  // Free OpenStreetMap service - Fallback option
+    // 'mapbox' removed - not configured with API key or CSP
   ];
 
   /**
@@ -38,20 +38,24 @@ class GeocodingService {
       address = `${streetAddress}, ${city}, ${state}, ${country}`;
     }
     
+    console.log('🌍 Starting geocoding for:', address);
+    
     // Try each provider in order
     for (const provider of this.providers) {
       try {
+        console.log(`📍 Trying ${provider} provider...`);
         const result = await this.geocodeWithProvider(address, provider);
         if (result) {
-          console.log(`✅ Geocoded "${address}" using ${provider}:`, result);
+          console.log(`✅ Successfully geocoded with ${provider}:`, result);
           return result;
         }
       } catch (error) {
-        console.warn(`⚠️ ${provider} geocoding failed for "${address}":`, error);
+        console.warn(`⚠️ ${provider} geocoding failed:`, error);
         continue;
       }
     }
 
+    console.error('❌ All geocoding providers failed for:', address);
     return {
       error: `Failed to geocode "${address}" with all providers`,
       provider: 'all'
@@ -70,8 +74,6 @@ class GeocodingService {
         return this.geocodeWithNominatim(address);
       case 'google':
         return this.geocodeWithGoogle(address);
-      case 'mapbox':
-        return this.geocodeWithMapbox(address);
       default:
         throw new Error(`Unknown provider: ${provider}`);
     }
@@ -84,26 +86,29 @@ class GeocodingService {
     // Remove country restriction to support worldwide geocoding
     const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`;
     
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'CarAudioEvents/1.0 (contact@caraudioevents.com)' // Required by Nominatim
+    try {
+      // Note: User-Agent header cannot be set in browser environments
+      // Nominatim still works without it, but may have stricter rate limits
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error(`Nominatim API error: ${response.status}`);
       }
-    });
 
-    if (!response.ok) {
-      throw new Error(`Nominatim API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    
-    if (data && data.length > 0) {
-      const result = data[0];
-      return {
-        latitude: parseFloat(result.lat),
-        longitude: parseFloat(result.lon),
-        formatted_address: result.display_name,
-        confidence: parseFloat(result.importance || '0.5')
-      };
+      const data = await response.json();
+      
+      if (data && data.length > 0) {
+        const result = data[0];
+        return {
+          latitude: parseFloat(result.lat),
+          longitude: parseFloat(result.lon),
+          formatted_address: result.display_name,
+          confidence: parseFloat(result.importance || '0.5')
+        };
+      }
+    } catch (error) {
+      console.error('Nominatim geocoding error:', error);
+      throw error;
     }
 
     return null;
