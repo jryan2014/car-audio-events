@@ -1,6 +1,13 @@
 // Geocoding service to convert addresses to coordinates
 // Supports multiple providers with fallbacks
 
+// Add Google Maps types
+declare global {
+  interface Window {
+    google: any;
+  }
+}
+
 interface GeocodeResult {
   latitude: number;
   longitude: number;
@@ -115,56 +122,55 @@ class GeocodingService {
   }
 
   /**
-   * Geocode using Google Maps Geocoding API via Edge Function
-   * Uses Edge Function to avoid referrer restriction issues
+   * Geocode using Google Maps JavaScript API Geocoder
+   * This works with referrer-restricted API keys
    */
   private async geocodeWithGoogle(address: string): Promise<GeocodeResult | null> {
-    // Check if we have Supabase URL configured
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    
-    if (!supabaseUrl || !supabaseAnonKey) {
-      throw new Error('Supabase configuration missing');
-    }
-
-    // Call our Edge Function instead of Google Maps API directly
-    const url = `${supabaseUrl}/functions/v1/geocode-address`;
-    
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseAnonKey}`
-        },
-        body: JSON.stringify({ address })
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('Geocoding Edge Function error:', errorData);
-        throw new Error(`Geocoding failed: ${errorData.error || response.status}`);
-      }
-
-      const data = await response.json();
-      console.log('Geocoding Edge Function response:', data);
-      
-      if (data.latitude && data.longitude) {
-        return {
-          latitude: data.latitude,
-          longitude: data.longitude,
-          formatted_address: data.formatted_address,
-          confidence: 0.9
+    // Use the Maps JavaScript API Geocoder which works with referrer restrictions
+    return new Promise((resolve, reject) => {
+      // Check if Google Maps is loaded
+      if (!window.google || !window.google.maps) {
+        // Load Google Maps if not already loaded
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places`;
+        script.async = true;
+        script.defer = true;
+        script.onload = () => {
+          this.performGeocode(address, resolve, reject);
         };
-      } else if (data.error) {
-        throw new Error(data.error);
+        script.onerror = () => reject(new Error('Failed to load Google Maps'));
+        document.head.appendChild(script);
+      } else {
+        this.performGeocode(address, resolve, reject);
       }
-    } catch (error) {
-      console.error('Geocoding error:', error);
-      throw error;
-    }
+    });
+  }
 
-    return null;
+  private performGeocode(
+    address: string, 
+    resolve: (result: GeocodeResult | null) => void,
+    reject: (error: Error) => void
+  ): void {
+    const geocoder = new window.google.maps.Geocoder();
+    
+    geocoder.geocode({ address }, (results, status) => {
+      if (status === 'OK' && results && results.length > 0) {
+        const result = results[0];
+        const location = result.geometry.location;
+        
+        resolve({
+          latitude: location.lat(),
+          longitude: location.lng(),
+          formatted_address: result.formatted_address,
+          confidence: 0.9
+        });
+      } else if (status === 'ZERO_RESULTS') {
+        resolve(null);
+      } else {
+        console.error('Google Maps Geocoder error:', status);
+        reject(new Error(`Geocoding failed: ${status}`));
+      }
+    });
   }
 
   /**
