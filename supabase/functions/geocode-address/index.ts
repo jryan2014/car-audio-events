@@ -30,12 +30,14 @@ serve(async (req) => {
     }
 
     // Get Google Maps API key from environment
-    const googleMapsApiKey = Deno.env.get('GOOGLE_MAPS_API_KEY');
+    // This should be an UNRESTRICTED key or one with IP restrictions only
+    const googleMapsApiKey = Deno.env.get('GOOGLE_MAPS_SERVER_KEY') || Deno.env.get('GOOGLE_MAPS_API_KEY');
     
     if (!googleMapsApiKey) {
-      console.error('Google Maps API key not configured');
+      console.error('Google Maps API key not configured in Edge Function');
+      console.error('Please add GOOGLE_MAPS_SERVER_KEY secret in Supabase dashboard');
       return new Response(
-        JSON.stringify({ error: 'Geocoding service not configured' }),
+        JSON.stringify({ error: 'Geocoding service not configured - API key missing' }),
         { 
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
