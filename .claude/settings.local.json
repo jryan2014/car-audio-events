@@ -38,7 +38,15 @@
       "mcp__git__git_commit",
       "mcp__git__git_push",
       "mcp__netlify__netlify-deploy-services",
-      "Bash(npm run version:bump:minor:*)"
+      "Bash(npm run version:bump:minor:*)",
+      "mcp__netlify__netlify-user-services",
+      "mcp__netlify__netlify-project-services",
+      "mcp__git__git_log",
+      "mcp__git__git_set_working_dir",
+      "Bash(gh repo view:*)",
+      "Bash(gh api:*)",
+      "Bash(timeout:*)",
+      "mcp__git__git_pull"
     ]
   },
   "enableAllProjectMcpServers": true,
