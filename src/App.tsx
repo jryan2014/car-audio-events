@@ -1,4 +1,5 @@
 import React, { useEffect, Suspense } from 'react';
+// Deploy trigger v1.27.0 - Retry deployment
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { Toaster } from 'react-hot-toast';
