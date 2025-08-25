@@ -58,11 +58,7 @@ export default function AdminEvents() {
   const [showCoordinatesModal, setShowCoordinatesModal] = useState(false);
   const [showWebScraperModal, setShowWebScraperModal] = useState(false);
 
-  // Check if user is admin
-  if (!user || user.membershipType !== 'admin') {
-    return <Navigate to="/\" replace />;
-  }
-
+  // All useEffect hooks moved before conditional return
   useEffect(() => {
     loadEvents();
     // Log access to Event Management
@@ -72,6 +68,11 @@ export default function AdminEvents() {
   useEffect(() => {
     filterEvents();
   }, [events, searchTerm, selectedStatus, selectedApproval, selectedTimeFilter, selectedOrganization, selectedLocation, selectedCountry, selectedState]);
+
+  // Check if user is admin
+  if (!user || user.membershipType !== 'admin') {
+    return <Navigate to="/\" replace />;
+  }
 
   const loadEvents = async () => {
     try {

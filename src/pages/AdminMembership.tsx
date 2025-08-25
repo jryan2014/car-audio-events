@@ -105,11 +105,7 @@ export default function AdminMembership() {
   const [planAnalytics, setPlanAnalytics] = useState<any[]>([]);
   const [billingLoading, setBillingLoading] = useState(false);
 
-  // Check if user is admin
-  if (!user || user.membershipType !== 'admin') {
-    return <Navigate to="/\" replace />;
-  }
-
+  // Form data state and other hooks moved before conditional return
   const [formData, setFormData] = useState<Partial<MembershipPlan>>({
     name: '',
     type: 'competitor',
@@ -145,6 +141,206 @@ export default function AdminMembership() {
     total_points: 0,
     competitions_won: 0
   });
+
+  const [defaultPermissions, setDefaultPermissions] = useState([
+    // Competitor permissions
+    { id: 'view_events', name: 'View Events', description: 'Browse and view event listings', category: 'Events' },
+    { id: 'register_events', name: 'Register for Events', description: 'Register and participate in events', category: 'Events' },
+    { id: 'track_scores', name: 'Track Scores', description: 'View and track competition scores', category: 'Competition' },
+    { id: 'create_profile', name: 'Create Profile', description: 'Create and manage user profile', category: 'Profile' },
+    { id: 'join_teams', name: 'Join Teams', description: 'Join and participate in teams', category: 'Teams' },
+    { id: 'create_team', name: 'Create Team', description: 'Create and manage new teams', category: 'Teams' },
+    { id: 'manage_team', name: 'Manage Team', description: 'Manage team settings and members', category: 'Teams' },
+    { id: 'advanced_analytics', name: 'Advanced Analytics', description: 'Access detailed performance analytics', category: 'Analytics' },
+    { id: 'priority_registration', name: 'Priority Registration', description: 'Early access to event registration', category: 'Events' },
+    { id: 'custom_showcase', name: 'Custom System Showcase', description: 'Create custom audio system showcases', category: 'Profile' },
+    { id: 'export_history', name: 'Export Competition History', description: 'Export competition data and history', category: 'Data' },
+    
+    // Business permissions
+    { id: 'directory_listing', name: 'Directory Listing', description: 'List business in directory', category: 'Business' },
+    { id: 'create_events', name: 'Create Events', description: 'Create and manage events', category: 'Events' },
+    { id: 'customer_analytics', name: 'Customer Analytics', description: 'Access customer insights and analytics', category: 'Analytics' },
+    { id: 'advertising', name: 'Advertising Options', description: 'Access to advertising and promotion tools', category: 'Marketing' },
+    { id: 'sponsorship_tools', name: 'Sponsorship Tools', description: 'Tools for event sponsorship management', category: 'Marketing' },
+    { id: 'ai_ad_creation', name: 'AI Ad Creation', description: 'Use AI tools to create and generate advertisements', category: 'Marketing' },
+    { id: 'api_access', name: 'API Access', description: 'Access to platform APIs', category: 'Integration' },
+    { id: 'priority_support', name: 'Priority Support', description: 'Priority customer support', category: 'Support' },
+    { id: 'bulk_operations', name: 'Bulk Operations', description: 'Perform bulk data operations', category: 'Data' },
+    { id: 'white_label', name: 'White Label Options', description: 'White label platform features', category: 'Branding' },
+    
+    // Organization permissions
+    { id: 'member_management', name: 'Member Management', description: 'Manage organization members', category: 'Organization' },
+    { id: 'judge_management', name: 'Judge Management', description: 'Manage judges and scoring for competitions', category: 'Organization' },
+    { id: 'multiple_member_accounts', name: 'Multiple Member Accounts', description: 'Create and manage multiple member accounts for organization', category: 'Organization' },
+    { id: 'event_hosting', name: 'Event Hosting', description: 'Host and organize events', category: 'Events' },
+    { id: 'community_building', name: 'Community Building', description: 'Access community building tools', category: 'Community' },
+    { id: 'custom_branding', name: 'Custom Branding', description: 'Custom branding and themes', category: 'Branding' }
+  ]);
+
+  // All useEffect and useCallback hooks moved before conditional return
+  useEffect(() => {
+    loadPlans();
+    loadPermissions();
+    if (activeTab === 'teams') {
+      loadTeams();
+    } else if (activeTab === 'billing') {
+      loadBillingAnalytics();
+    }
+  }, [activeTab]);
+
+  const loadPermissions = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('role_permissions')
+        .select('role_name, permission, resource')
+        .order('role_name');
+
+      if (error) throw error;
+
+      // Transform the data into our permissions format
+      const permissionsMap = new Map();
+      
+      data.forEach((item: any) => {
+        const id = item.permission;
+        const name = item.permission
+          .split('_')
+          .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(' ');
+        const category = item.resource.charAt(0).toUpperCase() + item.resource.slice(1);
+        
+        if (!permissionsMap.has(id)) {
+          permissionsMap.set(id, {
+            id,
+            name,
+            description: `Permission to ${item.permission.replace(/_/g, ' ')} ${item.resource}`,
+            category
+          });
+        }
+      });
+      
+      // Always merge database permissions with default permissions
+      const dbPermissions = Array.from(permissionsMap.values());
+      
+      // Create a combined list, prioritizing default permissions for display
+      const combinedPermissions = [...defaultPermissions];
+      
+      // Add any database permissions that aren't in defaults
+      dbPermissions.forEach(dbPerm => {
+        if (!defaultPermissions.find(defPerm => defPerm.id === dbPerm.id)) {
+          combinedPermissions.push(dbPerm);
+        }
+      });
+
+      setPermissions(combinedPermissions);
+    } catch (error) {
+      console.error('Error loading permissions:', error);
+      setPermissions(defaultPermissions);
+    }
+  }, [defaultPermissions]);
+
+  const loadPlans = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('membership_plans')
+        .select('*')
+        .order('display_order', { ascending: true })
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      setPlans(data || []);
+    } catch (error) {
+      console.error('Error loading membership plans:', error);
+      setPlans([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const loadTeams = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('teams')
+        .select(`
+          *,
+          users!teams_owner_id_fkey(name),
+          team_members(id)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const formattedTeams = (data || []).map(team => ({
+        ...team,
+        owner_name: team.users?.name,
+        member_count: team.team_members?.length || 0
+      }));
+
+      setTeams(formattedTeams);
+    } catch (error) {
+      console.error('Error loading teams:', error);
+      setTeams([]);
+    }
+  }, []);
+
+  const loadTeamMembers = useCallback(async (teamId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('team_members')
+        .select(`
+          *,
+          users(name, email)
+        `)
+        .eq('team_id', teamId)
+        .order('joined_at', { ascending: false });
+
+      if (error) throw error;
+
+      const formattedMembers = (data || []).map(member => ({
+        ...member,
+        user_name: member.users?.name || 'Unknown',
+        user_email: member.users?.email || 'Unknown'
+      }));
+
+      setTeamMembers(formattedMembers);
+    } catch (error) {
+      console.error('Error loading team members:', error);
+      setTeamMembers([]);
+    }
+  }, []);
+
+  const loadBillingAnalytics = useCallback(async () => {
+    setBillingLoading(true);
+    try {
+      // Load billing statistics and plan analytics
+      const [statsResponse, analyticsResponse] = await Promise.all([
+        supabase.rpc('get_billing_stats'),
+        supabase.rpc('get_plan_analytics')
+      ]);
+
+      if (statsResponse.error) {
+        console.error('Error loading billing stats:', statsResponse.error);
+      } else {
+        setBillingStats(statsResponse.data);
+      }
+
+      if (analyticsResponse.error) {
+        console.error('Error loading plan analytics:', analyticsResponse.error);
+      } else {
+        setPlanAnalytics(analyticsResponse.data || []);
+      }
+    } catch (error) {
+      console.error('Error loading billing analytics:', error);
+    } finally {
+      setBillingLoading(false);
+    }
+  }, []);
+
+  // Check if user is admin
+  if (!user || user.membershipType !== 'admin') {
+    return <Navigate to="/\" replace />;
+  }
 
   const membershipTypes = [
     { id: 'competitor', name: 'Competitor', icon: Users, color: 'blue' },

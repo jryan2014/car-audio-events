@@ -136,14 +136,15 @@ export default function AdminBillingConfiguration() {
   const [dunningFormData, setDunningFormData] = useState<Partial<DunningSettings>>({});
   const [campaignFormData, setCampaignFormData] = useState<Partial<CouponCampaign>>({});
 
+  // useEffect hook moved before conditional return
+  useEffect(() => {
+    loadBillingConfiguration();
+  }, []);
+
   // Check if user is admin
   if (!user || user.membershipType !== 'admin') {
     return <Navigate to="/dashboard" replace />;
   }
-
-  useEffect(() => {
-    loadBillingConfiguration();
-  }, []);
 
   const loadBillingConfiguration = async () => {
     setIsLoading(true);
