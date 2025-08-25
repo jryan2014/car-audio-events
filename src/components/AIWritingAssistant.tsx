@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Copy, RefreshCw, X, Sparkles, FileText, Lightbulb } from 'lucide-react';
+import { Send, Bot, User, Copy, RefreshCw, X, Sparkles, FileText } from 'lucide-react';
 import { generateAIContent } from '../lib/openai';
 
 interface Message {
