@@ -1,0 +1,21 @@
+# Supabase functions have their own TypeScript config
+supabase/functions/**
+
+# Test files not part of main project
+test-*.ts
+test-*.js
+
+# Build output
+dist/
+build/
+
+# Dependencies
+node_modules/
+
+# Config files
+vite.config.ts.timestamp-*
+*.config.js
+*.config.ts
+
+# Generated files
+src/utils/version.ts
