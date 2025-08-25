@@ -6,18 +6,18 @@
  */
 
 import { supabase } from '../lib/supabase';
-import { AuthMiddleware, type AuthenticatedUser } from '../middleware/auth-middleware';
-import { PermissionGuards, type GuardResult } from '../middleware/permission-guards';
+import { AuthMiddleware, type AuthResult } from '../middleware/auth-middleware';
+import { PermissionGuards } from '../middleware/permission-guards';
 import { 
   ResourceAuthorizationMiddleware,
   type ResourceIdentifier,
   type ResourceAuthContext
 } from '../middleware/resource-authorization';
-import { IDORProtectionUtils, IdValidators, IDORValidationError } from '../utils/idorProtection';
+import { IdValidators, IDORValidationError } from '../utils/idorProtection';
 // Security validation is handled by backend Edge Functions
 import { RateLimiter, RateLimitConfigs } from '../middleware/rate-limiting';
 import { auditLogger } from '../middleware/audit-security';
-import { addCSRFHeader, validateCSRFToken } from '../utils/csrfProtection';
+// Security validation is handled by backend Edge Functions
 
 // Type definitions
 export interface CompetitionResultData {
@@ -44,13 +44,13 @@ export interface CompetitionResultData {
   verified?: boolean;
 }
 
-export interface SecureResponse<T = any> {
+export interface SecureResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: {
     code: string;
     message: string;
-    details?: any;
+    details?: unknown;
   };
   audit_id?: string;
   rateLimitInfo?: {
@@ -63,6 +63,15 @@ export interface BulkUpdateData {
   ids: string[];
   updates: Partial<CompetitionResultData>;
   reason?: string;
+}
+
+export interface BulkUpdateResponse {
+  updated: number;
+  failed: number;
+  details: {
+    success: string[];
+    failed: { id: string; error: string }[];
+  };
 }
 
 // Rate limiter instances for different operations
@@ -344,8 +353,7 @@ export class CompetitionResultsAPI {
         );
       }
 
-      // 5. Validate and sanitize updates
-      const sanitizedUpdates = IDORProtectionUtils.createSafeQueryParams(updates);
+      // 5. Input validation handled by backend stored procedures
       
       // 4. Input validation handled by backend stored procedures
       
@@ -642,16 +650,16 @@ export class CompetitionResultsAPI {
   static async bulkUpdate(
     data: BulkUpdateData,
     authToken?: string
-  ): Promise<SecureResponse> {
+  ): Promise<SecureResponse<BulkUpdateResponse>> {
     const startTime = Date.now();
     const auditId = crypto.randomUUID();
-    let authResult: any = null;
+    let authResult: AuthResult | null = null;
     
     try {
       // 1. Validate authentication
       authResult = await this.validateAuth(authToken);
       if (!authResult.success || !authResult.user) {
-        return this.errorResponse('AUTH_FAILED', authResult.error || 'Authentication failed', 401);
+        return this.errorResponse<BulkUpdateResponse>('AUTH_FAILED', authResult.error || 'Authentication failed', 401);
       }
       
       const user = authResult.user;
@@ -669,7 +677,7 @@ export class CompetitionResultsAPI {
           }
         });
         
-        return this.errorResponse('ADMIN_REQUIRED', 'Admin access required for bulk operations', 403);
+        return this.errorResponse<BulkUpdateResponse>('ADMIN_REQUIRED', 'Admin access required for bulk operations', 403);
       }
       
       // 3. Check strict rate limits for bulk operations
@@ -677,7 +685,7 @@ export class CompetitionResultsAPI {
       const rateLimitResult = await bulkRateLimiter.checkLimit(rateLimitKey);
       
       if (!rateLimitResult.allowed) {
-        return this.errorResponse(
+        return this.errorResponse<BulkUpdateResponse>(
           'RATE_LIMITED',
           `Rate limit exceeded. Try again in ${rateLimitResult.retryAfter} seconds.`,
           429
@@ -686,11 +694,11 @@ export class CompetitionResultsAPI {
       
       // 4. Validate bulk data
       if (!data.ids || !Array.isArray(data.ids) || data.ids.length === 0) {
-        return this.errorResponse('INVALID_DATA', 'No IDs provided for bulk update', 400);
+        return this.errorResponse<BulkUpdateResponse>('INVALID_DATA', 'No IDs provided for bulk update', 400);
       }
       
       if (data.ids.length > 100) {
-        return this.errorResponse('TOO_MANY_ITEMS', 'Maximum 100 items per bulk operation', 400);
+        return this.errorResponse<BulkUpdateResponse>('TOO_MANY_ITEMS', 'Maximum 100 items per bulk operation', 400);
       }
       
       // 5. Input validation handled by backend stored procedures
@@ -784,14 +792,14 @@ export class CompetitionResultsAPI {
         }
       });
       
-      return this.errorResponse('INTERNAL_ERROR', 'An unexpected error occurred', 500);
+      return this.errorResponse<BulkUpdateResponse>('INTERNAL_ERROR', 'An unexpected error occurred', 500);
     }
   }
   
   /**
    * Helper: Validate authentication token
    */
-  private static async validateAuth(authToken?: string): Promise<{ success: boolean; user?: AuthenticatedUser; error?: string }> {
+  private static async validateAuth(authToken?: string): Promise<AuthResult> {
     if (!authToken) {
       // Try to get token from current session
       const { data: { session } } = await supabase.auth.getSession();
@@ -817,12 +825,12 @@ export class CompetitionResultsAPI {
   /**
    * Helper: Create standardized error response
    */
-  private static errorResponse(
+  private static errorResponse<T = unknown>(
     code: string,
     message: string,
     status: number,
-    details?: any
-  ): SecureResponse {
+    details?: unknown
+  ): SecureResponse<T> {
     return {
       success: false,
       error: {
@@ -836,32 +844,37 @@ export class CompetitionResultsAPI {
   /**
    * Helper: Convert database errors to human-readable messages
    */
-  private static getHumanReadableError(error: any): string {
+  private static getHumanReadableError(error: unknown): string {
     if (!error) return 'An unknown error occurred';
     
+    // Handle error objects with message property
+    const errorMessage = error && typeof error === 'object' && 'message' in error 
+      ? String(error.message) 
+      : String(error);
+    
     // Common database error patterns
-    if (error.message?.includes('duplicate key')) {
+    if (errorMessage.includes('duplicate key')) {
       return 'A result already exists for this competition';
     }
     
-    if (error.message?.includes('foreign key violation')) {
+    if (errorMessage.includes('foreign key violation')) {
       return 'Invalid reference to competition, event, or user';
     }
     
-    if (error.message?.includes('permission denied')) {
+    if (errorMessage.includes('permission denied')) {
       return 'You do not have permission to perform this action';
     }
     
-    if (error.message?.includes('results_deadline')) {
+    if (errorMessage.includes('results_deadline')) {
       return 'The submission deadline for this competition has passed';
     }
     
-    if (error.message?.includes('verified')) {
+    if (errorMessage.includes('verified')) {
       return 'Verified results cannot be modified without admin privileges';
     }
     
     // Default to the original message if no pattern matches
-    return error.message || 'An error occurred while processing your request';
+    return errorMessage || 'An error occurred while processing your request';
   }
 }
 

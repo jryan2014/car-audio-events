@@ -95,25 +95,15 @@ const WiringDiagram: React.FC<WiringDiagramProps> = ({
     }
   }, [propAmplifiersLinkable]);
 
-  if (!selectedSubwoofer) {
-    return (
-      <div className={`bg-gray-800/50 rounded-xl p-8 border border-gray-700/50 text-center ${className}`}>
-        <Cable className="h-16 w-16 text-gray-500 mx-auto mb-4" />
-        <h3 className="text-xl font-semibold text-gray-400 mb-2">No Subwoofer Selected</h3>
-        <p className="text-gray-500">
-          Please select a subwoofer first to view wiring configurations
-        </p>
-      </div>
-    );
-  }
-
-  // Get voice coil configuration for the selected subwoofer
-  const voiceCoilConfig = getVoiceCoilConfig(selectedSubwoofer.model);
+  // Get voice coil configuration for the selected subwoofer (moved before conditional return)
+  const voiceCoilConfig = selectedSubwoofer ? getVoiceCoilConfig(selectedSubwoofer.model) : { type: 'SVC', coilImpedance: 4 };
   const isDVC = voiceCoilConfig.type === 'DVC';
-  const coilImpedance = voiceCoilConfig.coilImpedance || selectedSubwoofer.impedance || 4;
+  const coilImpedance = voiceCoilConfig.coilImpedance || (selectedSubwoofer?.impedance) || 4;
   
   // Calculate impedance based on voice coil type
   const finalImpedance = useMemo(() => {
+    if (!selectedSubwoofer) return 4; // Default impedance when no subwoofer selected
+    
     if (isDVC && quantity === 1) {
       // DVC single sub can be wired in series or parallel
       if (configuration === 'series') {
@@ -128,6 +118,18 @@ const WiringDiagram: React.FC<WiringDiagramProps> = ({
       quantity
     );
   }, [configuration, selectedSubwoofer, quantity, isDVC, coilImpedance]);
+
+  if (!selectedSubwoofer) {
+    return (
+      <div className={`bg-gray-800/50 rounded-xl p-8 border border-gray-700/50 text-center ${className}`}>
+        <Cable className="h-16 w-16 text-gray-500 mx-auto mb-4" />
+        <h3 className="text-xl font-semibold text-gray-400 mb-2">No Subwoofer Selected</h3>
+        <p className="text-gray-500">
+          Please select a subwoofer first to view wiring configurations
+        </p>
+      </div>
+    );
+  }
 
   const totalRMSPower = (selectedSubwoofer.power_rating_rms || 500) * quantity;
   

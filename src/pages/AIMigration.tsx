@@ -11,14 +11,14 @@ export default function AIMigration() {
   const [localConfigs, setLocalConfigs] = useState<any>(null);
   const [error, setError] = useState<string>('');
 
+  useEffect(() => {
+    checkMigrationStatus();
+  }, []);
+
   // Check if user is admin
   if (!user || user.membershipType !== 'admin') {
     return <Navigate to="/" replace />;
   }
-
-  useEffect(() => {
-    checkMigrationStatus();
-  }, []);
 
   const checkMigrationStatus = () => {
     const savedConfigs = localStorage.getItem('ai-service-configs');

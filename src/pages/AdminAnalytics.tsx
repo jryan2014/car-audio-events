@@ -39,14 +39,14 @@ export default function AdminAnalytics() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTimeRange, setSelectedTimeRange] = useState('30d');
 
+  useEffect(() => {
+    loadAnalytics();
+  }, [selectedTimeRange]);
+
   // Check if user is admin
   if (!user || user.membershipType !== 'admin') {
     return <Navigate to="/" replace />;
   }
-
-  useEffect(() => {
-    loadAnalytics();
-  }, [selectedTimeRange]);
 
   const handleExportData = () => {
     if (!analytics) return;

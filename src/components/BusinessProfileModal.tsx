@@ -50,13 +50,13 @@ export const BusinessProfileModal: React.FC<BusinessProfileModalProps> = ({
   onClose,
   onRecordView
 }) => {
-  if (!isOpen) return null;
-
   React.useEffect(() => {
     if (isOpen) {
       onRecordView(listing.id);
     }
   }, [isOpen, listing.id, onRecordView]);
+
+  if (!isOpen) return null;
 
   const getListingTitle = () => {
     if (listing.listing_type === 'used_equipment') {

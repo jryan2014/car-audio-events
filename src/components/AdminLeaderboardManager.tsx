@@ -13,7 +13,7 @@ import LoadingSpinner from './LoadingSpinner';
 import EditCompetitionResultModal from './EditCompetitionResultModal';
 import ResultsDataTable from './ResultsDataTable';
 import { formatDistanceToNow } from 'date-fns';
-import { competitionResultsAPI } from '../api/competition-results';
+import { competitionResultsAPI, type BulkUpdateResponse } from '../api/competition-results';
 import { formatDate, formatDateForDatabase } from '../utils/dateFormatters';
 
 interface CompetitionResult {
@@ -131,6 +131,24 @@ export default function AdminLeaderboardManager() {
       loadStats();
     }
   }, [user, filters, currentPage, sortBy, sortOrder]);
+
+  const handleSelectAll = useCallback((checked: boolean) => {
+    if (checked) {
+      setSelectedResults(new Set(results.map(r => r.id)));
+    } else {
+      setSelectedResults(new Set());
+    }
+  }, [results]);
+
+  const handleSelectResult = useCallback((id: string, checked: boolean) => {
+    const newSelected = new Set(selectedResults);
+    if (checked) {
+      newSelected.add(id);
+    } else {
+      newSelected.delete(id);
+    }
+    setSelectedResults(newSelected);
+  }, [selectedResults]);
 
   // Permission check
   if (!isAuthenticated || user?.membershipType !== 'admin') {
@@ -344,24 +362,6 @@ export default function AdminLeaderboardManager() {
     }
   };
 
-  const handleSelectAll = useCallback((checked: boolean) => {
-    if (checked) {
-      setSelectedResults(new Set(results.map(r => r.id)));
-    } else {
-      setSelectedResults(new Set());
-    }
-  }, [results]);
-
-  const handleSelectResult = useCallback((id: string, checked: boolean) => {
-    const newSelected = new Set(selectedResults);
-    if (checked) {
-      newSelected.add(id);
-    } else {
-      newSelected.delete(id);
-    }
-    setSelectedResults(newSelected);
-  }, [selectedResults]);
-
   const handleBulkVerify = async () => {
     if (selectedResults.size === 0) return;
     
@@ -383,8 +383,8 @@ export default function AdminLeaderboardManager() {
         throw new Error(response.error?.message || 'Failed to verify results');
       }
 
-      const successCount = response.data?.updated || 0;
-      const failedCount = response.data?.failed || 0;
+      const successCount = (response.data as BulkUpdateResponse)?.updated || 0;
+      const failedCount = (response.data as BulkUpdateResponse)?.failed || 0;
       
       if (failedCount > 0) {
         showError('Partial Success', `Verified ${successCount} results. ${failedCount} failed.`);

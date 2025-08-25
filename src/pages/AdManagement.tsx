@@ -234,14 +234,14 @@ export default function AdManagement() {
     { id: 'general', name: 'General Public', icon: Users, description: 'General car audio enthusiasts' }
   ];
 
+  useEffect(() => {
+    loadAds();
+  }, []);
+
   // Check if user is admin or has advertiser permissions
   if (!user || (user.membershipType !== 'admin' && !['retailer', 'manufacturer', 'organization'].includes(user.membershipType || ''))) {
     return <Navigate to="/" replace />;
   }
-
-  useEffect(() => {
-    loadAds();
-  }, []);
 
   const loadAds = async () => {
     try {

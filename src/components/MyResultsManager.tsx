@@ -123,6 +123,47 @@ export default function MyResultsManager() {
     }
   }, [user, isAuthenticated, filters]);
 
+  const handleEdit = useCallback((result: CompetitionResult) => {
+    setEditingResult(result);
+    setShowEditModal(true);
+  }, []);
+
+  const handleDelete = useCallback(async (result: CompetitionResult) => {
+    // Check if result can be deleted (time restrictions apply)
+    if (result.verified) {
+      showError('Error', 'Verified results cannot be deleted. Contact an admin for assistance.');
+      return;
+    }
+
+    const createdAt = new Date(result.created_at);
+    const now = new Date();
+    const hoursSinceCreation = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+    
+    if (hoursSinceCreation > 1) {
+      showError('Error', 'Results can only be deleted within 1 hour of creation. Contact an admin for assistance.');
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to delete this result? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const response = await competitionResultsAPI.delete(result.id);
+
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to delete result');
+      }
+
+      showSuccess('Success', 'Result deleted successfully');
+      loadResults();
+      loadStats();
+    } catch (error) {
+      console.error('Error deleting result:', error);
+      showError('Error', error instanceof Error ? error.message : 'Failed to delete result');
+    }
+  }, [showSuccess, showError]);
+
   // Permission check
   if (!isAuthenticated) {
     return (
@@ -262,47 +303,6 @@ export default function MyResultsManager() {
       console.error('Error loading stats:', error);
     }
   };
-
-  const handleEdit = useCallback((result: CompetitionResult) => {
-    setEditingResult(result);
-    setShowEditModal(true);
-  }, []);
-
-  const handleDelete = useCallback(async (result: CompetitionResult) => {
-    // Check if result can be deleted (time restrictions apply)
-    if (result.verified) {
-      showError('Error', 'Verified results cannot be deleted. Contact an admin for assistance.');
-      return;
-    }
-
-    const createdAt = new Date(result.created_at);
-    const now = new Date();
-    const hoursSinceCreation = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
-    
-    if (hoursSinceCreation > 1) {
-      showError('Error', 'Results can only be deleted within 1 hour of creation. Contact an admin for assistance.');
-      return;
-    }
-
-    if (!confirm(`Are you sure you want to delete this result? This action cannot be undone.`)) {
-      return;
-    }
-
-    try {
-      const response = await competitionResultsAPI.delete(result.id);
-
-      if (!response.success) {
-        throw new Error(response.error?.message || 'Failed to delete result');
-      }
-
-      showSuccess('Success', 'Result deleted successfully');
-      loadResults();
-      loadStats();
-    } catch (error) {
-      console.error('Error deleting result:', error);
-      showError('Error', error instanceof Error ? error.message : 'Failed to delete result');
-    }
-  }, [showSuccess, showError]);
 
   const getPositionColor = (position: number) => {
     if (position === 1) return 'text-yellow-400';

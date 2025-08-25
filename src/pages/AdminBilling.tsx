@@ -449,14 +449,14 @@ export default function AdminBilling() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
   // Check if user is admin
   if (!user || user.membershipType !== 'admin') {
     return <Navigate to="/" replace />;
   }
-
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
 
   const loadDashboardData = async () => {
     try {

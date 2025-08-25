@@ -107,7 +107,7 @@ import LoadingSpinnerComponent from './components/LoadingSpinner';
 import { cleanEmailTemplates } from './utils/cleanEmailTemplates';
 // Make it available globally in the browser console
 if (typeof window !== 'undefined') {
-  (window as any).cleanEmailTemplates = cleanEmailTemplates;
+  (window as typeof window & { cleanEmailTemplates: typeof cleanEmailTemplates }).cleanEmailTemplates = cleanEmailTemplates;
 }
 
 // Loading component for Suspense fallback
