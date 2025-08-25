@@ -61,12 +61,6 @@ export default function EditUser() {
     subscription_plan: 'free' as User['subscription_plan']
   });
 
-  // Check if current user is admin
-  if (!currentUser || currentUser.membershipType !== 'admin') {
-    navigate('/');
-    return null;
-  }
-
   useEffect(() => {
     if (userId) {
       loadUser();
@@ -74,6 +68,12 @@ export default function EditUser() {
       checkAvailableFields();
     }
   }, [userId]);
+
+  // Check if current user is admin
+  if (!currentUser || currentUser.membershipType !== 'admin') {
+    navigate('/');
+    return null;
+  }
 
   const loadUser = async () => {
     try {

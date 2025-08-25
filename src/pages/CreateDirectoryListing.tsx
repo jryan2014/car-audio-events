@@ -99,11 +99,6 @@ export default function CreateDirectoryListing() {
     is_negotiable: true
   });
 
-  // Check if user is authenticated and eligible
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
   // Check permissions using the permission system
   const { hasPermission } = usePermissions();
   const isEligibleForDirectory = hasPermission('directory_listing');
@@ -113,14 +108,19 @@ export default function CreateDirectoryListing() {
     loadCategories();
     
     // Set default listing type based on membership
-    if (user.membershipType === 'retailer') {
+    if (user?.membershipType === 'retailer') {
       setFormData(prev => ({ ...prev, listing_type: 'retailer' }));
-    } else if (user.membershipType === 'manufacturer') {
+    } else if (user?.membershipType === 'manufacturer') {
       setFormData(prev => ({ ...prev, listing_type: 'manufacturer' }));
-    } else if (user.membershipType === 'competitor') {
+    } else if (user?.membershipType === 'competitor') {
       setFormData(prev => ({ ...prev, listing_type: 'used_equipment' }));
     }
-  }, [user.membershipType]);
+  }, [user?.membershipType]);
+
+  // Check if user is authenticated and eligible
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
 
   const loadCategories = async () => {
     try {

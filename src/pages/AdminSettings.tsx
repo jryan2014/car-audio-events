@@ -82,6 +82,12 @@ export default function AdminSettings() {
     );
   }
 
+  useEffect(() => {
+    // Load existing keys from environment or database
+    loadExistingKeys();
+    loadDebugSettings();
+  }, []);
+
   // Check if user is admin
   console.log('🔍 AdminSettings - User check:', { 
     user: user ? {
@@ -101,12 +107,6 @@ export default function AdminSettings() {
     });
     return <Navigate to="/" replace />;
   }
-
-  useEffect(() => {
-    // Load existing keys from environment or database
-    loadExistingKeys();
-    loadDebugSettings();
-  }, []);
 
   const loadExistingKeys = async () => {
     try {

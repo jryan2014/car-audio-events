@@ -74,15 +74,15 @@ export default function DirectoryManager() {
   const [approvalAction, setApprovalAction] = useState<'approve' | 'reject'>('approve');
   const [approvalNotes, setApprovalNotes] = useState('');
 
-  // Check if user is admin
-  if (!user || user.membershipType !== 'admin') {
-    return <Navigate to="/" replace />;
-  }
-
   useEffect(() => {
     loadDirectoryData();
     ActivityLogger.directoryManagementAccess();
   }, []);
+
+  // Check if user is admin
+  if (!user || user.membershipType !== 'admin') {
+    return <Navigate to="/" replace />;
+  }
 
   const loadDirectoryData = async () => {
     try {

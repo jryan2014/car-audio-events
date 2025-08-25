@@ -112,6 +112,16 @@ export default function AdminUsers() {
     newsletter_subscribed: false
   });
 
+  useEffect(() => {
+    loadUsers();
+    // Log access to User Management
+    ActivityLogger.userManagementAccess();
+  }, [currentPage, sortField, sortDirection, statusFilter, membershipFilter, verificationFilter]);
+
+  useEffect(() => {
+    filterUsers();
+  }, [users, searchTerm, membershipFilter, statusFilter, verificationFilter]);
+
   // Check if user is admin with detailed debugging
   console.log('🔍 ADMIN ACCESS DEBUG:', {
     user: user ? 'exists' : 'null',
@@ -131,16 +141,6 @@ export default function AdminUsers() {
   }
   
   console.log('✅ ADMIN ACCESS GRANTED for:', user.email);
-
-  useEffect(() => {
-    loadUsers();
-    // Log access to User Management
-    ActivityLogger.userManagementAccess();
-  }, [currentPage, sortField, sortDirection, statusFilter, membershipFilter, verificationFilter]);
-
-  useEffect(() => {
-    filterUsers();
-  }, [users, searchTerm, membershipFilter, statusFilter, verificationFilter]);
 
   const loadUsers = async () => {
     try {

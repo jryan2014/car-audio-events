@@ -75,13 +75,6 @@ export default function CMSPages() {
     show_in_sitemap: true
   });
 
-  // Check if user is admin
-  if (!user || user.membershipType !== 'admin') {
-    return <Navigate to="/" replace />;
-  }
-
-
-
   useEffect(() => {
     loadPages();
   }, []);
@@ -127,6 +120,11 @@ export default function CMSPages() {
       setHasFocusedOnFormShow(false);
     }
   }, [showCreateForm, hasFocusedOnFormShow]);
+
+  // Check if user is admin
+  if (!user || user.membershipType !== 'admin') {
+    return <Navigate to="/" replace />;
+  }
 
   const loadPages = async () => {
     try {
