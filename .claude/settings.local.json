@@ -46,7 +46,9 @@
       "Bash(gh repo view:*)",
       "Bash(gh api:*)",
       "Bash(timeout:*)",
-      "mcp__git__git_pull"
+      "mcp__git__git_pull",
+      "Bash(npx supabase functions logs:*)",
+      "mcp__supabase__get_logs"
     ]
   },
   "enableAllProjectMcpServers": true,
