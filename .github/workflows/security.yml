@@ -88,6 +88,76 @@ jobs:
         fail-on-severity: moderate
         allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD
 
+  dependency-check:
+    name: Dependency Security Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Check for vulnerable dependencies
+      run: |
+        echo "🔍 Checking for vulnerable dependencies..."
+        
+        # Run npm audit and capture results
+        npm audit --json > dependency-audit.json || true
+        
+        # Check for critical and high vulnerabilities
+        CRITICAL=$(cat dependency-audit.json | jq '.metadata.vulnerabilities.critical // 0')
+        HIGH=$(cat dependency-audit.json | jq '.metadata.vulnerabilities.high // 0')
+        MODERATE=$(cat dependency-audit.json | jq '.metadata.vulnerabilities.moderate // 0')
+        
+        echo "📊 Vulnerability Summary:"
+        echo "  Critical: $CRITICAL"
+        echo "  High: $HIGH"
+        echo "  Moderate: $MODERATE"
+        
+        # Fail if critical or high vulnerabilities exist
+        if [ "$CRITICAL" -gt 0 ] || [ "$HIGH" -gt 0 ]; then
+          echo "❌ Critical or high severity vulnerabilities found!"
+          npm audit --audit-level=high
+          exit 1
+        elif [ "$MODERATE" -gt 0 ]; then
+          echo "⚠️ Moderate vulnerabilities found (not failing build)"
+          npm audit --audit-level=moderate
+        else
+          echo "✅ No vulnerabilities found!"
+        fi
+    
+    - name: Check for outdated dependencies
+      run: |
+        echo "🔍 Checking for outdated dependencies..."
+        npx npm-check-updates --format json > outdated.json || true
+        
+        if [ -s outdated.json ] && [ "$(cat outdated.json)" != "{}" ]; then
+          echo "📦 Outdated dependencies found:"
+          npx npm-check-updates
+        else
+          echo "✅ All dependencies are up to date!"
+        fi
+    
+    - name: License compliance check
+      run: |
+        echo "📜 Checking license compliance..."
+        npx license-checker --summary --excludePrivatePackages --onlyAllow 'MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;0BSD;CC0-1.0;Unlicense' || {
+          echo "⚠️ Some packages have licenses that need review"
+          npx license-checker --excludePrivatePackages --csv > licenses.csv
+          echo "License report saved to licenses.csv"
+        }
+
   codeql-analysis:
     name: CodeQL Analysis
     runs-on: ubuntu-latest
