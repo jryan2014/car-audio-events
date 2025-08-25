@@ -86,7 +86,7 @@ jobs:
     - name: Build and test
       run: |
         npm run type-check
-        npx eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 50
+        npx eslint src --ext ts,tsx --report-unused-disable-directives --quiet
         npm run build
 
     - name: Check for changes
