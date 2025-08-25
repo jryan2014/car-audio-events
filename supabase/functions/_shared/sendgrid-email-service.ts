@@ -141,10 +141,19 @@ export class SendGridEmailService {
   }
 
   private stripHtml(html: string): string {
+    // Safe HTML stripping - simply remove all HTML tags and decode entities
+    // This approach avoids regex vulnerabilities by using simple tag removal
     return html
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-      .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-      .replace(/<[^>]+>/g, '')
+      // Remove all HTML tags (simple and safe)
+      .replace(/<[^>]*>/g, '')
+      // Decode common HTML entities
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&nbsp;/g, ' ')
+      // Normalize whitespace
       .replace(/\s+/g, ' ')
       .trim();
   }
