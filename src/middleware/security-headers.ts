@@ -54,7 +54,8 @@ export const SecurityHeaders = {
       https://api-m.paypal.com
       https://api.sandbox.paypal.com
       https://api-m.sandbox.paypal.com
-      https://*.paypal.com;
+      https://*.paypal.com
+      https://nominatim.openstreetmap.org;
     frame-src 'self' 
       https://www.google.com 
       https://maps.google.com

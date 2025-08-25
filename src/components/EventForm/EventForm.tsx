@@ -244,21 +244,28 @@ export const EventForm: React.FC<EventFormProps> = ({
         formData.zip_code
       )
         .then(result => {
+          console.log('Geocoding result:', result);
           if ('latitude' in result) {
             // Only update if we still don't have coordinates
             setFormData(prev => {
               if (prev.latitude === null && prev.longitude === null) {
+                console.log('Setting coordinates:', result.latitude, result.longitude);
                 return {
                   ...prev,
                   latitude: result.latitude,
                   longitude: result.longitude
                 };
               }
+              console.log('Coordinates already set, not updating');
               return prev;
             });
+          } else {
+            console.error('Geocoding failed:', result);
           }
         })
-        .catch(console.error);
+        .catch(error => {
+          console.error('Geocoding error:', error);
+        });
     }
   }, [debouncedAddress, formData.address, formData.city, formData.state, formData.country, formData.zip_code]);
 

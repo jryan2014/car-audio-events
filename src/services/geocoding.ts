@@ -126,24 +126,35 @@ class GeocodingService {
 
     const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`;
     
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      throw new Error(`Google Geocoding API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    
-    if (data.status === 'OK' && data.results && data.results.length > 0) {
-      const result = data.results[0];
-      const location = result.geometry.location;
+    try {
+      const response = await fetch(url);
       
-      return {
-        latitude: location.lat,
-        longitude: location.lng,
-        formatted_address: result.formatted_address,
-        confidence: 0.9 // Google is usually very accurate
-      };
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Google Maps API response error:', errorText);
+        throw new Error(`Google Geocoding API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('Google Maps API response:', data);
+      
+      if (data.status === 'OK' && data.results && data.results.length > 0) {
+        const result = data.results[0];
+        const location = result.geometry.location;
+        
+        return {
+          latitude: location.lat,
+          longitude: location.lng,
+          formatted_address: result.formatted_address,
+          confidence: 0.9 // Google is usually very accurate
+        };
+      } else if (data.status !== 'OK') {
+        console.error('Google Maps API status:', data.status, data.error_message);
+        throw new Error(`Google Maps API returned status: ${data.status} - ${data.error_message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Google Maps geocoding error:', error);
+      throw error;
     }
 
     return null;
