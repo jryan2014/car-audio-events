@@ -115,45 +115,52 @@ class GeocodingService {
   }
 
   /**
-   * Geocode using Google Maps Geocoding API (Requires API key)
+   * Geocode using Google Maps Geocoding API via Edge Function
+   * Uses Edge Function to avoid referrer restriction issues
    */
   private async geocodeWithGoogle(address: string): Promise<GeocodeResult | null> {
-    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+    // Check if we have Supabase URL configured
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
     
-    if (!apiKey) {
-      throw new Error('Google Maps API key not configured');
+    if (!supabaseUrl || !supabaseAnonKey) {
+      throw new Error('Supabase configuration missing');
     }
 
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`;
+    // Call our Edge Function instead of Google Maps API directly
+    const url = `${supabaseUrl}/functions/v1/geocode-address`;
     
     try {
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`
+        },
+        body: JSON.stringify({ address })
+      });
       
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Google Maps API response error:', errorText);
-        throw new Error(`Google Geocoding API error: ${response.status}`);
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Geocoding Edge Function error:', errorData);
+        throw new Error(`Geocoding failed: ${errorData.error || response.status}`);
       }
 
       const data = await response.json();
-      console.log('Google Maps API response:', data);
+      console.log('Geocoding Edge Function response:', data);
       
-      if (data.status === 'OK' && data.results && data.results.length > 0) {
-        const result = data.results[0];
-        const location = result.geometry.location;
-        
+      if (data.latitude && data.longitude) {
         return {
-          latitude: location.lat,
-          longitude: location.lng,
-          formatted_address: result.formatted_address,
-          confidence: 0.9 // Google is usually very accurate
+          latitude: data.latitude,
+          longitude: data.longitude,
+          formatted_address: data.formatted_address,
+          confidence: 0.9
         };
-      } else if (data.status !== 'OK') {
-        console.error('Google Maps API status:', data.status, data.error_message);
-        throw new Error(`Google Maps API returned status: ${data.status} - ${data.error_message || 'Unknown error'}`);
+      } else if (data.error) {
+        throw new Error(data.error);
       }
     } catch (error) {
-      console.error('Google Maps geocoding error:', error);
+      console.error('Geocoding error:', error);
       throw error;
     }
 
