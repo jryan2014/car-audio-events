@@ -59,17 +59,17 @@ export default function UserDetails() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('system');
 
-  // Check if current user is admin
-  if (!currentUser || currentUser.membershipType !== 'admin') {
-    navigate('/');
-    return null;
-  }
-
   useEffect(() => {
     if (userId) {
       loadUser();
     }
   }, [userId]);
+
+  // Check if current user is admin
+  if (!currentUser || currentUser.membershipType !== 'admin') {
+    navigate('/');
+    return null;
+  }
 
   const loadUser = async () => {
     try {
