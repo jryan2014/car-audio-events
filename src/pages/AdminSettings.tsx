@@ -70,6 +70,12 @@ export default function AdminSettings() {
   const [debugModeEnabled, setDebugModeEnabled] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    // Load existing keys from environment or database
+    loadExistingKeys();
+    loadDebugSettings();
+  }, []);
+
   // Show loading while auth is initializing
   if (loading) {
     return (
@@ -81,12 +87,6 @@ export default function AdminSettings() {
       </div>
     );
   }
-
-  useEffect(() => {
-    // Load existing keys from environment or database
-    loadExistingKeys();
-    loadDebugSettings();
-  }, []);
 
   // Check if user is admin
   console.log('🔍 AdminSettings - User check:', { 

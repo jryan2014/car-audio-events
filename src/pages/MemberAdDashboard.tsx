@@ -50,11 +50,6 @@ export default function MemberAdDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('30d');
 
-  // Check if user has advertiser permissions
-  if (!user || !['retailer', 'manufacturer', 'organization', 'admin'].includes(user.membershipType || '')) {
-    return <Navigate to="/pricing" replace />;
-  }
-
   useEffect(() => {
     loadAdvertisements();
     // Log advertising dashboard access
@@ -62,6 +57,11 @@ export default function MemberAdDashboard() {
       ActivityLogger.advertisingDashboardAccess(user.membershipType || 'unknown');
     }
   }, [user, timeRange]);
+
+  // Check if user has advertiser permissions
+  if (!user || !['retailer', 'manufacturer', 'organization', 'admin'].includes(user.membershipType || '')) {
+    return <Navigate to="/pricing" replace />;
+  }
 
   const loadAdvertisements = async () => {
     if (!user) return;

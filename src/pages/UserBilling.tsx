@@ -116,11 +116,6 @@ export default function UserBilling() {
   const [success, setSuccess] = useState('');
   const [stripePromise, setStripePromise] = useState<any>(null);
 
-  // Redirect if not logged in
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
   useEffect(() => {
     if (user?.id) {
       loadBillingData();
@@ -157,6 +152,11 @@ export default function UserBilling() {
 
     initializeStripe();
   }, []);
+
+  // Redirect if not logged in
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
 
   const loadBillingData = async () => {
     if (!user?.id) return;

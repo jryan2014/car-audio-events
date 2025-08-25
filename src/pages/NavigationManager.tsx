@@ -310,11 +310,6 @@ export default function NavigationManager() {
     cms_page_id: ''
   });
 
-  // Check authentication and admin status
-  if (!user || user.membershipType !== 'admin') {
-    return <Navigate to="/dashboard" replace />;
-  }
-
   useEffect(() => {
     loadData();
   }, []);
@@ -385,6 +380,11 @@ export default function NavigationManager() {
       return () => clearTimeout(timer);
     }
   }, [error, success]);
+
+  // Check authentication and admin status
+  if (!user || user.membershipType !== 'admin') {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const loadData = async () => {
     setIsLoading(true);
