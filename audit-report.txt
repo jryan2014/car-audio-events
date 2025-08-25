@@ -1,0 +1,143 @@
+=== Security Audit Before Updates ===
+found 0 vulnerabilities
+
+=== Security Audit After Updates ===
+found 0 vulnerabilities
+
+=== Secret Scan Results ===
+
+> car-audio-competition-platform@1.27.1 scan-secrets
+> tsx scripts/scan-for-secrets.ts
+
+🔍 Starting secret detection scan...
+📋 Configuration: {
+  directory: '/home/runner/work/car-audio-events/car-audio-events',
+  stagedOnly: false,
+  includeTests: false,
+  fix: false
+}
+📁 Scanning 551 source files
+⚠️  Found 2 potential secrets in: /home/runner/work/car-audio-events/car-audio-events/src/mcp/investigate-security-issues-direct.ts
+⚠️  Found 15 potential secrets in: /home/runner/work/car-audio-events/car-audio-events/src/pages/AIConfigurationOriginal.tsx
+
+================================================================================
+🔍 SECRET DETECTION SCAN RESULTS
+================================================================================
+📊 Files Scanned: 551/551
+⏱️  Scan Duration: 666ms
+🚨 Secrets Found: 17
+💥 Critical Secrets: 0
+
+📋 Summary by Pattern:
+  • API Key Pattern: 17
+
+🔍 Detailed Findings:
+
+1. ⚠️ MEDIUM - API Key Pattern
+   📁 File: /home/runner/work/car-audio-events/car-audio-events/src/mcp/investigate-security-issues-direct.ts:12:16
+   🔍 Match: inve*************************ctly
+   💡 Recommendation: Verify if this is a secret and move to environment variables
+
+2. ⚠️ MEDIUM - API Key Pattern
+   📁 File: /home/runner/work/car-audio-events/car-audio-events/src/mcp/investigate-security-issues-direct.ts:169:1
+   🔍 Match: inve*************************ctly
+   💡 Recommendation: Verify if this is a secret and move to environment variables
+
+3. ⚠️ MEDIUM - API Key Pattern
+   📁 File: /home/runner/work/car-audio-events/car-audio-events/src/pages/AIConfigurationOriginal.tsx:191:10
+   🔍 Match: pers*************************atus
+   💡 Recommendation: Verify if this is a secret and move to environment variables
+
+4. ⚠️ MEDIUM - API Key Pattern
+   📁 File: /home/runner/work/car-audio-events/car-audio-events/src/pages/AIConfigurationOriginal.tsx:191:45
+   🔍 Match: setP****************************atus
+   💡 Recommendation: Verify if this is a secret and move to environment variables
+
+5. ⚠️ MEDIUM - API Key Pattern
+   📁 File: /home/runner/work/car-audio-events/car-audio-events/src/pages/AIConfigurationOriginal.tsx:308:7
+   🔍 Match: setP****************************atus
+   💡 Recommendation: Verify if this is a secret and move to environment variables
+
+6. ⚠️ MEDIUM - API Key Pattern
+   📁 File: /home/runner/work/car-audio-events/car-audio-events/src/pages/AIConfigurationOriginal.tsx:322:70
+   🔍 Match: pers*************************atus
+   💡 Recommendation: Verify if this is a secret and move to environment variables
+
+7. ⚠️ MEDIUM - API Key Pattern
+   📁 File: /home/runner/work/car-audio-events/car-audio-events/src/pages/AIConfigurationOriginal.tsx:323:7
+   🔍 Match: pers*************************atus
+   💡 Recommendation: Verify if this is a secret and move to environment variables
+
+8. ⚠️ MEDIUM - API Key Pattern
+   📁 File: /home/runner/work/car-audio-events/car-audio-events/src/pages/AIConfigurationOriginal.tsx:370:9
+   🔍 Match: setP****************************atus
+   💡 Recommendation: Verify if this is a secret and move to environment variables
+
+9. ⚠️ MEDIUM - API Key Pattern
+   📁 File: /home/runner/work/car-audio-events/car-audio-events/src/pages/AIConfigurationOriginal.tsx:382:9
+   🔍 Match: setP****************************atus
+   💡 Recommendation: Verify if this is a secret and move to environment variables
+
+10. ⚠️ MEDIUM - API Key Pattern
+   📁 File: /home/runner/work/car-audio-events/car-audio-events/src/pages/AIConfigurationOriginal.tsx:413:71
+   🔍 Match: pers*************************atus
+   💡 Recommendation: Verify if this is a secret and move to environment variables
+
+11. ⚠️ MEDIUM - API Key Pattern
+   📁 File: /home/runner/work/car-audio-events/car-audio-events/src/pages/AIConfigurationOriginal.tsx:782:5
+   🔍 Match: setP****************************atus
+   💡 Recommendation: Verify if this is a secret and move to environment variables
+
+12. ⚠️ MEDIUM - API Key Pattern
+   📁 File: /home/runner/work/car-audio-events/car-audio-events/src/pages/AIConfigurationOriginal.tsx:802:9
+   🔍 Match: setP****************************atus
+   💡 Recommendation: Verify if this is a secret and move to environment variables
+
+13. ⚠️ MEDIUM - API Key Pattern
+   📁 File: /home/runner/work/car-audio-events/car-audio-events/src/pages/AIConfigurationOriginal.tsx:825:7
+   🔍 Match: setP****************************atus
+   💡 Recommendation: Verify if this is a secret and move to environment variables
+
+14. ⚠️ MEDIUM - API Key Pattern
+   📁 File: /home/runner/work/car-audio-events/car-audio-events/src/pages/AIConfigurationOriginal.tsx:1907:30
+   🔍 Match: pers*************************atus
+   💡 Recommendation: Verify if this is a secret and move to environment variables
+
+15. ⚠️ MEDIUM - API Key Pattern
+   📁 File: /home/runner/work/car-audio-events/car-audio-events/src/pages/AIConfigurationOriginal.tsx:1909:43
+   🔍 Match: pers*************************atus
+   💡 Recommendation: Verify if this is a secret and move to environment variables
+
+16. ⚠️ MEDIUM - API Key Pattern
+   📁 File: /home/runner/work/car-audio-events/car-audio-events/src/pages/AIConfigurationOriginal.tsx:2781:32
+   🔍 Match: pers*************************atus
+   💡 Recommendation: Verify if this is a secret and move to environment variables
+
+17. ⚠️ MEDIUM - API Key Pattern
+   📁 File: /home/runner/work/car-audio-events/car-audio-events/src/pages/AIConfigurationOriginal.tsx:2783:45
+   🔍 Match: pers*************************atus
+   💡 Recommendation: Verify if this is a secret and move to environment variables
+
+================================================================================
+
+📚 For more information:
+   • Security best practices: https://owasp.org/www-project-top-ten/
+   • Key rotation guide: scripts/rotate-keys.ts
+================================================================================
+
+⚠️  Non-critical secrets detected (warnings only) - build continues
+
+=== Outdated Packages ===
+Package                     Current    Wanted   Latest  Location                                Depended by
+@modelcontextprotocol/sdk     0.5.0     0.5.0   1.17.4  node_modules/@modelcontextprotocol/sdk  car-audio-events
+@stripe/stripe-js             2.4.0     2.4.0    7.8.0  node_modules/@stripe/stripe-js          car-audio-events
+@types/node                20.19.11  20.19.11   24.3.0  node_modules/@types/node                car-audio-events
+@types/react                18.3.24   18.3.24  19.1.11  node_modules/@types/react               car-audio-events
+@types/react-dom             18.3.7    18.3.7   19.1.7  node_modules/@types/react-dom           car-audio-events
+dotenv                       16.6.1    16.6.1   17.2.1  node_modules/dotenv                     car-audio-events
+glob                         11.0.3    11.0.3   10.4.5  node_modules/glob                       car-audio-events
+globals                     15.15.0   15.15.0   16.3.0  node_modules/globals                    car-audio-events
+react                        18.3.1    18.3.1   19.1.1  node_modules/react                      car-audio-events
+react-dom                    18.3.1    18.3.1   19.1.1  node_modules/react-dom                  car-audio-events
+tailwindcss                  3.4.17    3.4.17   4.1.12  node_modules/tailwindcss                car-audio-events
+zod                         3.25.76   3.25.76    4.1.1  node_modules/zod                        car-audio-events
