@@ -130,7 +130,7 @@ export default function MemberProfile() {
           .from('event_registrations')
           .select(`
             *,
-            event:events(id, event_name, title, start_date, city, state, image_url)
+            events!event_registrations_event_id_fkey(id, event_name, title, start_date, city, state, image_url)
           `)
           .eq('user_id', userId)
           .eq('payment_status', 'paid')
@@ -139,13 +139,13 @@ export default function MemberProfile() {
 
         if (attendedData && attendedData.length > 0) {
           // Format events with proper field names
-          const formattedAttended = attendedData.map(reg => ({
+          const formattedAttended = attendedData.map((reg: any) => ({
             ...reg,
-            event: reg.event ? {
-              ...reg.event,
-              name: reg.event.event_name || reg.event.title || 'Event',
-              event_date: reg.event.start_date,
-              location: reg.event.city && reg.event.state ? `${reg.event.city}, ${reg.event.state}` : 'Location TBD'
+            event: reg.events ? {
+              ...reg.events,
+              name: reg.events.event_name || reg.events.title || 'Event',
+              event_date: reg.events.start_date,
+              location: reg.events.city && reg.events.state ? `${reg.events.city}, ${reg.events.state}` : 'Location TBD'
             } : null
           }));
           setEventsAttended(formattedAttended);
@@ -158,7 +158,7 @@ export default function MemberProfile() {
           .from('event_favorites')
           .select(`
             *,
-            event:events(id, event_name, title, start_date, city, state, image_url)
+            events!event_favorites_event_id_fkey(id, event_name, title, start_date, city, state, image_url)
           `)
           .eq('user_id', userId)
           .order('created_at', { ascending: false })
@@ -166,13 +166,13 @@ export default function MemberProfile() {
 
         if (favoritedData && favoritedData.length > 0) {
           // Format events with proper field names
-          const formattedFavorites = favoritedData.map(fav => ({
+          const formattedFavorites = favoritedData.map((fav: any) => ({
             ...fav,
-            event: fav.event ? {
-              ...fav.event,
-              name: fav.event.event_name || fav.event.title || 'Event',
-              event_date: fav.event.start_date,
-              location: fav.event.city && fav.event.state ? `${fav.event.city}, ${fav.event.state}` : 'Location TBD'
+            event: fav.events ? {
+              ...fav.events,
+              name: fav.events.event_name || fav.events.title || 'Event',
+              event_date: fav.events.start_date,
+              location: fav.events.city && fav.events.state ? `${fav.events.city}, ${fav.events.state}` : 'Location TBD'
             } : null
           }));
           setFavoritedEvents(formattedFavorites);
