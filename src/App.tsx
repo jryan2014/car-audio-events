@@ -26,7 +26,6 @@ const Profile = React.lazy(() => import('./pages/Profile'));
 const MemberProfileSettings = React.lazy(() => import('./pages/MemberProfileSettings'));
 const MemberDirectory = React.lazy(() => import('./pages/MemberDirectory'));
 const MemberProfile = React.lazy(() => import('./pages/MemberProfile'));
-const PublicMemberDirectory = React.lazy(() => import('./pages/PublicMemberDirectory'));
 const PublicMemberProfile = React.lazy(() => import('./pages/PublicMemberProfile'));
 const Directory = React.lazy(() => import('./pages/Directory'));
 const Resources = React.lazy(() => import('./pages/Resources'));
@@ -205,9 +204,9 @@ function App() {
               <Route path="/events/:id" element={<Layout><EventDetails /></Layout>} />
               <Route path="/profile" element={<Layout><ProtectedRoute requireProfileComplete={true}><Profile /></ProtectedRoute></Layout>} />
               <Route path="/member-profile-settings" element={<Layout><ProtectedRoute requireProfileComplete={true}><MemberProfileSettings /></ProtectedRoute></Layout>} />
-              <Route path="/members" element={<Layout><ProtectedRoute requireProfileComplete={true}><MemberDirectory /></ProtectedRoute></Layout>} />
+              {/* Unified Member Directory - accessible by all, content varies by auth status */}
+              <Route path="/members" element={<Layout><MemberDirectory /></Layout>} />
               <Route path="/member/:userId" element={<Layout><ProtectedRoute requireProfileComplete={true}><MemberProfile /></ProtectedRoute></Layout>} />
-              <Route path="/public-directory" element={<Layout><PublicMemberDirectory /></Layout>} />
               <Route path="/public-profile/:userId" element={<Layout><PublicMemberProfile /></Layout>} />
               <Route path="/directory" element={<Layout><Directory /></Layout>} />
               <Route path="/resources" element={<Layout><Resources /></Layout>} />

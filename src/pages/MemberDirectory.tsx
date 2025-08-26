@@ -16,6 +16,9 @@ export default function MemberDirectory() {
   const [filterLocation, setFilterLocation] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [filteredProfiles, setFilteredProfiles] = useState<MemberProfileWithUser[]>([]);
+  
+  // Determine if user is authenticated
+  const isAuthenticated = !!user;
 
   useEffect(() => {
     loadProfiles();
@@ -27,14 +30,12 @@ export default function MemberDirectory() {
 
   const loadProfiles = async () => {
     try {
-      // Check if user is authenticated
-      if (!user) {
-        toast.error('Please log in to view the member directory');
-        navigate('/login');
-        return;
-      }
+      // Determine which profiles to show based on authentication status
+      const visibilityFilter = isAuthenticated 
+        ? ['public', 'members_only']  // Logged-in users see both public and members_only
+        : ['public'];                  // Non-logged-in users see only public
 
-      // Fetch public profiles with user information and featured images
+      // Fetch profiles based on visibility
       const { data, error } = await supabase
         .from('member_profiles')
         .select(`
@@ -56,7 +57,7 @@ export default function MemberDirectory() {
             is_banned
           )
         `)
-        .in('visibility', ['public', 'members_only'])  // Show public and members_only to logged-in users
+        .in('visibility', visibilityFilter)
         .eq('is_banned', false)
         .order('created_at', { ascending: false });
 
@@ -68,7 +69,10 @@ export default function MemberDirectory() {
       setProfiles(validProfiles as MemberProfileWithUser[]);
     } catch (error) {
       console.error('Error loading profiles:', error);
-      toast.error('Failed to load member directory');
+      // Only show error toast for authenticated users
+      if (isAuthenticated) {
+        toast.error('Failed to load member directory');
+      }
     } finally {
       setLoading(false);
     }
@@ -126,7 +130,7 @@ export default function MemberDirectory() {
       name += profile.user.last_name;
     }
     
-    return name || profile.user?.name || 'Anonymous Member';
+    return name || 'Car Audio Enthusiast';
   };
 
   const getFeaturedImage = (profile: MemberProfileWithUser) => {
@@ -134,18 +138,21 @@ export default function MemberDirectory() {
       return null;
     }
 
-    // First try to find a featured image that's not banned
+    // Determine which images to show based on authentication and profile visibility
+    const allowedVisibility = isAuthenticated ? ['public', 'members_only'] : ['public'];
+
+    // First try to find a featured image with allowed visibility
     const featuredImage = profile.gallery_images.find(
-      img => img.is_featured && !img.is_banned && (img.visibility === 'public' || img.visibility === 'member_only')
+      img => img.is_featured && !img.is_banned && allowedVisibility.includes(img.visibility)
     );
 
     if (featuredImage) {
       return featuredImage.thumbnail_url || featuredImage.image_url;
     }
 
-    // Otherwise use the first visible image
+    // Otherwise use the first image with allowed visibility
     const firstImage = profile.gallery_images.find(
-      img => !img.is_banned && (img.visibility === 'public' || img.visibility === 'member_only')
+      img => !img.is_banned && allowedVisibility.includes(img.visibility)
     );
 
     return firstImage ? (firstImage.thumbnail_url || firstImage.image_url) : null;
@@ -162,215 +169,246 @@ export default function MemberDirectory() {
     return parts.length > 0 ? parts.join(' ') : null;
   };
 
+  const handleProfileClick = (profile: MemberProfileWithUser) => {
+    if (isAuthenticated) {
+      // Logged-in users go to member profile view
+      navigate(`/member/${profile.user_id}`);
+    } else {
+      // Non-logged-in users go to public profile view
+      navigate(`/public-profile/${profile.user_id}`);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
+      <div className="flex justify-center items-center min-h-screen bg-gray-900">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
       </div>
     );
   }
 
-  if (!user) {
-    return (
-      <div className="max-w-6xl mx-auto p-6">
-        <div className="bg-gray-800 rounded-lg p-8 text-center">
-          <h2 className="text-2xl font-bold text-white mb-4">Members Only</h2>
-          <p className="text-gray-400 mb-6">
-            The member directory is only available to registered members.
-          </p>
-          <button
-            onClick={() => navigate('/login')}
-            className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-md transition-colors"
-          >
-            Log In to Continue
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-7xl mx-auto p-6">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white mb-2">Member Directory</h1>
-        <p className="text-gray-400">
-          Connect with fellow car audio enthusiasts in our community
-        </p>
-      </div>
-
-      {/* Search and Filters */}
-      <div className="bg-gray-800 rounded-lg p-6 mb-8">
-        <div className="flex flex-col md:flex-row gap-4">
-          {/* Search Bar */}
-          <div className="flex-1">
-            <div className="relative">
-              <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by name, team, or vehicle..."
-                className="w-full pl-10 pr-4 py-3 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
+    <div className="min-h-screen bg-gray-900">
+      <div className="max-w-7xl mx-auto p-6">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-white mb-2">
+            {isAuthenticated ? 'Member Directory' : 'Car Audio Community'}
+          </h1>
+          <p className="text-gray-400">
+            {isAuthenticated 
+              ? 'Connect with fellow car audio enthusiasts in our community'
+              : 'Discover amazing car audio builds from our community'}
+          </p>
+          
+          {/* Join Community button for non-authenticated users */}
+          {!isAuthenticated && (
+            <div className="mt-4">
+              <button
+                onClick={() => navigate('/login')}
+                className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-md transition-colors"
+              >
+                Join Our Community
+              </button>
+              <p className="text-sm text-gray-500 mt-2">
+                Sign in to see member-only profiles and connect with more enthusiasts!
+              </p>
             </div>
+          )}
+        </div>
+
+        {/* Search and Filters */}
+        <div className="bg-gray-800 rounded-lg p-6 mb-8">
+          <div className="flex flex-col md:flex-row gap-4">
+            {/* Search Bar */}
+            <div className="flex-1">
+              <div className="relative">
+                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search by name, team, or vehicle..."
+                  className="w-full pl-10 pr-4 py-3 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+            </div>
+
+            {/* Filter Toggle */}
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center space-x-2 px-4 py-3 bg-gray-700 hover:bg-gray-600 rounded-md text-white transition-colors"
+            >
+              <FaFilter />
+              <span>Filters</span>
+              {(filterTeam || filterLocation) && (
+                <span className="bg-primary-600 text-xs px-2 py-1 rounded-full">
+                  {[filterTeam, filterLocation].filter(Boolean).length}
+                </span>
+              )}
+            </button>
           </div>
 
-          {/* Filter Toggle */}
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center space-x-2 px-4 py-3 bg-gray-700 hover:bg-gray-600 rounded-md text-white transition-colors"
-          >
-            <FaFilter />
-            <span>Filters</span>
-            {(filterTeam || filterLocation) && (
-              <span className="bg-primary-600 text-xs px-2 py-1 rounded-full">
-                {[filterTeam, filterLocation].filter(Boolean).length}
-              </span>
-            )}
-          </button>
+          {/* Filter Options */}
+          {showFilters && (
+            <div className="mt-4 pt-4 border-t border-gray-700">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Team
+                  </label>
+                  <input
+                    type="text"
+                    value={filterTeam}
+                    onChange={(e) => setFilterTeam(e.target.value)}
+                    placeholder="Filter by team name..."
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Location
+                  </label>
+                  <input
+                    type="text"
+                    value={filterLocation}
+                    onChange={(e) => setFilterLocation(e.target.value)}
+                    placeholder="Filter by location..."
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+              </div>
+
+              {(filterTeam || filterLocation) && (
+                <button
+                  onClick={() => {
+                    setFilterTeam('');
+                    setFilterLocation('');
+                  }}
+                  className="mt-4 text-sm text-primary-400 hover:text-primary-300 flex items-center space-x-1"
+                >
+                  <FaTimes />
+                  <span>Clear Filters</span>
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Filter Options */}
-        {showFilters && (
-          <div className="mt-4 pt-4 border-t border-gray-700">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Team
-                </label>
-                <input
-                  type="text"
-                  value={filterTeam}
-                  onChange={(e) => setFilterTeam(e.target.value)}
-                  placeholder="Filter by team name..."
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Location
-                </label>
-                <input
-                  type="text"
-                  value={filterLocation}
-                  onChange={(e) => setFilterLocation(e.target.value)}
-                  placeholder="Filter by location..."
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
-              </div>
-            </div>
-
-            {(filterTeam || filterLocation) && (
-              <button
-                onClick={() => {
-                  setFilterTeam('');
-                  setFilterLocation('');
-                }}
-                className="mt-4 text-sm text-primary-400 hover:text-primary-300 flex items-center space-x-1"
-              >
-                <FaTimes />
-                <span>Clear Filters</span>
-              </button>
+        {/* Results Count */}
+        <div className="mb-4">
+          <p className="text-gray-400">
+            Showing {filteredProfiles.length} {filteredProfiles.length === 1 ? 'profile' : 'profiles'}
+            {!isAuthenticated && filteredProfiles.length > 0 && (
+              <span className="text-gray-500"> (public profiles only)</span>
             )}
+          </p>
+        </div>
+
+        {/* Member Grid */}
+        {filteredProfiles.length === 0 ? (
+          <div className="bg-gray-800 rounded-lg p-8 text-center">
+            <p className="text-gray-400">
+              {searchTerm || filterTeam || filterLocation
+                ? 'No profiles found matching your criteria'
+                : isAuthenticated
+                  ? 'No member profiles available yet'
+                  : 'No public profiles available yet'}
+            </p>
+            {!isAuthenticated && (
+              <p className="text-gray-500 mt-2">
+                Sign in to see member-only profiles!
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredProfiles.map((profile) => {
+              const featuredImage = getFeaturedImage(profile);
+              const vehicleInfo = getVehicleInfo(profile);
+              const displayName = getDisplayName(profile);
+
+              return (
+                <div
+                  key={profile.id}
+                  onClick={() => handleProfileClick(profile)}
+                  className="bg-gray-800 rounded-lg overflow-hidden hover:ring-2 hover:ring-primary-500 transition-all cursor-pointer group"
+                >
+                  {/* Image Section */}
+                  <div className="aspect-w-16 aspect-h-9 bg-gray-700 relative h-48">
+                    {featuredImage ? (
+                      <img
+                        src={featuredImage}
+                        alt={displayName}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <FaMusic className="text-gray-600 text-4xl" />
+                      </div>
+                    )}
+                    
+                    {/* Team Badge */}
+                    {profile.team_name && profile.show_team_info && (
+                      <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs flex items-center space-x-1">
+                        <FaUsers className="w-3 h-3" />
+                        <span>{profile.team_name}</span>
+                      </div>
+                    )}
+
+                    {/* Visibility Badge */}
+                    <div className={`absolute top-2 right-2 px-2 py-1 rounded text-xs text-white ${
+                      profile.visibility === 'public' 
+                        ? 'bg-green-600/80' 
+                        : 'bg-blue-600/80'
+                    }`}>
+                      {profile.visibility === 'public' ? 'Public' : 'Members Only'}
+                    </div>
+                  </div>
+
+                  {/* Info Section */}
+                  <div className="p-4">
+                    <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-primary-400 transition-colors">
+                      {displayName}
+                    </h3>
+
+                    {/* Vehicle Info */}
+                    {vehicleInfo && (
+                      <div className="flex items-center space-x-2 text-sm text-gray-400 mb-2">
+                        <FaCar className="w-4 h-4" />
+                        <span>{vehicleInfo}</span>
+                      </div>
+                    )}
+
+                    {/* Location */}
+                    {profile.user?.location && (
+                      <div className="flex items-center space-x-2 text-sm text-gray-400 mb-2">
+                        <FaMapMarkerAlt className="w-4 h-4" />
+                        <span>{profile.user.location}</span>
+                      </div>
+                    )}
+
+                    {/* Audio System Preview */}
+                    {profile.show_audio_system && profile.audio_system_description && (
+                      <p className="text-sm text-gray-500 line-clamp-2">
+                        {profile.audio_system_description}
+                      </p>
+                    )}
+
+                    {/* Team Role */}
+                    {profile.team_role && profile.show_team_info && (
+                      <div className="mt-2 text-xs text-primary-400">
+                        {profile.team_role}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
-
-      {/* Results Count */}
-      <div className="mb-4">
-        <p className="text-gray-400">
-          Showing {filteredProfiles.length} of {profiles.length} members
-        </p>
-      </div>
-
-      {/* Member Grid */}
-      {filteredProfiles.length === 0 ? (
-        <div className="bg-gray-800 rounded-lg p-8 text-center">
-          <p className="text-gray-400">
-            {searchTerm || filterTeam || filterLocation
-              ? 'No members found matching your criteria'
-              : 'No public member profiles available yet'}
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProfiles.map((profile) => {
-            const featuredImage = getFeaturedImage(profile);
-            const vehicleInfo = getVehicleInfo(profile);
-            const displayName = getDisplayName(profile);
-
-            return (
-              <div
-                key={profile.id}
-                onClick={() => navigate(`/member/${profile.user_id}`)}
-                className="bg-gray-800 rounded-lg overflow-hidden hover:ring-2 hover:ring-primary-500 transition-all cursor-pointer group"
-              >
-                {/* Image Section */}
-                <div className="aspect-w-16 aspect-h-9 bg-gray-700 relative h-48">
-                  {featuredImage ? (
-                    <img
-                      src={featuredImage}
-                      alt={displayName}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <FaMusic className="text-gray-600 text-4xl" />
-                    </div>
-                  )}
-                  
-                  {/* Team Badge */}
-                  {profile.team_name && profile.show_team_info && (
-                    <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs flex items-center space-x-1">
-                      <FaUsers className="w-3 h-3" />
-                      <span>{profile.team_name}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Info Section */}
-                <div className="p-4">
-                  <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-primary-400 transition-colors">
-                    {displayName}
-                  </h3>
-
-                  {/* Vehicle Info */}
-                  {vehicleInfo && (
-                    <div className="flex items-center space-x-2 text-sm text-gray-400 mb-2">
-                      <FaCar className="w-4 h-4" />
-                      <span>{vehicleInfo}</span>
-                    </div>
-                  )}
-
-                  {/* Location */}
-                  {profile.user?.location && (
-                    <div className="flex items-center space-x-2 text-sm text-gray-400 mb-2">
-                      <FaMapMarkerAlt className="w-4 h-4" />
-                      <span>{profile.user.location}</span>
-                    </div>
-                  )}
-
-                  {/* Audio System Preview */}
-                  {profile.show_audio_system && profile.audio_system_description && (
-                    <p className="text-sm text-gray-500 line-clamp-2">
-                      {profile.audio_system_description}
-                    </p>
-                  )}
-
-                  {/* Team Role */}
-                  {profile.team_role && profile.show_team_info && (
-                    <div className="mt-2 text-xs text-primary-400">
-                      {profile.team_role}
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }

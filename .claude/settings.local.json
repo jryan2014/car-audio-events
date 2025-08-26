@@ -58,7 +58,25 @@
       "Bash(gh run list:*)",
       "Bash(gh run watch:*)",
       "Bash(grep:*)",
-      "Bash(npm run type-check:*)"
+      "Bash(npm run type-check:*)",
+      "Bash(cat:*)",
+      "Bash(gh issue list:*)",
+      "Bash(gh issue view:*)",
+      "Bash(dir:*)",
+      "Bash(python:*)",
+      "Bash(gh workflow:*)",
+      "mcp__git__git_show",
+      "Bash(for page in {1..7})",
+      "Bash(do echo \"Page $page:\")",
+      "Bash(done)",
+      "Bash(rm:*)",
+      "Bash(node:*)",
+      "Bash(for alert_id in 717 718 719 720 721 722)",
+      "Bash(do)",
+      "Bash(done)",
+      "Bash(for alert_id in 717 718 719 720 721)",
+      "Bash(echo:*)",
+      "Bash(for page in {1..4})"
     ],
     "additionalDirectories": [
       "E:\\e\\2025-car-audio-events"

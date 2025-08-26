@@ -6,13 +6,7 @@
  */
 
 import { z } from 'zod';
-// DOMPurify import disabled for frontend build - this file is backend-only
-// import DOMPurify from 'isomorphic-dompurify';
-
-// Stub DOMPurify for frontend compilation
-const DOMPurify = {
-  sanitize: (input: string, options?: any) => input.replace(/<[^>]*>/g, '') // Basic HTML strip
-};
+import DOMPurify from 'dompurify';
 import { auditLogger } from './audit-security';
 
 export interface ValidationResult {
@@ -358,21 +352,14 @@ export class SecurityValidator {
   static sanitizeText(input: string): string {
     if (!input) return '';
     
-    // Remove potential XSS vectors
-    let sanitized = input
-      .replace(/[<>]/g, '') // Remove angle brackets
-      .replace(/javascript:/gi, '') // Remove javascript: protocol
-      .replace(/vbscript:/gi, '') // Remove vbscript: protocol
-      .replace(/on\w+\s*=/gi, '') // Remove event handlers
-      .trim();
+    // Use DOMPurify to strip all HTML and return plain text
+    const sanitized = DOMPurify.sanitize(input, {
+      ALLOWED_TAGS: [], // No tags allowed
+      ALLOWED_ATTR: [],
+      KEEP_CONTENT: true // Keep text content only
+    });
 
-    // Additional encoding for safety
-    sanitized = sanitized
-      .replace(/&/g, '&amp;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#x27;');
-
-    return sanitized;
+    return sanitized.trim();
   }
 
   /**

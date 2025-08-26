@@ -462,7 +462,7 @@ export default function PublicMemberProfile() {
             This profile is either private or doesn't exist.
           </p>
           <button
-            onClick={() => navigate('/public-directory')}
+            onClick(() => navigate('/members'))
             className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-2 rounded-md transition-colors"
           >
             Back to Directory
@@ -519,7 +519,7 @@ export default function PublicMemberProfile() {
 
       <div className="max-w-6xl mx-auto px-6 py-8">
         <button
-          onClick={() => navigate('/public-directory')}
+          onClick(() => navigate('/members'))
           className="flex items-center space-x-2 text-gray-400 hover:text-white mb-6 transition-colors"
         >
           <FaArrowLeft />

@@ -30,15 +30,8 @@ export function sanitizeEmailHTML(html: string): string {
     RETURN_TRUSTED_TYPE: false
   };
 
-  // Additional security: Remove script tags and event handlers
-  let sanitized = DOMPurify.sanitize(html, config);
-  
-  // Remove any remaining script-like content
-  sanitized = sanitized.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-  sanitized = sanitized.replace(/on\w+\s*=\s*"[^"]*"/gi, '');
-  sanitized = sanitized.replace(/on\w+\s*=\s*'[^']*'/gi, '');
-  sanitized = sanitized.replace(/javascript:/gi, '');
-  sanitized = sanitized.replace(/vbscript:/gi, '');
+  // DOMPurify handles all sanitization - no need for additional regex replacements
+  const sanitized = DOMPurify.sanitize(html, config);
   
   return sanitized;
 }

@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import DOMPurify from 'dompurify';
 import { loginRateLimiter, registerRateLimiter, getClientIdentifier } from './rateLimiter';
 import { validateName, validatePhone, validateAddress, validateCity } from './registrationValidator';
 import { validatePaymentAmount, validatePaymentEmail, validatePaymentMetadata } from './paymentValidation';
@@ -140,13 +141,14 @@ export const htmlContentSchema = z
   .string()
   .max(50000, 'Content too long')
   .transform((val) => {
-    // Remove script tags and other dangerous elements
-    return val.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-              .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
-              .replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '')
-              .replace(/<embed[^>]*>/gi, '')
-              .replace(/<link[^>]*>/gi, '')
-              .replace(/on\w+="[^"]*"/gi, ''); // Remove event handlers
+    // Use DOMPurify for proper HTML sanitization
+    return DOMPurify.sanitize(val, {
+      ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'ol', 'ul', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'code', 'pre', 'a', 'img'],
+      ALLOWED_ATTR: ['href', 'title', 'alt', 'src', 'width', 'height'],
+      ALLOW_DATA_ATTR: false,
+      FORBID_CONTENTS: ['script', 'style'],
+      FORBID_ATTR: ['style', 'onclick', 'onload', 'onerror']
+    });
   });
 
 // ID validation schemas
@@ -367,9 +369,12 @@ export function sanitizeString(input: string, options: {
   
   // Remove HTML if not allowed
   if (!options.allowHtml) {
-    sanitized = sanitized
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-      .replace(/<[^>]*>/g, ''); // Remove all HTML tags
+    // Use DOMPurify to strip all HTML tags
+    sanitized = DOMPurify.sanitize(sanitized, {
+      ALLOWED_TAGS: [], // No tags allowed - text only
+      ALLOWED_ATTR: [],
+      KEEP_CONTENT: true // Keep text content
+    });
   }
   
   // Remove null bytes and other dangerous characters
