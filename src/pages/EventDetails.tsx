@@ -498,7 +498,34 @@ const EventDetails = React.memo(function EventDetails() {
   const handlePaymentSuccess = (paymentIntentId: string, userInfo?: any) => {
     setIsRegistered(true);
     setShowPayment(false);
-    // Here you would typically save the registration to your database
+    
+    // Track successful payment and event registration
+    const registrationFee = event?.registration_fee || 0;
+    const eventName = event?.title || event?.event_name || 'Unknown Event';
+    
+    // Track payment completion
+    ga.trackPaymentCompletion(registrationFee, 'stripe');
+    
+    // Track event registration
+    ga.trackEventRegistration(eventName, event?.id);
+    
+    // Track as purchase event for e-commerce
+    if (window.gtag) {
+      window.gtag('event', 'purchase', {
+        transaction_id: paymentIntentId,
+        value: registrationFee,
+        currency: 'USD',
+        items: [{
+          item_id: String(event?.id),
+          item_name: eventName,
+          item_category: 'Event Registration',
+          item_category2: event?.category_name,
+          price: registrationFee,
+          quantity: 1
+        }]
+      });
+    }
+    
     console.log('Registration payment successful:', paymentIntentId, userInfo);
   };
 

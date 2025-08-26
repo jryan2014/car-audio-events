@@ -4,6 +4,7 @@ import { Mail, Lock, Eye, EyeOff, Volume2, AlertCircle, Loader, UserPlus } from 
 import { useAuth } from '../contexts/AuthContext';
 import { loginRateLimiter, getClientIdentifier } from '../utils/rateLimiter';
 import SEO from '../components/SEO';
+import * as ga from '../utils/googleAnalytics';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -65,6 +66,15 @@ export default function Login() {
       await login(email, password);
       // Login successful - clear rate limit
       loginRateLimiter.clear(clientId);
+      
+      // Track successful login
+      ga.trackUserLogin('email');
+      ga.event({
+        action: 'login_success',
+        category: 'authentication',
+        label: 'email'
+      });
+      
       // Navigation will be handled by useEffect based on user type
     } catch (error: any) {
       // Record failed attempt
@@ -103,6 +113,15 @@ export default function Login() {
       setError('');
       
       await loginWithGoogle();
+      
+      // Track Google login
+      ga.trackUserLogin('google');
+      ga.event({
+        action: 'login_success',
+        category: 'authentication',
+        label: 'google'
+      });
+      
       // Navigation will be handled by the auth state change
     } catch (error: any) {
       setError('Google sign-in failed. Please try again.');

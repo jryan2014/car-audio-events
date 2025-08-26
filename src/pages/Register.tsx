@@ -7,6 +7,7 @@ import RegistrationVerificationModal from '../components/RegistrationVerificatio
 import { supabase } from '../lib/supabase';
 import { registerRateLimiter, getClientIdentifier } from '../utils/rateLimiter';
 import SEO from '../components/SEO';
+import * as ga from '../utils/googleAnalytics';
 
 interface MembershipPlan {
   id: string;
@@ -419,6 +420,23 @@ export default function Register() {
       // Registration successful - clear rate limit
       registerRateLimiter.clear(clientId);
       setDebugInfo('✅ Registration successful, please verify your email');
+      
+      // Track successful registration
+      ga.trackUserRegistration('email');
+      ga.event({
+        action: 'sign_up',
+        category: 'authentication',
+        label: selectedPlan || 'competitor'
+      });
+      
+      // Track the membership plan selection
+      if (selectedPlan) {
+        ga.event({
+          action: 'membership_selected',
+          category: 'conversion',
+          label: selectedPlan
+        });
+      }
       
       // Show verification modal
       setRegisteredEmail(formData.email);
