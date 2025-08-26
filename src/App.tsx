@@ -15,6 +15,7 @@ import ScrollToTop from './components/ScrollToTop';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useCSRFProtection } from './utils/csrfProtection';
 import ImpersonationBanner from './components/ImpersonationBanner';
+import GoogleAnalytics from './components/GoogleAnalytics';
 
 // Convert all page imports to lazy loading for code splitting
 const Home = React.lazy(() => import('./pages/Home'));
@@ -182,6 +183,7 @@ function App() {
             }}
           >
             <ScrollToTop />
+            <GoogleAnalytics />
             <ImpersonationBanner />
             <Toaster 
               position="top-right"

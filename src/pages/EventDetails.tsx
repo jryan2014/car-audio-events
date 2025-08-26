@@ -9,6 +9,7 @@ import { memoryManager } from '../utils/memoryManager';
 import { parseLocalDate, formatTime12Hour } from '../utils/dateHelpers';
 import { MemoryTestComponent } from '../components/MemoryTestComponent';
 import SEO from '../components/SEO';
+import * as ga from '../utils/googleAnalytics';
 
 const EventDetails = React.memo(function EventDetails() {
   const { id } = useParams();
@@ -272,6 +273,23 @@ const EventDetails = React.memo(function EventDetails() {
       console.log('🎨 Setting formatted event with imagePosition:', formattedEvent.imagePosition);
       setEvent(formattedEvent);
       
+      // Track event view in Google Analytics
+      ga.event({
+        action: 'view_event',
+        category: 'engagement',
+        label: `${formattedEvent.title || formattedEvent.event_name} (ID: ${formattedEvent.id})`,
+        value: formattedEvent.id
+      });
+      
+      // Track event category view
+      if (formattedEvent.category_name) {
+        ga.event({
+          action: 'view_event_category',
+          category: 'engagement',
+          label: formattedEvent.category_name
+        });
+      }
+      
       // Check if user has saved this event
       if (user) {
         const { data: savedEvents, error: savedError } = await supabase
@@ -327,6 +345,12 @@ const EventDetails = React.memo(function EventDetails() {
     if (isRegistered) {
       setIsRegistered(false);
     } else {
+      // Track registration intent in Google Analytics
+      ga.event({
+        action: 'registration_started',
+        category: 'conversion',
+        label: `${event?.title || event?.event_name} (ID: ${event?.id})`
+      });
       setShowPayment(true);
     }
   };
@@ -376,6 +400,13 @@ const EventDetails = React.memo(function EventDetails() {
     
     try {
       if (isFavorited) {
+        // Track unfavorite action
+        ga.event({
+          action: 'unfavorite_event',
+          category: 'engagement',
+          label: `${event?.title || event?.event_name} (ID: ${event?.id})`
+        });
+        
         // Remove from saved events
         const { error } = await supabase
           .from('saved_events')
@@ -386,6 +417,13 @@ const EventDetails = React.memo(function EventDetails() {
         if (error) throw error;
         setIsFavorited(false);
       } else {
+        // Track favorite action
+        ga.event({
+          action: 'favorite_event',
+          category: 'engagement',
+          label: `${event?.title || event?.event_name} (ID: ${event?.id})`
+        });
+        
         // Add to saved events
         const { error } = await supabase
           .from('saved_events')
