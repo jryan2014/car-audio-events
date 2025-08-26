@@ -8,6 +8,9 @@ declare global {
 // Get GA4 Measurement ID from environment variable
 export const GA_MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID || 'G-XXXXXXXXXX';
 
+// Check if we're in development mode
+const isDevelopment = import.meta.env.DEV || window.location.hostname === 'localhost';
+
 // Initialize Google Analytics
 export const initGA = () => {
   if (typeof window !== 'undefined' && window.gtag) {
