@@ -223,7 +223,7 @@ export default function RichTextEditor({ value, onChange, placeholder, className
 
   const formats = [
     'header', 'bold', 'italic', 'underline', 'strike',
-    'color', 'background', 'list', 'bullet', 'indent',
+    'color', 'background', 'list', 'indent',
     'align', 'link', 'image', 'video', 'blockquote', 'code-block'
   ];
 
