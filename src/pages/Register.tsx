@@ -426,15 +426,15 @@ export default function Register() {
       ga.event({
         action: 'sign_up',
         category: 'authentication',
-        label: selectedPlan || 'competitor'
+        label: formData.membershipType || 'competitor'
       });
       
       // Track the membership plan selection
-      if (selectedPlan) {
+      if (formData.membershipType) {
         ga.event({
           action: 'membership_selected',
           category: 'conversion',
-          label: selectedPlan
+          label: formData.membershipType
         });
       }
       
