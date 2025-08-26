@@ -29,12 +29,16 @@ export const pageview = (url: string) => {
   }
 };
 
-// Track page views with custom title
+// Track page views with custom title and enhanced parameters
 export const pageviewWithTitle = (url: string, title: string) => {
   if (typeof window !== 'undefined' && window.gtag) {
-    window.gtag('config', GA_MEASUREMENT_ID, {
+    // Send enhanced pageview with custom parameters
+    window.gtag('event', 'page_view', {
       page_path: url,
       page_title: title,
+      page_location: window.location.href,
+      custom_page_title: title, // Custom dimension for clearer reporting
+      page_category: title.split(' - ')[0] // Extract category from title
     });
   }
 };

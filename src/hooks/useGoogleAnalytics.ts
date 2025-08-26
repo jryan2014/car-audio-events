@@ -45,28 +45,22 @@ export const useGoogleAnalytics = () => {
       return pageTitles[pathname] || pathname;
     };
     
-    // Send enhanced pageview with custom page title
-    ga.pageviewWithTitle(fullPath, getPageTitle(location.pathname));
+    // Get the page title
+    const pageTitle = getPageTitle(location.pathname);
     
-    // Track specific page categories for better segmentation
-    if (location.pathname.startsWith('/events')) {
-      ga.event({
-        action: 'page_category_view',
-        category: 'navigation',
-        label: 'events_section',
-      });
-    } else if (location.pathname.startsWith('/directory') || location.pathname.startsWith('/public-directory')) {
-      ga.event({
-        action: 'page_category_view',
-        category: 'navigation',
-        label: 'directory_section',
-      });
-    } else if (location.pathname.startsWith('/resources')) {
-      ga.event({
-        action: 'page_category_view',
-        category: 'navigation',
-        label: 'resources_section',
-      });
+    // Send enhanced pageview with custom page title
+    ga.pageviewWithTitle(fullPath, pageTitle);
+    
+    // For event detail pages, also track with specific event ID
+    if (location.pathname.startsWith('/events/') && location.pathname.split('/').length > 2) {
+      const eventId = location.pathname.split('/')[2];
+      if (window.gtag) {
+        window.gtag('event', 'view_event_detail', {
+          event_id: eventId,
+          page_path: fullPath,
+          page_title: pageTitle
+        });
+      }
     }
   }, [location]);
 

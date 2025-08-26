@@ -273,20 +273,42 @@ const EventDetails = React.memo(function EventDetails() {
       console.log('🎨 Setting formatted event with imagePosition:', formattedEvent.imagePosition);
       setEvent(formattedEvent);
       
-      // Track event view in Google Analytics
+      // Track event view in Google Analytics with enhanced parameters
+      // Send the actual event name as part of the event action for better visibility
+      const eventName = formattedEvent.title || formattedEvent.event_name || 'Unknown Event';
+      
+      // Track as a custom event with the event name in the action
       ga.event({
-        action: 'view_event',
-        category: 'engagement',
-        label: `${formattedEvent.title || formattedEvent.event_name} (ID: ${formattedEvent.id})`,
+        action: `viewed_event_${eventName.replace(/\s+/g, '_').toLowerCase()}`,
+        category: 'event_engagement',
+        label: eventName,
         value: formattedEvent.id
       });
       
-      // Track event category view
+      // Also send a standard view_item event for e-commerce tracking
+      if (window.gtag) {
+        window.gtag('event', 'view_item', {
+          currency: 'USD',
+          value: formattedEvent.registration_fee || 0,
+          items: [{
+            item_id: String(formattedEvent.id),
+            item_name: eventName,
+            item_category: formattedEvent.category_name || 'General',
+            item_category2: formattedEvent.sanctioning_body,
+            item_category3: formattedEvent.state,
+            item_category4: formattedEvent.city,
+            price: formattedEvent.registration_fee || 0,
+            quantity: 1
+          }]
+        });
+      }
+      
+      // Track event category view with more detail
       if (formattedEvent.category_name) {
         ga.event({
-          action: 'view_event_category',
-          category: 'engagement',
-          label: formattedEvent.category_name
+          action: `view_category_${formattedEvent.category_name.toLowerCase()}`,
+          category: 'event_categories',
+          label: `${formattedEvent.category_name} - ${eventName}`
         });
       }
       
