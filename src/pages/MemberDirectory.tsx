@@ -75,29 +75,36 @@ export default function MemberDirectory() {
       if (validProfiles.length > 0) {
         const userIds = validProfiles.map(profile => profile.user_id);
         
-        // Fetch team memberships
-        const { data: teamData, error: teamError } = await supabase
+        // Fetch team memberships - split into two queries to avoid recursion
+        const { data: membershipData, error: membershipError } = await supabase
           .from('team_members')
-          .select(`
-            team_id,
-            user_id,
-            role,
-            is_active,
-            teams (
-              id,
-              name,
-              logo_url,
-              is_public
-            )
-          `)
-          .in('user_id', userIds);
+          .select('team_id, user_id, role, is_active')
+          .in('user_id', userIds)
+          .eq('is_active', true);
 
-        if (teamError) {
-          console.error('Error loading team memberships:', teamError);
-          // Don't fail completely if team memberships fail to load
+        if (membershipError) {
+          console.error('Error loading team memberships:', membershipError);
           teamMemberships = [];
+        } else if (membershipData && membershipData.length > 0) {
+          // Fetch team details separately
+          const teamIds = [...new Set(membershipData.map(m => m.team_id))];
+          const { data: teamsData, error: teamsError } = await supabase
+            .from('teams')
+            .select('id, name, logo_url, is_public')
+            .in('id', teamIds);
+
+          if (teamsError) {
+            console.error('Error loading teams:', teamsError);
+            teamMemberships = [];
+          } else {
+            // Combine membership and team data
+            teamMemberships = membershipData.map(membership => ({
+              ...membership,
+              teams: teamsData?.find(team => team.id === membership.team_id) || null
+            }));
+          }
         } else {
-          teamMemberships = teamData || [];
+          teamMemberships = [];
         }
 
         // Fetch audio systems for vehicle information

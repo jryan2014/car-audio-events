@@ -27,6 +27,7 @@ const MemberProfileSettings = React.lazy(() => import('./pages/MemberProfileSett
 const MemberDirectory = React.lazy(() => import('./pages/MemberDirectory'));
 const MemberProfile = React.lazy(() => import('./pages/MemberProfile'));
 const PublicMemberProfile = React.lazy(() => import('./pages/PublicMemberProfile'));
+const TeamProfile = React.lazy(() => import('./pages/TeamProfile'));
 const Directory = React.lazy(() => import('./pages/Directory'));
 const Resources = React.lazy(() => import('./pages/Resources'));
 const Login = React.lazy(() => import('./pages/Login'));
@@ -208,6 +209,7 @@ function App() {
               <Route path="/members" element={<Layout><MemberDirectory /></Layout>} />
               <Route path="/member/:userId" element={<Layout><ProtectedRoute requireProfileComplete={true}><MemberProfile /></ProtectedRoute></Layout>} />
               <Route path="/public-profile/:userId" element={<Layout><PublicMemberProfile /></Layout>} />
+              <Route path="/team/:teamId" element={<Layout><TeamProfile /></Layout>} />
               <Route path="/directory" element={<Layout><Directory /></Layout>} />
               <Route path="/resources" element={<Layout><Resources /></Layout>} />
               <Route path="/search" element={<Layout><SearchResults /></Layout>} />

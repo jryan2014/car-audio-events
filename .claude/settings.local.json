@@ -77,7 +77,12 @@
       "Bash(for alert_id in 717 718 719 720 721)",
       "Bash(echo:*)",
       "Bash(for page in {1..4})",
-      "mcp__supabase__list_tables"
+      "mcp__supabase__list_tables",
+      "Bash(find:*)",
+      "Bash(npx supabase:*)",
+      "mcp__supabase__get_project",
+      "Bash(psql:*)",
+      "Bash(docker exec:*)"
     ],
     "additionalDirectories": [
       "E:\\e\\2025-car-audio-events"

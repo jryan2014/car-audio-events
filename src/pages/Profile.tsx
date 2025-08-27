@@ -82,6 +82,12 @@ interface Team {
   member_count: number;
   total_points: number;
   logo_url?: string;
+  team_type?: string;
+  location?: string;
+  website?: string;
+  is_public?: boolean;
+  requires_approval?: boolean;
+  max_members?: number;
 }
 
 interface UserStats {
@@ -162,7 +168,7 @@ export default function Profile() {
   const [teamFormData, setTeamFormData] = useState({
     name: '',
     description: '',
-    team_type: 'competitive' as const,
+    team_type: 'competitive' as 'competitive' | 'social' | 'professional' | 'club',
     location: '',
     website: '',
     is_public: true,
@@ -277,7 +283,7 @@ export default function Profile() {
   const [teamEditData, setTeamEditData] = useState({
     name: '',
     description: '',
-    team_type: 'competitive' as const,
+    team_type: 'competitive' as 'competitive' | 'social' | 'professional' | 'club',
     location: '',
     website: '',
     is_public: true,
@@ -1038,12 +1044,12 @@ export default function Profile() {
     setTeamEditData({
       name: team.name,
       description: team.description || '',
-      team_type: 'competitive', // Default since it's not in the Team interface
-      location: '',
-      website: '',
-      is_public: true,
-      requires_approval: true,
-      max_members: 50
+      team_type: (team.team_type || 'competitive') as 'competitive' | 'social' | 'professional' | 'club',
+      location: team.location || '',
+      website: team.website || '',
+      is_public: team.is_public !== undefined ? team.is_public : true,
+      requires_approval: team.requires_approval !== undefined ? team.requires_approval : true,
+      max_members: team.max_members || 50
     });
     setLogoPreview(team.logo_url || '');
     setShowTeamEditModal(true);
@@ -2149,18 +2155,31 @@ export default function Profile() {
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-white">Teams</h2>
                 {/* Only show Create Team button for Pro competitors, retailers, manufacturers, and organizations */}
-                {(user?.membershipType === 'retailer' || 
-                  user?.membershipType === 'manufacturer' || 
-                  user?.membershipType === 'organization' ||
-                  (user?.membershipType === 'competitor' && user?.subscriptionPlan === 'pro')) && (
-                  <button 
-                    onClick={() => setShowCreateTeamModal(true)}
-                    className="bg-electric-500 text-white px-4 py-2 rounded-lg hover:bg-electric-600 transition-colors flex items-center space-x-2"
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span>Create Team</span>
-                  </button>
-                )}
+                {(() => {
+                  const canCreateTeam = user?.membershipType === 'retailer' || 
+                    user?.membershipType === 'manufacturer' || 
+                    user?.membershipType === 'organization' ||
+                    user?.membershipType === 'admin' ||
+                    (user?.membershipType === 'competitor' && user?.subscriptionPlan === 'pro') ||
+                    user?.membershipType === 'pro_competitor';
+                  
+                  // Debug logging
+                  console.log('Team Creation Check:', {
+                    membershipType: user?.membershipType,
+                    subscriptionPlan: user?.subscriptionPlan,
+                    canCreateTeam
+                  });
+                  
+                  return canCreateTeam ? (
+                    <button 
+                      onClick={() => setShowCreateTeamModal(true)}
+                      className="bg-electric-500 text-white px-4 py-2 rounded-lg hover:bg-electric-600 transition-colors flex items-center space-x-2"
+                    >
+                      <Plus className="h-4 w-4" />
+                      <span>Create Team</span>
+                    </button>
+                  ) : null;
+                })()}
               </div>
               
               {teams.length > 0 ? (
@@ -2230,12 +2249,21 @@ export default function Profile() {
                   <h3 className="text-xl font-semibold text-gray-400 mb-2">No Teams</h3>
                   <p className="text-gray-500 mb-4">
                     {/* Show appropriate message based on user's ability to create teams */}
-                    {(user?.membershipType === 'retailer' || 
-                      user?.membershipType === 'manufacturer' || 
-                      user?.membershipType === 'organization' ||
-                      (user?.membershipType === 'competitor' && user?.subscriptionPlan === 'pro'))
-                      ? "Join or create a team to collaborate with other enthusiasts"
-                      : "Browse and join teams to collaborate with other enthusiasts"}
+                    {(() => {
+                      const canCreateTeam = user?.membershipType === 'retailer' || 
+                        user?.membershipType === 'manufacturer' || 
+                        user?.membershipType === 'organization' ||
+                        user?.membershipType === 'admin' ||
+                        (user?.membershipType === 'competitor' && user?.subscriptionPlan === 'pro') ||
+                        user?.membershipType === 'pro_competitor';
+                      
+                      if (!canCreateTeam && user?.membershipType === 'competitor') {
+                        return "Upgrade to Pro to create teams, or join an existing team";
+                      }
+                      return canCreateTeam
+                        ? "Join or create a team to collaborate with other enthusiasts"
+                        : "Browse and join teams to collaborate with other enthusiasts";
+                    })()}
                   </p>
                   <div className="flex justify-center space-x-4">
                     <button 
@@ -2248,17 +2276,23 @@ export default function Profile() {
                       Browse Teams
                     </button>
                     {/* Only show Create Team button for eligible users */}
-                    {(user?.membershipType === 'retailer' || 
-                      user?.membershipType === 'manufacturer' || 
-                      user?.membershipType === 'organization' ||
-                      (user?.membershipType === 'competitor' && user?.subscriptionPlan === 'pro')) && (
-                      <button 
-                        onClick={() => setShowCreateTeamModal(true)}
-                        className="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
-                      >
-                        Create Team
-                      </button>
-                    )}
+                    {(() => {
+                      const canCreateTeam = user?.membershipType === 'retailer' || 
+                        user?.membershipType === 'manufacturer' || 
+                        user?.membershipType === 'organization' ||
+                        user?.membershipType === 'admin' ||
+                        (user?.membershipType === 'competitor' && user?.subscriptionPlan === 'pro') ||
+                        user?.membershipType === 'pro_competitor';
+                      
+                      return canCreateTeam ? (
+                        <button 
+                          onClick={() => setShowCreateTeamModal(true)}
+                          className="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+                        >
+                          Create Team
+                        </button>
+                      ) : null;
+                    })()}
                   </div>
                 </div>
               )}

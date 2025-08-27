@@ -28,6 +28,7 @@ export default function MemberProfile() {
   const [competitionResults, setCompetitionResults] = useState<any[]>([]);
   const [eventsAttended, setEventsAttended] = useState<any[]>([]);
   const [favoritedEvents, setFavoritedEvents] = useState<any[]>([]);
+  const [teamMemberships, setTeamMemberships] = useState<any[]>([]);
 
   useEffect(() => {
     if (userId) {
@@ -99,6 +100,37 @@ export default function MemberProfile() {
       if (imagesError) throw imagesError;
 
       setGalleryImages(imagesData || []);
+
+      // Fetch team memberships - split into two queries to avoid recursion
+      const { data: membershipData, error: membershipError } = await supabase
+        .from('team_members')
+        .select('team_id, user_id, role, is_active')
+        .eq('user_id', userId)
+        .eq('is_active', true);
+
+      if (membershipError) {
+        console.error('Error loading team memberships:', membershipError);
+      } else if (membershipData && membershipData.length > 0) {
+        // Fetch team details separately
+        const teamIds = membershipData.map(m => m.team_id);
+        const { data: teamsData, error: teamsError } = await supabase
+          .from('teams')
+          .select('id, name, logo_url, is_public, description, requires_approval')
+          .in('id', teamIds);
+
+        if (teamsError) {
+          console.error('Error loading teams:', teamsError);
+        } else {
+          // Combine membership and team data
+          const combinedData = membershipData.map(membership => ({
+            ...membership,
+            teams: teamsData?.find(team => team.id === membership.team_id) || null
+          }));
+          setTeamMemberships(combinedData);
+        }
+      } else {
+        setTeamMemberships([]);
+      }
 
       // Fetch competition results if profile allows
       if (memberProfile.show_competition_results !== false) {
@@ -423,16 +455,41 @@ export default function MemberProfile() {
             <div className="flex-1">
               <h1 className="text-3xl font-bold text-white mb-2">{displayName}</h1>
               
-              {/* Team Info */}
-              {(profile.visibility === 'public' || profile.show_team_info) && profile.team_name && (
-                <div className="flex items-center space-x-2 text-primary-400 mb-2">
-                  <FaUsers />
-                  <span className="font-medium">{profile.team_name}</span>
-                  {profile.team_role && (
-                    <span className="text-gray-400">• {profile.team_role}</span>
-                  )}
-                </div>
-              )}
+              {/* Team Info - Show actual team memberships */}
+              {(() => {
+                if (teamMemberships.length > 0) {
+                  return (
+                    <div className="mb-2">
+                      {teamMemberships.map(membership => (
+                        <div key={membership.team_id} className="flex items-center space-x-2 text-primary-400 mb-1">
+                          <FaUsers />
+                          <button
+                            onClick={() => navigate(`/team/${membership.team_id}`)}
+                            className="font-medium hover:text-primary-300 transition-colors"
+                          >
+                            {membership.teams.name}
+                          </button>
+                          {membership.role !== 'member' && (
+                            <span className="text-gray-400">• {membership.role}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                } else if ((profile.visibility === 'public' || profile.show_team_info) && profile.team_name) {
+                  // Fallback to legacy team_name field
+                  return (
+                    <div className="flex items-center space-x-2 text-primary-400 mb-2">
+                      <FaUsers />
+                      <span className="font-medium">{profile.team_name}</span>
+                      {profile.team_role && (
+                        <span className="text-gray-400">• {profile.team_role}</span>
+                      )}
+                    </div>
+                  );
+                }
+                return null;
+              })()}
 
               {/* Location */}
               {profile.user?.location && (
@@ -527,6 +584,62 @@ export default function MemberProfile() {
           )}
         </div>
       </div>
+
+      {/* Teams Section */}
+      {teamMemberships.length > 0 && (
+        <div className="bg-gray-800 rounded-lg p-6 mb-8">
+          <h2 className="text-xl font-bold text-white mb-4 flex items-center space-x-2">
+            <FaUsers />
+            <span>Teams</span>
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {teamMemberships.map(membership => {
+              const team = membership.teams;
+              if (!team) return null;
+              
+              return (
+                <div key={membership.team_id} className="bg-gray-700/50 rounded-lg p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-white mb-1">
+                        <button
+                          onClick={() => navigate(`/team/${team.id}`)}
+                          className="hover:text-primary-400 transition-colors"
+                        >
+                          {team.name}
+                        </button>
+                      </h3>
+                      
+                      {membership.role !== 'member' && (
+                        <span className="inline-block bg-primary-600/20 text-primary-400 px-2 py-1 rounded text-xs mb-2">
+                          {membership.role.replace('_', ' ').charAt(0).toUpperCase() + membership.role.slice(1).replace('_', ' ')}
+                        </span>
+                      )}
+                      
+                      {team.description && (
+                        <p className="text-gray-400 text-sm line-clamp-2">
+                          {team.description}
+                        </p>
+                      )}
+                    </div>
+                    
+                    {/* Join/View Button - Show for public teams if user is not the profile owner and not already a member */}
+                    {user?.id !== userId && team.is_public && (
+                      <button
+                        onClick={() => navigate(`/team/${team.id}`)}
+                        className="ml-4 bg-primary-600 hover:bg-primary-700 text-white px-3 py-1 rounded text-sm transition-colors"
+                      >
+                        View Team
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Audio System Details */}
       {(user?.id === userId || profile.visibility === 'public' || profile.show_audio_system) && audioSystem && (
