@@ -74,10 +74,10 @@ export default function PublicMemberProfile() {
         .eq('user_id', userId)
         .order('display_order', { ascending: true });
 
-      // Only filter by visibility if not viewing own profile
+      // Only filter by banned status if not viewing own profile
+      // Let RLS policies handle visibility based on profile visibility
       if (!isOwnProfile) {
         galleryQuery = galleryQuery
-          .eq('visibility', 'public')
           .eq('is_banned', false);
       }
 

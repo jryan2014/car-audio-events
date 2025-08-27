@@ -88,13 +88,12 @@ export default function MemberProfile() {
         setAudioSystem(audioSystemData);
       }
 
-      // Fetch gallery images
+      // Fetch gallery images - let RLS handle visibility
       const { data: imagesData, error: imagesError } = await supabase
         .from('member_gallery_images')
         .select('*')
         .eq('user_id', userId)
         .eq('is_banned', false)
-        .in('visibility', ['public', 'members_only'])
         .order('display_order', { ascending: true });
 
       if (imagesError) throw imagesError;

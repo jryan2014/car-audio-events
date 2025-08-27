@@ -76,7 +76,8 @@
       "Bash(done)",
       "Bash(for alert_id in 717 718 719 720 721)",
       "Bash(echo:*)",
-      "Bash(for page in {1..4})"
+      "Bash(for page in {1..4})",
+      "mcp__supabase__list_tables"
     ],
     "additionalDirectories": [
       "E:\\e\\2025-car-audio-events"
