@@ -94,7 +94,7 @@ export default function MemberProfile() {
         .select('*')
         .eq('user_id', userId)
         .eq('is_banned', false)
-        .in('visibility', ['public', 'member_only'])
+        .in('visibility', ['public', 'members_only'])
         .order('display_order', { ascending: true });
 
       if (imagesError) throw imagesError;
@@ -205,12 +205,15 @@ export default function MemberProfile() {
   };
 
   const getVehicleInfo = () => {
-    if (!profile || !(user?.id === userId || profile.show_vehicle_info)) return null;
+    if (!profile || !(user?.id === userId || profile.visibility === 'public' || (profile as any).show_vehicles || (profile as any).show_vehicle_info)) return null;
+    
+    // Vehicle info is stored in audioSystem, not profile
+    if (!audioSystem) return null;
     
     const parts = [];
-    if (profile.vehicle_year) parts.push(profile.vehicle_year);
-    if (profile.vehicle_make) parts.push(profile.vehicle_make);
-    if (profile.vehicle_model) parts.push(profile.vehicle_model);
+    if (audioSystem.vehicle_year) parts.push(audioSystem.vehicle_year);
+    if (audioSystem.vehicle_make) parts.push(audioSystem.vehicle_make);
+    if (audioSystem.vehicle_model) parts.push(audioSystem.vehicle_model);
     
     return parts.length > 0 ? parts.join(' ') : null;
   };
@@ -422,7 +425,7 @@ export default function MemberProfile() {
               <h1 className="text-3xl font-bold text-white mb-2">{displayName}</h1>
               
               {/* Team Info */}
-              {profile.show_team_info && profile.team_name && (
+              {(profile.visibility === 'public' || profile.show_team_info) && profile.team_name && (
                 <div className="flex items-center space-x-2 text-primary-400 mb-2">
                   <FaUsers />
                   <span className="font-medium">{profile.team_name}</span>
@@ -441,7 +444,7 @@ export default function MemberProfile() {
               )}
 
               {/* Vehicle */}
-              {(user?.id === userId || profile.show_vehicle_info) && vehicleInfo && (
+              {(user?.id === userId || profile.visibility === 'public' || (profile as any).show_vehicles || (profile as any).show_vehicle_info) && vehicleInfo && (
                 <div className="flex items-center space-x-2 text-gray-400">
                   <FaCar />
                   <span>{vehicleInfo}</span>
@@ -450,7 +453,7 @@ export default function MemberProfile() {
             </div>
 
             {/* Social Links */}
-            {profile.show_social_links && (
+            {(profile.visibility === 'public' || profile.show_social_links) && (
               <div className="flex space-x-3 mt-4 md:mt-0">
                 {profile.facebook_url && (
                   <a
@@ -517,7 +520,7 @@ export default function MemberProfile() {
           </div>
 
           {/* Bio */}
-          {profile.show_bio && profile.bio && (
+          {(profile.visibility === 'public' || profile.show_bio) && profile.bio && (
             <div className="mt-6 pt-6 border-t border-gray-700">
               <h2 className="text-lg font-semibold text-white mb-2">About</h2>
               <p className="text-gray-300 whitespace-pre-wrap">{profile.bio}</p>
@@ -527,7 +530,7 @@ export default function MemberProfile() {
       </div>
 
       {/* Audio System Details */}
-      {(user?.id === userId || profile.show_audio_system) && audioSystem && (
+      {(user?.id === userId || profile.visibility === 'public' || profile.show_audio_system) && audioSystem && (
         <div className="bg-gray-800 rounded-lg p-6 mb-8">
           <h2 className="text-xl font-bold text-white mb-4 flex items-center space-x-2">
             <FaVolumeUp />
@@ -724,7 +727,7 @@ export default function MemberProfile() {
       )}
 
       {/* Competition Results */}
-      {competitionResults.length > 0 && profile.show_competition_results !== false && (
+      {competitionResults.length > 0 && (profile.visibility === 'public' || profile.show_competition_results !== false) && (
         <div className="bg-gray-800 rounded-lg p-6 mb-8">
           <h2 className="text-xl font-bold text-white mb-4 flex items-center space-x-2">
             <FaTrophy className="text-primary-400" />
@@ -755,7 +758,7 @@ export default function MemberProfile() {
       )}
 
       {/* Events Attended */}
-      {eventsAttended.length > 0 && profile.show_events_attended !== false && (
+      {eventsAttended.length > 0 && (profile.visibility === 'public' || profile.show_events_attended !== false) && (
         <div className="bg-gray-800 rounded-lg p-6 mb-8">
           <h2 className="text-xl font-bold text-white mb-4 flex items-center space-x-2">
             <FaCalendar className="text-primary-400" />
@@ -776,7 +779,7 @@ export default function MemberProfile() {
       )}
 
       {/* Favorited Events */}
-      {favoritedEvents.length > 0 && profile.show_favorited_events !== false && (
+      {favoritedEvents.length > 0 && (profile.visibility === 'public' || profile.show_favorited_events !== false) && (
         <div className="bg-gray-800 rounded-lg p-6 mb-8">
           <h2 className="text-xl font-bold text-white mb-4 flex items-center space-x-2">
             <FaHeart className="text-primary-400" />
