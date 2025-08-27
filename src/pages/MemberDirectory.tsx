@@ -159,7 +159,13 @@ export default function MemberDirectory() {
   };
 
   const getVehicleInfo = (profile: MemberProfileWithUser) => {
-    if (!profile.show_vehicle_info) return null;
+    // If profile is public, always show vehicle info
+    // Otherwise, check the show_vehicles flag (database uses show_vehicles, not show_vehicle_info)
+    const shouldShowVehicle = profile.visibility === 'public' || 
+                             (profile as any).show_vehicles !== false || 
+                             (profile as any).show_vehicle_info !== false;
+    
+    if (!shouldShowVehicle) return null;
     
     const parts = [];
     if (profile.vehicle_year) parts.push(profile.vehicle_year);
@@ -349,8 +355,8 @@ export default function MemberDirectory() {
                       </div>
                     )}
                     
-                    {/* Team Badge */}
-                    {profile.team_name && profile.show_team_info && (
+                    {/* Team Badge - Always show for public profiles */}
+                    {profile.team_name && (profile.visibility === 'public' || profile.show_team_info) && (
                       <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs flex items-center space-x-1">
                         <FaUsers className="w-3 h-3" />
                         <span>{profile.team_name}</span>
@@ -389,15 +395,15 @@ export default function MemberDirectory() {
                       </div>
                     )}
 
-                    {/* Audio System Preview */}
-                    {profile.show_audio_system && profile.audio_system_description && (
+                    {/* Audio System Preview - Always show for public profiles */}
+                    {(profile.visibility === 'public' || profile.show_audio_system) && profile.audio_system_description && (
                       <p className="text-sm text-gray-500 line-clamp-2">
                         {profile.audio_system_description}
                       </p>
                     )}
 
-                    {/* Team Role */}
-                    {profile.team_role && profile.show_team_info && (
+                    {/* Team Role - Always show for public profiles */}
+                    {profile.team_role && (profile.visibility === 'public' || profile.show_team_info) && (
                       <div className="mt-2 text-xs text-primary-400">
                         {profile.team_role}
                       </div>
