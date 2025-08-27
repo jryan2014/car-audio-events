@@ -97,4 +97,25 @@ export interface MemberProfileWithUser extends MemberProfile {
     profile_image?: string;
   };
   gallery_images?: MemberGalleryImage[];
+  team_memberships?: {
+    team_id: string;
+    role: string;
+    is_active: boolean;
+    teams: {
+      id: string;
+      name: string;
+      logo_url?: string;
+      is_public: boolean;
+    };
+  }[];
+  // Audio system data from user_audio_systems table
+  audio_systems?: {
+    user_id: string;
+    vehicle_year?: number;
+    vehicle_make?: string;
+    vehicle_model?: string;
+    description?: string;
+    is_primary: boolean;
+    is_public: boolean;
+  }[];
 }

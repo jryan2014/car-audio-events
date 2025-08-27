@@ -35,7 +35,9 @@ export default function MemberDirectory() {
         ? ['public', 'members_only']  // Logged-in users see both public and members_only
         : ['public'];                  // Non-logged-in users see only public
 
-      // Fetch profiles based on visibility
+      // Fetch profiles based on visibility  
+      // Note: We need to use a custom approach since member_profiles -> team_members
+      // relationship through user_id isn't directly detectable by PostgREST
       const { data, error } = await supabase
         .from('member_profiles')
         .select(`
@@ -65,8 +67,82 @@ export default function MemberDirectory() {
 
       // Filter to only include profiles with proper user data
       const validProfiles = (data || []).filter(profile => profile.user);
+
+      // Fetch team memberships and audio systems separately for all users
+      let teamMemberships: any[] = [];
+      let audioSystems: any[] = [];
       
-      setProfiles(validProfiles as MemberProfileWithUser[]);
+      if (validProfiles.length > 0) {
+        const userIds = validProfiles.map(profile => profile.user_id);
+        
+        // Fetch team memberships
+        const { data: teamData, error: teamError } = await supabase
+          .from('team_members')
+          .select(`
+            team_id,
+            user_id,
+            role,
+            is_active,
+            teams (
+              id,
+              name,
+              logo_url,
+              is_public
+            )
+          `)
+          .in('user_id', userIds);
+
+        if (teamError) {
+          console.error('Error loading team memberships:', teamError);
+          // Don't fail completely if team memberships fail to load
+          teamMemberships = [];
+        } else {
+          teamMemberships = teamData || [];
+        }
+
+        // Fetch audio systems for vehicle information
+        const { data: audioData, error: audioError } = await supabase
+          .from('user_audio_systems')
+          .select(`
+            user_id,
+            vehicle_year,
+            vehicle_make,
+            vehicle_model,
+            description,
+            is_primary,
+            is_public
+          `)
+          .in('user_id', userIds)
+          .eq('is_public', true);
+
+        if (audioError) {
+          console.error('Error loading audio systems:', audioError);
+          // Don't fail completely if audio systems fail to load
+          audioSystems = [];
+        } else {
+          audioSystems = audioData || [];
+        }
+      }
+
+      // Merge team memberships and audio systems with profiles
+      const profilesWithExtendedData = validProfiles.map(profile => {
+        const userAudioSystems = audioSystems.filter(system => system.user_id === profile.user_id);
+        const primaryAudioSystem = userAudioSystems.find(system => system.is_primary) || userAudioSystems[0];
+        
+        return {
+          ...profile,
+          team_memberships: teamMemberships
+            .filter(membership => membership.user_id === profile.user_id),
+          // Add vehicle info from primary audio system for backward compatibility
+          vehicle_year: primaryAudioSystem?.vehicle_year,
+          vehicle_make: primaryAudioSystem?.vehicle_make,
+          vehicle_model: primaryAudioSystem?.vehicle_model,
+          audio_system_description: primaryAudioSystem?.description,
+          audio_systems: userAudioSystems
+        };
+      });
+      
+      setProfiles(profilesWithExtendedData as MemberProfileWithUser[]);
     } catch (error) {
       console.error('Error loading profiles:', error);
       // Only show error toast for authenticated users
@@ -92,12 +168,18 @@ export default function MemberDirectory() {
         const vehicleMake = profile.vehicle_make?.toLowerCase() || '';
         const vehicleModel = profile.vehicle_model?.toLowerCase() || '';
         
+        // Also search in team memberships
+        const teamNames = (profile.team_memberships || [])
+          .map(tm => tm.teams?.name?.toLowerCase() || '')
+          .join(' ');
+        
         return displayName.includes(search) ||
                firstName.includes(search) ||
                lastName.includes(search) ||
                teamName.includes(search) ||
                vehicleMake.includes(search) ||
-               vehicleModel.includes(search);
+               vehicleModel.includes(search) ||
+               teamNames.includes(search);
       });
     }
 
@@ -167,6 +249,7 @@ export default function MemberDirectory() {
     
     if (!shouldShowVehicle) return null;
     
+    // Vehicle info is now stored in the primary audio system
     const parts = [];
     if (profile.vehicle_year) parts.push(profile.vehicle_year);
     if (profile.vehicle_make) parts.push(profile.vehicle_make);
@@ -355,13 +438,41 @@ export default function MemberDirectory() {
                       </div>
                     )}
                     
-                    {/* Team Badge - Always show for public profiles */}
-                    {profile.team_name && (profile.visibility === 'public' || profile.show_team_info) && (
-                      <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs flex items-center space-x-1">
-                        <FaUsers className="w-3 h-3" />
-                        <span>{profile.team_name}</span>
-                      </div>
-                    )}
+                    {/* Team Badges - Show active public team memberships or legacy team_name */}
+                    {(() => {
+                      // Get public teams from team_memberships
+                      const publicTeams = profile.team_memberships?.filter(tm => 
+                        tm.is_active && tm.teams?.is_public
+                      ) || [];
+                      
+                      // Use team_memberships if available, otherwise fall back to legacy team_name
+                      if (publicTeams.length > 0) {
+                        return publicTeams.slice(0, 2).map((membership, idx) => (
+                          <div 
+                            key={membership.team_id}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/team/${membership.team_id}`);
+                            }}
+                            className={`absolute ${idx === 0 ? 'top-2' : 'top-9'} left-2 bg-black/70 text-white px-2 py-1 rounded text-xs flex items-center space-x-1 cursor-pointer hover:bg-black/90 transition-colors`}
+                          >
+                            <FaUsers className="w-3 h-3" />
+                            <span>{membership.teams.name}</span>
+                            {membership.role !== 'member' && (
+                              <span className="text-primary-400">({membership.role})</span>
+                            )}
+                          </div>
+                        ));
+                      } else if (profile.team_name && (profile.visibility === 'public' || profile.show_team_info)) {
+                        return (
+                          <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs flex items-center space-x-1">
+                            <FaUsers className="w-3 h-3" />
+                            <span>{profile.team_name}</span>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
 
                     {/* Visibility Badge */}
                     <div className={`absolute top-2 right-2 px-2 py-1 rounded text-xs text-white ${
@@ -402,12 +513,39 @@ export default function MemberDirectory() {
                       </p>
                     )}
 
-                    {/* Team Role - Always show for public profiles */}
-                    {profile.team_role && (profile.visibility === 'public' || profile.show_team_info) && (
-                      <div className="mt-2 text-xs text-primary-400">
-                        {profile.team_role}
-                      </div>
-                    )}
+                    {/* Team Info - Show teams from team_memberships or legacy team_role */}
+                    {(() => {
+                      const publicTeams = profile.team_memberships?.filter(tm => 
+                        tm.is_active && tm.teams?.is_public
+                      ) || [];
+                      
+                      if (publicTeams.length > 0) {
+                        return (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {publicTeams.map(membership => (
+                              <button
+                                key={membership.team_id}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/team/${membership.team_id}`);
+                                }}
+                                className="text-xs bg-primary-600/20 text-primary-400 px-2 py-1 rounded hover:bg-primary-600/30 transition-colors cursor-pointer"
+                              >
+                                {membership.teams.name}
+                                {membership.role !== 'member' && ` • ${membership.role}`}
+                              </button>
+                            ))}
+                          </div>
+                        );
+                      } else if (profile.team_role && (profile.visibility === 'public' || profile.show_team_info)) {
+                        return (
+                          <div className="mt-2 text-xs text-primary-400">
+                            {profile.team_role}
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
                 </div>
               );
