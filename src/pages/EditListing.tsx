@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { supabase } from '../lib/supabase/client';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 import { 
@@ -381,7 +381,7 @@ export default function EditListing() {
         subtitle="Update your listing details"
       />
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 mt-24">
         <button
           onClick={() => navigate('/my-listings')}
           className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors mb-6"
