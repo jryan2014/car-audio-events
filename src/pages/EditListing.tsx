@@ -1099,6 +1099,34 @@ function EditListingComponent() {
                               placeholder="Brief description of the product..."
                             />
                           </div>
+                          
+                          {/* Product Images */}
+                          <div className="md:col-span-2">
+                            <label className="block text-gray-400 text-sm mb-2">
+                              Product Images (Up to 3 URLs)
+                            </label>
+                            <div className="space-y-2">
+                              {[0, 1, 2].map((imgIndex) => (
+                                <div key={imgIndex} className="flex items-center space-x-2">
+                                  <Image className="h-4 w-4 text-gray-400" />
+                                  <input
+                                    type="url"
+                                    value={product.images?.[imgIndex] || ''}
+                                    onChange={(e) => {
+                                      const newImages = [...(product.images || [])];
+                                      newImages[imgIndex] = e.target.value;
+                                      updateProduct(index, 'images', newImages.filter(img => img));
+                                    }}
+                                    className="flex-1 p-2 bg-gray-700/50 border border-gray-600 rounded text-white text-sm"
+                                    placeholder={`Image URL ${imgIndex + 1} (e.g., https://example.com/product.jpg)`}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                            <p className="text-gray-500 text-xs mt-1">
+                              Add direct image URLs for this product
+                            </p>
+                          </div>
                         </div>
                       </div>
                     ))}
