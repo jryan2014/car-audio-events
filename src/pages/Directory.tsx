@@ -167,19 +167,25 @@ export default function Directory() {
     setViewMode(filters.viewMode);
     let filtered = [...listings];
 
-    // Apply text search
+    // Apply text search with null safety
     if (filters.query) {
       const query = filters.query.toLowerCase();
-      filtered = filtered.filter(listing =>
-        listing.business_name.toLowerCase().includes(query) ||
-        listing.description?.toLowerCase().includes(query) ||
-        listing.city.toLowerCase().includes(query) ||
-        listing.state.toLowerCase().includes(query) ||
-        listing.brands_carried?.some((brand: string) => brand.toLowerCase().includes(query)) ||
-        listing.services_offered?.some((service: string) => service.toLowerCase().includes(query)) ||
-        listing.item_title?.toLowerCase().includes(query) ||
-        listing.contact_name.toLowerCase().includes(query)
-      );
+      filtered = filtered.filter(listing => {
+        const safeCheck = (str: any) => str && typeof str === 'string' ? str.toLowerCase().includes(query) : false;
+        const arrayCheck = (arr: any[], field?: string) => Array.isArray(arr) ? arr.some((item: any) => {
+          const value = field ? item[field] : item;
+          return value && typeof value === 'string' && value.toLowerCase().includes(query);
+        }) : false;
+
+        return safeCheck(listing.business_name) ||
+               safeCheck(listing.description) ||
+               safeCheck(listing.city) ||
+               safeCheck(listing.state) ||
+               arrayCheck(listing.brands_carried) ||
+               arrayCheck(listing.services_offered) ||
+               safeCheck(listing.item_title) ||
+               safeCheck(listing.contact_name);
+      });
     }
 
     // Apply type filter
@@ -290,23 +296,29 @@ export default function Directory() {
   const types = ['all', 'retailer', 'manufacturer', 'used_equipment'];
 
   const getDisplaySpecialties = (listing: DirectoryListing): string[] => {
+    if (!listing || !listing.listing_type) return [];
+    
     if (listing.listing_type === 'retailer') {
-      return listing.services_offered || [];
+      return Array.isArray(listing.services_offered) ? listing.services_offered : [];
     } else if (listing.listing_type === 'manufacturer') {
-      return listing.brands_carried || [];
+      return Array.isArray(listing.brands_carried) ? listing.brands_carried : [];
     } else {
-      return listing.product_categories || [];
+      return Array.isArray(listing.product_categories) ? listing.product_categories : [];
     }
   };
 
   const getListingTitle = (listing: DirectoryListing): string => {
+    if (!listing) return 'Unknown Listing';
+    
     if (listing.listing_type === 'used_equipment') {
-      return listing.item_title || listing.business_name;
+      return listing.item_title || listing.business_name || 'Untitled Item';
     }
-    return listing.business_name;
+    return listing.business_name || 'Unknown Business';
   };
 
   const getDefaultImage = (listing: DirectoryListing): string => {
+    if (!listing) return "https://images.pexels.com/photos/1649771/pexels-photo-1649771.jpeg?auto=compress&cs=tinysrgb&w=400&h=250&dpr=2";
+    
     return listing.default_image_url || "https://images.pexels.com/photos/1649771/pexels-photo-1649771.jpeg?auto=compress&cs=tinysrgb&w=400&h=250&dpr=2";
   };
 
@@ -392,9 +404,15 @@ export default function Directory() {
             {filteredListings.map((listing) => (
               <div
                 key={listing.id}
-                className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl overflow-hidden hover:border-electric-500/50 transition-all duration-300 group cursor-pointer"
-                onClick={() => handleListingClick(listing)}
-              >
+                  className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl overflow-hidden hover:border-electric-500/50 transition-all duration-300 group cursor-pointer"
+                  onClick={() => {
+                    try {
+                      handleListingClick(listing);
+                    } catch (error) {
+                      console.error('Error handling listing click:', error);
+                    }
+                  }}
+                >
                 {/* Listing Image */}
                 <div className="relative">
                   <img
@@ -416,7 +434,7 @@ export default function Directory() {
                   
                   {/* Listing Type Badge */}
                   <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-sm text-white px-2 py-1 rounded-full text-xs font-medium capitalize">
-                    {listing.listing_type.replace('_', ' ')}
+                    {listing.listing_type?.replace(/_/g, ' ') || 'Business'}
                   </div>
                   
                   {/* Price for used equipment */}
@@ -528,7 +546,7 @@ export default function Directory() {
                     </div>
                   </div>
                 </div>
-              </div>
+                </div>
             ))}
           </div>
         )}

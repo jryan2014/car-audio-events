@@ -92,6 +92,7 @@ const SPLCalculatorProtected = React.lazy(() => import('./components/SPLCalculat
 const AudioSystemDesigner = React.lazy(() => import('./pages/AudioSystemDesigner'));
 const SubwooferDesigner = React.lazy(() => import('./pages/SubwooferDesigner'));
 const AdminSubwooferDesigner = React.lazy(() => import('./pages/AdminSubwooferDesigner'));
+const DirectoryErrorBoundary = React.lazy(() => import('./components/DirectoryErrorBoundary'));
 const AudioDiagramEditorPage = React.lazy(() => import('./pages/AudioDiagramEditorPage'));
 const VerifyEmail = React.lazy(() => import('./pages/VerifyEmail'));
 const SuggestEvent = React.lazy(() => import('./pages/SuggestEvent'));
@@ -214,11 +215,11 @@ function App() {
               <Route path="/member/:userId" element={<Layout><ProtectedRoute requireProfileComplete={true}><MemberProfile /></ProtectedRoute></Layout>} />
               <Route path="/public-profile/:userId" element={<Layout><PublicMemberProfile /></Layout>} />
               <Route path="/team/:teamId" element={<Layout><TeamProfile /></Layout>} />
-              <Route path="/directory" element={<Layout><Directory /></Layout>} />
-              <Route path="/directory/:id" element={<Layout><DirectoryDetail /></Layout>} />
+              <Route path="/directory" element={<Layout><DirectoryErrorBoundary><Directory /></DirectoryErrorBoundary></Layout>} />
+              <Route path="/directory/:id" element={<Layout><DirectoryErrorBoundary><DirectoryDetail /></DirectoryErrorBoundary></Layout>} />
               <Route path="/marketplace" element={<Layout><MemberMarketplace /></Layout>} />
               <Route path="/my-listings" element={<Layout><ProtectedRoute requireProfileComplete={true}><MyListings /></ProtectedRoute></Layout>} />
-              <Route path="/directory/edit/:id" element={<Layout><ProtectedRoute requireProfileComplete={true}><EditListing /></ProtectedRoute></Layout>} />
+              <Route path="/directory/edit/:id" element={<Layout><ProtectedRoute requireProfileComplete={true}><DirectoryErrorBoundary><EditListing /></DirectoryErrorBoundary></ProtectedRoute></Layout>} />
               <Route path="/resources" element={<Layout><Resources /></Layout>} />
               <Route path="/search" element={<Layout><SearchResults /></Layout>} />
               <Route path="/notifications" element={<Layout><ProtectedRoute requireProfileComplete={true}><NotificationHistory /></ProtectedRoute></Layout>} />

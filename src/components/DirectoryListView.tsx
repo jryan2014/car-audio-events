@@ -88,7 +88,7 @@ export const DirectoryListView: React.FC<DirectoryListViewProps> = ({
               
               {/* Listing Type Badge */}
               <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-sm text-white px-2 py-1 rounded-full text-xs font-medium capitalize">
-                {listing.listing_type.replace('_', ' ')}
+                {listing.listing_type ? listing.listing_type.replace('_', ' ') : 'Unknown'}
               </div>
               
               {/* Price for used equipment */}

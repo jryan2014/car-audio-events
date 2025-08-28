@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import LoadingSpinner from '../components/LoadingSpinner';
+import DirectoryErrorBoundary from '../components/DirectoryErrorBoundary';
 import { Zap, Volume2, Cpu, Wrench as WrenchIcon, Package2, Battery } from 'lucide-react';
 
 const EQUIPMENT_CATEGORIES = [
@@ -38,7 +39,7 @@ interface Product {
   category: string;
 }
 
-export default function EditListing() {
+function EditListingComponent() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -131,21 +132,36 @@ export default function EditListing() {
         return;
       }
 
-      setListingType(data.listing_type || data.listing_category);
+      // Validate and sanitize listing type
+      const validListingType = data.listing_type || data.listing_category || 'unknown';
+      setListingType(validListingType);
       
-      // Load existing images if present
+      // Load existing images if present with validation
       if (data.listing_images && Array.isArray(data.listing_images)) {
-        const images = data.listing_images.filter((img: any) => img.type === 'external');
+        const images = data.listing_images.filter((img: any) => 
+          img && typeof img === 'object' && img.type === 'external' && img.url
+        );
         if (images.length > 0) {
           setImageMode('urls');
-          setImageUrls(images.map((img: any) => img.url).concat(['', '', '']).slice(0, 3));
+          const validUrls = images.map((img: any) => img.url).filter(Boolean);
+          setImageUrls(validUrls.concat(['', '', '']).slice(0, 3));
         }
       }
       
-      // Load products if present
+      // Load products if present with validation
       if (data.products && Array.isArray(data.products)) {
-        setProducts(data.products);
-        setShowProductSection(data.products.length > 0);
+        const validProducts = data.products.filter((p: any) => 
+          p && typeof p === 'object' && p.name
+        ).map((p: any) => ({
+          ...p,
+          name: p.name || '',
+          description: p.description || '',
+          price: typeof p.price === 'number' ? p.price : 0,
+          images: Array.isArray(p.images) ? p.images : [],
+          category: p.category || 'other'
+        }));
+        setProducts(validProducts);
+        setShowProductSection(validProducts.length > 0);
       }
       
       // Map the data to form fields
@@ -375,7 +391,8 @@ export default function EditListing() {
   const isEquipmentListing = listingType === 'used_equipment' || listingType === 'product';
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-900">
+    <DirectoryErrorBoundary fallbackMessage="Unable to load the listing for editing">
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-900">
       <PageHeader
         title="Edit Listing"
         subtitle="Update your listing details"
@@ -1131,6 +1148,15 @@ export default function EditListing() {
           </div>
         </form>
       </div>
-    </div>
+      </div>
+    </DirectoryErrorBoundary>
+  );
+}
+
+export default function EditListing() {
+  return (
+    <DirectoryErrorBoundary fallbackMessage="Failed to load listing editor">
+      <EditListingComponent />
+    </DirectoryErrorBoundary>
   );
 }

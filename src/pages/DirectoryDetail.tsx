@@ -79,11 +79,16 @@ export default function DirectoryDetail() {
         .single();
 
       if (error) throw error;
-      setListing(data);
+      
+      // Validate and sanitize data before setting
+      if (data) {
+        setListing(data);
+      } else {
+        throw new Error('No data received');
+      }
     } catch (error: any) {
       console.error('Error fetching listing:', error);
       toast.error('Failed to load listing');
-      navigate('/directory');
     } finally {
       setLoading(false);
     }
@@ -98,24 +103,24 @@ export default function DirectoryDetail() {
   };
 
   const formatBusinessHours = (hours: any) => {
-    if (!hours) return null;
+    if (!hours || typeof hours !== 'object') return null;
     
     const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
     const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     
     return days.map((day, index) => {
       const dayHours = hours[day];
-      if (!dayHours) return null;
+      if (!dayHours || typeof dayHours !== 'object') return null;
       
       return (
         <div key={day} className="flex justify-between py-2 border-b border-gray-700/50">
           <span className="font-medium text-gray-300">{dayLabels[index]}</span>
           <span className="text-gray-400">
-            {dayHours.closed ? 'Closed' : `${dayHours.open} - ${dayHours.close}`}
+            {dayHours.closed ? 'Closed' : `${dayHours.open || 'N/A'} - ${dayHours.close || 'N/A'}`}
           </span>
         </div>
       );
-    });
+    }).filter(Boolean);
   };
 
   const getServiceIcon = (service: string) => {
@@ -132,6 +137,8 @@ export default function DirectoryDetail() {
   };
 
   const getServiceLabel = (service: string) => {
+    if (!service || typeof service !== 'string') return 'Unknown Service';
+    
     const labels: { [key: string]: string } = {
       'installation': 'Installation Services',
       'fabrication': 'Custom Fabrication',
@@ -140,7 +147,7 @@ export default function DirectoryDetail() {
       'design': 'System Design',
       'repair': 'Repair Services'
     };
-    return labels[service] || service;
+    return labels[service] || service.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
   if (loading) {
@@ -172,7 +179,7 @@ export default function DirectoryDetail() {
         <div className="h-64 w-full relative">
           <img
             src={listing.banner_url}
-            alt={`${listing.business_name} banner`}
+            alt={`${listing.business_name || 'Business'} banner`}
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-gray-900 to-transparent" />
@@ -199,13 +206,13 @@ export default function DirectoryDetail() {
                 {listing.logo_url && (
                   <img
                     src={listing.logo_url}
-                    alt={listing.business_name}
+                    alt={listing.business_name || 'Business Logo'}
                     className="w-24 h-24 rounded-lg object-cover"
                   />
                 )}
                 <div className="flex-1">
                   <div className="flex items-center space-x-2 mb-2">
-                    <h1 className="text-3xl font-bold text-white">{listing.business_name}</h1>
+                    <h1 className="text-3xl font-bold text-white">{listing.business_name || 'Unnamed Business'}</h1>
                     {listing.verified && (
                       <span className="bg-green-500/20 text-green-400 px-2 py-1 rounded-full text-xs font-medium">
                         Verified
@@ -217,12 +224,12 @@ export default function DirectoryDetail() {
                       </span>
                     )}
                   </div>
-                  <p className="text-gray-400 capitalize">{listing.business_type.replace('_', ' ')}</p>
+                  <p className="text-gray-400 capitalize">{listing.business_type?.replace(/_/g, ' ') || 'Business'}</p>
                   <div className="flex items-center text-gray-500 text-sm mt-2">
                     <Calendar className="h-4 w-4 mr-1" />
-                    <span>Member since {new Date(listing.created_at).toLocaleDateString()}</span>
+                    <span>Member since {listing.created_at ? new Date(listing.created_at).toLocaleDateString() : 'Unknown'}</span>
                     <span className="mx-2">•</span>
-                    <span>{listing.views} views</span>
+                    <span>{listing.views || 0} views</span>
                   </div>
                 </div>
               </div>
@@ -273,7 +280,7 @@ export default function DirectoryDetail() {
                       <p className="text-gray-400 text-sm mb-2">{product.description}</p>
                       <div className="flex items-center justify-between">
                         <span className="text-electric-500 font-bold">${product.price}</span>
-                        <span className="text-gray-500 text-sm capitalize">{product.category.replace('_', ' ')}</span>
+                        <span className="text-gray-500 text-sm capitalize">{product.category?.replace(/_/g, ' ') || 'Product'}</span>
                       </div>
                     </div>
                   ))}
@@ -411,6 +418,6 @@ export default function DirectoryDetail() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
   );
 }

@@ -129,7 +129,7 @@ export const BusinessProfileModal: React.FC<BusinessProfileModalProps> = ({
                 </span>
               )}
               <span className="bg-black/70 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm font-medium capitalize">
-                {listing.listing_type.replace('_', ' ')}
+                {listing.listing_type ? listing.listing_type.replace('_', ' ') : 'Unknown'}
               </span>
             </div>
 
@@ -242,7 +242,7 @@ export const BusinessProfileModal: React.FC<BusinessProfileModalProps> = ({
                   <div>
                     <h3 className="text-xl font-semibold text-white mb-3">Condition</h3>
                     <span className="bg-blue-500/20 text-blue-400 px-3 py-2 rounded-full text-sm font-medium capitalize">
-                      {listing.item_condition.replace('_', ' ')}
+                      {listing.item_condition ? listing.item_condition.replace('_', ' ') : 'Unknown'}
                     </span>
                   </div>
                 )}

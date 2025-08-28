@@ -283,20 +283,42 @@ export default function CreateDirectoryListing() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (showLimitExceeded) {
-      toast.error('You have reached your listing limit. Please upgrade to create more listings.');
-      return;
-    }
-
-    // Validate phone or email requirement
-    if (listingType === 'used_equipment' && !formData.phone && !formData.email) {
-      toast.error('Please provide at least one contact method (phone or email)');
-      return;
-    }
-
-    setIsLoading(true);
-
     try {
+      if (showLimitExceeded) {
+        toast.error('You have reached your listing limit. Please upgrade to create more listings.');
+        return;
+      }
+
+      // Validate phone or email requirement
+      if (listingType === 'used_equipment' && !formData.phone && !formData.email) {
+        toast.error('Please provide at least one contact method (phone or email)');
+        return;
+      }
+
+      // Additional validation
+      if (!formData.contact_name?.trim()) {
+        toast.error('Contact name is required');
+        return;
+      }
+
+      if (listingType === 'used_equipment') {
+        if (!formData.brand?.trim() || !formData.model?.trim()) {
+          toast.error('Brand and model are required for equipment listings');
+          return;
+        }
+        if (!formData.price || parseFloat(formData.price) <= 0) {
+          toast.error('Valid price is required for equipment listings');
+          return;
+        }
+      } else {
+        if (!formData.business_name?.trim()) {
+          toast.error('Business name is required');
+          return;
+        }
+      }
+
+      setIsLoading(true);
+
       const listingData: any = {
         user_id: user?.id,
         listing_type: listingType,
