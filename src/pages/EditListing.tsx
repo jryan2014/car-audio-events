@@ -40,6 +40,8 @@ export default function EditListing() {
   const [saving, setSaving] = useState(false);
   const [listingType, setListingType] = useState<string>('');
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [imageMode, setImageMode] = useState<'upload' | 'urls'>('upload');
+  const [imageUrls, setImageUrls] = useState<string[]>(['', '', '']);
   
   const [formData, setFormData] = useState<any>({
     contact_name: '',
