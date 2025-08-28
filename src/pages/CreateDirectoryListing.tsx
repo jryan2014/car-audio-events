@@ -45,6 +45,8 @@ export default function CreateDirectoryListing() {
   const [listingUsage, setListingUsage] = useState<ListingUsage | null>(null);
   const [showLimitExceeded, setShowLimitExceeded] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [imageMode, setImageMode] = useState<'upload' | 'urls'>('upload');
+  const [imageUrls, setImageUrls] = useState<string[]>(['', '', '']);
   
   // Auto-detect listing type based on membership
   const getListingType = () => {
@@ -186,6 +188,12 @@ export default function CreateDirectoryListing() {
       return;
     }
 
+    // Validate phone or email requirement
+    if (listingType === 'used_equipment' && !formData.phone && !formData.email) {
+      toast.error('Please provide at least one contact method (phone or email)');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -196,6 +204,17 @@ export default function CreateDirectoryListing() {
         status: 'active', // Auto-approve for now, can change to 'pending' for review
         ...formData
       };
+
+      // Add images based on mode
+      if (imageMode === 'urls') {
+        const validUrls = imageUrls.filter(url => url.trim() !== '');
+        if (validUrls.length > 0) {
+          listingData.listing_images = validUrls.map(url => ({ url, type: 'external' }));
+        }
+      } else if (uploadedImages.length > 0) {
+        // TODO: Upload to Supabase storage and get URLs
+        listingData.listing_images = uploadedImages.map(url => ({ url, type: 'uploaded' }));
+      }
 
       // Convert price to number if it's for equipment
       if (listingType === 'used_equipment' && formData.price) {
@@ -502,7 +521,7 @@ export default function CreateDirectoryListing() {
                   <div>
                     <label className="block text-gray-400 text-sm mb-2">
                       <Phone className="inline h-4 w-4 mr-1" />
-                      Phone (optional)
+                      Phone {!formData.email && '*'}
                     </label>
                     <input
                       type="tel"
@@ -510,20 +529,21 @@ export default function CreateDirectoryListing() {
                       onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
                       className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white"
                       placeholder="(555) 123-4567"
+                      required={!formData.email}
                     />
                   </div>
 
                   <div>
                     <label className="block text-gray-400 text-sm mb-2">
                       <Mail className="inline h-4 w-4 mr-1" />
-                      Email
+                      Email {!formData.phone && '*'}
                     </label>
                     <input
                       type="email"
                       value={formData.email}
                       onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                       className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white"
-                      required
+                      required={!formData.phone}
                     />
                   </div>
 
@@ -537,7 +557,7 @@ export default function CreateDirectoryListing() {
                       value={formData.external_url}
                       onChange={(e) => setFormData(prev => ({ ...prev, external_url: e.target.value }))}
                       className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white"
-                      placeholder="eBay, Reverb, Facebook Marketplace URL..."
+                      placeholder="eBay, Facebook Marketplace, or other listing URL..."
                     />
                     <p className="text-xs text-gray-500 mt-1">
                       Link to your listing on another platform if you prefer handling transactions there
@@ -550,37 +570,86 @@ export default function CreateDirectoryListing() {
               <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
                 <h2 className="text-xl font-bold text-white mb-6">Product Images</h2>
                 <p className="text-gray-400 text-sm mb-4">
-                  Add up to 3 images of your equipment
+                  Choose to either upload images or provide external image URLs (up to 3)
                 </p>
 
-                <div className="grid grid-cols-3 gap-4">
-                  {uploadedImages.map((img, idx) => (
-                    <div key={idx} className="relative group">
-                      <img src={img} alt="" className="w-full h-32 object-cover rounded-lg" />
-                      <button
-                        type="button"
-                        onClick={() => removeImage(idx)}
-                        className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
-                  
-                  {uploadedImages.length < 3 && (
-                    <label className="border-2 border-dashed border-gray-600 rounded-lg h-32 flex flex-col items-center justify-center cursor-pointer hover:border-electric-500 transition-colors">
-                      <Image className="h-8 w-8 text-gray-400 mb-2" />
-                      <span className="text-sm text-gray-400">Add Image</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        onChange={handleImageUpload}
-                        className="hidden"
-                      />
-                    </label>
-                  )}
+                {/* Image Mode Toggle */}
+                <div className="flex space-x-4 mb-6">
+                  <button
+                    type="button"
+                    onClick={() => setImageMode('upload')}
+                    className={`px-4 py-2 rounded-lg transition-colors ${
+                      imageMode === 'upload'
+                        ? 'bg-electric-500 text-white'
+                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                    }`}
+                  >
+                    Upload Images
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setImageMode('urls')}
+                    className={`px-4 py-2 rounded-lg transition-colors ${
+                      imageMode === 'urls'
+                        ? 'bg-electric-500 text-white'
+                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                    }`}
+                  >
+                    External URLs
+                  </button>
                 </div>
+
+                {imageMode === 'upload' ? (
+                  <div className="grid grid-cols-3 gap-4">
+                    {uploadedImages.map((img, idx) => (
+                      <div key={idx} className="relative group">
+                        <img src={img} alt="" className="w-full h-32 object-cover rounded-lg" />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(idx)}
+                          className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                    
+                    {uploadedImages.length < 3 && (
+                      <label className="border-2 border-dashed border-gray-600 rounded-lg h-32 flex flex-col items-center justify-center cursor-pointer hover:border-electric-500 transition-colors">
+                        <Image className="h-8 w-8 text-gray-400 mb-2" />
+                        <span className="text-sm text-gray-400">Add Image</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={handleImageUpload}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {[0, 1, 2].map((idx) => (
+                      <div key={idx}>
+                        <label className="block text-gray-400 text-sm mb-2">
+                          Image URL {idx + 1}
+                        </label>
+                        <input
+                          type="url"
+                          value={imageUrls[idx]}
+                          onChange={(e) => {
+                            const newUrls = [...imageUrls];
+                            newUrls[idx] = e.target.value;
+                            setImageUrls(newUrls);
+                          }}
+                          className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white"
+                          placeholder="https://example.com/image.jpg"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </>
           ) : (

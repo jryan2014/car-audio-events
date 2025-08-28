@@ -160,6 +160,12 @@ export default function EditListing() {
     e.preventDefault();
     
     if (!id || !user) return;
+    
+    // Validate phone or email requirement for equipment listings
+    if ((listingType === 'used_equipment' || listingType === 'product') && !formData.phone && !formData.email) {
+      toast.error('Please provide at least one contact method (phone or email)');
+      return;
+    }
 
     setSaving(true);
     try {
@@ -188,6 +194,17 @@ export default function EditListing() {
         updateData.item_title = `${formData.brand} ${formData.model}`;
         updateData.item_description = formData.description;
         updateData.item_price = parseFloat(formData.price) || 0;
+        
+        // Add images based on mode
+        if (imageMode === 'urls') {
+          const validUrls = imageUrls.filter(url => url.trim() !== '');
+          if (validUrls.length > 0) {
+            updateData.listing_images = validUrls.map(url => ({ url, type: 'external' }));
+          }
+        } else if (uploadedImages.length > 0) {
+          // TODO: Upload to Supabase storage and get URLs
+          updateData.listing_images = uploadedImages.map(url => ({ url, type: 'uploaded' }));
+        }
       } else {
         updateData.business_name = formData.business_name;
         updateData.website = formData.website;
