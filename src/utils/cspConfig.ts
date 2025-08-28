@@ -23,7 +23,9 @@ export const CSP_DIRECTIVES = {
     'data:',
     'blob:',
     'https:',
-    '*.supabase.co'
+    '*.supabase.co',
+    'https://*.tile.openstreetmap.org',
+    'https://tile.openstreetmap.org'
   ],
   'font-src': [
     "'self'",
@@ -40,7 +42,9 @@ export const CSP_DIRECTIVES = {
     "'self'",
     'https://js.stripe.com',
     'https://www.paypal.com',
-    'https://www.sandbox.paypal.com'
+    'https://www.sandbox.paypal.com',
+    'https://www.openstreetmap.org',
+    'https://*.openstreetmap.org'
   ],
   'object-src': ["'none'"],
   'base-uri': ["'self'"],
