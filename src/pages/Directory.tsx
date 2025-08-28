@@ -158,9 +158,8 @@ export default function Directory() {
 
   const handleListingClick = (listing: DirectoryListing) => {
     recordView(listing.id);
-    // For now, navigate to edit page if user owns the listing
-    // In the future, create a separate detail view page
-    navigate(`/directory/edit/${listing.id}`);
+    // Navigate to public detail view - everyone sees the same thing
+    navigate(`/directory/${listing.id}`);
   };
 
   const handleAdvancedSearch = useCallback((filters: any) => {

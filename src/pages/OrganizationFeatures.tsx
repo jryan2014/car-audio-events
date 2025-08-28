@@ -203,7 +203,7 @@ export default function OrganizationFeatures() {
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-electric-500/20"></div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+        <div className="relative max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="text-center">
             <h1 className="text-5xl font-black text-white mb-6">
               Empower Your Car Audio Organization
@@ -225,7 +225,7 @@ export default function OrganizationFeatures() {
       </div>
 
       {/* Top Benefits */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {topBenefits.map((benefit, index) => (
             <div key={index} className="text-center">
@@ -241,7 +241,7 @@ export default function OrganizationFeatures() {
 
       {/* Core Features Section */}
       <div className="bg-gray-800/50 py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-white mb-4">
               Core Organization Features
@@ -279,7 +279,7 @@ export default function OrganizationFeatures() {
 
       {/* Advanced Features Section */}
       <div className="py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-white mb-4">
               Advanced Management Tools
@@ -317,7 +317,7 @@ export default function OrganizationFeatures() {
 
       {/* Organization Types */}
       <div className="bg-gray-800/50 py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-white mb-4">
               Built for Every Type of Organization
@@ -348,7 +348,7 @@ export default function OrganizationFeatures() {
 
       {/* Testimonials */}
       <div className="py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-white mb-4">
               Trusted by Leading Organizations
@@ -405,7 +405,7 @@ export default function OrganizationFeatures() {
       </div>
 
       {/* Additional Benefits */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="bg-gray-900/50 rounded-xl p-8 border border-gray-700">
           <h3 className="text-2xl font-bold text-white mb-6 text-center">
             Why Organizations Choose Our Platform

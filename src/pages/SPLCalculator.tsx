@@ -404,7 +404,7 @@ const SPLCalculator: React.FC = () => {
         keywords="SPL calculator, car audio calculator, competition class calculator, IASCA classes, MECA classes, Bass Wars classes, cone area calculator, port area calculator, dB estimator"
         url="https://caraudioevents.com/spl-calculator"
       />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">

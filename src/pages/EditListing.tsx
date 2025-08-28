@@ -381,7 +381,7 @@ export default function EditListing() {
         subtitle="Update your listing details"
       />
 
-      <div className="container mx-auto px-4 py-8 mt-24">
+      <div className="container mx-auto px-4 py-8 pt-32">
         <button
           onClick={() => navigate('/my-listings')}
           className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors mb-6"

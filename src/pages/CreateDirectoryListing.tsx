@@ -358,7 +358,7 @@ export default function CreateDirectoryListing() {
           title="Create Directory Listing"
           subtitle="Share your products and services with the community"
         />
-        <div className="container mx-auto px-4 py-8 mt-24">
+        <div className="container mx-auto px-4 py-8 pt-32">
           <div className="bg-red-900/20 border border-red-500/50 rounded-xl p-6">
             <h3 className="text-red-400 font-bold mb-2">Access Denied</h3>
             <p className="text-gray-400">
@@ -382,7 +382,7 @@ export default function CreateDirectoryListing() {
           title="Listing Limit Reached"
           subtitle="Upgrade to create more listings"
         />
-        <div className="container mx-auto px-4 py-8 mt-24">
+        <div className="container mx-auto px-4 py-8 pt-32">
           <div className="bg-yellow-900/20 border border-yellow-500/50 rounded-xl p-6">
             <h3 className="text-yellow-400 font-bold mb-2">Listing Limit Reached</h3>
             <p className="text-gray-400">
@@ -412,7 +412,7 @@ export default function CreateDirectoryListing() {
         subtitle={isEquipmentListing ? "List your equipment for sale" : "Add your business to the directory"}
       />
 
-      <div className="container mx-auto px-4 py-8 mt-24">
+      <div className="container mx-auto px-4 py-8 pt-32">
         <button
           onClick={() => navigate('/directory')}
           className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors mb-6"

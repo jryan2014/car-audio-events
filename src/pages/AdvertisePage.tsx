@@ -162,7 +162,7 @@ export default function AdvertisePage() {
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-electric-500/20 to-purple-600/20"></div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div className="relative max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-20">
           <div className="text-center">
             <h1 className="text-5xl md:text-6xl font-bold text-white mb-6">
               Advertise on the
@@ -202,7 +202,7 @@ export default function AdvertisePage() {
 
       {/* Stats Section */}
       <div className="py-16 bg-gray-800/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {stats.map((stat, index) => {
               const IconComponent = stat.icon;
@@ -222,7 +222,7 @@ export default function AdvertisePage() {
 
       {/* Audience Section */}
       <div className="py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-white mb-4">Reach Your Perfect Audience</h2>
             <p className="text-xl text-gray-400 max-w-3xl mx-auto">
@@ -274,7 +274,7 @@ export default function AdvertisePage() {
 
       {/* Placement Types Section */}
       <div className="py-20 bg-gray-800/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-white mb-4">Choose Your Placement</h2>
             <p className="text-xl text-gray-400 max-w-3xl mx-auto">
@@ -385,7 +385,7 @@ export default function AdvertisePage() {
 
       {/* Pricing Section */}
       <div className="py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-white mb-4">Flexible Pricing Options</h2>
             <p className="text-xl text-gray-400 max-w-3xl mx-auto">
@@ -449,7 +449,7 @@ export default function AdvertisePage() {
 
       {/* Features Section */}
       <div className="py-20 bg-gray-800/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-white mb-4">Powerful Advertising Features</h2>
             <p className="text-xl text-gray-400 max-w-3xl mx-auto">
