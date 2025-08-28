@@ -82,7 +82,8 @@
       "Bash(npx supabase:*)",
       "mcp__supabase__get_project",
       "Bash(psql:*)",
-      "Bash(docker exec:*)"
+      "Bash(docker exec:*)",
+      "Bash(copy E:2025-car-audio-eventscar-audio-eventssupabasemigrations20250127_listing_packages.sql E:2025-car-audio-eventscar-audio-eventssupabasemigrations20250827233716_listing_packages.sql)"
     ],
     "additionalDirectories": [
       "E:\\e\\2025-car-audio-events"

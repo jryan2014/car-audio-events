@@ -311,7 +311,7 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, onL
       {
         id: 'directory',
         title: 'Directory',
-        icon: 'MapPin',
+        icon: 'Building2',
         nav_order: 3,
         is_active: true,
         target_blank: false,
@@ -335,10 +335,36 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, onL
         ]
       },
       {
+        id: 'marketplace',
+        title: 'Marketplace',
+        icon: 'Package',
+        nav_order: 4,
+        is_active: true,
+        target_blank: false,
+        children: [
+          {
+            id: 'marketplace-browse',
+            title: 'Browse Marketplace',
+            href: '/marketplace',
+            nav_order: 1,
+            is_active: true,
+            target_blank: false,
+          },
+          {
+            id: 'my-listings',
+            title: 'My Listings',
+            href: '/my-listings',
+            nav_order: 2,
+            is_active: true,
+            target_blank: false,
+          },
+        ]
+      },
+      {
         id: 'resources',
         title: 'Resources',
         icon: 'BookOpen',
-        nav_order: 4,
+        nav_order: 5,
         is_active: true,
         target_blank: false,
         children: [

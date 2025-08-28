@@ -186,6 +186,16 @@ export default function Header() {
                           <CreditCard className="h-4 w-4" />
                           <span>Billing & Subscription</span>
                         </Link>
+                        
+                        {/* My Listings - Available to all authenticated users */}
+                        <Link
+                          to="/my-listings"
+                          onClick={handleDropdownLinkClick}
+                          className="flex items-center space-x-2 px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700/50 rounded-lg transition-colors duration-200"
+                        >
+                          <Package className="h-4 w-4" />
+                          <span>My Listings</span>
+                        </Link>
 
                         {/* Business Tools Section for eligible users */}
                         {user?.membershipType && ['retailer', 'manufacturer', 'organization'].includes(user.membershipType) && (
@@ -201,6 +211,15 @@ export default function Header() {
                               >
                                 <Target className="h-3 w-3" />
                                 <span>My Ads</span>
+                              </Link>
+                              
+                              <Link
+                                to="/my-listings"
+                                onClick={handleDropdownLinkClick}
+                                className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
+                              >
+                                <Package className="h-3 w-3" />
+                                <span>My Listings</span>
                               </Link>
                               
                               {user.membershipType === 'organization' && (

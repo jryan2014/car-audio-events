@@ -29,6 +29,9 @@ const MemberProfile = React.lazy(() => import('./pages/MemberProfile'));
 const PublicMemberProfile = React.lazy(() => import('./pages/PublicMemberProfile'));
 const TeamProfile = React.lazy(() => import('./pages/TeamProfile'));
 const Directory = React.lazy(() => import('./pages/Directory'));
+const MemberMarketplace = React.lazy(() => import('./pages/MemberMarketplace'));
+const MyListings = React.lazy(() => import('./pages/MyListings'));
+const EditListing = React.lazy(() => import('./pages/EditListing'));
 const Resources = React.lazy(() => import('./pages/Resources'));
 const Login = React.lazy(() => import('./pages/Login'));
 const Register = React.lazy(() => import('./pages/Register'));
@@ -211,6 +214,9 @@ function App() {
               <Route path="/public-profile/:userId" element={<Layout><PublicMemberProfile /></Layout>} />
               <Route path="/team/:teamId" element={<Layout><TeamProfile /></Layout>} />
               <Route path="/directory" element={<Layout><Directory /></Layout>} />
+              <Route path="/marketplace" element={<Layout><MemberMarketplace /></Layout>} />
+              <Route path="/my-listings" element={<Layout><ProtectedRoute requireProfileComplete={true}><MyListings /></ProtectedRoute></Layout>} />
+              <Route path="/directory/edit/:id" element={<Layout><ProtectedRoute requireProfileComplete={true}><EditListing /></ProtectedRoute></Layout>} />
               <Route path="/resources" element={<Layout><Resources /></Layout>} />
               <Route path="/search" element={<Layout><SearchResults /></Layout>} />
               <Route path="/notifications" element={<Layout><ProtectedRoute requireProfileComplete={true}><NotificationHistory /></ProtectedRoute></Layout>} />
