@@ -85,7 +85,23 @@
       "Bash(docker exec:*)",
       "Bash(copy E:2025-car-audio-eventscar-audio-eventssupabasemigrations20250127_listing_packages.sql E:2025-car-audio-eventscar-audio-eventssupabasemigrations20250827233716_listing_packages.sql)",
       "WebFetch(domain:app.netlify.com)",
-      "WebFetch(domain:api.github.com)"
+      "WebFetch(domain:api.github.com)",
+      "Read(C:\\Users\\jryan\\.config/**)",
+      "Read(C:\\Users\\jryan\\AppData\\Roaming\\Claude/**)",
+      "mcp__supabase__search_docs",
+      "Read(C:\\Users\\jryan\\AppData\\Roaming\\Claude/**)",
+      "Read(C:\\Users\\jryan\\.config/**)",
+      "Bash(where claude)",
+      "Read(C:\\Users\\jryan\\AppData\\Roaming\\npm/**)",
+      "Read(C:\\Users\\jryan\\.claude/**)",
+      "Read(C:\\Users\\jryan\\.claude\\projects/**)",
+      "Read(C:\\Users\\jryan\\.claude\\projects\\E--2025-car-audio-events-car-audio-events/**)",
+      "Bash(readlink:*)",
+      "Read(E:\\/**)",
+      "Read(C:\\Users\\jryan\\.claude\\shell-snapshots/**)",
+      "Read(C:\\Users\\jryan\\.claude\\shell-snapshots/**)",
+      "Read(C:\\Users\\jryan\\.claude\\ide/**)",
+      "Bash(ln:*)"
     ],
     "additionalDirectories": [
       "E:\\e\\2025-car-audio-events"

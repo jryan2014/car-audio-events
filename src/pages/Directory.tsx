@@ -22,6 +22,7 @@ interface DirectoryListing {
   country: string;
   description: string;
   default_image_url: string;
+  listing_images?: Array<{url: string; type: string}>;
   rating: number;
   review_count: number;
   views_count: number;
@@ -80,7 +81,7 @@ export default function Directory() {
       const { data, error } = await supabase
         .from('directory_listings')
         .select('*')
-        .eq('status', 'active')  // Only show active listings
+        .eq('status', 'approved')  // Only show active listings
         .order('featured', { ascending: false })
         .order('created_at', { ascending: false });
 
@@ -103,7 +104,7 @@ export default function Directory() {
       const servicesData = await supabase
         .from('directory_listings')
         .select('services_offered')
-        .eq('status', 'active')
+        .eq('status', 'approved')
         .not('services_offered', 'is', null);
       
       const allServices = servicesData.data?.flatMap(item => (item.services_offered as string[]) || []) || [];
@@ -114,7 +115,7 @@ export default function Directory() {
       const brandsData = await supabase
         .from('directory_listings')
         .select('brands_carried')
-        .eq('status', 'active')
+        .eq('status', 'approved')
         .not('brands_carried', 'is', null);
       
       const allBrands = brandsData.data?.flatMap(item => (item.brands_carried as string[]) || []) || [];
@@ -134,7 +135,7 @@ export default function Directory() {
       const statesData = await supabase
         .from('directory_listings')
         .select('state')
-        .eq('status', 'active')
+        .eq('status', 'approved')
         .not('state', 'is', null);
       
       const allStates = statesData.data?.map(item => item.state).filter(Boolean) || [];
@@ -319,7 +320,19 @@ export default function Directory() {
   const getDefaultImage = (listing: DirectoryListing): string => {
     if (!listing) return "https://images.pexels.com/photos/1649771/pexels-photo-1649771.jpeg?auto=compress&cs=tinysrgb&w=400&h=250&dpr=2";
     
-    return listing.default_image_url || "https://images.pexels.com/photos/1649771/pexels-photo-1649771.jpeg?auto=compress&cs=tinysrgb&w=400&h=250&dpr=2";
+    // Check for default image URL first
+    if (listing.default_image_url) return listing.default_image_url;
+    
+    // Check for listing images array
+    if (listing.listing_images && Array.isArray(listing.listing_images) && listing.listing_images.length > 0) {
+      const firstImage = listing.listing_images[0];
+      if (firstImage && firstImage.url && !firstImage.url.startsWith('blob:')) {
+        return firstImage.url;
+      }
+    }
+    
+    // Return default fallback image
+    return "https://images.pexels.com/photos/1649771/pexels-photo-1649771.jpeg?auto=compress&cs=tinysrgb&w=400&h=250&dpr=2";
   };
 
   return (

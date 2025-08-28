@@ -13,25 +13,21 @@ import LoadingSpinner from '../components/LoadingSpinner';
 interface DirectoryListing {
   id: string;
   business_name: string;
-  business_type: 'retailer' | 'manufacturer' | 'installer' | 'distributor' | 'other';
+  listing_type: 'retailer' | 'manufacturer' | 'used_equipment';
   description: string;
-  logo_url?: string;
-  banner_url?: string;
-  address?: string;
+  contact_name?: string;
+  default_image_url?: string;
+  listing_images?: Array<{url: string; type: string}>;
+  address_line1?: string;
+  address_line2?: string;
   city?: string;
   state?: string;
-  zip?: string;
+  postal_code?: string;
   country?: string;
   phone?: string;
   email?: string;
   website?: string;
-  social_media?: {
-    facebook?: string;
-    instagram?: string;
-    youtube?: string;
-    twitter?: string;
-  };
-  hours?: {
+  business_hours?: {
     monday?: { open: string; close: string; closed?: boolean };
     tuesday?: { open: string; close: string; closed?: boolean };
     wednesday?: { open: string; close: string; closed?: boolean };
@@ -40,11 +36,15 @@ interface DirectoryListing {
     saturday?: { open: string; close: string; closed?: boolean };
     sunday?: { open: string; close: string; closed?: boolean };
   };
-  services?: string[];
+  services_offered?: string[];
+  installation_services?: boolean;
+  custom_fabrication?: boolean;
+  sound_deadening?: boolean;
+  tuning_services?: boolean;
+  brands_carried?: string[];
   featured?: boolean;
-  verified?: boolean;
-  latitude?: number;
-  longitude?: number;
+  latitude?: string;
+  longitude?: string;
   products?: Array<{
     name: string;
     description: string;
@@ -52,9 +52,14 @@ interface DirectoryListing {
     images: string[];
     category: string;
   }>;
-  views: number;
+  views_count: number;
+  rating: string;
+  review_count: number;
   created_at: string;
   updated_at: string;
+  item_title?: string;
+  item_price?: number;
+  item_condition?: string;
 }
 
 export default function DirectoryDetail() {
@@ -203,9 +208,9 @@ export default function DirectoryDetail() {
             {/* Header */}
             <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
               <div className="flex items-start space-x-4">
-                {listing.logo_url && (
+                {listing.listing_images && listing.listing_images.length > 0 && listing.listing_images[0].url && !listing.listing_images[0].url.startsWith('blob:') && (
                   <img
-                    src={listing.logo_url}
+                    src={listing.listing_images[0].url}
                     alt={listing.business_name || 'Business Logo'}
                     className="w-24 h-24 rounded-lg object-cover"
                   />
@@ -224,12 +229,12 @@ export default function DirectoryDetail() {
                       </span>
                     )}
                   </div>
-                  <p className="text-gray-400 capitalize">{listing.business_type?.replace(/_/g, ' ') || 'Business'}</p>
+                  <p className="text-gray-400 capitalize">{listing.listing_type?.replace(/_/g, ' ') || 'Business'}</p>
                   <div className="flex items-center text-gray-500 text-sm mt-2">
                     <Calendar className="h-4 w-4 mr-1" />
                     <span>Member since {listing.created_at ? new Date(listing.created_at).toLocaleDateString() : 'Unknown'}</span>
                     <span className="mx-2">•</span>
-                    <span>{listing.views || 0} views</span>
+                    <span>{listing.views_count || 0} views</span>
                   </div>
                 </div>
               </div>
@@ -241,15 +246,66 @@ export default function DirectoryDetail() {
               )}
             </div>
 
+            {/* Image Gallery */}
+            {listing.listing_images && listing.listing_images.length > 0 && (
+              <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+                <h2 className="text-xl font-bold text-white mb-4 flex items-center">
+                  <Image className="h-5 w-5 mr-2 text-electric-500" />
+                  Gallery
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {listing.listing_images.filter(img => img.url && !img.url.startsWith('blob:')).map((image, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={image.url}
+                        alt={`${listing.business_name || 'Listing'} image ${index + 1}`}
+                        className="w-full h-48 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                        onClick={() => window.open(image.url, '_blank')}
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity rounded-lg pointer-events-none" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Services */}
-            {listing.services && listing.services.length > 0 && (
+            {(listing.installation_services || listing.custom_fabrication || listing.sound_deadening || listing.tuning_services || (listing.services_offered && listing.services_offered.length > 0)) && (
               <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
                 <h2 className="text-xl font-bold text-white mb-4 flex items-center">
                   <Wrench className="h-5 w-5 mr-2 text-electric-500" />
                   Services Offered
                 </h2>
                 <div className="grid grid-cols-2 gap-3">
-                  {listing.services.map((service) => (
+                  {listing.installation_services && (
+                    <div className="flex items-center space-x-2 text-gray-300">
+                      <Wrench className="h-5 w-5" />
+                      <span>Installation Services</span>
+                    </div>
+                  )}
+                  {listing.custom_fabrication && (
+                    <div className="flex items-center space-x-2 text-gray-300">
+                      <Wrench className="h-5 w-5" />
+                      <span>Custom Fabrication</span>
+                    </div>
+                  )}
+                  {listing.sound_deadening && (
+                    <div className="flex items-center space-x-2 text-gray-300">
+                      <Wrench className="h-5 w-5" />
+                      <span>Sound Deadening</span>
+                    </div>
+                  )}
+                  {listing.tuning_services && (
+                    <div className="flex items-center space-x-2 text-gray-300">
+                      <Wrench className="h-5 w-5" />
+                      <span>System Tuning</span>
+                    </div>
+                  )}
+                  {listing.services_offered && listing.services_offered.map((service) => (
                     <div key={service} className="flex items-center space-x-2 text-gray-300">
                       {getServiceIcon(service)}
                       <span>{getServiceLabel(service)}</span>
@@ -295,8 +351,15 @@ export default function DirectoryDetail() {
                   <MapPin className="h-5 w-5 mr-2 text-electric-500" />
                   Location
                 </h2>
-                <div className="h-64 bg-gray-700 rounded-lg flex items-center justify-center">
-                  <p className="text-gray-400">Map view coming soon</p>
+                <div className="h-96 bg-gray-700 rounded-lg overflow-hidden">
+                  <iframe
+                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${parseFloat(listing.longitude) - 0.01},${parseFloat(listing.latitude) - 0.01},${parseFloat(listing.longitude) + 0.01},${parseFloat(listing.latitude) + 0.01}&layer=mapnik&marker=${listing.latitude},${listing.longitude}`}
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0 }}
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                  />
                 </div>
               </div>
             )}
@@ -308,15 +371,16 @@ export default function DirectoryDetail() {
             <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
               <h2 className="text-xl font-bold text-white mb-4">Contact Information</h2>
               <div className="space-y-3">
-                {listing.address && (
+                {listing.address_line1 && (
                   <div className="flex items-start space-x-3">
                     <MapPin className="h-5 w-5 text-gray-400 mt-0.5" />
                     <div className="text-gray-300">
-                      <p>{listing.address}</p>
-                      {(listing.city || listing.state || listing.zip) && (
+                      <p>{listing.address_line1}</p>
+                      {listing.address_line2 && <p>{listing.address_line2}</p>}
+                      {(listing.city || listing.state || listing.postal_code) && (
                         <p>
                           {listing.city && `${listing.city}, `}
-                          {listing.state} {listing.zip}
+                          {listing.state} {listing.postal_code}
                         </p>
                       )}
                       {listing.country && <p>{listing.country}</p>}
@@ -356,14 +420,14 @@ export default function DirectoryDetail() {
             </div>
 
             {/* Business Hours */}
-            {listing.hours && (
+            {listing.business_hours && (
               <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
                 <h2 className="text-xl font-bold text-white mb-4 flex items-center">
                   <Clock className="h-5 w-5 mr-2 text-electric-500" />
                   Business Hours
                 </h2>
                 <div className="space-y-1">
-                  {formatBusinessHours(listing.hours)}
+                  {formatBusinessHours(listing.business_hours)}
                 </div>
               </div>
             )}

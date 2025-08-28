@@ -47,6 +47,7 @@ function EditListingComponent() {
   const [saving, setSaving] = useState(false);
   const [listingType, setListingType] = useState<string>('');
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [imageMode, setImageMode] = useState<'upload' | 'urls'>('upload');
   const [imageUrls, setImageUrls] = useState<string[]>(['', '', '']);
   const [products, setProducts] = useState<Product[]>([]);
@@ -96,7 +97,7 @@ function EditListingComponent() {
       saturday: { open: '10:00 AM', close: '4:00 PM', closed: false },
       sunday: { open: '', close: '', closed: true }
     },
-    status: 'active',
+    status: 'approved',
   });
 
   useEffect(() => {
@@ -138,13 +139,20 @@ function EditListingComponent() {
       
       // Load existing images if present with validation
       if (data.listing_images && Array.isArray(data.listing_images)) {
-        const images = data.listing_images.filter((img: any) => 
+        const externalImages = data.listing_images.filter((img: any) => 
           img && typeof img === 'object' && img.type === 'external' && img.url
         );
-        if (images.length > 0) {
+        const uploadedImagesData = data.listing_images.filter((img: any) => 
+          img && typeof img === 'object' && img.type === 'uploaded' && img.url
+        );
+        
+        if (externalImages.length > 0) {
           setImageMode('urls');
-          const validUrls = images.map((img: any) => img.url).filter(Boolean);
+          const validUrls = externalImages.map((img: any) => img.url).filter(Boolean);
           setImageUrls(validUrls.concat(['', '', '']).slice(0, 3));
+        } else if (uploadedImagesData.length > 0) {
+          setImageMode('upload');
+          setUploadedImages(uploadedImagesData.map((img: any) => img.url));
         }
       }
       
@@ -200,7 +208,7 @@ function EditListingComponent() {
         sound_deadening: data.sound_deadening || false,
         tuning_services: data.tuning_services || false,
         business_hours: data.business_hours || formData.business_hours,
-        status: data.status || 'active',
+        status: data.status || 'approved',
       });
 
       // Show map if location data exists
@@ -226,13 +234,14 @@ function EditListingComponent() {
       return;
     }
 
-    // TODO: Implement actual image upload to Supabase storage
     const newImages = Array.from(files).map(file => URL.createObjectURL(file));
     setUploadedImages(prev => [...prev, ...newImages].slice(0, maxImages));
+    setUploadedFiles(prev => [...prev, ...Array.from(files)].slice(0, maxImages));
   };
 
   const removeImage = (index: number) => {
     setUploadedImages(prev => prev.filter((_, i) => i !== index));
+    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const addProduct = () => {
@@ -331,9 +340,46 @@ function EditListingComponent() {
           if (validUrls.length > 0) {
             updateData.listing_images = validUrls.map(url => ({ url, type: 'external' }));
           }
-        } else if (uploadedImages.length > 0) {
-          // TODO: Upload to Supabase storage and get URLs
-          updateData.listing_images = uploadedImages.map(url => ({ url, type: 'uploaded' }));
+        } else if (uploadedFiles.length > 0 || uploadedImages.length > 0) {
+          const uploadedUrls = [];
+          
+          // Keep existing uploaded images that are already proper URLs (not blob URLs)
+          uploadedImages.forEach((url) => {
+            if (url.startsWith('http') && !url.startsWith('blob:')) {
+              uploadedUrls.push({ url, type: 'uploaded' });
+            }
+          });
+          
+          // Upload new images to Supabase storage
+          for (let i = 0; i < uploadedFiles.length; i++) {
+            const file = uploadedFiles[i];
+            const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+            const fileName = `directory/${id}/${Date.now()}_${i}.${fileExt}`;
+            
+            const { data: uploadData, error: uploadError } = await supabase.storage
+              .from('directory-images')
+              .upload(fileName, file, {
+                cacheControl: '3600',
+                upsert: false
+              });
+            
+            if (uploadError) {
+              console.error('Error uploading image:', uploadError);
+              continue;
+            }
+            
+            const { data: { publicUrl } } = supabase.storage
+              .from('directory-images')
+              .getPublicUrl(fileName);
+            
+            uploadedUrls.push({ url: publicUrl, type: 'uploaded' });
+          }
+          
+          if (uploadedUrls.length > 0) {
+            updateData.listing_images = uploadedUrls;
+            // Set the first image as default
+            updateData.default_image_url = uploadedUrls[0].url;
+          }
         }
       } else {
         // Business listing
@@ -364,8 +410,46 @@ function EditListingComponent() {
           if (validUrls.length > 0) {
             updateData.listing_images = validUrls.map(url => ({ url, type: 'external' }));
           }
-        } else if (uploadedImages.length > 0) {
-          updateData.listing_images = uploadedImages.map(url => ({ url, type: 'uploaded' }));
+        } else if (uploadedFiles.length > 0 || uploadedImages.length > 0) {
+          const uploadedUrls = [];
+          
+          // Keep existing uploaded images that are already proper URLs (not blob URLs)
+          uploadedImages.forEach((url) => {
+            if (url.startsWith('http') && !url.startsWith('blob:')) {
+              uploadedUrls.push({ url, type: 'uploaded' });
+            }
+          });
+          
+          // Upload new images to Supabase storage
+          for (let i = 0; i < uploadedFiles.length; i++) {
+            const file = uploadedFiles[i];
+            const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+            const fileName = `directory/${id}/${Date.now()}_${i}.${fileExt}`;
+            
+            const { data: uploadData, error: uploadError } = await supabase.storage
+              .from('directory-images')
+              .upload(fileName, file, {
+                cacheControl: '3600',
+                upsert: false
+              });
+            
+            if (uploadError) {
+              console.error('Error uploading image:', uploadError);
+              continue;
+            }
+            
+            const { data: { publicUrl } } = supabase.storage
+              .from('directory-images')
+              .getPublicUrl(fileName);
+            
+            uploadedUrls.push({ url: publicUrl, type: 'uploaded' });
+          }
+          
+          if (uploadedUrls.length > 0) {
+            updateData.listing_images = uploadedUrls;
+            // Set the first image as default
+            updateData.default_image_url = uploadedUrls[0].url;
+          }
         }
       }
 
@@ -421,23 +505,23 @@ function EditListingComponent() {
                 type="button"
                 onClick={() => setFormData((prev: any) => ({ 
                   ...prev, 
-                  status: prev.status === 'active' ? 'inactive' : 'active' 
+                  status: prev.status === 'approved' ? 'suspended' : 'approved' 
                 }))}
                 className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                  formData.status === 'active'
+                  formData.status === 'approved'
                     ? 'bg-green-500 text-white hover:bg-green-600'
                     : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
                 }`}
               >
-                {formData.status === 'active' ? (
+                {formData.status === 'approved' ? (
                   <>
                     <CheckCircle className="h-5 w-5" />
-                    <span>Active</span>
+                    <span>Approved</span>
                   </>
                 ) : (
                   <>
                     <XCircle className="h-5 w-5" />
-                    <span>Inactive</span>
+                    <span>Suspended</span>
                   </>
                 )}
               </button>
