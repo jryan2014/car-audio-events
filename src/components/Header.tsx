@@ -313,16 +313,7 @@ export default function Header() {
                                 className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
                               >
                                 <Building2 className="h-3 w-3" />
-                                <span>Business Directory</span>
-                              </Link>
-                              
-                              <Link
-                                to="/members"
-                                onClick={handleDropdownLinkClick}
-                                className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
-                              >
-                                <Users className="h-3 w-3" />
-                                <span>Member Directory</span>
+                                <span>Directory Manager</span>
                               </Link>
                               
                               <Link
@@ -331,7 +322,7 @@ export default function Header() {
                                 className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
                               >
                                 <Users className="h-3 w-3" />
-                                <span>Member Profiles</span>
+                                <span>Member Profiles Manager</span>
                               </Link>
                               
                               <Link

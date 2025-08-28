@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 
-export type AccessMode = 'disabled' | 'all_pro' | 'specific_users';
+export type AccessMode = 'disabled' | 'all_pro' | 'all_paid' | 'specific_users';
 
 export interface FeatureFlag {
   id: string;
@@ -49,14 +49,39 @@ class FeatureFlagService {
   }
 
   /**
+   * Check if current user has access to SPL calculator
+   */
+  async checkSPLCalculatorAccess(): Promise<boolean> {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return false;
+
+      const { data, error } = await supabase
+        .rpc('check_spl_calculator_access', {
+          p_user_id: user.id
+        });
+
+      if (error) {
+        console.error('Error checking SPL calculator access:', error);
+        return false;
+      }
+
+      return data || false;
+    } catch (error) {
+      console.error('Error checking SPL calculator access:', error);
+      return false;
+    }
+  }
+
+  /**
    * Get feature flag settings (admin only)
    */
-  async getFeatureFlag(): Promise<FeatureFlag | null> {
+  async getFeatureFlag(featureName: string = 'subwoofer_designer'): Promise<FeatureFlag | null> {
     try {
       const { data, error } = await supabase
         .from('feature_flags')
         .select('*')
-        .eq('feature_name', 'subwoofer_designer')
+        .eq('feature_name', featureName)
         .single();
 
       if (error) {
@@ -74,10 +99,16 @@ class FeatureFlagService {
   /**
    * Toggle feature flag settings (admin only)
    */
-  async toggleFeature(accessMode: AccessMode, isEnabled: boolean = true): Promise<boolean> {
+  async toggleFeature(featureName: string, accessMode: AccessMode, isEnabled: boolean = true): Promise<boolean> {
     try {
+      // For now, we'll use the subwoofer RPC for both features
+      // In production, you'd want separate RPCs or a generic one
+      const rpcName = featureName === 'spl_calculator' 
+        ? 'toggle_spl_calculator_feature' 
+        : 'toggle_subwoofer_designer_feature';
+        
       const { data, error } = await supabase
-        .rpc('toggle_subwoofer_designer_feature', {
+        .rpc(rpcName, {
           p_access_mode: accessMode,
           p_is_enabled: isEnabled
         });
@@ -98,13 +129,20 @@ class FeatureFlagService {
    * Grant or revoke user access (admin only)
    */
   async manageUserAccess(
+    featureName: string,
     userId: string, 
     grantAccess: boolean, 
     expiresAt?: Date
   ): Promise<boolean> {
     try {
+      // For now, we'll use the subwoofer RPC for both features
+      // In production, you'd want separate RPCs or a generic one
+      const rpcName = featureName === 'spl_calculator'
+        ? 'manage_user_spl_calculator_access'
+        : 'manage_user_subwoofer_access';
+        
       const { data, error } = await supabase
-        .rpc('manage_user_subwoofer_access', {
+        .rpc(rpcName, {
           p_user_id: userId,
           p_grant_access: grantAccess,
           p_expires_at: expiresAt?.toISOString() || null
@@ -138,6 +176,26 @@ class FeatureFlagService {
       return data || [];
     } catch (error) {
       console.error('Error fetching users:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get list of users with potential SPL Calculator access (admin only)
+   */
+  async getSPLCalculatorUsers(): Promise<UserFeatureAccess[]> {
+    try {
+      const { data, error } = await supabase
+        .rpc('get_spl_calculator_users');
+
+      if (error) {
+        console.error('Error fetching SPL calculator users:', error);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching SPL calculator users:', error);
       return [];
     }
   }

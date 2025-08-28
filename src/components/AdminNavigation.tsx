@@ -19,7 +19,8 @@ import {
   Cog,
   CreditCard,
   Mail,
-  Volume2
+  Volume2,
+  Calculator
 } from 'lucide-react';
 
 interface AdminNavItem {
@@ -171,6 +172,12 @@ const adminNavGroups: AdminNavGroup[] = [
         href: '/admin/subwoofer-designer',
         icon: Volume2,
         description: 'Feature flag management'
+      },
+      {
+        name: 'SPL Calculator Admin',
+        href: '/admin/spl-calculator',
+        icon: Calculator,
+        description: 'SPL Calculator access management'
       }
     ]
   }

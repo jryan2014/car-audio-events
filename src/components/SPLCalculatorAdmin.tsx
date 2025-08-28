@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Settings, Users, Save, RefreshCw, AlertCircle, CheckCircle, 
-  UserCheck, UserX, Calendar, Clock, Search, Filter
+  UserCheck, UserX, Calendar, Clock, Search, Filter, Calculator
 } from 'lucide-react';
 import { featureFlagService, FeatureFlag, UserFeatureAccess, AccessMode } from '../services/featureFlagService';
 import { useAuth } from '../contexts/AuthContext';
@@ -9,11 +9,11 @@ import LoadingSpinner from './LoadingSpinner';
 import Badge from './Badge';
 import { useNotifications } from './NotificationSystem';
 
-interface SubwooferDesignerAdminProps {
+interface SPLCalculatorAdminProps {
   className?: string;
 }
 
-export default function SubwooferDesignerAdmin({ className = '' }: SubwooferDesignerAdminProps) {
+export default function SPLCalculatorAdmin({ className = '' }: SPLCalculatorAdminProps) {
   const { user } = useAuth();
   const { showSuccess, showError } = useNotifications();
   
@@ -48,8 +48,8 @@ export default function SubwooferDesignerAdmin({ className = '' }: SubwooferDesi
     try {
       setLoading(true);
       const [flagData, usersData] = await Promise.all([
-        featureFlagService.getFeatureFlag('subwoofer_designer'),
-        featureFlagService.getSubwooferUsers()
+        featureFlagService.getFeatureFlag('spl_calculator'),
+        featureFlagService.getSPLCalculatorUsers()
       ]);
       
       setFeatureFlag(flagData);
@@ -91,7 +91,7 @@ export default function SubwooferDesignerAdmin({ className = '' }: SubwooferDesi
   const handleToggleFeature = async (accessMode: AccessMode, enabled: boolean = true) => {
     try {
       setSaving(true);
-      await featureFlagService.toggleFeature('subwoofer_designer', accessMode, enabled);
+      await featureFlagService.toggleFeature('spl_calculator', accessMode, enabled);
       await loadData();
       showSuccess('Settings Updated', 'Feature flag settings have been updated successfully');
     } catch (error) {
@@ -105,7 +105,7 @@ export default function SubwooferDesignerAdmin({ className = '' }: SubwooferDesi
   const handleUserAccessChange = async (userId: string, grantAccess: boolean, expiresAt?: Date) => {
     try {
       setSaving(true);
-      await featureFlagService.manageUserAccess('subwoofer_designer', userId, grantAccess, expiresAt);
+      await featureFlagService.manageUserAccess('spl_calculator', userId, grantAccess, expiresAt);
       await loadData();
       
       const action = grantAccess ? 'granted' : 'revoked';
@@ -129,7 +129,7 @@ export default function SubwooferDesignerAdmin({ className = '' }: SubwooferDesi
       
       // Process users in batches to avoid overwhelming the server
       for (const userId of selectedUsers) {
-        await featureFlagService.manageUserAccess('subwoofer_designer', userId, grantAccess);
+        await featureFlagService.manageUserAccess('spl_calculator', userId, grantAccess);
       }
       
       await loadData();
@@ -145,12 +145,12 @@ export default function SubwooferDesignerAdmin({ className = '' }: SubwooferDesi
     }
   };
 
-  const getAccessModeDisplay = (mode: AccessMode) => {
+  const getAccessModeDisplay = (mode: AccessMode | 'all_public') => {
     switch (mode) {
       case 'disabled':
         return { text: 'Disabled', color: 'red' };
-      case 'all_pro':
-        return { text: 'All Pro Members', color: 'green' };
+      case 'all_public':
+        return { text: 'All Public Members', color: 'green' };
       case 'all_paid':
         return { text: 'All Paid Members', color: 'green' };
       case 'specific_users':
@@ -186,7 +186,7 @@ export default function SubwooferDesignerAdmin({ className = '' }: SubwooferDesi
           <LoadingSpinner 
             size="large" 
             color="electric" 
-            message="Loading feature settings..." 
+            message="Loading SPL Calculator settings..." 
           />
         </div>
       </div>
@@ -199,8 +199,11 @@ export default function SubwooferDesignerAdmin({ className = '' }: SubwooferDesi
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white">Subwoofer Designer Admin</h1>
-            <p className="text-gray-400 mt-2">Manage feature access and user permissions</p>
+            <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+              <Calculator className="h-8 w-8 text-electric-500" />
+              SPL Calculator Admin
+            </h1>
+            <p className="text-gray-400 mt-2">Manage feature access and user permissions for SPL Calculator</p>
           </div>
           <button
             onClick={loadData}
@@ -210,47 +213,6 @@ export default function SubwooferDesignerAdmin({ className = '' }: SubwooferDesi
             <RefreshCw className={`h-4 w-4 ${saving ? 'animate-spin' : ''}`} />
             Refresh
           </button>
-        </div>
-
-        {/* Statistics */}
-        <div className="grid md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
-            <div className="flex items-center gap-3 mb-2">
-              <Users className="h-5 w-5 text-blue-400" />
-              <span className="text-sm font-medium text-gray-300">Total Users</span>
-            </div>
-            <p className="text-2xl font-bold text-white">{users.length}</p>
-          </div>
-
-          <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
-            <div className="flex items-center gap-3 mb-2">
-              <UserCheck className="h-5 w-5 text-green-400" />
-              <span className="text-sm font-medium text-gray-300">With Access</span>
-            </div>
-            <p className="text-2xl font-bold text-white">
-              {users.filter(u => u.has_access).length}
-            </p>
-          </div>
-
-          <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
-            <div className="flex items-center gap-3 mb-2">
-              <UserX className="h-5 w-5 text-red-400" />
-              <span className="text-sm font-medium text-gray-300">No Access</span>
-            </div>
-            <p className="text-2xl font-bold text-white">
-              {users.filter(u => !u.has_access).length}
-            </p>
-          </div>
-
-          <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
-            <div className="flex items-center gap-3 mb-2">
-              <Users className="h-5 w-5 text-purple-400" />
-              <span className="text-sm font-medium text-gray-300">Paid Members</span>
-            </div>
-            <p className="text-2xl font-bold text-white">
-              {users.filter(u => u.membership_type === 'pro' || u.membership_type === 'retailer' || u.membership_type === 'manufacturer' || u.membership_type === 'organization').length}
-            </p>
-          </div>
         </div>
 
         {/* Feature Status Card */}
@@ -271,7 +233,7 @@ export default function SubwooferDesignerAdmin({ className = '' }: SubwooferDesi
                       Feature Status: {featureFlag.is_enabled ? 'Enabled' : 'Disabled'}
                     </p>
                     <p className="text-sm text-gray-400">
-                      Access Mode: <Badge {...getAccessModeDisplay(featureFlag.access_mode)} size="sm" />
+                      Access Mode: <Badge {...getAccessModeDisplay(featureFlag.access_mode as AccessMode | 'all_public')} size="sm" />
                     </p>
                   </div>
                 </div>
@@ -302,6 +264,24 @@ export default function SubwooferDesignerAdmin({ className = '' }: SubwooferDesi
                   </button>
 
                   <button
+                    onClick={() => handleToggleFeature('all_pro' as AccessMode, true)}
+                    disabled={saving}
+                    className={`p-4 rounded-lg border-2 text-left transition-colors ${
+                      featureFlag.access_mode === 'all_pro' && featureFlag.is_enabled
+                        ? 'border-green-500 bg-green-500/10 text-green-300'
+                        : 'border-gray-600 bg-gray-700 text-gray-300 hover:border-green-500'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <Users className="h-5 w-5" />
+                      <span className="font-medium">All Public Members</span>
+                    </div>
+                    <p className="text-sm opacity-80">All members including free tier get access</p>
+                  </button>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <button
                     onClick={() => handleToggleFeature('all_paid', true)}
                     disabled={saving}
                     className={`p-4 rounded-lg border-2 text-left transition-colors ${
@@ -314,19 +294,35 @@ export default function SubwooferDesignerAdmin({ className = '' }: SubwooferDesi
                       <Users className="h-5 w-5" />
                       <span className="font-medium">All Paid Members</span>
                     </div>
-                    <p className="text-sm opacity-80">All paid members (Pro, Retailer, Manufacturer, Organization) get access</p>
+                    <p className="text-sm opacity-80">Only paid members (Pro, Retailer, Manufacturer, Organization) get access</p>
+                  </button>
+
+                  <button
+                    onClick={() => handleToggleFeature('specific_users', true)}
+                    disabled={saving}
+                    className={`p-4 rounded-lg border-2 text-left transition-colors ${
+                      featureFlag.access_mode === 'specific_users' && featureFlag.is_enabled
+                        ? 'border-blue-500 bg-blue-500/10 text-blue-300'
+                        : 'border-gray-600 bg-gray-700 text-gray-300 hover:border-blue-500'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <UserCheck className="h-5 w-5" />
+                      <span className="font-medium">Specific Users Only</span>
+                    </div>
+                    <p className="text-sm opacity-80">Only grant access to selected specific users</p>
                   </button>
                 </div>
 
                 {/* Additional Specific Users Section - Always visible when not disabled */}
-                {featureFlag.is_enabled && (
+                {featureFlag.is_enabled && featureFlag.access_mode !== 'specific_users' && (
                   <div className="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
                     <div className="flex items-center gap-2 mb-3">
                       <UserCheck className="h-5 w-5 text-blue-400" />
                       <span className="font-medium text-white">Additional Specific Users</span>
                     </div>
                     <p className="text-sm text-gray-300 mb-3">
-                      Grant trial access to specific free members to encourage them to upgrade
+                      Grant trial access to specific users to test the feature or provide temporary access
                     </p>
                     <p className="text-xs text-gray-400">
                       Note: These users will have access regardless of the main access mode setting
@@ -353,7 +349,7 @@ export default function SubwooferDesignerAdmin({ className = '' }: SubwooferDesi
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
                     type="text"
-                    placeholder="Type at least 2 characters to search users..."
+                    placeholder="Search users by name or email (min 2 characters)..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-full bg-gray-700 border border-gray-600 rounded-lg pl-10 pr-4 py-2 text-white placeholder-gray-400"
@@ -368,7 +364,7 @@ export default function SubwooferDesignerAdmin({ className = '' }: SubwooferDesi
               >
                 <option value="all">All Membership Types</option>
                 <option value="pro_competitor">Pro Competitors</option>
-                <option value="competitor">Competitors</option>
+                <option value="competitor">Free Competitors</option>
                 <option value="retailer">Retailers</option>
                 <option value="manufacturer">Manufacturers</option>
                 <option value="organization">Organizations</option>
@@ -418,94 +414,136 @@ export default function SubwooferDesignerAdmin({ className = '' }: SubwooferDesi
               </div>
             )}
 
-            {/* Search hint or User List */}
-            {!showSearchResults ? (
-              <div className="text-center py-12 bg-gray-700/30 rounded-lg border border-gray-600">
-                <Search className="h-12 w-12 text-gray-500 mx-auto mb-4" />
-                <p className="text-gray-400 text-lg font-medium mb-2">Search for Users</p>
-                <p className="text-gray-500 text-sm">Start typing a name or email address (minimum 2 characters)</p>
-                <p className="text-gray-500 text-sm mt-2">Example: "ja" will find all users with "ja" in their name or email</p>
-              </div>
-            ) : (
+            {/* User List - Only show when search criteria is met */}
+            {showSearchResults && (
               <div className="space-y-3">
                 {filteredUsers.length === 0 ? (
                   <div className="text-center py-8 text-gray-400">
-                    No users found matching "{searchTerm}"
+                    No users found matching your filters
                   </div>
                 ) : (
-                filteredUsers.map((user) => (
-                  <div key={user.user_id} className="bg-gray-700 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="checkbox"
-                          checked={selectedUsers.includes(user.user_id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedUsers([...selectedUsers, user.user_id]);
-                            } else {
-                              setSelectedUsers(selectedUsers.filter(id => id !== user.user_id));
-                            }
-                          }}
-                          className="h-4 w-4 text-electric-500 rounded border-gray-600 bg-gray-800"
-                        />
-                        
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-white">{user.name}</span>
-                            <Badge text={getMembershipDisplayName(user.membership_type)} color="blue" size="sm" />
-                            {user.has_access && (
-                              <Badge text="Access Granted" color="green" size="sm" />
+                  filteredUsers.map((user) => (
+                    <div key={user.user_id} className="bg-gray-700 rounded-lg p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedUsers.includes(user.user_id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedUsers([...selectedUsers, user.user_id]);
+                              } else {
+                                setSelectedUsers(selectedUsers.filter(id => id !== user.user_id));
+                              }
+                            }}
+                            className="h-4 w-4 text-electric-500 rounded border-gray-600 bg-gray-800"
+                          />
+                          
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-white">{user.name}</span>
+                              <Badge text={getMembershipDisplayName(user.membership_type)} color="blue" size="sm" />
+                              {user.has_access && (
+                                <Badge text="Access Granted" color="green" size="sm" />
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-400">{user.email}</p>
+                            {user.access_granted_at && (
+                              <div className="flex items-center gap-1 mt-1">
+                                <Clock className="h-3 w-3 text-gray-500" />
+                                <span className="text-xs text-gray-500">
+                                  Access granted: {new Date(user.access_granted_at).toLocaleDateString()}
+                                </span>
+                              </div>
+                            )}
+                            {user.access_expires_at && (
+                              <div className="flex items-center gap-1 mt-1">
+                                <Calendar className="h-3 w-3 text-yellow-500" />
+                                <span className="text-xs text-yellow-500">
+                                  Expires: {new Date(user.access_expires_at).toLocaleDateString()}
+                                </span>
+                              </div>
                             )}
                           </div>
-                          <p className="text-sm text-gray-400">{user.email}</p>
-                          {user.access_granted_at && (
-                            <div className="flex items-center gap-1 mt-1">
-                              <Clock className="h-3 w-3 text-gray-500" />
-                              <span className="text-xs text-gray-500">
-                                Access granted: {new Date(user.access_granted_at).toLocaleDateString()}
-                              </span>
-                            </div>
-                          )}
-                          {user.access_expires_at && (
-                            <div className="flex items-center gap-1 mt-1">
-                              <Calendar className="h-3 w-3 text-yellow-500" />
-                              <span className="text-xs text-yellow-500">
-                                Expires: {new Date(user.access_expires_at).toLocaleDateString()}
-                              </span>
-                            </div>
-                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleUserAccessChange(user.user_id, !user.has_access)}
+                            disabled={saving}
+                            className={`px-3 py-1 rounded text-sm font-medium transition-colors disabled:opacity-50 ${
+                              user.has_access
+                                ? 'bg-red-600 text-white hover:bg-red-700'
+                                : 'bg-green-600 text-white hover:bg-green-700'
+                            }`}
+                          >
+                            {user.has_access ? 'Revoke' : 'Grant'}
+                          </button>
                         </div>
                       </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleUserAccessChange(user.user_id, !user.has_access)}
-                          disabled={saving}
-                          className={`px-3 py-1 rounded text-sm font-medium transition-colors disabled:opacity-50 ${
-                            user.has_access
-                              ? 'bg-red-600 text-white hover:bg-red-700'
-                              : 'bg-green-600 text-white hover:bg-green-700'
-                          }`}
-                        >
-                          {user.has_access ? 'Revoke' : 'Grant'}
-                        </button>
-                      </div>
                     </div>
-                  </div>
                   ))
                 )}
               </div>
             )}
 
-            {/* Search results info */}
+            {/* Search hint when not searching */}
+            {!showSearchResults && searchTerm.length < 2 && (
+              <div className="text-center py-8 text-gray-400">
+                <Search className="h-8 w-8 mx-auto mb-3 opacity-50" />
+                <p>Enter at least 2 characters to search for users</p>
+              </div>
+            )}
+
+            {/* Pagination info */}
             {showSearchResults && filteredUsers.length > 0 && (
               <div className="mt-6 text-center text-sm text-gray-400">
-                Found {filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''} matching "{searchTerm}"
+                Showing {filteredUsers.length} of {users.length} users
               </div>
             )}
           </div>
         )}
+
+        {/* Statistics */}
+        <div className="mt-8 grid md:grid-cols-4 gap-6">
+          <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
+            <div className="flex items-center gap-3 mb-2">
+              <Users className="h-5 w-5 text-blue-400" />
+              <span className="text-sm font-medium text-gray-300">Total Users</span>
+            </div>
+            <p className="text-2xl font-bold text-white">{users.length}</p>
+          </div>
+
+          <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
+            <div className="flex items-center gap-3 mb-2">
+              <UserCheck className="h-5 w-5 text-green-400" />
+              <span className="text-sm font-medium text-gray-300">With Access</span>
+            </div>
+            <p className="text-2xl font-bold text-white">
+              {users.filter(u => u.has_access).length}
+            </p>
+          </div>
+
+          <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
+            <div className="flex items-center gap-3 mb-2">
+              <UserX className="h-5 w-5 text-red-400" />
+              <span className="text-sm font-medium text-gray-300">No Access</span>
+            </div>
+            <p className="text-2xl font-bold text-white">
+              {users.filter(u => !u.has_access).length}
+            </p>
+          </div>
+
+          <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
+            <div className="flex items-center gap-3 mb-2">
+              <Users className="h-5 w-5 text-purple-400" />
+              <span className="text-sm font-medium text-gray-300">Paid Members</span>
+            </div>
+            <p className="text-2xl font-bold text-white">
+              {users.filter(u => ['pro_competitor', 'retailer', 'manufacturer', 'organization'].includes(u.membership_type)).length}
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

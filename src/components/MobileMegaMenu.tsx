@@ -614,15 +614,7 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, onL
                         className="flex items-center text-gray-300 hover:text-white py-2 transition-colors"
                       >
                         <Building2 className="w-5 h-5 mr-3" />
-                        Business Directory Manager
-                      </Link>
-                      <Link
-                        to="/members"
-                        onClick={onLinkClick}
-                        className="flex items-center text-gray-300 hover:text-white py-2 transition-colors"
-                      >
-                        <Users className="w-5 h-5 mr-3" />
-                        Member Directory
+                        Directory Manager
                       </Link>
                       <Link
                         to="/admin/member-profiles"
@@ -630,7 +622,7 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, onL
                         className="flex items-center text-gray-300 hover:text-white py-2 transition-colors"
                       >
                         <UserCheck className="w-5 h-5 mr-3" />
-                        Member Profile Manager
+                        Member Profiles Manager
                       </Link>
                       <Link
                         to="/admin/membership"

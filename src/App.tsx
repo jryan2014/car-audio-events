@@ -92,6 +92,7 @@ const SPLCalculatorProtected = React.lazy(() => import('./components/SPLCalculat
 const AudioSystemDesigner = React.lazy(() => import('./pages/AudioSystemDesigner'));
 const SubwooferDesigner = React.lazy(() => import('./pages/SubwooferDesigner'));
 const AdminSubwooferDesigner = React.lazy(() => import('./pages/AdminSubwooferDesigner'));
+const AdminSPLCalculator = React.lazy(() => import('./pages/AdminSPLCalculator'));
 const DirectoryErrorBoundary = React.lazy(() => import('./components/DirectoryErrorBoundary'));
 const AudioDiagramEditorPage = React.lazy(() => import('./pages/AudioDiagramEditorPage'));
 const VerifyEmail = React.lazy(() => import('./pages/VerifyEmail'));
@@ -296,6 +297,7 @@ function App() {
               <Route path="/admin/billing-configuration" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminBillingConfiguration /></Suspense></AdminLayout>} />
               <Route path="/admin/newsletter" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminNewsletterManager /></Suspense></AdminLayout>} />
               <Route path="/admin/subwoofer-designer" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminSubwooferDesigner /></Suspense></AdminLayout>} />
+              <Route path="/admin/spl-calculator" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminSPLCalculator /></Suspense></AdminLayout>} />
               <Route path="/admin/support/*" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminSupportDashboard /></Suspense></AdminLayout>} />
             </Routes>
           </Suspense>

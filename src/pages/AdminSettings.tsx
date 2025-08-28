@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Key, Save, Eye, EyeOff, Shield, AlertCircle, CheckCircle, Settings, CreditCard, Mail, Bug, TestTube, ExternalLink, HardDrive, Bell, Clock } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 // AdminEmailSettings component removed - using modular EmailSettings instead
 import { ServiceWorkerManager } from '../components/ServiceWorkerManager';
@@ -44,6 +44,7 @@ const sections = [
 
 export default function AdminSettings() {
   const { user, session, loading } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [keys, setKeys] = useState<IntegrationKeys>({
     stripe_publishable_key: '',
     stripe_secret_key: '',
@@ -75,6 +76,17 @@ export default function AdminSettings() {
     loadExistingKeys();
     loadDebugSettings();
   }, []);
+
+  // Handle tab parameter from URL
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && sections.some(section => section.id === tab)) {
+      setActiveSection(tab);
+      // Optionally clear the parameter after setting
+      // searchParams.delete('tab');
+      // setSearchParams(searchParams);
+    }
+  }, [searchParams]);
 
   // Show loading while auth is initializing
   if (loading) {

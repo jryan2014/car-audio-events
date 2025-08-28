@@ -109,21 +109,36 @@ export default function DirectoryManager() {
       }
 
       // Load directory listings with user information
+      // First get the listings
       const { data: listingsData, error: listingsError } = await supabase
         .from('directory_listings')
-        .select(`
-          *,
-          user:users!user_id(
-            id,
-            name, 
-            email, 
-            membership_type,
-            auto_approve_directory,
-            auto_approve_used_equipment
-          ),
-          reviewer:users!reviewed_by(name, email, membership_type)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
+
+      if (!listingsError && listingsData) {
+        // Then get user information for each listing
+        for (const listing of listingsData) {
+          if (listing.user_id) {
+            const { data: userData } = await supabase
+              .from('users')
+              .select('id, name, email, membership_type, auto_approve_directory, auto_approve_used_equipment')
+              .eq('id', listing.user_id)
+              .single();
+            
+            listing.user = userData;
+          }
+          
+          if (listing.reviewed_by) {
+            const { data: reviewerData } = await supabase
+              .from('users')
+              .select('name, email, membership_type')
+              .eq('id', listing.reviewed_by)
+              .single();
+            
+            listing.reviewer = reviewerData;
+          }
+        }
+      }
 
       if (listingsError) {
         console.error('Error loading listings:', listingsError);
