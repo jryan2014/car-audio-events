@@ -105,7 +105,7 @@ export default function OrganizationPricing() {
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-electric-500/20"></div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+        <div className="relative max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="text-center">
             <div className="flex items-center justify-center space-x-3 mb-6">
               <Users className="h-16 w-16 text-purple-500" />
@@ -145,7 +145,7 @@ export default function OrganizationPricing() {
       </div>
 
       {/* Organization Types */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold text-white mb-4">
             Perfect for Any Car Audio Organization
@@ -174,7 +174,7 @@ export default function OrganizationPricing() {
       </div>
 
       {/* Organization Features */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold text-white mb-4">
             Powerful Tools for Organization Management
@@ -198,7 +198,7 @@ export default function OrganizationPricing() {
       </div>
 
       {/* Pricing Plans */}
-      <div id="plans" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <div id="plans" className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold text-white mb-4">
             Choose Your Organization Plan
@@ -225,7 +225,7 @@ export default function OrganizationPricing() {
 
       {/* CTA Section */}
       <div className="bg-gradient-to-r from-purple-500/10 to-electric-500/10 border-t border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="text-center">
             <h2 className="text-3xl font-bold text-white mb-4">
               Ready to Build Your Community?

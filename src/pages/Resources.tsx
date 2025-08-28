@@ -182,7 +182,7 @@ export default function Resources() {
         keywords="car audio guides, competition rules, installation guides, SPL tips, sound quality tuning, car audio education, wiring diagrams, box building guides"
         url="https://caraudioevents.com/resources"
       />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-white mb-4">

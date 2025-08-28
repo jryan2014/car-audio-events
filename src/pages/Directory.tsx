@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, MapPin, Phone, Globe, Star, Filter, Building, Wrench, Heart, Eye, Package, DollarSign } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import PageHeader from '../components/PageHeader';
@@ -38,6 +38,7 @@ interface DirectoryListing {
 
 export default function Directory() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [listings, setListings] = useState<DirectoryListing[]>([]);
   const [filteredListings, setFilteredListings] = useState<DirectoryListing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -153,6 +154,13 @@ export default function Directory() {
     } catch (error) {
       console.error('Error recording view:', error);
     }
+  };
+
+  const handleListingClick = (listing: DirectoryListing) => {
+    recordView(listing.id);
+    // For now, navigate to edit page if user owns the listing
+    // In the future, create a separate detail view page
+    navigate(`/directory/edit/${listing.id}`);
   };
 
   const handleAdvancedSearch = useCallback((filters: any) => {
@@ -375,7 +383,10 @@ export default function Directory() {
         ) : viewMode === 'list' ? (
           <DirectoryListView 
             listings={filteredListings}
-            onRecordView={recordView}
+            onRecordView={(listingId) => {
+              const listing = filteredListings.find(l => l.id === listingId);
+              if (listing) handleListingClick(listing);
+            }}
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -383,7 +394,7 @@ export default function Directory() {
               <div
                 key={listing.id}
                 className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl overflow-hidden hover:border-electric-500/50 transition-all duration-300 group cursor-pointer"
-                onClick={() => recordView(listing.id)}
+                onClick={() => handleListingClick(listing)}
               >
                 {/* Listing Image */}
                 <div className="relative">
