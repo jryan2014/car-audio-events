@@ -63,7 +63,9 @@ export const SecurityHeaders = {
       https://hcaptcha.com
       https://*.hcaptcha.com
       https://www.paypal.com
-      https://*.paypal.com;
+      https://*.paypal.com
+      https://www.openstreetmap.org
+      https://*.openstreetmap.org;
     object-src 'none';
     base-uri 'self';
     form-action 'self' 
