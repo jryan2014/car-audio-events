@@ -1,14 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { supabase } from '../lib/supabase-client';
-import { useAuth } from '../hooks/useAuth';
-import { toast } from 'sonner';
+import { supabase } from '../lib/supabase/client';
+import { useAuth } from '../contexts/AuthContext';
+import { toast } from 'react-hot-toast';
 import { 
   ArrowLeft, Save, Loader2, MapPin, Globe, Phone, Mail, 
   Image, X, DollarSign, Plus, Trash2, Clock, Wrench,
   Package, CheckCircle, XCircle
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
+import LoadingSpinner from '../components/LoadingSpinner';
+import { Zap, Volume2, Cpu, Wrench as WrenchIcon, Package2, Battery } from 'lucide-react';
+
+const EQUIPMENT_CATEGORIES = [
+  { value: 'amplifier', label: 'Amplifier', icon: Zap },
+  { value: 'subwoofer', label: 'Subwoofer', icon: Volume2 },
+  { value: 'head_unit', label: 'Head Unit', icon: Cpu },
+  { value: 'dsp', label: 'DSP', icon: WrenchIcon },
+  { value: 'speakers', label: 'Speakers', icon: Volume2 },
+  { value: 'wiring', label: 'Wiring', icon: Battery },
+];
+
+const CONDITION_OPTIONS = [
+  { value: 'new', label: 'New' },
+  { value: 'like_new', label: 'Like New' },
+  { value: 'excellent', label: 'Excellent' },
+  { value: 'good', label: 'Good' },
+  { value: 'fair', label: 'Fair' },
+];
 
 interface Product {
   id?: string;
@@ -351,19 +370,7 @@ export default function EditListing() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-900">
-        <PageHeader
-          title="Edit Listing"
-          subtitle="Loading..."
-        />
-        <div className="container mx-auto px-4 py-8 flex justify-center">
-          <Loader2 className="h-8 w-8 text-electric-500 animate-spin" />
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <LoadingSpinner />;
 
   const isEquipmentListing = listingType === 'used_equipment' || listingType === 'product';
 
@@ -422,8 +429,253 @@ export default function EditListing() {
 
           {isEquipmentListing ? (
             <>
-              {/* Equipment form fields - same as before */}
-              {/* ... equipment fields ... */}
+              {/* Equipment Details */}
+              <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+                <h2 className="text-xl font-bold text-white mb-6">Equipment Details</h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="md:col-span-2">
+                    <label className="block text-gray-400 text-sm mb-2">Equipment Type *</label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {EQUIPMENT_CATEGORIES.map(cat => (
+                        <button
+                          key={cat.value}
+                          type="button"
+                          onClick={() => setFormData((prev: any) => ({ ...prev, equipment_category: cat.value }))}
+                          className={`p-3 rounded-lg border-2 transition-all flex items-center space-x-2 ${
+                            formData.equipment_category === cat.value
+                              ? 'border-electric-500 bg-electric-500/10 text-white'
+                              : 'border-gray-600 hover:border-gray-500 text-gray-300'
+                          }`}
+                        >
+                          <cat.icon className="h-5 w-5" />
+                          <span className="text-sm">{cat.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Brand *</label>
+                    <input
+                      type="text"
+                      value={formData.brand}
+                      onChange={(e) => setFormData((prev: any) => ({ ...prev, brand: e.target.value }))}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Model *</label>
+                    <input
+                      type="text"
+                      value={formData.model}
+                      onChange={(e) => setFormData((prev: any) => ({ ...prev, model: e.target.value }))}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Condition *</label>
+                    <select
+                      value={formData.condition}
+                      onChange={(e) => setFormData((prev: any) => ({ ...prev, condition: e.target.value }))}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white"
+                      required
+                    >
+                      {CONDITION_OPTIONS.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">Price (USD) *</label>
+                    <div className="relative">
+                      <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <input
+                        type="number"
+                        value={formData.price}
+                        onChange={(e) => setFormData((prev: any) => ({ ...prev, price: e.target.value }))}
+                        className="w-full pl-10 pr-3 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-gray-400 text-sm mb-2">Description *</label>
+                    <textarea
+                      value={formData.description}
+                      onChange={(e) => setFormData((prev: any) => ({ ...prev, description: e.target.value }))}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white"
+                      rows={4}
+                      required
+                    />
+                  </div>
+
+                  <div className="flex items-center space-x-6">
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.is_negotiable}
+                        onChange={(e) => setFormData((prev: any) => ({ ...prev, is_negotiable: e.target.checked }))}
+                        className="w-4 h-4 text-electric-500 bg-gray-700 border-gray-600 rounded"
+                      />
+                      <span className="text-gray-300">Price is negotiable</span>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center space-x-6">
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.shipping_available}
+                        onChange={(e) => setFormData((prev: any) => ({ ...prev, shipping_available: e.target.checked }))}
+                        className="w-4 h-4 text-electric-500 bg-gray-700 border-gray-600 rounded"
+                      />
+                      <span className="text-gray-300">Shipping available</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+                <h2 className="text-xl font-bold text-white mb-6">Contact Information</h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">
+                      <Phone className="inline h-4 w-4 mr-1" />
+                      Phone {!formData.email && '*'}
+                    </label>
+                    <input
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => setFormData((prev: any) => ({ ...prev, phone: e.target.value }))}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white"
+                      required={!formData.email}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-400 text-sm mb-2">
+                      <Mail className="inline h-4 w-4 mr-1" />
+                      Email {!formData.phone && '*'}
+                    </label>
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData((prev: any) => ({ ...prev, email: e.target.value }))}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white"
+                      required={!formData.phone}
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-gray-400 text-sm mb-2">
+                      <Globe className="inline h-4 w-4 mr-1" />
+                      External Listing URL (optional)
+                    </label>
+                    <input
+                      type="url"
+                      value={formData.external_url}
+                      onChange={(e) => setFormData((prev: any) => ({ ...prev, external_url: e.target.value }))}
+                      className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white"
+                      placeholder="eBay, Facebook Marketplace, or other listing URL..."
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Images */}
+              <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+                <h2 className="text-xl font-bold text-white mb-6">Product Images</h2>
+                <p className="text-gray-400 text-sm mb-4">
+                  Choose to either upload images or provide external image URLs (up to 3)
+                </p>
+
+                {/* Image Mode Toggle */}
+                <div className="flex space-x-4 mb-6">
+                  <button
+                    type="button"
+                    onClick={() => setImageMode('upload')}
+                    className={`px-4 py-2 rounded-lg transition-colors ${
+                      imageMode === 'upload'
+                        ? 'bg-electric-500 text-white'
+                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                    }`}
+                  >
+                    Upload Images
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setImageMode('urls')}
+                    className={`px-4 py-2 rounded-lg transition-colors ${
+                      imageMode === 'urls'
+                        ? 'bg-electric-500 text-white'
+                        : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                    }`}
+                  >
+                    External URLs
+                  </button>
+                </div>
+
+                {imageMode === 'upload' ? (
+                  <div className="grid grid-cols-3 gap-4">
+                    {uploadedImages.map((img, idx) => (
+                      <div key={idx} className="relative group">
+                        <img src={img} alt="" className="w-full h-32 object-cover rounded-lg" />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(idx)}
+                          className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                    
+                    {uploadedImages.length < 3 && (
+                      <label className="border-2 border-dashed border-gray-600 rounded-lg h-32 flex flex-col items-center justify-center cursor-pointer hover:border-electric-500 transition-colors">
+                        <Image className="h-8 w-8 text-gray-400 mb-2" />
+                        <span className="text-sm text-gray-400">Add Image</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={handleImageUpload}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {[0, 1, 2].map((idx) => (
+                      <div key={idx}>
+                        <label className="block text-gray-400 text-sm mb-2">
+                          Image URL {idx + 1}
+                        </label>
+                        <input
+                          type="url"
+                          value={imageUrls[idx]}
+                          onChange={(e) => {
+                            const newUrls = [...imageUrls];
+                            newUrls[idx] = e.target.value;
+                            setImageUrls(newUrls);
+                          }}
+                          className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white"
+                          placeholder="https://example.com/image.jpg"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </>
           ) : (
             <>
