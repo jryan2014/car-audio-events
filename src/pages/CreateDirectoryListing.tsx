@@ -67,7 +67,7 @@ export default function CreateDirectoryListing() {
   const listingType = getListingType();
   
   // Form data based on listing type
-  const [formData, setFormData] = useState(() => {
+  const [formData, setFormData] = useState<any>(() => {
     const baseData = {
       contact_name: user?.name || '',
       email: user?.email || '',
