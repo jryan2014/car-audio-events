@@ -226,7 +226,6 @@ export default function EditListing() {
       <PageHeader
         title="Edit Listing"
         subtitle="Update your listing details"
-        backgroundImage="/assets/images/directory-bg.jpg"
       />
 
       <div className="max-w-4xl mx-auto px-4 py-8">
