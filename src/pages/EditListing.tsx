@@ -1063,7 +1063,23 @@ function EditListingComponent() {
                           </button>
                         </div>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-gray-400 text-sm mb-2">Product Category</label>
+                            <select
+                              value={product.category || ''}
+                              onChange={(e) => updateProduct(index, 'category', e.target.value)}
+                              className="w-full p-2 bg-gray-700/50 border border-gray-600 rounded text-white"
+                            >
+                              <option value="">Select Category</option>
+                              {EQUIPMENT_CATEGORIES.map(cat => (
+                                <option key={cat.value} value={cat.value}>
+                                  {cat.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          
                           <div>
                             <label className="block text-gray-400 text-sm mb-2">Product Name</label>
                             <input
@@ -1089,7 +1105,7 @@ function EditListingComponent() {
                             </div>
                           </div>
                           
-                          <div className="md:col-span-2">
+                          <div className="md:col-span-3">
                             <label className="block text-gray-400 text-sm mb-2">Description</label>
                             <textarea
                               value={product.description}
@@ -1101,7 +1117,7 @@ function EditListingComponent() {
                           </div>
                           
                           {/* Product Images */}
-                          <div className="md:col-span-2">
+                          <div className="md:col-span-3">
                             <label className="block text-gray-400 text-sm mb-2">
                               Product Images (Up to 3 URLs)
                             </label>

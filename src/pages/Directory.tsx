@@ -80,7 +80,7 @@ export default function Directory() {
       const { data, error } = await supabase
         .from('directory_listings')
         .select('*')
-        .eq('status', 'approved')
+        .eq('status', 'active')  // Only show active listings
         .order('featured', { ascending: false })
         .order('created_at', { ascending: false });
 
@@ -103,7 +103,7 @@ export default function Directory() {
       const servicesData = await supabase
         .from('directory_listings')
         .select('services_offered')
-        .eq('status', 'approved')
+        .eq('status', 'active')
         .not('services_offered', 'is', null);
       
       const allServices = servicesData.data?.flatMap(item => (item.services_offered as string[]) || []) || [];
@@ -114,7 +114,7 @@ export default function Directory() {
       const brandsData = await supabase
         .from('directory_listings')
         .select('brands_carried')
-        .eq('status', 'approved')
+        .eq('status', 'active')
         .not('brands_carried', 'is', null);
       
       const allBrands = brandsData.data?.flatMap(item => (item.brands_carried as string[]) || []) || [];
@@ -134,7 +134,7 @@ export default function Directory() {
       const statesData = await supabase
         .from('directory_listings')
         .select('state')
-        .eq('status', 'approved')
+        .eq('status', 'active')
         .not('state', 'is', null);
       
       const allStates = statesData.data?.map(item => item.state).filter(Boolean) || [];
