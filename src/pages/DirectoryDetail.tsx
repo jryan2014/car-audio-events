@@ -18,6 +18,7 @@ interface DirectoryListing {
   contact_name?: string;
   default_image_url?: string;
   listing_images?: Array<{url: string; type: string}>;
+  banner_url?: string;
   address_line1?: string;
   address_line2?: string;
   city?: string;
@@ -43,6 +44,7 @@ interface DirectoryListing {
   tuning_services?: boolean;
   brands_carried?: string[];
   featured?: boolean;
+  verified?: boolean;
   latitude?: string;
   longitude?: string;
   products?: Array<{
@@ -52,6 +54,12 @@ interface DirectoryListing {
     images: string[];
     category: string;
   }>;
+  social_media?: {
+    facebook?: string;
+    instagram?: string;
+    youtube?: string;
+    twitter?: string;
+  };
   views_count: number;
   rating: string;
   review_count: number;
