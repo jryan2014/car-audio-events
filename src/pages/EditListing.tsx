@@ -97,7 +97,10 @@ function EditListingComponent() {
       saturday: { open: '10:00 AM', close: '4:00 PM', closed: false },
       sunday: { open: '', close: '', closed: true }
     },
-    status: 'approved',
+    status: 'pending',
+    is_active: true,
+    rejection_reason: null,
+    rejected_at: null,
   });
 
   useEffect(() => {
@@ -208,7 +211,10 @@ function EditListingComponent() {
         sound_deadening: data.sound_deadening || false,
         tuning_services: data.tuning_services || false,
         business_hours: data.business_hours || formData.business_hours,
-        status: data.status || 'approved',
+        status: data.status || 'pending',
+        is_active: data.is_active !== undefined ? data.is_active : true,
+        rejection_reason: data.rejection_reason || null,
+        rejected_at: data.rejected_at || null,
       });
 
       // Show map if location data exists
@@ -306,13 +312,38 @@ function EditListingComponent() {
     setSaving(true);
 
     try {
+      // Check if user has auto-approve permission
+      const { data: userData } = await supabase
+        .from('users')
+        .select('auto_approve_directory, auto_approve_used_equipment')
+        .eq('id', user.id)
+        .single();
+      
+      // Determine which auto-approve permission to check based on listing type
+      const autoApprove = listingType === 'used_equipment' 
+        ? userData?.auto_approve_used_equipment || false
+        : userData?.auto_approve_directory || false;
+      
+      // Determine the new status
+      let newStatus = formData.status;
+      
+      // If user doesn't have auto-approve, reset to pending on any edit
+      if (!autoApprove && formData.status === 'approved') {
+        newStatus = 'pending';
+      }
+      
       const updateData: any = {
         contact_name: formData.contact_name,
         email: formData.email,
         phone: formData.phone,
         description: formData.description,
-        status: formData.status,
-        updated_at: new Date().toISOString()
+        status: newStatus,
+        is_active: formData.is_active,
+        updated_at: new Date().toISOString(),
+        // Clear rejection data when resubmitting
+        rejection_reason: null,
+        rejected_at: null,
+        rejected_by: null
       };
 
       // Add fields based on listing type
@@ -460,7 +491,17 @@ function EditListingComponent() {
 
       if (error) throw error;
 
-      toast.success('Listing updated successfully');
+      // Show appropriate success message based on status
+      if (newStatus === 'pending') {
+        toast.success('Listing updated and sent for approval. It will become live once approved by an admin.');
+      } else if (newStatus === 'approved' && formData.is_active) {
+        toast.success('Listing updated successfully and is now live!');
+      } else if (newStatus === 'approved' && !formData.is_active) {
+        toast.success('Listing updated successfully (currently inactive)');
+      } else {
+        toast.success('Listing updated successfully');
+      }
+      
       navigate('/my-listings');
     } catch (error: any) {
       console.error('Error updating listing:', error);
@@ -492,39 +533,90 @@ function EditListingComponent() {
         </button>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Rejection Notice */}
+          {formData.status === 'rejected' && formData.rejection_reason && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6">
+              <div className="flex items-start space-x-3">
+                <XCircle className="h-6 w-6 text-red-400 flex-shrink-0 mt-1" />
+                <div>
+                  <h3 className="text-lg font-semibold text-red-400">Listing Rejected</h3>
+                  <p className="text-white mt-2">{formData.rejection_reason}</p>
+                  {formData.rejected_at && (
+                    <p className="text-gray-400 text-sm mt-2">
+                      Rejected on {new Date(formData.rejected_at).toLocaleDateString()}
+                    </p>
+                  )}
+                  <p className="text-gray-300 text-sm mt-3">
+                    Please update your listing to address the issue above and save to resubmit for approval.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Active/Inactive Toggle */}
           <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-white">Listing Status</h2>
-                <p className="text-gray-400 text-sm mt-1">
-                  Control whether your listing is visible to the public
-                </p>
+            <div className="space-y-4">
+              {/* Approval Status */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Approval Status</h3>
+                  <p className="text-gray-400 text-sm mt-1">
+                    {formData.status === 'approved' 
+                      ? 'Your listing has been approved by an admin' 
+                      : formData.status === 'pending'
+                      ? 'Your listing is pending admin approval'
+                      : formData.status === 'rejected'
+                      ? 'Your listing was rejected - see notice above'
+                      : 'Your listing status is being reviewed'}
+                  </p>
+                </div>
+                <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  formData.status === 'approved' 
+                    ? 'bg-green-500/20 text-green-400'
+                    : formData.status === 'pending'
+                    ? 'bg-yellow-500/20 text-yellow-400'
+                    : 'bg-red-500/20 text-red-400'
+                }`}>
+                  {formData.status.charAt(0).toUpperCase() + formData.status.slice(1)}
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setFormData((prev: any) => ({ 
-                  ...prev, 
-                  status: prev.status === 'approved' ? 'suspended' : 'approved' 
-                }))}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                  formData.status === 'approved'
-                    ? 'bg-green-500 text-white hover:bg-green-600'
-                    : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
-                }`}
-              >
-                {formData.status === 'approved' ? (
-                  <>
-                    <CheckCircle className="h-5 w-5" />
-                    <span>Approved</span>
-                  </>
-                ) : (
-                  <>
-                    <XCircle className="h-5 w-5" />
-                    <span>Suspended</span>
-                  </>
-                )}
-              </button>
+              
+              {/* Active/Inactive Toggle (only show if approved) */}
+              {formData.status === 'approved' && (
+                <div className="flex items-center justify-between pt-4 border-t border-gray-700">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white">Listing Visibility</h3>
+                    <p className="text-gray-400 text-sm mt-1">
+                      Control whether your approved listing is active on the site
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFormData((prev: any) => ({ 
+                      ...prev, 
+                      is_active: !prev.is_active 
+                    }))}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                      formData.is_active
+                        ? 'bg-green-500 text-white hover:bg-green-600'
+                        : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+                    }`}
+                  >
+                    {formData.is_active ? (
+                      <>
+                        <CheckCircle className="h-5 w-5" />
+                        <span>Active</span>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-5 w-5" />
+                        <span>Inactive</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 

@@ -42,6 +42,8 @@ interface EnhancedUser {
   failed_login_attempts: number;
   total_spent?: number;
   credits_balance?: number;
+  auto_approve_directory?: boolean;
+  auto_approve_used_equipment?: boolean;
 }
 
 interface ActivityItem {
@@ -98,6 +100,8 @@ export default function EditUserEnhanced() {
     country: '',
     phone: '',
     company_name: '',
+    auto_approve_directory: false,
+    auto_approve_used_equipment: false,
     // team_id removed - teams are handled through team_members table
     verification_status: 'unverified' as EnhancedUser['verification_status'],
     subscription_status: 'none',
@@ -260,6 +264,8 @@ export default function EditUserEnhanced() {
         country: userData.country || 'US',
         phone: userData.phone || '',
         company_name: userData.company_name || '',
+        auto_approve_directory: userData.auto_approve_directory || false,
+        auto_approve_used_equipment: userData.auto_approve_used_equipment || false,
         // team_id removed - teams are handled through team_members table
         verification_status: userData.verification_status || 'unverified',
         subscription_status: subscriptionData?.status || 'none',
@@ -363,7 +369,9 @@ export default function EditUserEnhanced() {
         country: formData.country || null,
         phone: formData.phone || null,
         company_name: formData.company_name || null,
-        verification_status: formData.verification_status
+        verification_status: formData.verification_status,
+        auto_approve_directory: formData.auto_approve_directory || false,
+        auto_approve_used_equipment: formData.auto_approve_used_equipment || false
         // Removed metadata field as it doesn't exist in the users table
         // Permissions are determined by membership_type (admin) field
       };
@@ -541,7 +549,9 @@ export default function EditUserEnhanced() {
           permissions: updatedUser.membership_type === 'admin' ? ['admin'] : [],
           credits_balance: updatedUser.credits_balance || 0,
           verification_status: updatedUser.verification_status || 'pending',
-          subscription_status: 'none'
+          subscription_status: 'none',
+          auto_approve_directory: updatedUser.auto_approve_directory || false,
+          auto_approve_used_equipment: updatedUser.auto_approve_used_equipment || false
         });
       }
 
@@ -1064,6 +1074,49 @@ export default function EditUserEnhanced() {
                         </label>
                       </div>
                     </div>
+
+                    {/* Auto-Approve Directory Permission */}
+                    {(formData.membership_plan === 'retailer' || formData.membership_plan === 'manufacturer') && (
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-2">Directory Auto-Approval</label>
+                        <label className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={formData.auto_approve_directory || false}
+                            onChange={(e) => {
+                              setFormData(prev => ({ ...prev, auto_approve_directory: e.target.checked }));
+                            }}
+                            className="rounded border-gray-600 bg-gray-700 text-electric-500"
+                          />
+                          <span className="text-white">Auto-approve directory listing changes</span>
+                        </label>
+                        <p className="text-sm text-gray-500 mt-1">
+                          When enabled, this user's directory listing updates will be automatically approved.
+                          First-time listings still require manual approval.
+                        </p>
+                      </div>
+                    )}
+                    
+                    {/* Auto-Approve Used Equipment Permission */}
+                    {(formData.membership_plan === 'pro_competitor' || formData.membership_plan === 'pro_competitor_free' || formData.membership_plan === 'pro_competitor_paid') && (
+                      <div>
+                        <label className="block text-gray-400 text-sm mb-2">Used Equipment Auto-Approval</label>
+                        <label className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={formData.auto_approve_used_equipment || false}
+                            onChange={(e) => {
+                              setFormData(prev => ({ ...prev, auto_approve_used_equipment: e.target.checked }));
+                            }}
+                            className="rounded border-gray-600 bg-gray-700 text-electric-500"
+                          />
+                          <span className="text-white">Auto-approve used equipment listings</span>
+                        </label>
+                        <p className="text-sm text-gray-500 mt-1">
+                          When enabled, this competitor's used equipment listings will be automatically approved.
+                        </p>
+                      </div>
+                    )}
 
                     <div>
                       <label className="block text-gray-400 text-sm mb-2">Account Status *</label>

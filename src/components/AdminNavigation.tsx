@@ -171,12 +171,6 @@ const adminNavGroups: AdminNavGroup[] = [
         href: '/admin/subwoofer-designer',
         icon: Volume2,
         description: 'Feature flag management'
-      },
-      {
-        name: 'Test Payment Config',
-        href: '/admin/test-payment-config',
-        icon: CreditCard,
-        description: 'Test payment environment'
       }
     ]
   }

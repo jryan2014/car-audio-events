@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, X, User, Calendar, MapPin, Users, LogOut, Settings, Shield, Package, BarChart3, Target, FileText, Building2, ChevronDown, Search, CreditCard, MessageSquare, Calculator, Volume2, Wrench } from 'lucide-react';
+import { Menu, X, User, Calendar, MapPin, Users, LogOut, Settings, Shield, Package, BarChart3, Target, FileText, Building2, ChevronDown, Search, CreditCard, MessageSquare, Calculator, Volume2, Wrench, Trophy, Mail } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import MegaMenu from './MegaMenu';
 import MobileMegaMenu from './MobileMegaMenu';
@@ -259,7 +259,7 @@ export default function Header() {
                                 className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
                               >
                                 <Users className="h-3 w-3" />
-                                <span>Users</span>
+                                <span>Manage Users</span>
                               </Link>
                               
                               <Link
@@ -268,7 +268,16 @@ export default function Header() {
                                 className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
                               >
                                 <Calendar className="h-3 w-3" />
-                                <span>Events</span>
+                                <span>Manage Events</span>
+                              </Link>
+                              
+                              <Link
+                                to="/admin/competition-management"
+                                onClick={handleDropdownLinkClick}
+                                className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
+                              >
+                                <Trophy className="h-3 w-3" />
+                                <span>Competitions</span>
                               </Link>
                               
                               <Link
@@ -277,7 +286,7 @@ export default function Header() {
                                 className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
                               >
                                 <FileText className="h-3 w-3" />
-                                <span>CMS</span>
+                                <span>CMS Pages</span>
                               </Link>
                               
                               <Link
@@ -286,7 +295,7 @@ export default function Header() {
                                 className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
                               >
                                 <Target className="h-3 w-3" />
-                                <span>Ads</span>
+                                <span>Advertisements</span>
                               </Link>
                               
                               <Link
@@ -299,12 +308,57 @@ export default function Header() {
                               </Link>
                               
                               <Link
+                                to="/admin/directory-manager"
+                                onClick={handleDropdownLinkClick}
+                                className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
+                              >
+                                <Building2 className="h-3 w-3" />
+                                <span>Business Directory</span>
+                              </Link>
+                              
+                              <Link
+                                to="/members"
+                                onClick={handleDropdownLinkClick}
+                                className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
+                              >
+                                <Users className="h-3 w-3" />
+                                <span>Member Directory</span>
+                              </Link>
+                              
+                              <Link
+                                to="/admin/member-profiles"
+                                onClick={handleDropdownLinkClick}
+                                className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
+                              >
+                                <Users className="h-3 w-3" />
+                                <span>Member Profiles</span>
+                              </Link>
+                              
+                              <Link
+                                to="/admin/membership"
+                                onClick={handleDropdownLinkClick}
+                                className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
+                              >
+                                <Shield className="h-3 w-3" />
+                                <span>Membership Plans</span>
+                              </Link>
+                              
+                              <Link
                                 to="/admin/navigation-manager"
                                 onClick={handleDropdownLinkClick}
                                 className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
                               >
                                 <Menu className="h-3 w-3" />
                                 <span>Navigation</span>
+                              </Link>
+                              
+                              <Link
+                                to="/admin/ai-configuration"
+                                onClick={handleDropdownLinkClick}
+                                className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
+                              >
+                                <Settings className="h-3 w-3" />
+                                <span>AI Config</span>
                               </Link>
                               
                               <Link
@@ -323,6 +377,33 @@ export default function Header() {
                               >
                                 <MessageSquare className="h-3 w-3" />
                                 <span>Support</span>
+                              </Link>
+                              
+                              <Link
+                                to="/admin/newsletter"
+                                onClick={handleDropdownLinkClick}
+                                className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
+                              >
+                                <Mail className="h-3 w-3" />
+                                <span>Newsletter</span>
+                              </Link>
+                              
+                              <Link
+                                to="/admin/settings"
+                                onClick={handleDropdownLinkClick}
+                                className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
+                              >
+                                <Settings className="h-3 w-3" />
+                                <span>System Settings</span>
+                              </Link>
+                              
+                              <Link
+                                to="/admin/backup"
+                                onClick={handleDropdownLinkClick}
+                                className="flex items-center space-x-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700/30 rounded transition-colors duration-200"
+                              >
+                                <Shield className="h-3 w-3" />
+                                <span>Backup</span>
                               </Link>
                             </div>
                           </>

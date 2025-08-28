@@ -581,8 +581,21 @@ export default function AdminDashboard() {
             <div className="flex items-center space-x-3">
               <Building2 className="h-8 w-8 text-orange-400 group-hover:scale-110 transition-transform" />
               <div>
-                <h3 className="text-white font-semibold">Directory Manager</h3>
-                <p className="text-gray-400 text-sm">Manage business listings and directory</p>
+                <h3 className="text-white font-semibold">Business Directory</h3>
+                <p className="text-gray-400 text-sm">Manage business listings and categories</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            to="/members"
+            className="bg-gradient-to-br from-teal-500/20 to-teal-600/20 border border-teal-500/30 rounded-xl p-6 hover:from-teal-500/30 hover:to-teal-600/30 transition-all duration-200 group"
+          >
+            <div className="flex items-center space-x-3">
+              <Users className="h-8 w-8 text-teal-400 group-hover:scale-110 transition-transform" />
+              <div>
+                <h3 className="text-white font-semibold">Member Directory</h3>
+                <p className="text-gray-400 text-sm">Browse public member profiles</p>
               </div>
             </div>
           </Link>

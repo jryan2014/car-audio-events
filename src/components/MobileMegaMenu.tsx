@@ -561,6 +561,110 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, onL
                         <div className="text-xs text-gray-500 font-medium uppercase tracking-wider">Admin Tools</div>
                       </div>
                       <Link
+                        to="/admin/users"
+                        onClick={onLinkClick}
+                        className="flex items-center text-gray-300 hover:text-white py-2 transition-colors"
+                      >
+                        <Users className="w-5 h-5 mr-3" />
+                        Manage Users
+                      </Link>
+                      <Link
+                        to="/admin/events"
+                        onClick={onLinkClick}
+                        className="flex items-center text-gray-300 hover:text-white py-2 transition-colors"
+                      >
+                        <Calendar className="w-5 h-5 mr-3" />
+                        Manage Events
+                      </Link>
+                      <Link
+                        to="/admin/competition-management"
+                        onClick={onLinkClick}
+                        className="flex items-center text-gray-300 hover:text-white py-2 transition-colors"
+                      >
+                        <Trophy className="w-5 h-5 mr-3" />
+                        Competition Management
+                      </Link>
+                      <Link
+                        to="/admin/cms-pages"
+                        onClick={onLinkClick}
+                        className="flex items-center text-gray-300 hover:text-white py-2 transition-colors"
+                      >
+                        <FileText className="w-5 h-5 mr-3" />
+                        CMS Pages
+                      </Link>
+                      <Link
+                        to="/admin/ad-management"
+                        onClick={onLinkClick}
+                        className="flex items-center text-gray-300 hover:text-white py-2 transition-colors"
+                      >
+                        <Target className="w-5 h-5 mr-3" />
+                        Advertisement Management
+                      </Link>
+                      <Link
+                        to="/admin/organizations"
+                        onClick={onLinkClick}
+                        className="flex items-center text-gray-300 hover:text-white py-2 transition-colors"
+                      >
+                        <Building2 className="w-5 h-5 mr-3" />
+                        Organizations
+                      </Link>
+                      <Link
+                        to="/admin/directory-manager"
+                        onClick={onLinkClick}
+                        className="flex items-center text-gray-300 hover:text-white py-2 transition-colors"
+                      >
+                        <Building2 className="w-5 h-5 mr-3" />
+                        Business Directory Manager
+                      </Link>
+                      <Link
+                        to="/members"
+                        onClick={onLinkClick}
+                        className="flex items-center text-gray-300 hover:text-white py-2 transition-colors"
+                      >
+                        <Users className="w-5 h-5 mr-3" />
+                        Member Directory
+                      </Link>
+                      <Link
+                        to="/admin/member-profiles"
+                        onClick={onLinkClick}
+                        className="flex items-center text-gray-300 hover:text-white py-2 transition-colors"
+                      >
+                        <UserCheck className="w-5 h-5 mr-3" />
+                        Member Profile Manager
+                      </Link>
+                      <Link
+                        to="/admin/membership"
+                        onClick={onLinkClick}
+                        className="flex items-center text-gray-300 hover:text-white py-2 transition-colors"
+                      >
+                        <Crown className="w-5 h-5 mr-3" />
+                        Membership Plans
+                      </Link>
+                      <Link
+                        to="/admin/navigation-manager"
+                        onClick={onLinkClick}
+                        className="flex items-center text-gray-300 hover:text-white py-2 transition-colors"
+                      >
+                        <Menu className="w-5 h-5 mr-3" />
+                        Navigation Manager
+                      </Link>
+                      <Link
+                        to="/admin/ai-configuration"
+                        onClick={onLinkClick}
+                        className="flex items-center text-gray-300 hover:text-white py-2 transition-colors"
+                      >
+                        <Bot className="w-5 h-5 mr-3" />
+                        AI Configuration
+                      </Link>
+                      <Link
+                        to="/admin/analytics"
+                        onClick={onLinkClick}
+                        className="flex items-center text-gray-300 hover:text-white py-2 transition-colors"
+                      >
+                        <BarChart3 className="w-5 h-5 mr-3" />
+                        Analytics
+                      </Link>
+                      <Link
                         to="/admin/support"
                         onClick={onLinkClick}
                         className="flex items-center text-gray-300 hover:text-white py-2 transition-colors"
@@ -583,6 +687,22 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, onL
                       >
                         <AlertTriangle className="w-5 h-5 mr-3" />
                         Notification Manager
+                      </Link>
+                      <Link
+                        to="/admin/settings"
+                        onClick={onLinkClick}
+                        className="flex items-center text-gray-300 hover:text-white py-2 transition-colors"
+                      >
+                        <Settings className="w-5 h-5 mr-3" />
+                        System Settings
+                      </Link>
+                      <Link
+                        to="/admin/backup"
+                        onClick={onLinkClick}
+                        className="flex items-center text-gray-300 hover:text-white py-2 transition-colors"
+                      >
+                        <Shield className="w-5 h-5 mr-3" />
+                        Backup Management
                       </Link>
                     </>
                   )}
