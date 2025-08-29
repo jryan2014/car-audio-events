@@ -49,6 +49,7 @@ const AdminMembership = React.lazy(() => import('./pages/AdminMembership'));
 const AdminMemberProfiles = React.lazy(() => import('./pages/AdminMemberProfiles'));
 const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
 const AdminEvents = React.lazy(() => import('./pages/AdminEvents'));
+const AdminEventSuggestions = React.lazy(() => import('./pages/AdminEventSuggestions'));
 const AdminTeams = React.lazy(() => import('./pages/AdminTeams'));
 const CreateEvent = React.lazy(() => import('./pages/CreateEvent'));
 const EditEvent = React.lazy(() => import('./pages/EditEvent'));
@@ -278,6 +279,7 @@ function App() {
               <Route path="/admin/membership" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminMembership /></Suspense></AdminLayout>} />
               <Route path="/admin/member-profiles" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminMemberProfiles /></Suspense></AdminLayout>} />
               <Route path="/admin/events" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminEvents /></Suspense></AdminLayout>} />
+              <Route path="/admin/event-suggestions" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminEventSuggestions /></Suspense></AdminLayout>} />
               <Route path="/admin/teams" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminTeams /></Suspense></AdminLayout>} />
               <Route path="/admin/competition-results" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminLeaderboardManager /></Suspense></AdminLayout>} />
               <Route path="/admin/backup" element={<AdminLayout><Suspense fallback={<LoadingSpinner />}><AdminBackup /></Suspense></AdminLayout>} />

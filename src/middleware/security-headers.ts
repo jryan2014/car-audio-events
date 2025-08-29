@@ -22,7 +22,13 @@ export const SecurityHeaders = {
       https://www.paypal.com
       https://*.paypal.com
       https://www.paypalobjects.com
-      https://*.paypalobjects.com;
+      https://*.paypalobjects.com
+      https://www.google-analytics.com
+      https://*.google-analytics.com
+      https://www.googletagmanager.com
+      https://*.googletagmanager.com
+      https://stats.g.doubleclick.net
+      https://*.doubleclick.net;
     style-src 'self' 'unsafe-inline' 
       https://fonts.googleapis.com
       https://cdn.tiny.cloud
@@ -32,7 +38,13 @@ export const SecurityHeaders = {
     font-src 'self' 
       https://fonts.gstatic.com 
       https://fonts.googleapis.com;
-    img-src 'self' data: blob: https: http:;
+    img-src 'self' data: blob: https: http: 
+      https://www.google-analytics.com
+      https://*.google-analytics.com
+      https://stats.g.doubleclick.net
+      https://*.doubleclick.net
+      https://www.googletagmanager.com
+      https://*.googletagmanager.com;
     connect-src 'self' 
       https://nqvisvranvjaghvrdaaz.supabase.co 
       wss://nqvisvranvjaghvrdaaz.supabase.co
@@ -55,7 +67,17 @@ export const SecurityHeaders = {
       https://api.sandbox.paypal.com
       https://api-m.sandbox.paypal.com
       https://*.paypal.com
-      https://nominatim.openstreetmap.org;
+      https://nominatim.openstreetmap.org
+      https://www.google-analytics.com
+      https://*.google-analytics.com
+      https://stats.g.doubleclick.net
+      https://*.doubleclick.net
+      https://analytics.google.com
+      https://*.analytics.google.com
+      https://www.googletagmanager.com
+      https://*.googletagmanager.com
+      https://region1.google-analytics.com
+      https://region1.analytics.google.com;
     frame-src 'self' 
       https://www.google.com 
       https://maps.google.com
@@ -136,7 +158,7 @@ export class CSPConfig {
           "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' http://localhost:* ws://localhost:*"
         ).replace(
           "connect-src 'self'",
-          "connect-src 'self' http://localhost:* ws://localhost:*"
+          "connect-src 'self' http://localhost:* ws://localhost:* https://www.google-analytics.com https://*.google-analytics.com https://stats.g.doubleclick.net https://*.doubleclick.net https://analytics.google.com https://*.analytics.google.com https://www.googletagmanager.com https://*.googletagmanager.com"
         );
       
       case 'test':

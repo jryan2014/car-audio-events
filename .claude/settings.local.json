@@ -101,7 +101,8 @@
       "Read(C:\\Users\\jryan\\.claude\\shell-snapshots/**)",
       "Read(C:\\Users\\jryan\\.claude\\shell-snapshots/**)",
       "Read(C:\\Users\\jryan\\.claude\\ide/**)",
-      "Bash(ln:*)"
+      "Bash(ln:*)",
+      "Bash(copy \"E:\\2025-car-audio-events\\car-audio-events\\public\\_headers\" \"E:\\2025-car-audio-events\\car-audio-events\\dist\\_headers\")"
     ],
     "additionalDirectories": [
       "E:\\e\\2025-car-audio-events"

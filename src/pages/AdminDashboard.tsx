@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Calendar, DollarSign, TrendingUp, Activity, Shield, AlertTriangle, CheckCircle, FileText, Target, Settings, Archive, Mail, Building2, Menu, Brain, Zap, MessageSquare } from '../components/icons';
-import { Bell, Trophy } from 'lucide-react';
+import { Bell, Trophy, CalendarPlus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { Navigate, Link } from 'react-router-dom';
+import { Navigate, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { ActivityLogger } from '../utils/activityLogger';
 import AdminNavigation from '../components/AdminNavigation';
@@ -18,6 +18,7 @@ interface DashboardStats {
   pendingVerifications: number;
   systemAlerts: number;
   pendingApprovals: number;
+  pendingEventSuggestions: number;
   totalPages: number;
   publishedPages: number;
   aiImagesGenerated: number;
@@ -37,6 +38,7 @@ interface RecentActivity {
 
 export default function AdminDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats>({
     totalUsers: 0,
     activeEvents: 0,
@@ -45,6 +47,7 @@ export default function AdminDashboard() {
     pendingVerifications: 0,
     systemAlerts: 0,
     pendingApprovals: 0,
+    pendingEventSuggestions: 0,
     totalPages: 0,
     publishedPages: 0,
     aiImagesGenerated: 0,
@@ -107,6 +110,13 @@ export default function AdminDashboard() {
         .select('*', { count: 'exact', head: true })
         .in('status', ['open', 'in_progress', 'waiting_on_user']);
       
+      // Load pending event suggestions count
+      const { data: pendingSuggestionsData, count: pendingSuggestionsCount } = await supabase
+        .from('events')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending_approval')
+        .eq('approval_status', 'pending');
+      
       // Load real AI stats for admin
       let aiStats = { aiImagesGenerated: 0, aiWritingRequests: 0, aiTotalCost: 0 };
       try {
@@ -135,6 +145,7 @@ export default function AdminDashboard() {
         newRegistrations: realStats.newRegistrations ?? 0,
         pendingVerifications: 0, // TODO: Implement verification system
         pendingApprovals: 0, // TODO: Implement approval system  
+        pendingEventSuggestions: pendingSuggestionsCount ?? 0,
         systemAlerts: 0, // TODO: Implement alert system
         totalPages: realStats.totalPages ?? 0,
         publishedPages: realStats.publishedPages ?? 0,
@@ -183,6 +194,7 @@ export default function AdminDashboard() {
         newRegistrations: 0,
         pendingVerifications: 0,
         pendingApprovals: 0,
+        pendingEventSuggestions: 0,
         systemAlerts: 0,
         totalPages: 0,
         publishedPages: 0,
@@ -351,6 +363,20 @@ export default function AdminDashboard() {
                 <p className="text-2xl font-bold text-yellow-400">{stats.pendingApprovals}</p>
               </div>
               <AlertTriangle className="h-8 w-8 text-yellow-500" />
+            </div>
+          </div>
+
+          <div 
+            onClick={() => navigate('/admin/event-suggestions')}
+            className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 cursor-pointer hover:bg-gray-700/50 transition-colors"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-400 text-sm">Event Suggestions</p>
+                <p className="text-2xl font-bold text-orange-400">{stats.pendingEventSuggestions}</p>
+                <p className="text-xs text-gray-500">Pending review</p>
+              </div>
+              <CalendarPlus className="h-8 w-8 text-orange-500" />
             </div>
           </div>
 

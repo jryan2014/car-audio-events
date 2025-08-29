@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle, AlertCircle, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import EventForm from '../components/EventForm/EventForm';
@@ -18,6 +18,11 @@ const EditEvent = React.memo(function EditEvent() {
   const [categories, setCategories] = useState<EventCategory[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [users, setUsers] = useState<DatabaseUser[]>([]);
+  
+  // Check if this is a quick approve & edit flow
+  const urlParams = new URLSearchParams(window.location.search);
+  const isQuickApprove = urlParams.get('approve') === 'true';
+  const [showApproveNotice, setShowApproveNotice] = useState(isQuickApprove);
 
   // Check if user can edit events
   const canEditEvents = user && (
@@ -317,6 +322,14 @@ const EditEvent = React.memo(function EditEvent() {
 
       // Get category name for legacy category field
       const selectedCategory = categories.find(cat => cat.id === formData.category_id);
+      
+      // If this is quick approve mode, ensure the event gets approved
+      const approvalData = isQuickApprove ? {
+        approval_status: 'approved',
+        status: 'published',
+        is_public: true,
+        is_active: true
+      } : {};
 
       // Ensure image_position is a number
       const imagePosition = typeof formData.image_position === 'number' 
@@ -329,6 +342,7 @@ const EditEvent = React.memo(function EditEvent() {
       
       const eventUpdateData = {
         id,
+        ...approvalData, // Add approval fields if in quick approve mode
         title: formData.title,
         description: formData.description,
         category_id: formData.category_id,
@@ -507,6 +521,27 @@ const EditEvent = React.memo(function EditEvent() {
   return (
     <div className="min-h-screen py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Quick Approve Notice */}
+        {showApproveNotice && (
+          <div className="mb-6 bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+            <div className="flex items-start space-x-3">
+              <AlertCircle className="h-5 w-5 text-blue-400 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-blue-400 font-medium">Quick Approve & Edit Mode</p>
+                <p className="text-gray-300 text-sm mt-1">
+                  You're editing a suggested event. Complete any missing information below and save to approve and publish.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowApproveNotice(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        )}
+        
         {/* Header */}
         <div className="flex items-center space-x-4 mb-8">
           <button

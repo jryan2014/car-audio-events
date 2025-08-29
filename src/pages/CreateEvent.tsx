@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, CheckCircle, AlertCircle, Info } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { usePermissions } from '../hooks/usePermissions';
@@ -11,12 +11,15 @@ import { formatDateForDatabase } from '../utils/dateHelpers';
 export default function CreateEvent() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [categories, setCategories] = useState<EventCategory[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [users, setUsers] = useState<DatabaseUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [initialFormData, setInitialFormData] = useState<Partial<EventFormData> | null>(null);
+  const [suggestionId, setSuggestionId] = useState<string | null>(null);
 
   // Check permissions
   const { hasPermission } = usePermissions();
@@ -28,8 +31,52 @@ export default function CreateEvent() {
       return;
     }
     
+    // Check if we're creating from a suggestion
+    const fromSuggestion = searchParams.get('from_suggestion') === 'true';
+    if (fromSuggestion) {
+      const suggestionData = localStorage.getItem('pendingSuggestionData');
+      if (suggestionData) {
+        try {
+          const parsedData = JSON.parse(suggestionData);
+          // Store the suggestion ID so we can delete it after creating the real event
+          setSuggestionId(parsedData.id);
+          
+          // Pre-populate the form with suggestion data
+          setInitialFormData({
+            title: parsedData.title || '',
+            description: parsedData.description || '',
+            category_id: parsedData.category_id || '',
+            start_date: parsedData.start_date || '',
+            end_date: parsedData.end_date || '',
+            venue_name: parsedData.venue_name || '',
+            address: parsedData.address || '',
+            city: parsedData.city || '',
+            state: parsedData.state || '',
+            zip_code: parsedData.zip_code || '',
+            country: parsedData.country || 'USA',
+            contact_email: parsedData.contact_email || '',
+            contact_phone: parsedData.contact_phone || '',
+            website: parsedData.website_url || '',
+            registration_fee: parsedData.gate_fee || 0,
+            member_price: parsedData.member_price || 0,
+            non_member_price: parsedData.non_member_price || 0,
+            external_registration_url: parsedData.external_registration_url || '',
+            rules: parsedData.rules || '',
+            competition_classes: parsedData.competition_classes || [],
+            seo_title: parsedData.seo_title || '',
+            seo_description: parsedData.seo_description || ''
+          });
+          
+          // Clear the localStorage after retrieving
+          localStorage.removeItem('pendingSuggestionData');
+        } catch (error) {
+          console.error('Error parsing suggestion data:', error);
+        }
+      }
+    }
+    
     loadInitialData();
-  }, [canCreateEvents, navigate]);
+  }, [canCreateEvents, navigate, searchParams]);
 
   const loadInitialData = async () => {
     try {
@@ -198,6 +245,19 @@ export default function CreateEvent() {
         }
       }
 
+      // If this was created from a suggestion, delete the original suggestion
+      if (suggestionId) {
+        const { error: deleteError } = await supabase
+          .from('events')
+          .delete()
+          .eq('id', suggestionId);
+        
+        if (deleteError) {
+          console.error('Error deleting original suggestion:', deleteError);
+          // Don't throw - the real event was created successfully
+        }
+      }
+
       setSuccess(true);
       
       // Redirect after success
@@ -223,8 +283,8 @@ export default function CreateEvent() {
     }
   };
 
-  // Initial form data with user defaults
-  const initialFormData: Partial<EventFormData> = {
+  // Build the form data - either from suggestion or defaults
+  const formDataToUse: Partial<EventFormData> = initialFormData || {
     organizer_id: user?.id || '',
     contact_email: user?.email || '',
     contact_phone: user?.phone || '',
@@ -288,9 +348,19 @@ export default function CreateEvent() {
           </div>
         )}
 
+        {/* Notice for suggestion-based creation */}
+        {suggestionId && (
+          <div className="mb-6 bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+            <div className="flex items-center space-x-2">
+              <Info className="h-5 w-5 text-blue-400" />
+              <span className="text-blue-400">This form has been pre-populated from a user suggestion. Please review and complete all required fields.</span>
+            </div>
+          </div>
+        )}
+
         {/* Event Form */}
         <EventForm
-          initialData={initialFormData}
+          initialData={formDataToUse}
           onSubmit={handleSubmit}
           isEditMode={false}
           categories={categories}

@@ -57,6 +57,9 @@ export default function AdminEvents() {
   const [rejectionReason, setRejectionReason] = useState('');
   const [showCoordinatesModal, setShowCoordinatesModal] = useState(false);
   const [showWebScraperModal, setShowWebScraperModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<'all' | 'suggestions'>('all');
+  const [showQuickApproveModal, setShowQuickApproveModal] = useState(false);
+  const [eventToQuickApprove, setEventToQuickApprove] = useState<Event | null>(null);
 
   // All useEffect hooks moved before conditional return
   useEffect(() => {
@@ -69,6 +72,10 @@ export default function AdminEvents() {
     filterEvents();
   }, [events, searchTerm, selectedStatus, selectedApproval, selectedTimeFilter, selectedOrganization, selectedLocation, selectedCountry, selectedState]);
 
+  useEffect(() => {
+    loadEvents();
+  }, [activeTab]);
+
   // Check if user is admin
   if (!user || user.membershipType !== 'admin') {
     return <Navigate to="/\" replace />;
@@ -78,15 +85,24 @@ export default function AdminEvents() {
     try {
       setIsLoading(true);
       
-      const { data, error } = await supabase
+      let query = supabase
         .from('events')
         .select(`
           *,
           event_categories(name),
           users:organizer_id(name, email),
           organizations:organization_id(id, name)
-        `)
-        .order('created_at', { ascending: false });
+        `);
+      
+      // Filter based on active tab
+      if (activeTab === 'suggestions') {
+        // Show only suggested events that need approval
+        query = query
+          .eq('status', 'pending_approval')
+          .eq('approval_status', 'pending');
+      }
+      
+      const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) {
         console.error('Error loading events:', error);
@@ -570,6 +586,63 @@ export default function AdminEvents() {
           </div>
         </div>
 
+        {/* Tabs */}
+        <div className="mb-6 border-b border-gray-700">
+          <div className="flex space-x-8">
+            <button
+              onClick={() => {
+                setActiveTab('all');
+                loadEvents();
+              }}
+              className={`pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'all'
+                  ? 'border-electric-500 text-electric-500'
+                  : 'border-transparent text-gray-400 hover:text-white hover:border-gray-300'
+              }`}
+            >
+              All Events
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('suggestions');
+                loadEvents();
+              }}
+              className={`pb-4 px-1 border-b-2 font-medium text-sm transition-colors relative ${
+                activeTab === 'suggestions'
+                  ? 'border-electric-500 text-electric-500'
+                  : 'border-transparent text-gray-400 hover:text-white hover:border-gray-300'
+              }`}
+            >
+              Suggested Events
+              {events.filter(e => e.status === 'pending_approval' && e.approval_status === 'pending').length > 0 && (
+                <span className="absolute -top-1 -right-4 bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
+                  {events.filter(e => e.status === 'pending_approval' && e.approval_status === 'pending').length}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Suggestions Tab Info */}
+        {activeTab === 'suggestions' && events.filter(e => e.status === 'pending_approval' && e.approval_status === 'pending').length > 0 && (
+          <div className="mb-6 bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+            <div className="flex items-start space-x-3">
+              <AlertCircle className="h-5 w-5 text-blue-400 mt-0.5" />
+              <div>
+                <p className="text-blue-400 font-medium">User Suggested Events</p>
+                <p className="text-gray-300 text-sm mt-1">
+                  These events were suggested by users and need review. You can:
+                </p>
+                <ul className="text-gray-400 text-sm mt-2 space-y-1 list-disc list-inside">
+                  <li>Quick Approve & Edit - Opens the edit page to complete missing information</li>
+                  <li>Approve As-Is - Publishes the event with current information</li>
+                  <li>Reject - Decline the suggestion with a reason</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
@@ -750,13 +823,37 @@ export default function AdminEvents() {
                           
                           {event.approval_status === 'pending' && (
                             <>
-                              <button
-                                onClick={() => handleApproveEvent(event.id)}
-                                className="text-green-400 hover:text-green-300 transition-colors"
-                                title="Approve Event"
-                              >
-                                <Check className="h-4 w-4" />
-                              </button>
+                              {activeTab === 'suggestions' ? (
+                                // For suggestions tab, show Quick Approve & Edit
+                                <>
+                                  <button
+                                    onClick={() => {
+                                      // Navigate directly to edit page with a special flag
+                                      window.location.href = `/events/${event.id}/edit?approve=true`;
+                                    }}
+                                    className="text-blue-400 hover:text-blue-300 transition-colors"
+                                    title="Quick Approve & Edit"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleApproveEvent(event.id)}
+                                    className="text-green-400 hover:text-green-300 transition-colors"
+                                    title="Approve As-Is"
+                                  >
+                                    <Check className="h-4 w-4" />
+                                  </button>
+                                </>
+                              ) : (
+                                // For all events tab, show regular approve button
+                                <button
+                                  onClick={() => handleApproveEvent(event.id)}
+                                  className="text-green-400 hover:text-green-300 transition-colors"
+                                  title="Approve Event"
+                                >
+                                  <Check className="h-4 w-4" />
+                                </button>
+                              )}
                               <button
                                 onClick={() => {
                                   setSelectedEvent(event);

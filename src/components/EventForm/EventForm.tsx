@@ -112,6 +112,16 @@ export const EventForm: React.FC<EventFormProps> = ({
   
   // UI state
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Update form data when initialData changes (for suggestion pre-population)
+  useEffect(() => {
+    if (initialData && Object.keys(initialData).length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        ...initialData
+      }));
+    }
+  }, [initialData]);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Set<string>>(new Set());
   const [showValidationSummary, setShowValidationSummary] = useState(false);
