@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 
-export type AccessMode = 'disabled' | 'all_pro' | 'all_paid' | 'specific_users';
+export type AccessMode = 'disabled' | 'all_pro' | 'all_public' | 'all_paid' | 'specific_users';
 
 export interface FeatureFlag {
   id: string;
