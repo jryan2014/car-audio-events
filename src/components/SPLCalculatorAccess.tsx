@@ -33,6 +33,7 @@ export const SPLCalculatorAccess: React.FC<SPLCalculatorAccessProps> = ({ childr
         setHasAccess(true);
         setIsEnabled(true);
         setAccessMode('all_public');
+        setIsLoading(false);
         return;
       }
 

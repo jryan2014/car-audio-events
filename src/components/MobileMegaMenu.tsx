@@ -34,6 +34,10 @@ interface NavigationItem {
   description?: string;
   priority?: number;
   is_active: boolean;
+  visibility_rules?: {
+    public?: boolean;
+    [key: string]: any;
+  };
   children?: NavigationItem[];
 }
 
@@ -131,6 +135,7 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, onL
           description: item.description,
           priority: item.priority,
           is_active: item.is_active,
+          visibility_rules: item.visibility_rules,
           children: []
         };
         itemsMap.set(item.id, navItem);
@@ -193,9 +198,32 @@ export default function MobileMegaMenu({ isAuthenticated, user, onLinkClick, onL
   const filterItemsByMembership = (items: NavigationItem[]): NavigationItem[] => {
     const userContext = getUserMembershipContext();
     
-    // For non-authenticated users, show ALL items (fuck the filtering for now)
+    // For non-authenticated users, only show public items
     if (!isAuthenticated) {
-      return items.map(item => ({
+      return items.filter(item => {
+        // Check visibility rules for public access
+        if (item.visibility_rules?.public === true) {
+          // But exclude items that require specific membership contexts
+          if (item.membership_contexts && item.membership_contexts.length > 0) {
+            // Only show if it includes 'base' context (available to all)
+            return item.membership_contexts.includes('base');
+          }
+          return true;
+        }
+        
+        // Check membership contexts
+        if (item.membership_contexts && item.membership_contexts.length > 0) {
+          return item.membership_contexts.includes('base');
+        }
+        
+        // Check old membership_context field
+        if (item.membership_context) {
+          return item.membership_context === 'base' || item.membership_context === 'all';
+        }
+        
+        // Default to not showing if no explicit public access
+        return false;
+      }).map(item => ({
         ...item,
         children: item.children ? filterItemsByMembership(item.children) : []
       }));
