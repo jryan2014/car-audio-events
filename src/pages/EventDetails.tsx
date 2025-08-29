@@ -273,6 +273,27 @@ const EventDetails = React.memo(function EventDetails() {
       console.log('🎨 Setting formatted event with imagePosition:', formattedEvent.imagePosition);
       setEvent(formattedEvent);
       
+      // Track event view in our analytics table
+      try {
+        const sessionId = getOrCreateSessionId();
+        await supabase.from('event_analytics').insert({
+          event_id: parseInt(id),
+          metric_type: 'view',
+          user_id: user?.id || null,
+          session_id: sessionId,
+          user_agent: navigator.userAgent,
+          referrer: document.referrer,
+          metadata: {
+            page_load_time: performance.now(),
+            viewport_width: window.innerWidth,
+            viewport_height: window.innerHeight
+          }
+        });
+        console.log('📊 Event view tracked in analytics');
+      } catch (analyticsError) {
+        console.error('Failed to track event view:', analyticsError);
+      }
+      
       // Track event view in Google Analytics with enhanced parameters
       // Send the actual event name as part of the event action for better visibility
       const eventName = formattedEvent.title || formattedEvent.event_name || 'Unknown Event';
@@ -406,6 +427,17 @@ const EventDetails = React.memo(function EventDetails() {
           });
           
         if (error) throw error;
+        
+        // Track interest in analytics
+        await supabase.from('event_analytics').insert({
+          event_id: parseInt(id),
+          metric_type: 'interest',
+          user_id: user?.id || null,
+          session_id: sessionId,
+          user_agent: navigator.userAgent,
+          metadata: { action: 'added' }
+        });
+        
         setIsInterested(true);
         setInterestCount(interestCount + 1);
       }
@@ -437,6 +469,17 @@ const EventDetails = React.memo(function EventDetails() {
           .eq('event_id', parseInt(id));
           
         if (error) throw error;
+        
+        // Track unfavorite in analytics
+        await supabase.from('event_analytics').insert({
+          event_id: parseInt(id),
+          metric_type: 'favorite',
+          user_id: user?.id || null,
+          session_id: getOrCreateSessionId(),
+          user_agent: navigator.userAgent,
+          metadata: { action: 'removed' }
+        });
+        
         setIsFavorited(false);
       } else {
         // Track favorite action
@@ -455,6 +498,17 @@ const EventDetails = React.memo(function EventDetails() {
           });
           
         if (error) throw error;
+        
+        // Track favorite in analytics
+        await supabase.from('event_analytics').insert({
+          event_id: parseInt(id),
+          metric_type: 'favorite',
+          user_id: user?.id || null,
+          session_id: getOrCreateSessionId(),
+          user_agent: navigator.userAgent,
+          metadata: { action: 'added' }
+        });
+        
         setIsFavorited(true);
       }
     } catch (error) {
@@ -495,9 +549,26 @@ const EventDetails = React.memo(function EventDetails() {
     setShowShareDropdown(false);
   };
 
-  const handlePaymentSuccess = (paymentIntentId: string, userInfo?: any) => {
+  const handlePaymentSuccess = async (paymentIntentId: string, userInfo?: any) => {
     setIsRegistered(true);
     setShowPayment(false);
+    
+    // Track registration in analytics
+    try {
+      await supabase.from('event_analytics').insert({
+        event_id: parseInt(id),
+        metric_type: 'registration',
+        user_id: user?.id || null,
+        session_id: getOrCreateSessionId(),
+        user_agent: navigator.userAgent,
+        metadata: { 
+          payment_intent_id: paymentIntentId,
+          registration_fee: event?.registration_fee || 0
+        }
+      });
+    } catch (error) {
+      console.error('Failed to track registration:', error);
+    }
     
     // Track successful payment and event registration
     const registrationFee = event?.registration_fee || 0;
