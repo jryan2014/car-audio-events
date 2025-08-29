@@ -88,7 +88,7 @@ const AdminNewsletterManager = React.lazy(() => import('./pages/AdminNewsletterM
 const Leaderboard = React.lazy(() => import('./pages/Leaderboard'));
 const AdminLeaderboardManager = React.lazy(() => import('./components/AdminLeaderboardManager'));
 const SPLCalculator = React.lazy(() => import('./pages/SPLCalculator'));
-const SPLCalculatorProtected = React.lazy(() => import('./components/SPLCalculatorProtected').then(module => ({ default: module.SPLCalculatorProtected })));
+const SPLCalculatorAccess = React.lazy(() => import('./components/SPLCalculatorAccess'));
 const AudioSystemDesigner = React.lazy(() => import('./pages/AudioSystemDesigner'));
 const SubwooferDesigner = React.lazy(() => import('./pages/SubwooferDesigner'));
 const AdminSubwooferDesigner = React.lazy(() => import('./pages/AdminSubwooferDesigner'));
@@ -260,7 +260,7 @@ function App() {
               <Route path="/newsletter/confirm/:token" element={<Layout><NewsletterConfirm /></Layout>} />
               <Route path="/newsletter/unsubscribe/:token" element={<Layout><NewsletterUnsubscribe /></Layout>} />
               <Route path="/leaderboard" element={<Layout><Leaderboard /></Layout>} />
-              <Route path="/spl-calculator" element={<Layout><SPLCalculatorProtected><SPLCalculator /></SPLCalculatorProtected></Layout>} />
+              <Route path="/spl-calculator" element={<Layout><SPLCalculatorAccess><SPLCalculator /></SPLCalculatorAccess></Layout>} />
               <Route path="/audio-system-designer" element={<Layout><AudioSystemDesigner /></Layout>} />
               <Route path="/audio-system/diagram-editor" element={<Layout><ProtectedRoute requireProfileComplete={true}><AudioDiagramEditorPage /></ProtectedRoute></Layout>} />
               <Route path="/subwoofer-designer" element={<Layout><ProtectedRoute><SubwooferDesigner /></ProtectedRoute></Layout>} />

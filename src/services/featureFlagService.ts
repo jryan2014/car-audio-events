@@ -82,7 +82,7 @@ class FeatureFlagService {
         .from('feature_flags')
         .select('*')
         .eq('feature_name', featureName)
-        .single();
+        .maybeSingle(); // Use maybeSingle() instead of single() to handle 0 or 1 rows
 
       if (error) {
         console.error('Error fetching feature flag:', error);
@@ -211,6 +211,42 @@ class FeatureFlagService {
     // Then check if feature is enabled
     const flag = await this.getFeatureFlag();
     return flag?.is_enabled || false;
+  }
+
+  /**
+   * Check if a specific user has access to a feature
+   */
+  async checkUserAccess(featureName: string, userId: string): Promise<boolean> {
+    try {
+      const { data, error } = await supabase
+        .from('user_feature_access')
+        .select('id, access_expires_at')
+        .eq('user_id', userId)
+        .eq('feature_name', featureName)
+        .single();
+
+      if (error) {
+        // No access record means no access
+        if (error.code === 'PGRST116') {
+          return false;
+        }
+        console.error('Error checking user access:', error);
+        return false;
+      }
+
+      // Check if access has expired
+      if (data?.access_expires_at) {
+        const expiresAt = new Date(data.access_expires_at);
+        const now = new Date();
+        return now < expiresAt;
+      }
+
+      // Has access with no expiration
+      return !!data;
+    } catch (error) {
+      console.error('Error checking user access:', error);
+      return false;
+    }
   }
 }
 
