@@ -10,7 +10,7 @@ interface Message {
 }
 
 interface AIWritingAssistantProps {
-  onInsertContent: (content: string) => void;
+  onInsertContent: (content: string, metadata?: { title?: string; metaTitle?: string; metaDescription?: string; keywords?: string[] }) => void;
   pageType?: string;
   currentContent?: string;
 }
@@ -129,8 +129,53 @@ What would you like me to help you write today?`,
   };
 
   const insertContent = (content: string) => {
-    onInsertContent(content);
+    console.log('AIWritingAssistant: Inserting content:', content);
+    
+    // Try to extract title and metadata from the content
+    const lines = content.split('\n');
+    let title = '';
+    let contentToInsert = content;
+    
+    // Check if first line looks like a title (starts with # or is in title case)
+    if (lines[0] && lines[0].startsWith('#')) {
+      title = lines[0].replace(/^#+\s*/, '').trim();
+      // Keep the full content, don't remove the title
+      contentToInsert = content;
+    }
+    
+    // Generate SEO metadata based on content
+    const metadata = title ? {
+      title: title,
+      metaTitle: `${title} - Car Audio Events`,
+      metaDescription: content.substring(0, 160).replace(/[#\n]/g, ' ').replace(/\s+/g, ' ').trim(),
+      keywords: extractKeywords(content)
+    } : undefined;
+    
+    console.log('AIWritingAssistant: Calling onInsertContent with:', { content: contentToInsert, metadata });
+    onInsertContent(contentToInsert, metadata);
     // You could add a success notification here
+  };
+  
+  const extractKeywords = (text: string): string[] => {
+    // Extract important keywords from content
+    const commonWords = new Set(['the', 'is', 'at', 'which', 'on', 'and', 'a', 'an', 'as', 'are', 'was', 'were', 'been', 'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could', 'may', 'might', 'must', 'can', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'what', 'which', 'who', 'when', 'where', 'why', 'how', 'all', 'each', 'every', 'both', 'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 'just']);
+    
+    const words = text.toLowerCase()
+      .replace(/[^\w\s]/g, ' ')
+      .split(/\s+/)
+      .filter(word => word.length > 3 && !commonWords.has(word));
+    
+    // Get unique words and their frequency
+    const wordFreq = new Map<string, number>();
+    words.forEach(word => {
+      wordFreq.set(word, (wordFreq.get(word) || 0) + 1);
+    });
+    
+    // Sort by frequency and return top keywords
+    return Array.from(wordFreq.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([word]) => word);
   };
 
   const clearChat = () => {
@@ -153,7 +198,7 @@ What would you like me to help you write today?`,
   }
 
   return (
-    <div className="fixed bottom-6 right-6 w-96 h-[600px] bg-gray-800 border border-gray-700 rounded-xl shadow-2xl z-50 flex flex-col">
+    <div className="fixed bottom-6 right-6 w-[480px] h-[700px] bg-gray-800 border border-gray-700 rounded-xl shadow-2xl z-50 flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-700 bg-gradient-to-r from-electric-500 to-purple-600 rounded-t-xl">
         <div className="flex items-center space-x-2">
@@ -202,7 +247,7 @@ What would you like me to help you write today?`,
             className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             <div
-              className={`max-w-[80%] rounded-lg p-3 ${
+              className={`max-w-[90%] rounded-lg p-3 ${
                 message.role === 'user'
                   ? 'bg-electric-500 text-white'
                   : 'bg-gray-700 text-gray-100'

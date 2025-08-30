@@ -86,7 +86,9 @@ export default function RichTextEditor({ value, onChange, placeholder, className
         border-top: none !important;
         border-radius: 0 0 0.5rem 0.5rem !important;
         color: white !important;
-        min-height: 300px;
+        min-height: 400px;
+        resize: vertical !important;
+        overflow: auto !important;
       }
       
       .sticky-toolbar-editor .ql-editor {
@@ -94,6 +96,31 @@ export default function RichTextEditor({ value, onChange, placeholder, className
         font-size: 14px;
         line-height: 1.6;
         padding: 12px 15px !important;
+      }
+      
+      /* Image styling for proper placement and formatting */
+      .sticky-toolbar-editor .ql-editor img {
+        max-width: 100% !important;
+        height: auto !important;
+        display: block !important;
+        margin: 1rem auto !important;
+        border-radius: 0.5rem !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+      }
+      
+      .sticky-toolbar-editor .ql-editor .ql-align-center img {
+        margin-left: auto !important;
+        margin-right: auto !important;
+      }
+      
+      .sticky-toolbar-editor .ql-editor .ql-align-right img {
+        margin-left: auto !important;
+        margin-right: 0 !important;
+      }
+      
+      .sticky-toolbar-editor .ql-editor .ql-align-left img {
+        margin-left: 0 !important;
+        margin-right: auto !important;
       }
       
       .sticky-toolbar-editor .ql-editor.ql-blank::before {

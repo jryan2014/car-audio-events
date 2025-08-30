@@ -17,6 +17,45 @@ const ContactSection: React.FC<ContactSectionProps> = ({
   touchField
 }) => {
   const { user } = useAuth();
+  const [eventContacts, setEventContacts] = React.useState<any[]>([]);
+  const [generalContacts, setGeneralContacts] = React.useState<any[]>([]);
+
+  // Load saved contacts for dropdowns
+  React.useEffect(() => {
+    const loadContacts = async () => {
+      const { supabase } = await import('../../../lib/supabase');
+      
+      // Load event director contacts
+      const { data: directorData, error: directorError } = await supabase
+        .from('event_contacts')
+        .select('*')
+        .eq('contact_type', 'event_director')
+        .order('first_name', { ascending: true });
+      
+      if (directorError) {
+        console.error('Error loading event directors:', directorError);
+      } else if (directorData) {
+        console.log('Loaded event directors:', directorData.length);
+        setEventContacts(directorData);
+      }
+      
+      // Load general contacts
+      const { data: generalData, error: generalError } = await supabase
+        .from('event_contacts')
+        .select('*')
+        .eq('contact_type', 'general_contact')
+        .order('email', { ascending: true });
+      
+      if (generalError) {
+        console.error('Error loading general contacts:', generalError);
+      } else if (generalData) {
+        console.log('Loaded general contacts:', generalData.length);
+        setGeneralContacts(generalData);
+      }
+    };
+    
+    loadContacts();
+  }, []);
 
   // Handle the "use organizer contact" checkbox change - only when checkbox is clicked
   const handleUseOrganizerContactChange = (checked: boolean) => {
@@ -37,6 +76,28 @@ const ContactSection: React.FC<ContactSectionProps> = ({
     // Don't clear fields when unchecked - preserve existing data
   };
 
+  // Handle selecting from event director dropdown
+  const handleEventDirectorSelect = (contactId: string) => {
+    const contact = eventContacts.find(c => c.id === contactId);
+    if (contact) {
+      updateField('event_director_first_name', contact.first_name || '');
+      updateField('event_director_last_name', contact.last_name || '');
+      updateField('event_director_email', contact.email || '');
+      updateField('event_director_phone', contact.phone || '');
+      updateField('use_organizer_contact', false);
+    }
+  };
+
+  // Handle selecting from general contact dropdown
+  const handleGeneralContactSelect = (contactId: string) => {
+    const contact = generalContacts.find(c => c.id === contactId);
+    if (contact) {
+      updateField('contact_email', contact.email || '');
+      updateField('contact_phone', contact.phone || '');
+      updateField('website', contact.website || '');
+    }
+  };
+
   return (
     <>
       {/* Event Director Contact */}
@@ -46,7 +107,7 @@ const ContactSection: React.FC<ContactSectionProps> = ({
           <span>Event Director Contact</span>
         </h2>
 
-        <div className="mb-4">
+        <div className="mb-4 space-y-3">
           <label className="flex items-center space-x-2">
             <input
               type="checkbox"
@@ -56,6 +117,33 @@ const ContactSection: React.FC<ContactSectionProps> = ({
             />
             <span className="text-gray-400">Use my contact information</span>
           </label>
+          
+          {/* Dropdown for saved event directors - ALWAYS VISIBLE */}
+          {!formData.use_organizer_contact && (
+            <div>
+              <label className="block text-gray-400 text-sm mb-2">
+                Select from previously used event directors:
+              </label>
+              <select
+                onChange={(e) => e.target.value && handleEventDirectorSelect(e.target.value)}
+                className="w-full p-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+              >
+                <option value="">-- Select to auto-fill or type new contact below --</option>
+                {eventContacts.length > 0 ? (
+                  eventContacts.map(contact => (
+                    <option key={contact.id} value={contact.id}>
+                      {contact.first_name} {contact.last_name} - {contact.email} {contact.phone && `(${contact.phone})`}
+                    </option>
+                  ))
+                ) : (
+                  <option disabled>Loading contacts...</option>
+                )}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                {eventContacts.length} saved event directors available
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -149,6 +237,31 @@ const ContactSection: React.FC<ContactSectionProps> = ({
           <Globe className="h-5 w-5 text-electric-500" />
           <span>General Contact & Website</span>
         </h2>
+
+        {/* Dropdown for saved general contacts - ALWAYS VISIBLE */}
+        <div className="mb-4">
+          <label className="block text-gray-400 text-sm mb-2">
+            Select from previously used general contacts:
+          </label>
+          <select
+            onChange={(e) => e.target.value && handleGeneralContactSelect(e.target.value)}
+            className="w-full p-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
+          >
+            <option value="">-- Select to auto-fill or type new contact below --</option>
+            {generalContacts.length > 0 ? (
+              generalContacts.map(contact => (
+                <option key={contact.id} value={contact.id}>
+                  {contact.email} {contact.phone && `| ${contact.phone}`} {contact.website && `| ${contact.website}`}
+                </option>
+              ))
+            ) : (
+              <option disabled>Loading contacts...</option>
+            )}
+          </select>
+          <p className="text-xs text-gray-500 mt-1">
+            {generalContacts.length} saved general contacts available
+          </p>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>

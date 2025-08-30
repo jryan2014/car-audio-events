@@ -1,20 +1,53 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Search, X, Trophy, Tag, Award, Star } from 'lucide-react';
-import { EventFormData } from '../../../types/event';
+import { EventFormData, Organization } from '../../../types/event';
 
 interface SEOSectionProps {
   formData: EventFormData;
   updateField: <K extends keyof EventFormData>(field: K, value: EventFormData[K]) => void;
   getFieldError: (field: string) => string | undefined;
   touchField: (field: string) => void;
+  selectedOrganization?: Organization | null;
 }
 
 const SEOSection: React.FC<SEOSectionProps> = ({
   formData,
   updateField,
   getFieldError,
-  touchField
+  touchField,
+  selectedOrganization
 }) => {
+  // Auto-fill sanctioning body from selected organization
+  useEffect(() => {
+    if (selectedOrganization && !formData.sanctioning_body) {
+      updateField('sanctioning_body', selectedOrganization.name);
+    }
+  }, [selectedOrganization]);
+
+  // Auto-fill competition format based on competition classes
+  useEffect(() => {
+    if (formData.competition_classes && formData.competition_classes.length > 0) {
+      const classes = formData.competition_classes.join(' ').toLowerCase();
+      const formats: string[] = [];
+      
+      if (classes.includes('spl') || classes.includes('sound pressure')) {
+        formats.push('spl');
+      }
+      if (classes.includes('sq') || classes.includes('sound quality')) {
+        formats.push('sq');
+      }
+      if (classes.includes('demo') || classes.includes('exhibition')) {
+        formats.push('demo');
+      }
+      if (classes.includes('show') || classes.includes('shine')) {
+        formats.push('car_show');
+      }
+      
+      if (formats.length > 0 && !formData.competition_format) {
+        updateField('competition_format', formats);
+      }
+    }
+  }, [formData.competition_classes]);
   const handleKeywordChange = (index: number, value: string) => {
     const newKeywords = [...formData.seo_keywords];
     newKeywords[index] = value;
@@ -119,37 +152,63 @@ const SEOSection: React.FC<SEOSectionProps> = ({
           </div>
         </div>
 
-        {/* Competition Format */}
+        {/* Competition Format - Multi-select */}
         <div>
-          <label htmlFor="competition-format" className="block text-gray-400 text-sm mb-2">
+          <label className="block text-gray-400 text-sm mb-2">
             <Trophy className="inline h-4 w-4 mr-1" />
-            Competition Format
+            Competition Format (select all that apply)
           </label>
-          <select
-            id="competition-format"
-            value={formData.competition_format || ''}
-            onChange={(e) => updateField('competition_format', e.target.value as any)}
-            onBlur={() => touchField('competition_format')}
-            className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"
-          >
-            <option value="">Select competition format</option>
-            <option value="spl">SPL Competition</option>
-            <option value="sq">SQ Competition</option>
-            <option value="demo">Demo/Exhibition</option>
-            <option value="car_show">Car Show</option>
-          </select>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { value: 'spl', label: 'SPL Competition' },
+              { value: 'sq', label: 'SQ Competition' },
+              { value: 'spl_sq', label: 'SPL & SQ Combined' },
+              { value: 'demo', label: 'Demo/Exhibition' },
+              { value: 'car_show', label: 'Car Show' },
+              { value: 'show_shine', label: 'Show & Shine' }
+            ].map((format) => (
+              <label key={format.value} className="flex items-center space-x-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={
+                    Array.isArray(formData.competition_format) 
+                      ? formData.competition_format.includes(format.value)
+                      : formData.competition_format === format.value
+                  }
+                  onChange={(e) => {
+                    const currentFormats = Array.isArray(formData.competition_format) 
+                      ? formData.competition_format 
+                      : (formData.competition_format ? [formData.competition_format] : []);
+                    
+                    if (e.target.checked) {
+                      updateField('competition_format', [...currentFormats, format.value]);
+                    } else {
+                      updateField('competition_format', currentFormats.filter(f => f !== format.value));
+                    }
+                  }}
+                  className="w-4 h-4 text-electric-500 bg-gray-700 border-gray-600 rounded focus:ring-electric-500 focus:ring-2"
+                />
+                <span className="text-sm text-gray-300">{format.label}</span>
+              </label>
+            ))}
+          </div>
         </div>
 
-        {/* Sanctioning Body */}
+        {/* Sanctioning Body - Auto-filled from top dropdown */}
         <div>
           <label htmlFor="sanctioning-body" className="block text-gray-400 text-sm mb-2">
             <Tag className="inline h-4 w-4 mr-1" />
             Sanctioning Body
+            {selectedOrganization && (
+              <span className="text-xs text-electric-400 ml-2">
+                (Auto-filled from selected organization)
+              </span>
+            )}
           </label>
           <input
             id="sanctioning-body"
             type="text"
-            value={formData.sanctioning_body || ''}
+            value={formData.sanctioning_body || (selectedOrganization?.name || '')}
             onChange={(e) => updateField('sanctioning_body', e.target.value)}
             onBlur={() => touchField('sanctioning_body')}
             className="w-full p-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-electric-500"

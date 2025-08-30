@@ -400,11 +400,63 @@ export default function CMSPages() {
     setFormData(prev => ({ ...prev, meta_keywords: newKeywords }));
   };
 
-  const handleAIContentInsert = (content: string) => {
-    setFormData(prev => ({
-      ...prev,
-      content: prev.content + '\n\n' + content
-    }));
+  const handleAIContentInsert = (content: string, metadata?: { title?: string; metaTitle?: string; metaDescription?: string; keywords?: string[] }) => {
+    console.log('CMSPages: handleAIContentInsert called with:', { content, metadata });
+    
+    // Convert plain text to HTML paragraphs for proper display in RichTextEditor
+    // Split by double newlines for paragraphs, single newlines become <br>
+    const formattedContent = content
+      .split('\n\n')
+      .map(paragraph => {
+        // Convert single newlines to <br> within paragraphs
+        const withBreaks = paragraph.replace(/\n/g, '<br>');
+        // Handle headers
+        if (paragraph.startsWith('#')) {
+          const level = paragraph.match(/^#+/)?.[0].length || 1;
+          const text = paragraph.replace(/^#+\s*/, '');
+          return `<h${level}>${text}</h${level}>`;
+        }
+        return `<p>${withBreaks}</p>`;
+      })
+      .join('');
+    
+    setFormData(prev => {
+      console.log('CMSPages: Current content before update:', prev.content);
+      console.log('CMSPages: Formatted content to insert:', formattedContent);
+      
+      const updates: any = {
+        ...prev,
+        // Add content to existing content with spacing
+        content: prev.content ? prev.content + '<br><br>' + formattedContent : formattedContent
+      };
+      
+      console.log('CMSPages: New content after update:', updates.content);
+      
+      // Update metadata if provided
+      if (metadata) {
+        if (metadata.title && !prev.title) {
+          updates.title = metadata.title;
+          // Auto-generate slug from title
+          updates.slug = metadata.title.toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-|-$/g, '');
+        }
+        if (metadata.metaTitle && !prev.meta_title) {
+          updates.meta_title = metadata.metaTitle;
+        }
+        if (metadata.metaDescription && !prev.meta_description) {
+          updates.meta_description = metadata.metaDescription;
+        }
+        if (metadata.keywords && metadata.keywords.length > 0 && prev.meta_keywords.length === 0) {
+          updates.meta_keywords = metadata.keywords;
+        }
+      }
+      
+      return updates;
+    });
+    
+    // Show success notification
+    showSuccess('Content Inserted', 'AI-generated content has been added to your page.');
   };
 
   const handleCreateNew = () => {
@@ -1068,7 +1120,7 @@ export default function CMSPages() {
         )}
 
         {/* AI Writing Assistant */}
-        <AIWritingAssistant onInsertContent={handleAIContentInsert} />
+        {showCreateForm && <AIWritingAssistant onInsertContent={handleAIContentInsert} />}
       </div>
 
       {/* Help Modal */}

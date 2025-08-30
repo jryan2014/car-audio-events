@@ -49,8 +49,8 @@ export const EventForm: React.FC<EventFormProps> = ({
     sanction_body_id: '',
     season_year: new Date().getFullYear(),
     organizer_id: '',
-    start_date: getDefaultDateTime(0, 8),
-    end_date: getDefaultDateTime(11, 8),
+    start_date: getDefaultDateTime(0, 9),  // Changed to 9am
+    end_date: getDefaultDateTime(0, 19),   // Changed to 7pm same day
     registration_deadline: '',
     display_start_date: getTodayDate(),
     display_end_date: '',
@@ -72,8 +72,8 @@ export const EventForm: React.FC<EventFormProps> = ({
     use_organizer_contact: false,
     max_participants: null,
     registration_fee: 0,
-    member_price: 0,
-    non_member_price: 0,
+    member_price: 25,      // Default $25
+    non_member_price: 30,   // Default $30
     gate_fee: null,
     multi_day_pricing: null,
     early_bird_fee: null,
@@ -82,8 +82,8 @@ export const EventForm: React.FC<EventFormProps> = ({
     rules: '',
     prizes: [''],
     schedule: [
-      { time: '08:00', activity: 'Registration Opens' },
-      { time: '19:00', activity: 'Event Ends' }
+      { time: '09:00', activity: 'Registration Opens' },  // Match start time
+      { time: '19:00', activity: 'Event Ends' }           // Match end time
     ],
     sponsors: [''],
     image_url: '',
@@ -102,7 +102,7 @@ export const EventForm: React.FC<EventFormProps> = ({
     seo_description: '',
     seo_keywords: [],
     is_public: true,
-    is_featured: false,
+    is_featured: true,  // Default to featured
     is_active: true,
     status: 'draft',
     approval_status: 'pending',
@@ -142,17 +142,13 @@ export const EventForm: React.FC<EventFormProps> = ({
   }, [formData.sanction_body_id, organizations]);
 
   // Helper function to generate default datetime values
-  function getDefaultDateTime(hoursOffset: number = 0, defaultHour: number = 8) {
+  function getDefaultDateTime(daysOffset: number = 0, defaultHour: number = 9) {
     const now = new Date();
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(defaultHour, 0, 0, 0);
+    const targetDate = new Date(now);
+    targetDate.setDate(targetDate.getDate() + 1 + daysOffset);  // Tomorrow + offset
+    targetDate.setHours(defaultHour, 0, 0, 0);
     
-    if (hoursOffset > 0) {
-      tomorrow.setHours(tomorrow.getHours() + hoursOffset);
-    }
-    
-    return tomorrow.toISOString().slice(0, 16);
+    return targetDate.toISOString().slice(0, 16);
   }
 
   // Helper function to get today's date
@@ -196,13 +192,45 @@ export const EventForm: React.FC<EventFormProps> = ({
 
   // Auto-calculate registration deadline when start date changes
   useEffect(() => {
-    if (formData.start_date && !formData.registration_deadline) {
+    if (formData.start_date) {
       const startDate = new Date(formData.start_date);
       // Set registration deadline to 1 minute before event start
       startDate.setMinutes(startDate.getMinutes() - 1);
       updateField('registration_deadline', startDate.toISOString().slice(0, 16));
     }
   }, [formData.start_date]);
+
+  // Auto-update schedule times when start/end dates change
+  useEffect(() => {
+    if (formData.start_date && formData.end_date) {
+      const startDate = new Date(formData.start_date);
+      const endDate = new Date(formData.end_date);
+      
+      // Extract times
+      const startHour = String(startDate.getHours()).padStart(2, '0');
+      const startMinute = String(startDate.getMinutes()).padStart(2, '0');
+      const endHour = String(endDate.getHours()).padStart(2, '0');
+      const endMinute = String(endDate.getMinutes()).padStart(2, '0');
+      
+      const startTime = `${startHour}:${startMinute}`;
+      const endTime = `${endHour}:${endMinute}`;
+      
+      // Update schedule if it has the default structure
+      if (formData.schedule.length >= 2) {
+        const newSchedule = [...formData.schedule];
+        // Update first item (Registration Opens) with start time
+        if (newSchedule[0].activity === 'Registration Opens' || newSchedule[0].activity === '') {
+          newSchedule[0] = { time: startTime, activity: 'Registration Opens' };
+        }
+        // Update last item (Event Ends) with end time
+        const lastIndex = newSchedule.length - 1;
+        if (newSchedule[lastIndex].activity === 'Event Ends' || newSchedule[lastIndex].activity === '') {
+          newSchedule[lastIndex] = { time: endTime, activity: 'Event Ends' };
+        }
+        updateField('schedule', newSchedule);
+      }
+    }
+  }, [formData.start_date, formData.end_date]);
 
   // Auto-calculate display dates when they are empty (initial setup)
   useEffect(() => {
@@ -443,6 +471,7 @@ export const EventForm: React.FC<EventFormProps> = ({
           updateField={updateField}
           getFieldError={getFieldError}
           touchField={touchField}
+          selectedOrganization={selectedOrganization}
         />
       </React.Suspense>
 

@@ -101,7 +101,7 @@ export default function DynamicPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen py-12">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-electric-500 mx-auto mb-4"></div>
             <p className="text-gray-400">Loading page...</p>
@@ -117,7 +117,7 @@ export default function DynamicPage() {
 
   return (
     <div className="min-h-screen py-12">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Page Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl lg:text-5xl font-black text-white mb-6">
@@ -133,13 +133,42 @@ export default function DynamicPage() {
         {/* Page Content */}
         <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-8">
           <div 
-            className="prose prose-invert prose-electric max-w-none"
+            className="prose prose-invert prose-electric max-w-none cms-content"
             dangerouslySetInnerHTML={{ __html: sanitizeHTML(page.content) }}
             style={{
               color: '#e5e7eb',
               lineHeight: '1.7'
             }}
           />
+          <style>{`
+            .cms-content img {
+              max-width: 100%;
+              height: auto;
+              display: block;
+              margin: 2rem auto;
+              border-radius: 0.5rem;
+              box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            }
+            .cms-content p {
+              margin-bottom: 1.5rem;
+            }
+            .cms-content h1, .cms-content h2, .cms-content h3, 
+            .cms-content h4, .cms-content h5, .cms-content h6 {
+              margin-top: 2rem;
+              margin-bottom: 1rem;
+              font-weight: bold;
+            }
+            .cms-content ul, .cms-content ol {
+              margin-left: 2rem;
+              margin-bottom: 1.5rem;
+            }
+            .cms-content blockquote {
+              border-left: 4px solid #3b82f6;
+              padding-left: 1rem;
+              margin: 1.5rem 0;
+              font-style: italic;
+            }
+          `}</style>
         </div>
 
         {/* Page Meta */}

@@ -89,7 +89,7 @@ export interface EventFormData {
   seo_keywords: string[];
   
   // Competition Details
-  competition_format?: 'spl' | 'sq' | 'spl_sq' | 'demo' | 'show_shine';
+  competition_format?: string | string[];  // Can be single or multiple formats
   sanctioning_body?: string;
   competition_classes?: string[];
   event_features?: string[];
