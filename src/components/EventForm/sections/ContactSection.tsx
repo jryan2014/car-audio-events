@@ -328,6 +328,12 @@ const ContactSection: React.FC<ContactSectionProps> = ({
                 type="url"
                 value={formData.website}
                 onChange={(e) => updateField('website', e.target.value)}
+                onFocus={(e) => {
+                  // If field is empty, add https:// prefix
+                  if (!e.target.value) {
+                    updateField('website', 'https://');
+                  }
+                }}
                 onBlur={() => touchField('website')}
                 className={`w-full pl-10 pr-4 py-3 bg-gray-700/50 border rounded-lg text-white focus:outline-none focus:border-electric-500 ${
                   getFieldError('website') ? 'border-red-500' : 'border-gray-600'
