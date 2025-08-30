@@ -145,6 +145,20 @@ const ScheduleSection: React.FC<ScheduleSectionProps> = ({
         <div>
           <label htmlFor="registration-deadline" className="block text-gray-400 text-sm mb-2">
             Registration Deadline
+            <button
+              type="button"
+              onClick={() => {
+                if (formData.start_date) {
+                  const startDate = new Date(formData.start_date);
+                  startDate.setMinutes(startDate.getMinutes() - 1);
+                  updateField('registration_deadline', startDate.toISOString().slice(0, 16));
+                }
+              }}
+              className="ml-3 text-xs text-electric-400 hover:text-electric-300"
+              title="Set to 1 minute before start time"
+            >
+              (Auto-set -1 min)
+            </button>
           </label>
           <input
             id="registration-deadline"
@@ -162,6 +176,9 @@ const ScheduleSection: React.FC<ScheduleSectionProps> = ({
               {getFieldError('registration_deadline')}
             </p>
           )}
+          <p className="mt-1 text-xs text-gray-500">
+            Registration deadline is preserved when editing. Click "Auto-set" to recalculate.
+          </p>
         </div>
 
         {/* Display Date Controls */}

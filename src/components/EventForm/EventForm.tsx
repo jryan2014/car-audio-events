@@ -190,9 +190,14 @@ export const EventForm: React.FC<EventFormProps> = ({
     });
   }, [formData]);
 
-  // Auto-calculate registration deadline when start date changes
+  // Auto-calculate registration deadline ONLY when start date changes AND deadline is empty
+  // This prevents overwriting the deadline when editing existing events
   useEffect(() => {
-    if (formData.start_date) {
+    // Only auto-set if:
+    // 1. We have a start date
+    // 2. Registration deadline is empty (new event or cleared field)
+    // 3. OR if we're not in edit mode and it's a new event
+    if (formData.start_date && !formData.registration_deadline) {
       const startDate = new Date(formData.start_date);
       // Set registration deadline to 1 minute before event start
       startDate.setMinutes(startDate.getMinutes() - 1);
