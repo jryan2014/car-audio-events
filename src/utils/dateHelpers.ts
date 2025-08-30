@@ -12,20 +12,35 @@ export function formatDateForInput(dateString: string | null | undefined): strin
       return `${dateString}T12:00`;
     }
     
+    // CRITICAL FIX: Handle database timestamps correctly
+    // If it's a timestamp from the database (YYYY-MM-DD HH:MM:SS format)
+    // Just reformat it without timezone conversion
+    if (dateString.match(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/)) {
+      // Replace space with T and take only date and time parts
+      const [datePart, timePart] = dateString.split(' ');
+      const [hour, minute] = timePart.split(':');
+      return `${datePart}T${hour}:${minute}`;
+    }
+    
+    // If it's already in the correct format (YYYY-MM-DDTHH:MM)
+    if (dateString.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)) {
+      return dateString;
+    }
+    
     // If it's an ISO string with timezone (ends with Z or has timezone offset)
-    // we need to extract just the date and time parts without conversion
-    if (dateString.includes('T') && (dateString.endsWith('Z') || dateString.match(/[+-]\d{2}:\d{2}$/))) {
-      // Remove timezone info and milliseconds to get local datetime
-      // This preserves the exact time that was entered, regardless of timezone
-      const localDateTime = dateString.split('.')[0].split('Z')[0];
-      
-      // If it already looks like YYYY-MM-DDTHH:mm, return as is
-      if (localDateTime.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/)) {
-        return localDateTime.substring(0, 16); // Ensure we only take YYYY-MM-DDTHH:mm
+    // Extract just the date and time parts WITHOUT timezone conversion
+    if (dateString.includes('T')) {
+      // Split on T to get date and time parts
+      const [datePart, timeWithTz] = dateString.split('T');
+      // Get just the HH:MM part, removing seconds and timezone
+      const timeMatch = timeWithTz.match(/^(\d{2}):(\d{2})/);
+      if (timeMatch) {
+        return `${datePart}T${timeMatch[1]}:${timeMatch[2]}`;
       }
     }
     
-    // For other formats, parse as local date
+    // As a last resort, try parsing but this can cause timezone issues
+    console.warn('Using Date parsing as fallback for:', dateString);
     const date = new Date(dateString);
     
     // Check if date is valid
