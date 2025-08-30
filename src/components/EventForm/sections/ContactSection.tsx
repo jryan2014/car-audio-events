@@ -94,7 +94,10 @@ const ContactSection: React.FC<ContactSectionProps> = ({
     if (contact) {
       updateField('contact_email', contact.email || '');
       updateField('contact_phone', contact.phone || '');
+      // Note: 'website' field in form, but 'website' in contact table
       updateField('website', contact.website || '');
+      console.log('Selected contact:', contact);
+      console.log('Website value:', contact.website);
     }
   };
 
